@@ -7028,6 +7028,28 @@ export class WhatsappCatalogService {
     });
   }
 
+  /** A short, explicit purchase must not disappear into a generic cart/menu nudge.
+   * Leave compound requests, options and contextual references to the normal router.
+   */
+  unavailableSimpleOrderReply(
+    text: string, products: WhatsappCatalogProduct[], menuUrl?: string | null,
+  ): string | null {
+    const raw = text.trim()
+      .replace(/^te acabo de decir que\s+/i, '')
+      .replace(/^(?:hola[\s,!]*)(?:veci(?:no|na)?[\s,!]*)?/i, '')
+      .replace(/[,\s]+por favor[.!\s]*$/i, '')
+      .replace(/[.!]+$/g, '').trim();
+    const match = raw.match(/^(?:(?:quiero|quisiera|dame|me das)\s+)?(?:un|una)\s+([\p{L}]+(?:[ -][\p{L}]+){0,4})$/iu)
+      || raw.match(/^(?:quiero|quisiera|dame|me das)\s+([\p{L}]+(?:[ -][\p{L}]+){0,4})$/iu);
+    const subject = match?.[1]?.trim();
+    if (!subject || /\b(?:y|con|sin|pero|para|que|pedido|domicilio|menu|carta|direccion|telefono|nombre|cambio|otra|otro|misma|mismo|eso|esa|ese|mas|menos|bien|poco|poca|mitad|favor|cuenta|pago|ayuda|humano)\b/.test(normalizeText(subject))) return null;
+    if (this.searchByNameScored(subject, products).length ||
+        this.menuMentionsSubject(subject, products) ||
+        this.findCatalogPrefixCandidates(subject, products).length ||
+        this.resolveStandaloneDrinkOrder(raw, products)) return null;
+    return this.formatNotOnMenuReply(subject, menuUrl, products);
+  }
+
   /** Pregunta de si hay algo, y ese algo no está en la carta. */
   unavailableAskReply(
     text: string,

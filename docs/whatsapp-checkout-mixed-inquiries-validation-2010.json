@@ -1,0 +1,27 @@
+{
+  "batch": 61,
+  "base": "f2969077",
+  "newCases": 72,
+  "baseline": {
+    "passed": 0,
+    "failed": 72
+  },
+  "focusedPassed": 120,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "globalValidation": {
+    "passed": 13011,
+    "suites": 145,
+    "unchangedHashes": 441,
+    "exactInventory": true
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Model and external services mocked; checkout state arranged after router purchase",
+    "One punctuated content or delivery-time question plus explicit name, phone or address change; payment/final-confirmation states only",
+    "Not deployed"
+  ]
+}

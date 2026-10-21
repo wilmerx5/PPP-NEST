@@ -1140,6 +1140,39 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    // A delimited factual question does not consume an independent contact edit.
+    // Keep mutations in the existing checkout handlers, not in this splitter.
+    if (['awaiting_payment', 'awaiting_final_confirm'].includes(conv.state)) {
+      const current = this.conversationService.getSession(conv);
+      const questions = [...text.matchAll(/¿?[^¿?]*\?/g)];
+      const questionFirst = text.match(/^(¿[^?]+\?|[^?]+\?)\s+(.+)$/s);
+      const changeFirst = text.match(/^(.+?[.;])\s+(¿[^?]+\?|(?:cu[aá]nto|qu[eé])[^?]+\?)$/is);
+      const pair = changeFirst ? { question: changeFirst[2], change: changeFirst[1] } :
+        questionFirst ? { question: questionFirst[1], change: questionFirst[2] } : undefined;
+      if (current.cart.length && questions.length === 1 && pair) {
+        const change = pair.change.replace(/[.;]$/, '').trim();
+        const name = change.match(/^a nombre(?: de)?\s+([\p{L} .'-]+)$/iu);
+        const phone = change.match(/^mi tel[eé]fono es\s+([+\d ()-]+)$/i);
+        const address = /^cambia la direcci[oó]n a\s+(?:calle|carrera|cra|cll?|diagonal|dg|transversal|avenida)\b.*\d/i.test(change) &&
+          !/\b(?:si|pero|adem[aá]s|agrega|quita|confirma)\b|[?¿;\n]/i.test(change);
+        if ((name && isUsableWhatsappCustomerName(name[1])) || (phone && this.looksLikePhoneNumber(phone[1])) || address) {
+          let answer: string | undefined;
+          if (current.orderType === 'delivery' && isDeliveryEtaInquiry(pair.question) && !isSpecificOrderProgressInquiry(pair.question)) {
+            answer = this.formatDeliveryEtaSentence(cfg);
+          } else if (this.catalogService.isProductDescriptionInquiry(pair.question)) {
+            const menu = await this.catalogService.getMenuProducts();
+            const named = menu.filter(product => this.catalogService.productFullyNamedIn(pair.question, [product]));
+            if (named.length === 1) answer = this.buildProductCompositionReply(pair.question, named[0], cfg, current, { offerAdd: false });
+          }
+          if (answer) {
+            turn.independentInquiryAnswer = answer;
+            await this.reply(conv, msg.waId, answer);
+            text = change;
+          }
+        }
+      }
+    }
+
     // Glosario local: typos / aliases antes de matching e IA.
     // El saludo se arma con el texto de entrada: "veci" no es un plato, pero sí el tono.
     const envelopeSource = msg.messageType==='text' ? (msg.text || '') : msg.raw?.resolvedOrderImage === true ? text : '';
@@ -5237,6 +5270,15 @@ export class WhatsappOrchestratorService {
       (await this.tryKeepOnlyNamedCartLine(conv, msg.waId, session, text, products, cfg))
     ) {
       return;
+    }
+
+    if (conv.state === 'building_cart' && !session.pendingMatch && !session.pendingAttribute &&
+        !session.pendingMultiOrder && !session.pendingAddOffer) {
+      const missingOrder = this.catalogService.unavailableSimpleOrderReply(originalText || text, products, cfg.menuUrl);
+      if (missingOrder) {
+        await this.reply(conv, msg.waId, missingOrder);
+        return;
+      }
     }
 
     // Agent V1 (feature flag): LLM + tools. Pendings numéricos / checkout ya se resolvieron arriba.

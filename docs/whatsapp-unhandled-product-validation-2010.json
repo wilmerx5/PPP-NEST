@@ -1,0 +1,41 @@
+{
+  "batch": 62,
+  "base": "f2969077",
+  "newCases": 64,
+  "baseline": {
+    "passed": 12,
+    "failed": 12,
+    "cases": 24
+  },
+  "focusedInitialPassed": 133,
+  "finalGlobal": {
+    "passed": 13075,
+    "suites": 146,
+    "unchangedHashes": 442,
+    "exactInventory": true,
+    "testTimeoutMs": 15000
+  },
+  "firstGlobal": {
+    "passed": 13066,
+    "failed": 6,
+    "functionalFailures": 1,
+    "timeouts": 5
+  },
+  "isolatedRecovery": {
+    "passed": 93,
+    "failedTimeouts": 1
+  },
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Short explicit requests only; modifiers/compound requests/pending choices excluded",
+    "Audio transcription mocked from observed server transcripts, no new real transcription",
+    "First global exposed juice flavor regression; fixed with existing standalone-drink resolver",
+    "Final 15s test timeout is runner allowance, not real chatbot latency certification",
+    "New multi-category audio not fixed in this batch"
+  ]
+}
