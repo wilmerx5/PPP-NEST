@@ -1724,8 +1724,11 @@ export class WhatsappOrchestratorService {
       if (this.catalogService.isPriceInquiryIntent(originalText) && !/\b(?:agrega|dame|quiero|ponme|cambia)\b/.test(decision)) {
         const menu = await this.catalogService.getMenuProducts();
         const current = includedOffer.candidates.map(candidate=>menu.find(product=>product.id===candidate.id)).filter(Boolean) as MenuProduct[];
-        await this.reply(conv,msg.waId,current.map(product=>`*${product.name}*: ${this.catalogService.formatMoney(product.price)}${product.availableNow===false ? ' (no disponible)' : ''}`).join('\n')+
-          '\n\nNo agregué productos. Elige una presentación o dime si prefieres por separado.');
+        const available = current.filter(product => product.availableNow !== false);
+        await this.reply(conv,msg.waId,available.length ?
+          current.map(product=>`*${product.name}*: ${this.catalogService.formatMoney(product.price)}${product.availableNow===false ? ' (no disponible)' : ''}`).join('\n')+
+          '\n\nNo agregué productos. Elige una presentación o dime si prefieres por separado.' :
+          'Las presentaciones que te ofrecí ya no están disponibles. No agregué productos. Puedes pedir por separado o decirme otro plato.');
         return;
       }
       if (/^(?:no\s+)?(?:prefiero|los quiero|lo quiero|mejor|d[aá]melos)?\s*(?:por separado|separados|aparte)(?: por favor)?$/.test(decision)) {
@@ -8814,6 +8817,18 @@ export class WhatsappOrchestratorService {
         waId,
         `*${chosen.name}* no está disponible en este horario. Elige otro de la lista o dime otro plato.`,
       );
+      return true;
+    }
+
+    if ((pending.replacement || pending.includesRequestedAccompaniment) &&
+      Number.isFinite(chosenLite.price) && Number.isFinite(chosen.price) && chosenLite.price !== chosen.price) {
+      // Re-quote without purchasing. Keep list indices, quantity and replacement ownership.
+      const oldPrice = chosenLite.price;
+      session = {...session, pendingMatch: {...pending,
+        candidates: pending.candidates.map(candidate => candidate.id === chosen.id ? {...candidate, price: chosen.price} : candidate)}};
+      await this.conversationService.saveSession(conv, session);
+      await this.reply(conv, waId,
+        `El precio de *${chosen.name}* cambió de ${this.catalogService.formatMoney(oldPrice)} a ${this.catalogService.formatMoney(chosen.price)} por unidad. No cambié tu pedido. Si estás de acuerdo, vuelve a elegir su número o nombre; también puedes elegir otra opción.`);
       return true;
     }
 

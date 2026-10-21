@@ -15,9 +15,12 @@ for (const dish of ['Bowl Vegetal', 'Pasta Del Huerto', 'Arroz Chino']) {
    expect(h.conv.sessionData.pendingMatch?.replacement?.originalLine).toEqual(before[0]);
    if(change==='removed') menu.splice(1,1);
    else if(change==='sold-out') menu[1].availableNow=false;
-   else menu[1].price=26000;
+   else menu[1]={...menu[1],price:26000};
    const reply=await h.sendQueued(pick==='number'?'1':pick==='code'?'código 602':`Combo De ${dish}`);
    if(change==='price') {
+    expect(reply).toMatch(/precio.*cambi/i);
+    expect(h.conv.sessionData.cart).toEqual(before);
+    await h.sendQueued(pick==='number'?'1':pick==='code'?'código 602':`Combo De ${dish}`);
     expect(h.conv.sessionData.cart).toEqual([expect.objectContaining({productId:94602,quantity:2,unitPrice:26000,note:before[0].note})]);
    } else {
     expect(reply).toMatch(/no.*disponible|retirado|ya no/i);

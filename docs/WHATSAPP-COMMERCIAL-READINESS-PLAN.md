@@ -1,3 +1,15 @@
+## VIGENTE — tanda 72: aceptar precio actualizado y ofertas desaparecidas (20/10)
+
+Base 5e9ddfe8, staging. 36 casos nuevos con bowl/pasta/arroz y agente simulado on/off: 12 sustituciones con subida/bajada de precio hasta DTO simulado; 12 compras iniciales de dos combos con subida/bajada, carrito vacío hasta repetir elección; 12 consultas de precio después de agotarse/retirarse todas las ofertas, seguidas de compra por separado. Baseline inicial 24/24 fallidos: precio cambiaba silenciosamente; ausencia total seguía invitando a elegir una presentación inexistente.
+
+Cambio acotado a pendingMatch de sustitución o includesRequestedAccompaniment: comparar precio vigente con snapshot ofrecido; si difiere, comunicar anterior/nuevo por unidad, actualizar precio de esa opción conservando índices/cantidad/notas/origen y pedir que vuelva a elegir. No comprar hasta ese siguiente turno. Si todas las ofertas desaparecieron al consultar precio, explicar disponibilidad y ofrecer compra por separado u otro plato. Mantener query permite recuperar compra separada sin inventar productos.
+
+Actualización legítima del contrato de tanda 71: sus 18 casos de precio ahora comprueban aviso y carrito intacto antes de repetir selección por fila/código/nombre. Fixture reemplaza objeto vigente (simulando nueva lectura de catálogo) en vez de mutar el mismo objeto del snapshot; no debilitar expectativas para ocultar compras silenciosas. Los demás casos de agotado/retirado se mantienen.
+
+Focalizado 120/120 antes de última expansión; expansión 36/36. Global aprobada: 13465 pruebas / 156 suites, inventario exacto y 453 hashes de fuente intactos. TypeScript general/build y 92 Node aprobados. Resto cuatro workers: 732,169 s; no confundir esta duración local con latencia de producción. Cero API pagada, Meta y órdenes externas. Main intacto. Tandas 71–72 pendientes de despliegue agrupado; runtime anterior 7a3e82b6.
+
+Límites: modelo y servicios simulados; no transacción concurrente real ni inferencia pagada. Precio cambia solo en elección de combo, no política general de precios/checkout. Cuando ya se consultó precio actualizado puede pedir una elección extra porque el snapshot conserva el precio originalmente ofrecido; mejorar sin permitir compra por consulta. Aceptación breve «sí» en lista múltiple merece contrato propio; hoy se pide explícitamente número/nombre. Datos de nombre/teléfono/dirección durante alternativas siguen como siguiente tanda.
+
 ## VIGENTE — tanda 71: catálogo que cambia durante la elección (20/10)
 
 Base 28508946, staging. 54 recorridos nuevos con bowl/pasta/arroz, agente simulado on/off, elección por fila/código/nombre y tres cambios entre oferta y elección: agotado, retirado, precio actualizado. Todos recorren carrito inicial de dos unidades con nota, oferta de combo, elección, conservación o sustitución y DTO de orden simulada. Ante agotado/retirado se comprueba carrito intacto y luego selección de otra alternativa con la numeración original, conservando cantidad y nota. Precio actualizado se comprueba en carrito; no se afirma consentimiento específico de un aumento de precio ni precio unitario del DTO.
