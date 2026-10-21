@@ -1719,6 +1719,12 @@ export class WhatsappOrchestratorService {
 
     let session = this.conversationService.getSession(conv);
     if (await this.tryCaptureComboContactInterruption(conv, msg.waId, session, originalText, cfg)) return;
+    if (conv.state === 'building_cart' && session.pendingMatch?.priceAcceptanceProductId &&
+      !session.pendingAttribute && !session.pendingMultiOrder &&
+      /^(?:si(?:\s+(?:lo|la)\s+quiero)?)(?:\s+por favor)?$/.test(this.normalizeForMatch(originalText))) {
+      const menu = await this.catalogService.getMenuProducts();
+      if (await this.tryResolvePendingMatchPick(conv, msg.waId, session, originalText, menu, cfg)) return;
+    }
     const includedOffer = session.pendingMatch?.includesRequestedAccompaniment ? session.pendingMatch : undefined;
     if (includedOffer && conv.state === 'building_cart') {
       const decision = this.normalizeForMatch(originalText).replace(/[,.!?¿¡]/g, '').trim();
@@ -8492,13 +8498,14 @@ export class WhatsappOrchestratorService {
       return pending.candidates.filter(candidate => this.normalizeForMatch(candidate.name) === flat).length === 1;
     };
     for (const clause of clauses) {
+      const phoneText = clause.replace(/^(?:(?:mi\s+)?(?:celular|tel[eé]fono|whatsapp)(?:\s+es)?\s*:?\s*)/i, "");
       const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
       if (named && isUsableWhatsappCustomerName(named[1]) && !this.looksLikeAddressRejectingPersonName(named[1])) {
         if (name) return false;
         name = named[1].trim();
-      } else if (this.looksLikePhoneNumber(clause)) {
+      } else if (this.looksLikePhoneNumber(phoneText)) {
         if (phone) return false;
-        phone = this.normalizeContactPhone(clause, conv.phoneE164) || undefined;
+        phone = this.normalizeContactPhone(phoneText, conv.phoneE164) || undefined;
       } else if (this.isStrongExplicitAddress(clause) && this.isPlausibleDeliveryAddress(clause)) {
         if (address) return false;
         address = clause;
@@ -8794,8 +8801,11 @@ export class WhatsappOrchestratorService {
       const pointsAtDescribed = /^(?:(?:si|dale|listo|ok|quiero)\s+)?(?:ese|esa|eso)(?:\s+mism[oa])?$/.test(said);
       const shortYes = /^(?:si(?:\s+(?:lo|la)\s+quiero)?)$/.test(said);
       const acceptsDescribed = pointsAtDescribed || (shortYes && conv.state === 'building_cart');
+      if (shortYes && pending.priceAcceptanceProductId && (pending.replacement || pending.includesRequestedAccompaniment)) {
+        chosenLite = pending.candidates.find(candidate => candidate.id === pending.priceAcceptanceProductId) || null;
+      }
       const describedId = session.productFocus?.productId;
-      if (acceptsDescribed && describedId && describedId === session.describedListCandidateId && pending.candidates.some((candidate) => candidate.id === describedId)) {
+      if (!chosenLite && acceptsDescribed && describedId && describedId === session.describedListCandidateId && pending.candidates.some((candidate) => candidate.id === describedId)) {
         if (session.pendingAttribute || session.pendingPriceInquiry) {
           await this.reply(conv, waId, 'Hay más de una lista. Dime el número de la que acabamos de ver. El pedido sigue igual.');
           return true;
@@ -8879,7 +8889,7 @@ export class WhatsappOrchestratorService {
       Number.isFinite(chosenLite.price) && Number.isFinite(chosen.price) && chosenLite.price !== chosen.price) {
       // Re-quote without purchasing. Keep list indices, quantity and replacement ownership.
       const oldPrice = chosenLite.price;
-      session = {...session, pendingMatch: {...pending,
+      session = {...session, pendingMatch: {...pending, priceAcceptanceProductId: chosen.id,
         candidates: pending.candidates.map(candidate => candidate.id === chosen.id ? {...candidate, price: chosen.price} : candidate)}};
       await this.conversationService.saveSession(conv, session);
       await this.reply(conv, waId,

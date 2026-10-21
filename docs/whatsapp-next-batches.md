@@ -1,3 +1,13 @@
+## VIGENTE — tanda 75: teléfono etiquetado y aceptación de precio (21/10)
+
+Base 7721a355, staging. 54 casos nuevos: 36 recorridos hasta DTO simulado con tres menús (bowl, pasta y arroz), agente simulado on/off, dos opciones ofrecidas y tres etiquetas de teléfono. Dieciocho controles adicionales vuelven a cambiar precio, retirar o agotar el producto antes del «sí»; verifican respuesta, carrito intacto y elección pendiente. Los controles de segundo cambio aceptan de nuevo y verifican el precio actual; no llegan a DTO.
+
+Baseline 36/36 fallidos: tras recotizar y recibir teléfono, «sí» no resolvía la sustitución. Primera implementación del marcador dentro del resolvedor también dejó 36 fallos porque el router interceptaba antes la aceptación. Se enruta únicamente la aceptación breve con candidato explícitamente recotizado al resolvedor existente; allí se revalida catálogo, precio y disponibilidad. El marcador pertenece a pendingMatch y no elige arbitrariamente la primera alternativa. Teléfonos etiquetados se normalizan antes de la validación telefónica existente. No hay excepciones por restaurante, producto o precio.
+
+Focalizado final: 246/246 (54 nuevos, 192 regresiones). TypeScript general/build y 92 pruebas Node aprobados. Global aprobada: 13675 pruebas / 159 suites, inventario exacto y 456 hashes intactos. Publicación a staging validada. Cero API pagada, Meta u órdenes externas. Main intacto. No desplegado: agrupar con la siguiente tanda; el runtime staging sigue 624317ce.
+
+Límites: las 36 conversaciones son sustituciones de un plato ya añadido, con contacto en turno separado. No acreditan inferencia real, audio/visión, todo el PDF ni todas las formas libres. Pendientes: aceptación+teléfono en una misma frase, puntuación en aceptaciones, dos elecciones ambiguas, mensajes parcialmente reconocidos y cambiar de intención tras recotizar. Añadir controles de compra inicial con acompañamiento antes de ampliar esta gramática. No declarar vendible por conteo.
+
 ## VIGENTE — tanda 74: elegir combo y enviar datos juntos (21/10)
 
 Base 4932d853. 84 casos nuevos: 72 recorridos completos con tres menús, agente simulado on/off, compra inicial/sustitución, filas 1/2 y elección por número inicial, ordinal inicial separado por coma o código al final separado por salto de línea. Verifican respuesta, datos, cantidad dos, nota previa, ausencia de pedido externo antes de confirmar y DTO simulado. Doce controles adicionales combinan datos y elección de una opción retirada o con precio cambiado, conservan carrito y vuelven a elegir alternativa o aceptar precio. Estos doce terminan en carrito, no DTO.

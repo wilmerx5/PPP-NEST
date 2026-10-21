@@ -99,6 +99,8 @@ export type WhatsappSessionData = {
   pendingMatch?: {
     /** A retained browse list after its chosen item was already added. */
     selectionAdded?: boolean;
+    /** Explicit candidate awaiting acceptance of its refreshed price. */
+    priceAcceptanceProductId?: number;
     /** The offered bundle fulfills the whole source request; do not add its components again. */
     includesRequestedAccompaniment?: boolean;
     query: string;
