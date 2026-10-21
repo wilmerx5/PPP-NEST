@@ -14,7 +14,14 @@
   ],
   "nodePassed": 92,
   "externalCalls": 0,
-  "deployment": "pending staging grouped 71-72",
+  "deployment": {
+    "commit": "6e748c15854c4a124778b8ae8e7a07969205b904",
+    "image": "1562b9bd68c887060eb776652d774b1b504a92af9986ede0f97ae739faa1fe2d",
+    "checkedAt": "2026-10-21T05:12:17.633Z",
+    "healthy": true,
+    "restarts": 0,
+    "productionUnchanged": true
+  },
   "limits": [
     "Mocked model and external services",
     "Price re-acceptance limited to replacement and accompaniment offers",
