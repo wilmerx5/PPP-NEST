@@ -8800,8 +8800,13 @@ export class WhatsappOrchestratorService {
 
     if (!chosenLite) return false;
 
-    const chosen =
-      this.catalogService.getProductById(chosenLite.id, products) || (chosenLite as MenuProduct);
+    // A pending list is a snapshot, not authority to sell a removed product.
+    const chosen = this.catalogService.getProductById(chosenLite.id, products);
+    if (!chosen) {
+      await this.reply(conv, waId,
+        `*${chosenLite.name}* ya no está disponible en la carta. No lo agregué; tu pedido sigue igual. Elige otra opción o dime otro plato.`);
+      return true;
+    }
 
     if (chosen.availableNow === false) {
       await this.reply(

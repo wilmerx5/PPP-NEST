@@ -1,3 +1,15 @@
+## VIGENTE — tanda 71: catálogo que cambia durante la elección (20/10)
+
+Base 28508946, staging. 54 recorridos nuevos con bowl/pasta/arroz, agente simulado on/off, elección por fila/código/nombre y tres cambios entre oferta y elección: agotado, retirado, precio actualizado. Todos recorren carrito inicial de dos unidades con nota, oferta de combo, elección, conservación o sustitución y DTO de orden simulada. Ante agotado/retirado se comprueba carrito intacto y luego selección de otra alternativa con la numeración original, conservando cantidad y nota. Precio actualizado se comprueba en carrito; no se afirma consentimiento específico de un aumento de precio ni precio unitario del DTO.
+
+Fallo reproducido: tryResolvePendingMatchPick usaba el snapshot chosenLite si el producto ya no existía en el menú. Permitía comprar un producto retirado y sustituir el plato válido del carrito. Se elimina ese fallback: solo un producto vigente puede seleccionarse; ante ausencia responde claramente, conserva carrito y selección para elegir otra alternativa. Regla por ID de catálogo, sin nombres/IDs PPP en runtime.
+
+Baseline 18 casos: seis fallos por retirado, doce verdes en agotado/precio. Después: 96/96 focalizados junto a tandas anteriores. Expansión inicial de 54: 18 fallos del fixture por códigos de cinco dígitos, fuera del formato de 1–4 dígitos del parser. Se corrigen códigos sintéticos a 601–603 sin cambiar IDs ni expectativas; 54/54 aprobados. No contar reruns como casos nuevos. TypeScript general/build y Node verdes. Global aprobada: 13429 pruebas / 155 suites, inventario exacto y 452 hashes de fuente intactos. Partición resto 523,909 s; cuatro workers. Publicar a staging; despliegue agrupado pendiente. Runtime sigue 7a3e82b6 (tanda 70); no afirmar que esta corrección está live.
+
+Límites: mocks de modelo, Meta, persistencia y órdenes. Cero llamadas pagadas o pedidos externos. Main intacto. No acredita disponibilidad real concurrente/transacciones de inventario ni todos los PDF. No cambiar política comercial de precios en esta tanda.
+
+Próximo: avisar y volver a pedir aceptación si el precio cambió entre oferta y selección; lista de alternativas totalmente retirada; recuperación con nombre/teléfono/dirección mientras se resuelve selección; ofertas de compra con precio consultado cuando desaparece la última alternativa (evitar respuestas vacías). Agrupar próximo despliegue a staging; no promover a Main sin solicitud.
+
 ## VIGENTE — tanda 70: decisiones de combo y referencia tras elegir (20/10)
 
 Base 4810d812. Trabajo en staging. Caso real: después de añadir pollo frito, «Trae bebida?/Trae gaseosa?» contestaba también sobre broaster. Se reprodujo un camino equivalente: pendingMatch.selectionAdded conserva una lista de navegación y el handler de inclusión la trataba como elección pendiente. Ahora prioriza la última confirmación o el único producto seleccionado de esa lista que está en el carrito. Puede ofrecer la variante con bebida y reemplazar la línea únicamente cuando el cliente elige. No inferir inclusión ausente en catálogo ni afirmar que bebida genérica equivale a gaseosa.
