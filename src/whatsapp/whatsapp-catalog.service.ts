@@ -697,7 +697,7 @@ export class WhatsappCatalogService {
     // deben explorar o listar, nunca caer al flujo de pedido.
 
     const explorePatterns = [
-      /\b(que|qué)\s+(hay|tienen|tiene|tienes|ofrecen|ofreces|sirven|ponen|venden)\b/,
+      /\b(que|qué)\s+(?:(?:me|nos|le)\s+)?(hay|tienen|tiene|tienes|ofrecen|ofreces|ofrece|sirven|ponen|venden|vendes)\b/,
       /\b(que|qué)\s+(me\s+)?(recomiend|sugier|aconsej)/,
       /\b(que|qué)\s+(de|para)\s+(almuerzo|comer|comida|cena|desayuno|merienda|hoy|la\s+casa)\b/,
       /\b(que|qué)\s+(hay|tienen|tiene|tienes|ofrecen|ofreces)\s+(de\s+)?(comida|comer|almuerzo|cena|platos?|carne|carnes|pollo|sopas?|bebidas?)?\b/,
@@ -748,7 +748,7 @@ export class WhatsappCatalogService {
     const catWord =
       '(?:bebidas?|sopas?|pollos?|arroces?|bandejas?|porciones?|gaseosas?|carnes?|hamburguesas?|combos?|platos?|categorias?|jugos?|limonadas?|aguas?)';
     return (
-      /\b(que|qué)\s+(hay|tienen|tiene|tienes|ofrecen|ofreces|sirven|venden|ponen)\b/.test(q) ||
+      /\b(que|qué)\s+(?:(?:me|nos|le)\s+)?(hay|tienen|tiene|tienes|ofrecen|ofreces|ofrece|sirven|venden|vendes|ponen)\b/.test(q) ||
       // "qué bebidas hay" / "que jugos naturales tienes"
       new RegExp(
         `\\b(que|qué)\\s+(?:unas?\\s+|los?\\s+|las?\\s+)?${catWord}\\s+(?:\\w+\\s+){0,2}(hay|tienen|tiene|tienes|ofrecen|ofreces|sirven|venden|ponen)\\b`,
@@ -7091,11 +7091,13 @@ export class WhatsappCatalogService {
     // A formatter must not override the message's purchase/query classification.
     // In particular, an availability condition inside an order is not the whole intent.
     if (!this.isAvailabilityInquiry(text)) return null;
+    if (this.isMenuExploreIntent(fixCommonOrderTypos(text), products)) return null;
     const subject = this.availabilitySubject(text)
       ?.replace(/^(?:(?:ning[uú]n|ninguna|alg[uú]n|alguna|un|una|otro|otra)\s+)?(?:(?:plato|platos|producto|productos|comida|cosa|opci[oó]n)\s+)?(?:(?:con|de)\s+)?/i, '')
       .replace(/\s+(?:para|de)\s+hoy$/i, '')
       .trim();
     if (!subject || this.menuMentionsSubject(subject, products)) return null;
+    if (/^(?:de\s+|para\s+)?(?:comer|comida|almuerzo|almorzar|cena|cenar|desayuno|desayunar|algo|hoy)$/.test(normalizeText(subject))) return null;
     const menu = (menuUrl || '').trim();
     const related = this.relatedProductsForMissingDish(subject, products);
     return (

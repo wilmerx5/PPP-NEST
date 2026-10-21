@@ -17,6 +17,7 @@ const PHRASE_REWRITES: Array<{
   { re: /\b(?:tv|trv|transv)\.?[ \t]*(?=\d+[a-z]?[ \t]*#[ \t]*\d+[a-z]?[ \t]*[- ][ \t]*\d+)/gi, to: 'Transversal ' },
   { re: /\bkr\.?[ \t]*(?=\d+[a-z]?[ \t]*#[ \t]*\d+[a-z]?[ \t]*[- ][ \t]*\d+)/gi, to: 'Carrera ' },
   { re: /\bbuenas\s+nochs\b/gi, to: 'buenas noches' },
+  { re: /\b(?:uqe|qeu|qe|ke|k|q)\b(?=[ \t]+(?:(?:me|nos|le)[ \t]+)?(?:hay|tienen|tiene|tienes|ofrecen|ofreces|ofrece|sirven|venden|vendes|manejan|recomienda\w*|sugiere\w*)\b)/gi, to: 'que' },
   { re: /^(?:te\s+)?agradezco\s+si\s+me\s+(?:alistan|preparan)\s+/i, to: 'quiero ' },
   { re: /^(?:ada|nad)\s+m[aá]s[.!]*$/i, to: 'nada mas' },
   { re: /\bme[ \t]+haces?[ \t]+(?:el[ \t]+)?favor[ \t]+(?:me[ \t]+)?(?:mandas?|env[ií]as?)\b[ \t]*/gi, to: 'quiero ' },
