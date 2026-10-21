@@ -1,0 +1,60 @@
+{
+  "batch": 82,
+  "date": "2026-10-21",
+  "base": "e6799a5df5df625fe2a0da5bc8d647e132374c84",
+  "commit": "f7feda7fa4c086b653c19730eed77c90a582c44c",
+  "scope": "Several rows of an open list in one message: «1 o 2» / «el primero o el segundo» / «cualquiera» without contact details, and «el 1 y el 2», «1, 2 y 3», «uno de cada uno», «2 de la primera y 1 de la segunda», «una <nombre> y una <nombre>»",
+  "trigger": "Next priority recorded in batches 80–81 (isolated disjunction, «o» versus «y», quantity per option)",
+  "baselineFindings": [
+    "Agent off: «el primero o el segundo» answered «no manejamos: primero o» and dropped the list; «1 o 2» showed the cart and dropped the list; «cualquiera de los dos» answered «no manejamos: dos»",
+    "Agent on: «el primero o el segundo» / «1 o 2» on a replacement list went to the model and the list was lost",
+    "«el 1 y el 2» on a two-unit replacement list put both units on the first option; on a plain list it added only the first row; «la 1 y la 3» likewise",
+    "«2 de la primera y 1 de la segunda» answered «no manejamos»; «uno de cada uno» was ignored; «1 y 2» answered «¿Qué se te antoja?»"
+  ],
+  "fix": "tryResolveSeveralPendingRows runs first inside tryResolvePendingMatchPick. Two references joined by «o/u» (row number, ordinal, code of a listed row) or «cualquiera» keep cart and list and ask, showing those rows with prices. References joined by «,/y/e», «uno de cada uno» or «ambos» (two-row list) buy each row; an optional count per reference («2 de la primera», «una <name>») sets its quantity. A replacement list (or a list for N units without counts) must add up: otherwise it asks how many of each and changes nothing. The first row takes the replaced line; the others inherit its note. A row removed from the menu, a re-priced row on a replacement list, or a row whose product has options stops the purchase with an explanation. Commas are split before normalizing.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-several-list-rows.spec.ts",
+    "count": 90,
+    "menus": ["bowl bar (smoothie with fruit option)", "pasta place (personal pizza with flavor)", "rice house (juice with flavor)"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "a single row number still picks only that row",
+      "a row whose product has options is not given a silent default",
+      "a list for three units with two rows and no counts asks how to split",
+      "a row removed from the menu is not bought and nothing else is added",
+      "replacement counts that do not add up ask and keep cart and list"
+    ],
+    "baselineWithoutFix": "84 failed / 90"
+  },
+  "validation": {
+    "focused": "1052 passed (19 suites: pending lists, choices with contact, combos, binary split, bare quantity, included drink, checkout conversations)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 64 },
+      "rest": { "passed": 13925, "total": 13925, "suites": 165, "seconds": 408 },
+      "inventory": 166,
+      "unionEqualsInventory": true,
+      "hashes": 463,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14005
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "f7feda7fa4c086b653c19730eed77c90a582c44c",
+    "image": "sha256:c1be4663ffbff0b6541b0b5f77be647cc1364c29caf97741bfc7193756b1a3eb",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T17:34:58Z, healthy, 0 restarts",
+    "rollbackTag": "ppp-nest-staging:rollback-before-f7feda7f (image b36dc7c6…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "«el 1 o el 3» on a two-row list (out of range) still gets the generic «no lo resuelvo» plus the pending reminder",
+    "Rows with options must be bought one at a time; there is no per-row option collection in one message",
+    "With ignoreBusinessHours (night tests) schedule availability is forced on by design; only removal from the menu blocks a row",
+    "Agent on, «qué hamburguesas tienen?» in a three-burger menu showed one burger's detail instead of the list (family question picks one product)"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
