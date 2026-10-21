@@ -1,0 +1,61 @@
+{
+  "batch": 95,
+  "date": "2026-10-21",
+  "base": "8bfd833f",
+  "commit": "3fba4ce0ec387783c2f076f85841d7607f60350c",
+  "scope": "Open option answered with its number plus a serving remark («2 que esté fría porfavor», «la 3 bien fría», «4, sin hielo por favor», «2 por favor») was not picked; the option name plus a temperature remark («Manzana bien fría») lost the remark with the agent off and was not picked with the agent on",
+  "trigger": "Pending gap from batch 94 (real staging chat, where the real model resolved «2 que esté fría porfavor»); deterministic path reproduced with the real router",
+  "baselineFindings": [
+    "resolveNextAttributeChoice only accepts a bare number or «opción/la/el N» at the end; a number followed by text was invalid",
+    "Agent on: the sentence was deferred to the agent (generic «¿Qué se te antoja?» with the simulated agent); agent off: the options were asked again",
+    "orderKitchenNote keeps «sin hielo» but not temperature remarks («bien fría», «que esté fría», «al clima», «bien caliente»)",
+    "Same behaviour with 3 and 9 options; a bare «2» worked"
+  ],
+  "fix": "splitOptionIndexAnswer (number with optional «la/el/opción/número/#», remark after it, courtesy stripped) and trailingServingNote (closing temperature remark, «que esté …» reduced to the adjective) in whatsapp-kitchen-preference.ts; absorbPendingOptionAnswer resolves the number on the current step when it is in range and the remark is a serving or kitchen note without digits or option names (or only courtesy), stores the remark as the line note and passes the number to the pending-option flow; an option name with a closing temperature remark keeps it as a note unless the remark is itself an option.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-option-index-note.spec.ts",
+    "count": 79,
+    "menus": ["chicken combo (arepas + 7 drinks, juice served al clima/fría)", "burger with doneness first (doneness + soda, shake helada/al clima)", "breakfast hot drink (eggs + hot drinks, juice en agua/en leche/frío)"],
+    "agent": ["off", "on (simulated, generic reply, classifier null)"],
+    "contrasts": [
+      "a number beyond the listed options is not picked",
+      "«la 2 viene fría?» is a question, not a pick",
+      "a number followed by another option name is not read as that number with a note",
+      "a temperature that is itself an option is chosen and not repeated as a note",
+      "on the first step «2 por favor» behaves exactly like «2»",
+      "helper contrasts: «dos que esté fría», «quiero 2 combos», «calle 2 sur», a question and a bare option name"
+    ],
+    "baselineWithoutFix": "34 failed / 79 (only the orchestrator stashed; the spec imports the new helpers)"
+  },
+  "validation": {
+    "focused": "9104 passed (37 suites touching pending options, answer notes and kitchen preferences)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 65 },
+      "rest": { "passed": 14940, "total": 14940, "suites": 178, "seconds": 424 },
+      "inventory": 179,
+      "unionEqualsInventory": true,
+      "hashes": 476,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 15020
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "3fba4ce0ec387783c2f076f85841d7607f60350c",
+    "image": "sha256:11ae84cf79b0888d388d44adf04e34f75b4012d45d4c7b9603dda62c2ac635eb",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T22:11:31Z, healthy, 0 restarts (started 22:11:02Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-3fba4ce0 (image 28d5ebc7…)",
+    "production": "sha256:1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748 (Main 54c057b5, promoted earlier the same day) before and after"
+  },
+  "remainingGaps": [
+    "A direct order fills every option by default while the same dish picked from a list asks the remaining option",
+    "The fee explanation shows the raw pin text and map link instead of «Ubicación compartida»",
+    "A two-word name whose second word is a place head («Ana Villa») or a name that starts with a place word is still read as a place",
+    "«2 y una coca cola» on an open drink option is ambiguous (agent off picks the named drink); «Te transformo 57.000?» with the agent on; real model evaluation"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
