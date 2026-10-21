@@ -22,7 +22,7 @@
   "paidCalls": 0,
   "externalOrders": 0,
   "whatsappSent": 0,
-  "deployment": "Pending grouped staging release 79\u201381; Main untouched.",
+  "deployment": "Tandas 79\u201381 desplegadas juntas: c\u00f3digo b22c988c4a02c163bd09dcb5120120dd95ffd3f0, imagen b36dc7c627463d21c6006acc1fc94f1039a84b043c1224ea7dcf1d1673d2a41c. Running/healthy/cero reinicios; health OK, DB connected/circuit CLOSED a 2026-10-21T17:17:59.542Z (12:17 Bogot\u00e1). Producci\u00f3n conserva bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0. Bases, vol\u00famenes y bin/ privado preservados. Rollback ppp-nest-staging:rollback-before-b22c988c. Commit documental posterior no requiere rebuild.",
   "limits": [
     "Exactly two units and two opposite configured con/sin options",
     "Correction targets one grouped line or already correct pair",
