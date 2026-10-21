@@ -12,5 +12,14 @@
   "nodePassed": 92,
   "paidCalls": 0,
   "externalOrders": 0,
-  "deployment": "pending grouped batches 67-68"
+  "deployment": {
+    "commit": "429ffc14198b520c96fe5e2dfd6c27978364f2e0",
+    "image": "020346117c6ddb9a524cc47cf683c78975803ee5a7488e0e457e4ff1bab40da4",
+    "verifiedAt": "2026-10-21T03:52:02.724Z",
+    "healthy": true,
+    "restarts": 0,
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "productionImageUnchanged": true
+  }
 }
