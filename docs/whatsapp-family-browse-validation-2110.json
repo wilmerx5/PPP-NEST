@@ -1,0 +1,59 @@
+{
+  "batch": 84,
+  "date": "2026-10-21",
+  "base": "8dbc1754",
+  "commit": "38b3548973cb892fb531a24f6fd452bb255939dd",
+  "scope": "A question about a family of dishes that share a word («qué hamburguesas tienen?», «tienen lasagnas?», «que hamburguesas manejan», «quiero ver las hamburguesas», «muéstrame las arepas», a bare plural «lasagnas») lists every member; it never answers with one member or adds one",
+  "trigger": "Gap recorded in batch 82 (agent on, «qué hamburguesas tienen?» showed one burger's detail) and the family-word gap carried since batch 41",
+  "baselineFindings": [
+    "Agent on: «qué hamburguesas tienen?» / «qué hamburguesas hay?» showed only «Hamburguesa Pollo» with «¿Te lo agrego?»; agent off: «tienen hamburguesas?» and «que hamburguesas manejan» did the same",
+    "«quiero ver las hamburguesas» / «quiero ver las lasagnas» added one member to the cart, agent on and off",
+    "Agent off: a bare «lasagnas» added «Lasagna Vegetal» silently; «qué lasagnas tienen?» answered «Eso no lo resuelvo por este chat»",
+    "A bare «hamburguesas» (twelve letters) was taken as a printed points code and went to the points flow"
+  ],
+  "fix": "tryHandleFamilyBrowse (orchestrator, before the off-menu errand refusal; no list/option pending and outside checkout): «qué/cuáles X tienen/hay/manejan/venden/ofrecen», «tienen/hay/manejan X», «(quiero/puedo) ver las/los X», «muéstrame las/los X» or a bare plural word; when 2–12 available products have that word (singular-insensitive) in their name and it is not a category word, the family is listed (formatCategoryList) and stored as the open list. Points: a bare twelve-letter lowercase word with no digit is not an invoice code (printed codes are uppercase; uppercase or digit-bearing codes still count). Catalog exposes singularToken.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-family-browse.spec.ts",
+    "count": 71,
+    "menus": ["burger bar", "pasta place", "arepa house"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "the row number after the list orders that member",
+      "naming one member still orders it (agent on: may go to the model)",
+      "a word with a single product is not a family list",
+      "a category word («qué bebidas tienen?») still answers with the category",
+      "points: «A3F9K2M8PQ75», lowercase «a3f9k2m8pq75» and uppercase all-letter «ABCDEFGHJKMN» still read as codes"
+    ],
+    "baselineWithoutFix": "44 failed / 71"
+  },
+  "validation": {
+    "focused": "526 passed (12 suites: family, menu, browse, availability, catalog, points, category, offer typos, list rows, included drink)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 63 },
+      "rest": { "passed": 14064, "total": 14064, "suites": 167, "seconds": 376 },
+      "inventory": 168,
+      "unionEqualsInventory": true,
+      "hashes": 465,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14144
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "38b3548973cb892fb531a24f6fd452bb255939dd",
+    "image": "sha256:1009410feeffec59a9c2a17a335b1cfb92ba49d5b346c0c02de1f223f26b6ca9",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T18:05:55Z, healthy, 0 restarts (started 18:05:29Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-38b35489 (image d5766ef7…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "Agent on, «quiero una arepa carne» (member named without «de») goes to the model instead of being added (pre-existing)",
+    "With another list already open, a family question is handled by the existing browse-while-pending path (deliberate, unchanged)",
+    "Families larger than 12 members, or whose word is also a category, keep the existing category/browse answers"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
