@@ -8,7 +8,7 @@ Consulta no compra. Al resolver un único plato del carrito y sin otra elección
 
 Global: 13219 pruebas / 150 suites, inventario exacto, 446 hashes intactos. Evidencia whatsapp-combo-inquiry-validation-2010.json; logs /tmp/ppp-t66-result.log.
 
-Publicación staging validada; despliegue pendiente de verificación documental. Runtime anterior 4ce3addd. No confundir publicación con despliegue.
+Desplegado staging el 20/10 a las 22:18 Bogotá (2026-10-21T03:18:07.385Z): código 0c509dc5d0cb0054818b7b52c4fa77bc9a8b2aa3, imagen dd5fa61b43d78d96b517307a46454962dd55e607e1e8c9d2abb2a4c86dcad8fe. Running/healthy, cero reinicios, health OK/DB connected/circuit CLOSED. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-0c509dc5; bin/ privado, bases y volúmenes preservados. Commit documental posterior no requiere rebuild.
 
 Límites: servicios/modelo simulados, cero llamadas pagadas/Meta/órdenes externas. Nueva oferta automática de bebida cubre building_cart, no rama checkout/condicional. Filas repetidas del mismo SKU y elecciones paralelas requieren aclaración; no demostrar cobertura de esa UX por estos tests. Atributos nuevos del combo siguen el flujo existente; transferencia de todas las opciones antiguas compatibles requiere tanda propia. No afirmar que todas las listas del bot sean ejecutables por esta mejora ni cobertura total de PDF. Main intacto.
 

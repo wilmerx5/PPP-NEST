@@ -14,7 +14,14 @@
     "inventoryExact": true
   },
   "externalCalls": 0,
-  "deployment": "pending verification",
+  "deployment": {
+    "commit": "0c509dc5d0cb0054818b7b52c4fa77bc9a8b2aa3",
+    "image": "dd5fa61b43d78d96b517307a46454962dd55e607e1e8c9d2abb2a4c86dcad8fe",
+    "verifiedAt": "2026-10-21T03:18:07.385Z",
+    "health": "healthy",
+    "restarts": 0,
+    "productionUnchanged": true
+  },
   "limits": [
     "Mocked inference",
     "Beverage-led combo offer outside checkout and conditional branch",
