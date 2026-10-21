@@ -845,6 +845,23 @@ export function isChangeSurchargeInquiry(text: string): boolean {
 }
 
 /** "¿cuánto me están cobrando?" pregunta por el carrito, no por la carta. */
+/** "¿Por qué sube el domicilio si primero decía 2 mil?" / "no entiendo por qué sube todo eso". */
+export function isDeliveryFeeChangeQuestion(text: string): boolean {
+  const t = (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s$]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t || t.length > 160) return false;
+  if (!/\b(?:por\s*que|porque|no\s+entiendo|como\s+asi|y\s+eso)\b/.test(t)) return false;
+  const rise = /\b(?:sube|suben|subio|subieron|aumenta|aumento|aumentaron|cambia|cambio|cambiaron|quedo\s+en|paso\s+a)\b/.test(t);
+  const fee = /\b(?:domicilio|envio|domi)\b/.test(t);
+  if (fee) return rise || /\b(?:cobran|cobra|cobraron|cuesta|vale|sale|tanto|mas\s+caro)\b/.test(t);
+  return rise && /\b(?:todo|eso|tanto|valor|precio|total|\d+\s*mil|\d{1,3}(?:\.\d{3})+)\b/.test(t);
+}
+
 export function isCartChargeQuestion(text: string): boolean {
   if (isChangeSurchargeInquiry(text)) return false;
   const t = (text || '')

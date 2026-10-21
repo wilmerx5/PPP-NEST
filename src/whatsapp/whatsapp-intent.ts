@@ -173,6 +173,23 @@ const NAMED_COMPLEX_RE =
 export const PPP_ZONE_LANDMARK_RE =
   /\b(castilla|castell[oó]n?|tintal|tabaku|altavista|alta\s*vista|vizcaya|techo|nuevo\s+sol|terrazas|aralia|mandalay|toledo|natura|galante|plazuela|san\s+esteban|pio\s*xii|pi[oó]\s*12|senderos?|imperial)\b/i;
 
+const PLACE_HEAD_WORD_RE =
+  /^(?:porter[ií]a|entrada|recepci[oó]n|garita|port[oó]n|ciudad|villa|villas|nueva|nuevo|gran|alta|alto|altos|portal|reservado|bosques?|jardines?|prados?|terrazas?|parques?|torres?|plaza|plazas|hospital|cl[ií]nica|hotel|hostal|motel|conjunto|conj|edificio|urbanizaci[oó]n|urb|residencial|colegio|universidad|iglesia|estaci[oó]n|centro|supermercado|barrio|san|santa|santo|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera)$/i;
+
+/**
+ * "Mariana Rojas Torres" / "Pedro San Martin": a full name whose later word is also a place
+ * keyword. Only a place word that opens the message («Torres de…», «San Martín») names a place.
+ */
+export function looksLikePersonNameNotPlace(text: string): boolean {
+  const raw = (text || '').trim().replace(/[.!]+$/, '');
+  if (!/^\p{L}+(?:\s+\p{L}+){1,3}$/u.test(raw)) return false;
+  const words = raw.split(/\s+/);
+  if (words.some((word) => /^(?:de|del|la|las|el|los|al|a|en|y|por|para|con|frente|cerca|junto|diagonal|calle|carrera|avenida|transversal|casa|apto|apartamento|torre|piso|interior|bloque|manzana|local|oficina)$/i.test(word))) return false;
+  if (PLACE_HEAD_WORD_RE.test(words[0]) || PPP_ZONE_LANDMARK_RE.test(words[0])) return false;
+  return words.slice(1).some((word) =>
+    LANDMARK_KEYWORD_RE.test(word) || PPP_ZONE_LANDMARK_RE.test(word) || PLACE_HEAD_WORD_RE.test(word));
+}
+
 const STREET_ADDRESS_RE =
   /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|dg|transversal|barrio|habitaci[oó]n|apto|apartamento|torre|porter[ií]a|int\.?|interior)\b/i;
 
@@ -588,6 +605,7 @@ export function looksLikeAddressOnlyMessage(
   const raw = (text || '').trim();
   if (raw.length < 4) return false;
   if (isWrongChatApology(raw)) return false;
+  if (looksLikePersonNameNotPlace(raw)) return false;
   if (looksLikeNonAddressCommand(raw)) return false;
 
   // Pedido / comida → nunca “solo dirección” (aunque traiga calle al final)

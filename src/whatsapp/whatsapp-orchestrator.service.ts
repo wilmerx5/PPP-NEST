@@ -45,6 +45,7 @@ import { buildWhatsappBusinessRulesBlock } from './whatsapp-business-rules';
 import {
   classifyWhatsappCustomerIntent,
   looksLikeAddressOnlyMessage,
+  looksLikePersonNameNotPlace,
   looksLikeClearCartMessage,
   looksLikeExplicitCartItemNote,
   looksLikeNonAddressCommand,
@@ -102,6 +103,7 @@ import {
   parseQtyMenuCodeLines,
   parseQtyDishCorrection,
   isCartChargeQuestion,
+  isDeliveryFeeChangeQuestion,
   isCostConditionalRequest,
   pendingCartEditCancellationAside,
   stripCartEditWithdrawalAffirmation,
@@ -2378,6 +2380,10 @@ export class WhatsappOrchestratorService {
       await this.tryHandleCartChargeQuestion(conv, msg.waId, session, originalText, cfg);
       return;
     }
+    if (session.cart.length && session.orderType === 'delivery' && isDeliveryFeeChangeQuestion(originalText)) {
+      await this.replyDeliveryFeeExplanation(conv, msg.waId, session, cfg);
+      return;
+    }
     if (session.cart.length && isKeepCartRefusal(originalText)) {
       await this.reply(conv, msg.waId, 'Listo, no quito nada ✅ El pedido sigue igual.\n\n¿*Algo más*?');
       return;
@@ -2459,7 +2465,8 @@ export class WhatsappOrchestratorService {
 
     // A neighborhood sent as a separate turn supplements the street in any active checkout step.
     if (!['completed', 'closed', 'human_takeover'].includes(conv.state || '') &&
-      /^(?:en\s+el\s+|el\s+)?(?:barrio|conjunto(?:\s+residencial)?)\s+[\p{L}\s.-]+$/iu.test(originalText.trim()) && session.address) {
+      /^(?:en\s+el\s+|el\s+)?(?:barrio|conjunto(?:\s+residencial)?)\s+[\p{L}\s.-]+$/iu.test(originalText.trim()) && session.address &&
+      !this.isPinnedDeliveryAddress(session)) {
       const next = this.withDeliveryAddress(session, originalText.trim());
       if (next.address !== session.address || session.address.toLowerCase().includes(originalText.trim().toLowerCase())) {
         await this.conversationService.saveSession(conv, next);
@@ -16059,6 +16066,28 @@ export class WhatsappOrchestratorService {
       '\nEscribe el número o identifica la línea por su nota. El pedido sigue igual.';
   }
 
+  private isPinnedDeliveryAddress(session: WhatsappSessionData): boolean {
+    return !!session.addressConfirmed && session.deliveryLat != null && session.deliveryLng != null &&
+      /^📍/.test((session.address || '').trim());
+  }
+
+  private async replyDeliveryFeeExplanation(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, cfg: EffectiveWhatsappConfig,
+  ): Promise<void> {
+    const fee = this.catalogService.formatMoney(this.deliveryFeeFor(session, cfg));
+    const address = (session.address || '').trim();
+    const km = Number(session.deliveryDistanceKm);
+    const explanation = cfg.deliveryFeeMode === 'fixed'
+      ? `El domicilio tiene un valor fijo de *${fee}*.`
+      : address
+        ? `El domicilio se calcula por la distancia a la dirección anotada: _${address}_` +
+          `${Number.isFinite(km) && km > 0 ? ` (ruta ~${km.toFixed(1)} km)` : ''} → *${fee}*. ` +
+          'Si esa no es la dirección, envíame la correcta o comparte tu ubicación 📍 y lo recalculo.'
+        : 'El domicilio se calcula según la dirección de entrega. Envíame la dirección o comparte tu ubicación 📍 y te digo el valor.';
+    const reminder = this.formatInterruptedStepReminder(conv, session);
+    await this.reply(conv, waId, `${explanation}${reminder ? `\n\n${reminder}` : ''}`);
+  }
+
   private formatInterruptedStepReminder(conv: WhatsappConversation, session: WhatsappSessionData): string {
     if (session.pendingPriceInquiry) return 'Para seguir con la consulta, indica el nombre o el número del producto de la lista.';
     const editReminder = this.formatPendingCartEditReminder(session);
@@ -18399,6 +18428,27 @@ export class WhatsappOrchestratorService {
     if (!addr || !this.isPlausibleDeliveryAddress(addr)) return false;
     if (this.isPickupIntent(originalText) || this.isPickupIntent(addr)) return false;
 
+    // A shared pin is the precise destination; a complex or landmark name only describes it.
+    const pinned = this.isPinnedDeliveryAddress(session);
+    const streetWithNumber = /\b(?:calle|carrera|cra|cll|kr|av\.?|avenida|diag(?:onal)?|dg|transversal|tv)\b/i.test(addr) && /\d/.test(addr);
+    if (pinned && !streetWithNumber && !pendingAttribute && !pendingMatch && !pendingMultiOrder) {
+      const reference = this.normalizeDeliveryAddress(addr);
+      const pinAddress = (session.address || '').trim();
+      if (!this.normalizeForMatch(pinAddress).includes(this.normalizeForMatch(reference))) {
+        session = { ...session, address: `${pinAddress} — ${reference}`.slice(0, 240), orderType: 'delivery', fulfillmentChosen: true };
+      }
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      const feeLine = session.deliveryFeeCalculated != null
+        ? `\n🚚 Domicilio: *${this.catalogService.formatMoney(this.deliveryFeeFor(session, cfg))}*` : '';
+      const preface = `📍 Anoté la referencia _${reference}_ junto a tu ubicación ✅${feeLine}`;
+      if (session.cart.length) {
+        await this.tryConfirmOrder(conv, waId, session, { preface });
+      } else {
+        await this.reply(conv, waId, `${preface}\n\nDime qué se te antoja y lo armo.`);
+      }
+      return true;
+    }
+
     session = this.withDeliveryAddress(
       {
         ...session,
@@ -19068,6 +19118,7 @@ export class WhatsappOrchestratorService {
 
   /** Landmarks/barrios conocidos — sin aceptar frases genéricas sueltas. */
   private looksLikeExplicitLandmarkKeyword(text: string): boolean {
+    if (looksLikePersonNameNotPlace(text)) return false;
     return (
       looksLikeAddressOnlyMessage(text) ||
       PPP_ZONE_LANDMARK_RE.test(text) ||
@@ -19087,6 +19138,7 @@ export class WhatsappOrchestratorService {
   ): boolean {
     const t = text.trim();
     if (t.length < 4 || t.length > 90) return false;
+    if (looksLikePersonNameNotPlace(t)) return false;
     if (looksLikeClearCartMessage(t) || looksLikeNonAddressCommand(t)) return false;
     if (this.looksLikeFoodNotAddress(t)) return false;
     if (this.looksLikeDeliveryAccessReference(t)) return false;
@@ -19740,6 +19792,7 @@ export class WhatsappOrchestratorService {
     }
     // A place word inside a personal name (e.g. a surname) is not a destination.
     // Keep explicit place prefixes and known destinations, rather than any word match.
+    if (looksLikePersonNameNotPlace(text)) return false;
     if (PPP_ZONE_LANDMARK_RE.test(text) || /^(?:(?:para|a|en)\s+(?:(?:el|la|los|las)\s+)?)?(?:hospital|cl[ií]nica|ips|hotel|hostal|motel|conjunto|residencial|edificio|torres?|supermercado|centro\s+comercial|colegio|universidad|iglesia|parque|plaza|estaci[oó]n|portal|santa|san|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera)\b/i.test(t)) return true;
     return t.length >= 12 && /\d/.test(t) && !/\b(minutos?|mins?|horas?)\b/i.test(t);
   }
