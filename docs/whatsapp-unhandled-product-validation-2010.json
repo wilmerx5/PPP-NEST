@@ -37,5 +37,15 @@
     "First global exposed juice flavor regression; fixed with existing standalone-drink resolver",
     "Final 15s test timeout is runner allowance, not real chatbot latency certification",
     "New multi-category audio not fixed in this batch"
-  ]
+  ],
+  "deployment": {
+    "commit": "7d0151a33e997017b66c71019893426d1f3d5a25",
+    "image": "de589f3ffde242d6ae35ada8be526ce49a677bd4f5224acac6ccf08b4ca1e51f",
+    "verifiedAt": "2026-10-21T00:17:23.035Z",
+    "healthy": true,
+    "restarts": 0,
+    "db": "connected",
+    "circuit": "CLOSED",
+    "productionImageUnchanged": "c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e"
+  }
 }
