@@ -1,3 +1,15 @@
+## VIGENTE — tanda 91: platos que empiezan por «arepa» y acompañamientos pedidos solos se agregan directo con agente (21/10)
+
+Base c76dcca0, staging. Pendiente de la tanda 90. Baseline con router real y menú sintético, agente encendido: «quiero una arepa rellena», «quiero 1 arepa rellena», «me das una arepa rellena» y «quiero pedir una arepa rellena» respondían «¿Cuál prefieres?» con el carrito vacío; con un plato de arepa en la carta, «dame arepas fritas» (acompañamiento real) tampoco se agregaba. Causa: isLikelySideOnlyProduct tomaba como acompañamiento cualquier nombre de hasta tres palabras que empezara por «arepa». Sin agente ya funcionaba. Sin el arreglo fallan 26/75.
+
+75 regresiones nuevas (whatsapp-arepa-dish-direct-add.spec.ts): arepa rellena + arepas fritas, arepa de pollo + arepa blanca, arepa mixta + «Arepa»; agente simulado on/off, clasificador null. Contrastes: la arepa simple sigue siendo acompañamiento en el catálogo; una pregunta de precio no agrega; «sin <acompañamiento>» sobre un plato del carrito no agrega el acompañamiento.
+
+Arreglo general: una arepa es acompañamiento solo si después del nombre vienen descriptores de porción simple (blanca, frita, asada, de maíz, sencilla, pequeña, redonda, tela); «Arepa Rellena», «Arepa De Pollo» o «Arepa Mixta» son platos. nestWouldAddDirectDishOrder agrega directo un acompañamiento cuando el mensaje es solo su nombre tras el verbo, la cantidad y «porción de»; «con/sin/y <acompañamiento>» sigue por la ruta existente.
+
+Validación: foco 2533/2533 (39 suites); tsc ambos OK; node 92/0; diff --check OK; global en dos fases con hashes congelados (472) 80/80 + 14692/14692, unión = inventario 175, 494 s, sin reintentos. Commit 43cc6838 desplegado solo en staging (imagen b718f82a…, health OK 20:43Z, 0 reinicios, rollback rollback-before-43cc6838); producción bf4596b2… intacta. Evidencia: docs/whatsapp-arepa-dish-direct-add-validation-2110.json. Sin llamadas pagadas, WhatsApp ni órdenes externas.
+
+Pendiente: el lugar de «me lo envías a <lugar>» no queda como referencia al llegar la calle; nota que repite opciones ya elegidas; respuesta determinista al «Te transformo 57.000?» con agente; evaluar modelo real con presupuesto registrado.
+
 ## VIGENTE — tanda 90: pasar a domicilio un pedido para recoger desde el checkout (21/10)
 
 Base cd916b16, staging. Pendiente de la tanda 89. Baseline con router real y fixture beta, con y sin agente, pedido para recoger en la pregunta de pago: «domicilio», «es a domicilio», «mejor a domicilio por favor», «no, lo quiero a domicilio», «envíamelo» y «Me lo envias a Villa Clara» respondían «¿Cómo pagas?» y el pedido seguía para recoger. Ya funcionaban «me lo traes al barrio Santa Fe» (dirección plausible) y el cambio inverso «mejor paso a recogerlo». Sin el arreglo fallan 48/72.
