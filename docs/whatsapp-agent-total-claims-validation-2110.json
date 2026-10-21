@@ -1,0 +1,77 @@
+{
+  "batch": 98,
+  "date": "2026-10-21",
+  "base": "cdec703c",
+  "commit": "6b5035253b771e86b713e9addab0b88f70a7803f",
+  "scope": "Order totals stated in model free text (no actions) and «cuánto llevo / cuánto vamos» total questions",
+  "audit": "Real router probe with the agent simulated: action-backed replies, product price questions, chit-chat and unrelated questions where the model states a total, plus total questions phrased with llevo/vamos/voy/van",
+  "baselineFindings": [
+    "Action-backed agent replies were already rebuilt from the cart and price questions were deterministic",
+    "Free model text stating a wrong total («Listo, el total es $99.000», «Llevas $10.000 en total», «Jaja, por cierto el total es $99.000») was relayed in the main path and in the off-topic branch, also with an empty cart",
+    "«cuanto llevo», «cuánto vamos?» and «y cuánto llevo hasta ahora?» were not cart total questions; the last one asked «¿De cuál producto…?» or relayed the model's total"
+  ],
+  "fix": "statedOrderTotals extracts amounts the reply presents as an order total (total/suma/llevas/vamos/va en/queda en/pedido es de + amount). misstatesOrderTotal compares them with the cart subtotal and subtotal + delivery fee; when no action is applied and any stated total disagrees, the main path falls back to the rules (warning agent_misstated_total) and the off-topic branch uses its fallback. isCartChargeQuestion now accepts «(y/entonces/bueno/ok) cuánto llevo/llevamos/vamos/voy/va/van (en total/hasta ahora/por ahora/hasta el momento) (porfa)», which shows the cart.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-agent-total-claims.spec.ts",
+    "count": 100,
+    "menus": [
+      "chicken combo + lemonade",
+      "pizza + soda",
+      "sushi roll + juice"
+    ],
+    "agent": [
+      "off (legacy model returns the same text)",
+      "on (simulated text without actions)"
+    ],
+    "contrasts": [
+      "a correct total from the agent is kept",
+      "a product price mention («sale en $6.000») is not a total",
+      "«cuanto vale <producto>» still answers the price",
+      "«cuánto llevo esperando?», «cuanto se demora», «cuánto vale el domicilio» are not total questions",
+      "empty cart"
+    ],
+    "baselineWithoutFix": "27 failed / 100 (orchestrator stashed; the spec imports the new session-intent helper)"
+  },
+  "validation": {
+    "focused": "441 passed (5 suites: total claims, unapplied claims, payment amount, option index note, session intents)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": {
+        "passed": 80,
+        "total": 80,
+        "suites": 1,
+        "seconds": 62
+      },
+      "rest": {
+        "passed": 15281,
+        "total": 15281,
+        "suites": 181,
+        "seconds": 454
+      },
+      "inventory": 182,
+      "unionEqualsInventory": true,
+      "hashes": 479,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 15361,
+      "wallSeconds": 518
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "6b5035253b771e86b713e9addab0b88f70a7803f",
+    "image": "sha256:459d2b7ac1c67d33558c02abcf692b53763349d2f60daf5a0597471b5eb8ed25",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T23:13:48Z, healthy, 0 restarts (started 23:13:15Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-6b503525 (image e6a31140…)",
+    "production": "sha256:1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748 before and after"
+  },
+  "remainingGaps": [
+    "«déjame 2 combos» still adds (ambiguous)",
+    "«mejor dos combos y una limonada» adds instead of restating the order",
+    "Claims that mismatch applied actions (claims 3, applies 2) are not compared yet",
+    "The harness reply() skips customerLocationLabel; real model evaluation with a recorded budget"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
