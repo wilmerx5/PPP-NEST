@@ -1717,6 +1717,25 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // A taste preference asks for guidance, not a product literally named "algo ...".
+    const tasteDiscovery = originalText.trim().match(/^(?:(?:hola|buenas tardes|buenas noches)[, ]+)?(?:quiero|quisiera|busco|me gustar[ií]a)\s+algo\s+((?:(?:no tan|poco|muy|bien)\s+)?(?:picante|dulce|salado|ligero|crocante|crujiente|caliente|fr[ií]o))(?:\s+por favor)?[.!?]*$/i);
+    if (tasteDiscovery && conv.state === 'building_cart' && !session.pendingAttribute && !session.pendingMultiOrder && !session.pendingMatch) {
+      const menu = await this.catalogService.getMenuProducts();
+      const categories = [...new Set(menu.filter(p=>p.availableNow !== false).map(p=>p.categoryName).filter(Boolean))].slice(0,6);
+      await this.reply(conv, msg.waId, `Buscas algo *${tasteDiscovery[1]}*. ` +
+        (categories.length ? `¿Qué tipo de plato prefieres: ${categories.join(', ')}?` : '¿Qué tipo de plato te gustaría?') +
+        '\nAsí puedo orientarte con la carta; la preparación especial debe confirmarla el local.');
+      return;
+    }
+    // Resolve an unresolved family plus abundance before unavailable-product fallback.
+    // Concrete dishes keep their existing full-note parser.
+    const abundantFamily = splitKitchenPreference(originalText, true);
+    if (abundantFamily && conv.state === 'building_cart' && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
+      const status = await this.businessService.getStatus();
+      if ((status.isOpen || cfg.ignoreBusinessHours) &&
+          await this.tryHandleGenericProductOrder(conv, msg.waId, session, abundantFamily.productText,
+            await this.catalogService.getMenuProducts(), abundantFamily.note)) return;
+    }
     // A category refinement of the offered list is browsing, not a cart correction.
     if (conv.state === 'building_cart' && session.pendingMatch?.candidates.length &&
         !session.pendingAttribute && !session.pendingMultiOrder) {
@@ -7943,6 +7962,7 @@ export class WhatsappOrchestratorService {
     session: WhatsappSessionData,
     text: string,
     products: MenuProduct[],
+    kitchenNote?: string,
   ): Promise<boolean> {
     if (this.catalogService.isGenericProductInquiry(text) ||
       this.catalogService.isCategoryBrowseQuestion(text) ||
@@ -7968,7 +7988,7 @@ export class WhatsappOrchestratorService {
     session = {
       ...session,
       pendingMatch: { query: text, candidates: available, intent: 'order', quantity,
-        note: this.catalogService.extractProductModificationNote(text) || undefined },
+        note: kitchenNote || this.catalogService.extractProductModificationNote(text) || undefined },
       pendingQuantityHint: { query, quantity },
       ...(['awaiting_address', 'awaiting_name', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state)
         ? { pendingCheckoutResume: conv.state as WhatsappSessionData['pendingCheckoutResume'] } : {}),

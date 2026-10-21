@@ -1,0 +1,39 @@
+{
+  "batch": 65,
+  "base": "03ba0adc",
+  "newCases": 35,
+  "baseline": {
+    "failed": 30,
+    "passed": 3,
+    "subsequentlyAdded": 2
+  },
+  "firstGlobal": {
+    "failed": 15,
+    "passed": 13186
+  },
+  "recoveryFocused": {
+    "passed": 88,
+    "failed": 0,
+    "filteredRun": true
+  },
+  "typecheck": true,
+  "buildTypecheck": true,
+  "nodeTests": 92,
+  "finalGlobal": {
+    "passed": 13201,
+    "suites": 149,
+    "hashesUnchanged": 445,
+    "inventoryExact": true,
+    "testTimeoutMs": 15000
+  },
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "whatsappMessages": 0,
+  "limits": [
+    "Taste discovery clarification only, no ingredient-based recommendations",
+    "building_cart without pending selection",
+    "Abundance parsing scoped to unresolved one-word family",
+    "Mock inference; no real voice or model accuracy claim"
+  ],
+  "deployment": "pending staging verification; Main unchanged"
+}

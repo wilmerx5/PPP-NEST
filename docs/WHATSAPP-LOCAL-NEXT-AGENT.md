@@ -1,3 +1,19 @@
+## VIGENTE — preferencias de sabor y abundancia antes de elegir producto (20/10, tanda 65)
+
+Base 03ba0adc. Prioridad cambiada por nuevos chats reales: «Quiero algo picante» recibía producto inexistente; «Quiero Un Pollo con arta papa» perdía la separación plato/nota al ofrecer alternativas. El segundo sí requiere elegir presentación, pero no negar el plato ni perder la nota.
+
+35 casos nuevos: 18 pedidos ambiguos (pollo, bowl, pasta × arta/harta/bastante × agente simulado on/off), 12 consultas de preferencia (picante/dulce/ligero × carrito vacío/existente × on/off), tres límites para no absorber compras/dirección y dos secuencias exactas con el catálogo PPP. Los 18 pedidos comprueban selección numérica contra la lista efectivamente ofrecida, una sola línea, cantidad y nota en DTO de orden simulada. Baseline 30 fallos/3 verdes; después se añadieron dos casos exactos. Primera corrección dejó seis fallos por asumir orden de lista del fixture: se corrigió el test para verificar el ID que realmente se ofrece como 1, no se cambió el orden productivo. Primer focalizado 102 verdes (35 nuevos + 67 existentes). Primera global: 15 fallos/13186 verdes; expansión general de abundancia recortaba/duplicaba notas anteriores en platos concretos. Se restringió la expansión al camino de familia ambigua antes del fallback, dejando el parser anterior para platos concretos. Recuperación intermedia mostró ocho casos de pollo aún interceptados antes de la nueva rama; se adelantó la rama. Recuperación final 88 verdes (incluye los 15 fallos y las 35 nuevas); TypeScript general/build y 92 Node verdes. No modificar expectativas antiguas de notas para ocultar regresiones.
+
+Regla general: separar intensificadores de acompañamiento con gramática acotada; pasar nota a pendingMatch durante la elección de familia. Preferencia sin plato recibe orientación por categorías actuales, sin agregar producto ni afirmar propiedad no verificada. No se promete extra gratis ni se cobra una porción no pedida. No hay excepciones PPP en runtime.
+
+Global final: 13201 pruebas / 149 suites, inventario exacto y 445 hashes intactos. Ráfagas 80 + resto 13121. Evidencia whatsapp-preference-discovery-validation-2010.json; logs /tmp/ppp-t65-final-result.log.
+
+Publicado para despliegue agrupado 64–65 en staging; verificar estado de despliegue en la siguiente entrada documental. No confundir commit con runtime activo.
+
+Límites: modelo/servicios simulados, cero API pagada/Meta/órdenes externas; no acredita precisión del modelo ni audio real. Recomendación por preferencia es aclaración orientada, no ranking de platos por ingredientes. Solo building_cart sin selección pendiente; redacciones fuera de gramática, dietas, alergias, preferencias durante atributos y consultas mixtas quedan pendientes. No afirmar cobertura universal ni todos los PDF por los conteos. La tanda 64 trataba navegación por categorías, no estos dos comportamientos.
+
+Siguiente tanda 66: preferencias mientras se eligen sabores y consultas de contenido/tiempo en listas; preservar carrito, resolver pregunta y reanudar el paso. Añadir controles de producto concreto con nota y compra extra separada; no ampliar silenciosamente una regla sin baseline. Global en particiones con ráfagas aisladas, resto cuatro workers y timeout 15000 del runner; fuente congelada, inventario exacto y hashes al terminar. Main intacto.
+
 ## VIGENTE — filtrar categorías y disponibilidad parcial (20/10, tanda 64)
 
 Base 7ec1ff35. 36 recorridos nuevos: tres menús (pizzas/pastas, carnes/pescados, postres/bebidas), agente simulado on/off, carrito vacío/existente. Incluyen «mejor solo [categoría]» después de una lista y consulta por categoría disponible/ausente en ambos órdenes. Comprueban respuesta, carrito intacto, estado building_cart, ausencia de orden externa y selección numérica posterior correcta.
