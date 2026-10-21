@@ -23,7 +23,7 @@
   "paidCalls": 0,
   "externalOrders": 0,
   "whatsappSent": 0,
-  "deployment": "Pending grouped staging deployment 75\u201376. Main untouched.",
+  "deployment": "Tandas 75\u201376 desplegadas juntas en staging: c\u00f3digo 3de69a151411da91e1ec537360766eec8e5a6616, imagen 8c54c83ba8b9c2219e52fa774e3f28f690c1663fe72ef00f97957b04b0e672dd. Running/healthy/cero reinicios; health OK, DB connected y circuito CLOSED a 2026-10-21T15:17:14.985Z (10:17 Bogot\u00e1). Producci\u00f3n conserva bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0. bin/ privado, bases y vol\u00famenes preservados; rollback ppp-nest-staging:rollback-before-3de69a15. Commit documental posterior no requiere rebuild.",
   "limits": [
     "Model and services mocked",
     "36 replacement conversations through simulated order DTO; 18 safeguards through cart state",
