@@ -6339,13 +6339,14 @@ export class WhatsappCatalogService {
    */
   findCategoryQuestionList(
     text: string, products: WhatsappCatalogProduct[], menuConceptGroups?: MenuConceptGroup[],
-  ): { categoryName: string; products: WhatsappCatalogProduct[] } | null {
+  ): { categoryName: string; products: WhatsappCatalogProduct[]; missingCategories?: string[] } | null {
     const raw = normalizeText(text);
     if (!/\bque\s+(?:tiene|tienen|tienes|hay|manejan|ofrecen)\b/.test(raw) ||
         /\d/.test(raw)) return null;
     const clauses = text.split(/[?¿.!;]+|\s+[oy]\s+/i).map(part=>part.trim()).filter(Boolean);
     const labels: string[] = [];
     const selected: WhatsappCatalogProduct[] = [];
+    const missing: string[] = [];
     let questions = 0;
     for (const clause of clauses) {
       const normalized = normalizeText(clause).replace(/^(?:hola|buenas tardes|buenas noches|buenos dias)[, ]*/, '');
@@ -6356,13 +6357,13 @@ export class WhatsappCatalogService {
       const subject = (question?.[1] || introduction?.[1] || continuation?.[1])?.replace(/\s+por favor$/, '').trim();
       if (!subject || /\b(?:sin|con|excepto|menos|mas|pero|si|barato|barata|economico|economica)\b/.test(subject)) return null;
       const hit = this.findCategoryBrowseHit(subject, products, menuConceptGroups);
-      if (!hit?.products.length || hit.askedButMissing) return null;
       if (question) questions++;
+      if (!hit?.products.length || hit.askedButMissing) { missing.push(subject); continue; }
       labels.push(hit.categoryName);
       selected.push(...hit.products);
     }
-    if (!questions || labels.length < 2) return null;
-    return { categoryName: [...new Set(labels)].join(' / '), products: this.dedupeProductsById(selected).slice(0,16) };
+    if (!questions || !selected.length || labels.length + missing.length < 2) return null;
+    return { categoryName: [...new Set(labels)].join(' / '), products: this.dedupeProductsById(selected).slice(0,16), missingCategories: [...new Set(missing)] };
   }
 
   /**

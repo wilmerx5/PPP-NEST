@@ -57,7 +57,6 @@ describe('category composition boundaries',()=>{
   '¿Qué tiene de pizzas? ¿Aceptan transferencia?',
   '¿Qué tiene de pizzas sin gluten? ¿Y de pastas?',
   '¿Qué tiene de pizzas? ¿Y de pastas sin huevo?',
-  '¿Qué tiene de pizzas? ¿Y de postres?',
  ])('does not silently drop a clause: %s',text=>{
   const h=harness(menu);
   expect(h.service.catalogService.findCategoryQuestionList(text,menu)).toBeNull();

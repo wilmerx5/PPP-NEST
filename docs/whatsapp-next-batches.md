@@ -1,3 +1,15 @@
+## VIGENTE — filtrar categorías y disponibilidad parcial (20/10, tanda 64)
+
+Base 7ec1ff35. 36 recorridos nuevos: tres menús (pizzas/pastas, carnes/pescados, postres/bebidas), agente simulado on/off, carrito vacío/existente. Incluyen «mejor solo [categoría]» después de una lista y consulta por categoría disponible/ausente en ambos órdenes. Comprueban respuesta, carrito intacto, estado building_cart, ausencia de orden externa y selección numérica posterior correcta.
+
+Baseline: 36 fallos. Primera corrección: 85/91 focalizados; quedaban seis fallos de filtrado con carrito existente por prioridad del enrutamiento. Corrección final: filtrar la lista ofrecida antes de editores del carrito, solo cuando el texto corresponde a la categoría; informar categorías ausentes sin descartar las opciones disponibles. 91 focalizados verdes, TypeScript general/build y 92 Node verdes. Se sustituyó un control antiguo que exigía rechazar categorías conocidas+ausentes por recorridos de la nueva conducta; no se omitió silenciosamente.
+
+Global congelada: 13166 pruebas / 148 suites, inventario exacto, 444 hashes intactos; partición de ráfagas 80 y resto 13086. Evidencia: docs/whatsapp-category-reconsideration-validation-2010.json. Log local /tmp/ppp-t64-result.log.
+
+Publicar solo staging; despliegue agrupado pendiente, runtime anterior sigue tanda 63 (fc8df6d7). Main/prod intactos. Cero llamadas pagadas, mensajes WhatsApp u órdenes externas. No declara vendible ni acredita precisión/latencia del modelo real. No se cerraron órdenes: el contrato de esta tanda termina al seleccionar el producto, por eso no hay DTO de cierre nuevo.
+
+Siguiente tanda 65: consultas de contenido/tiempo mientras se muestra una lista, cambio de categoría durante sabores y checkout; confirmar respuesta útil, pedido intacto y recuperación del paso pendiente. Controles de condiciones «sin huevo/sin gluten», intención mixta consulta+compra, todas las categorías ausentes y categorías no ofrecidas siguen siendo límites: no darlos por resueltos por esta tanda. Ampliar solo a partir de reproducción, preservar reglas de catálogo y no usar nombres/IDs PPP en runtime. No afirmar cobertura completa de PDF sin trazabilidad. Ejecutar focalizados primero; global única solo tras cambios compartidos, ráfagas separadas, cuatro workers, fuente congelada e inventario/hashes exactos. testTimeout=15000 es margen del runner, no SLA.
+
 ## VIGENTE — consultas básicas encadenadas por categorías (20/10, tanda 63)
 
 Desplegada únicamente en staging el 20/10 a las 19:38 Bogotá: código fc8df6d768ea59b0bdca854d6533078cf734d005, imagen e13c2e75606d934ad7e1dfbb893ff4411c369a87c19ec0d3d69e7e0be4201bc3, healthy/cero reinicios, health OK, DB connected, circuito CLOSED. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e; bin/ privado, bases y volúmenes preservados. Rollback ppp-nest-staging:rollback-before-fc8df6d7.

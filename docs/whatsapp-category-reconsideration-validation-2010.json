@@ -1,0 +1,38 @@
+{
+  "batch": 64,
+  "base": "7ec1ff35",
+  "newRouterCases": 36,
+  "menus": 3,
+  "baseline": {
+    "failed": 36
+  },
+  "intermediateFocused": {
+    "passed": 85,
+    "failed": 6
+  },
+  "finalFocused": {
+    "passed": 91,
+    "failed": 0
+  },
+  "typecheck": true,
+  "buildTypecheck": true,
+  "nodeTests": 92,
+  "global": {
+    "passed": 13166,
+    "suites": 148,
+    "hashesUnchanged": 444,
+    "inventoryExact": true,
+    "testTimeoutMs": 15000,
+    "workers": 4
+  },
+  "externalCalls": 0,
+  "deployment": "Deferred for grouping; staging runtime remains fc8df6d7",
+  "mainModified": false,
+  "limits": [
+    "building_cart only",
+    "Mocked model and external services",
+    "No order closure in this batch; cart/state/response and numeric continuation asserted",
+    "Mixed purchase/inquiry, all absent categories, attributes and checkout not covered by these new cases"
+  ],
+  "changedContract": "Known+absent category inquiry now explicitly reports missing category and offers existing options; prior decline-only unit case replaced by router coverage."
+}

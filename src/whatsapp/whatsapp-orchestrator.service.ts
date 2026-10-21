@@ -1717,6 +1717,23 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // A category refinement of the offered list is browsing, not a cart correction.
+    if (conv.state === 'building_cart' && session.pendingMatch?.candidates.length &&
+        !session.pendingAttribute && !session.pendingMultiOrder) {
+      const refinement = originalText.trim().match(/^(?:no[, ]+)?mejor\s+solo\s+(.+?)(?:\s+por favor)?[.!]*$/i);
+      if (refinement) {
+        const offered = session.pendingMatch.candidates;
+        const category = this.catalogService.findCategoryBrowseHit(refinement[1], offered, cfg.menuConceptGroups);
+        const categoryKey = (value: string) => this.normalizeForMatch(value).split(/\s+/).map(word => word.replace(/s$/, '')).join(' ');
+        if (category?.products.length && !category.askedButMissing &&
+            categoryKey(refinement[1]) === categoryKey(category.categoryName)) {
+          session = { ...session, pendingMatch: { query: category.categoryName, candidates: category.products } };
+          await this.conversationService.saveSession(conv, session);
+          await this.reply(conv, msg.waId, this.catalogService.formatCategoryBrowseReply(category));
+          return;
+        }
+      }
+    }
     if (await this.tryHandlePendingCheckoutInterruption(conv, msg.waId, session, originalText, cfg)) return;
     if (session.cart.length && session.orderType !== 'pickup' && !session.address?.trim() &&
         !/[¿?]/.test(originalText) && this.looksLikeUnitOrTowerDetailOnly(originalText)) {
@@ -3127,7 +3144,10 @@ export class WhatsappOrchestratorService {
       if (categories) {
         session = { ...session, pendingMatch: { query: categories.categoryName, candidates: categories.products } };
         await this.conversationService.saveSession(conv, session);
-        await this.reply(conv, msg.waId, this.catalogService.formatCategoryBrowseReply(categories));
+        const unavailable = categories.missingCategories?.length
+          ? 'No encuentro opciones de ' + categories.missingCategories.map(label=>'*'+label+'*').join(', ') + ' en la carta.\n\n'
+          : '';
+        await this.reply(conv, msg.waId, unavailable + this.catalogService.formatCategoryBrowseReply(categories));
         return;
       }
     }
