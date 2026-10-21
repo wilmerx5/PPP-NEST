@@ -105,6 +105,7 @@ import {
   isCartChargeQuestion,
   isDeliveryFeeChangeQuestion,
   parsePaymentAmountQuestion,
+  replyClaimsCartChange,
   isCostConditionalRequest,
   pendingCartEditCancellationAside,
   stripCartEditWithdrawalAffirmation,
@@ -15169,7 +15170,16 @@ export class WhatsappOrchestratorService {
       if (amount === lines[0].quantity) return this.tryHandleScopedCartRemoval(conv,waId,session,`Quita el ${lines[0].name}`,cfg);
       correction = {quantity:lines[0].quantity - amount,query:decrement[2]};
     }
-    const shortReplace = shortText.match(new RegExp(`^(?:mejor\\s+)?(?:solo|solamente)\\s+${shortAmount}$`));
+    // "Mejor 2 combos" corrects a line only when that line is already in the cart; otherwise it may be a switch.
+    const reconsidered = !correction && !/[¿?]/.test(text)
+      ? shortText.match(new RegExp(`^mejor\\s+${shortAmount}\\s+(?!mas\\b)(.+)$`)) : null;
+    if (reconsidered && !/\b(?:y|con|sin|mas|menos|otr[oa]s?)\b/.test(reconsidered[2])) {
+      const lines = session.cart.filter(line => correctionMatchesLine(line, reconsidered[2]));
+      const amount = /^\d+$/.test(reconsidered[1]) ? Number(reconsidered[1])
+        : this.catalogService.extractQuantityFromSegment(`${reconsidered[1]} unidades`);
+      if (lines.length === 1) correction = {quantity: amount, query: reconsidered[2]};
+    }
+    const shortReplace = shortText.match(new RegExp(`^(?:(?:mejor\\s+)?(?:solo|solamente)|(?:deja|pon|cambia)(?:lo|la|los|las)\\s+(?:en|a))\\s+${shortAmount}$`));
     const shortAdd = shortText.match(new RegExp(`^(?:(?:agrega|anade|quiero|dame|ponme)\\s+)?${shortAmount}\\s+mas$`));
     if (!correction && (shortReplace || shortAdd) && !/[¿?]/.test(text) &&
       !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
@@ -21120,8 +21130,7 @@ export class WhatsappOrchestratorService {
         ? `No tengo autorización para comprar *${offMenuQuery}* por fuera de la carta. Solo te ofrezco lo del menú.${session.cart.length ? ' El pedido sigue igual.' : ''}`
         : `Eso no lo resuelvo por este chat. Solo armo lo del menú.${session.cart.length ? ' El pedido sigue igual.' : ''}`;
       // Nothing is applied on this path, so a reply that reports a cart change would be false.
-      const claimsCartChange = /\b(?:agregu[eé]|añad[ií]|anad[ií]|sum[eé]|quit[eé]|elimin[eé]|cambi[eé]|actualic[eé]|he\s+(?:agregado|añadido|quitado|cambiado|actualizado))(?![\p{L}\p{N}_])/iu.test(agentReply);
-      let answer = offMenuQuery || claimsCartChange ? fallback : agentReply || fallback;
+      let answer = offMenuQuery || replyClaimsCartChange(agentReply) ? fallback : agentReply || fallback;
       const reminder = this.formatInterruptedStepReminder(conv,session);
       if (reminder) answer += `\n\n${reminder}`;
       if (params.prependFirstContactDisclaimer) {
@@ -21607,6 +21616,21 @@ export class WhatsappOrchestratorService {
         latencyMs: Date.now() - started,
         userTextPreview: text,
         warnings: ['agent_claimed_add_without_items'],
+      });
+      return false;
+    }
+    const appliesAnything = Object.values(guarded.actions || {}).some(value =>
+      Array.isArray(value) ? value.length > 0 : !!value);
+    if (!appliesAnything && replyClaimsCartChange(agentReply)) {
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'fallback_rules',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: text,
+        warnings: ['agent_claimed_change_without_actions'],
       });
       return false;
     }

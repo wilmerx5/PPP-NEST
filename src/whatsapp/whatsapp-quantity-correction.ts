@@ -29,13 +29,17 @@ export function parseCartQuantityCorrection(text: string): { quantity: number; q
   if (m) return result(m[2], m[1]);
   m = t.match(new RegExp(`^(?:deja(?: solo)?|que (?:sean|queden)|que quede)\\s+(${number})\\s+(.+?)(?:\\s+en total)?$`));
   if (m) return result(m[1], m[2]);
+  // "Déjalo en 2 combos", "cámbialo a 3 jugos": the pronoun points at a line already ordered.
+  m = t.match(new RegExp(`^(?:deja|pon|cambia)(?:lo|la|los|las)\\s+(?:en|a)\\s+(${number})\\s+(.+?)(?:\\s+en total)?$`));
+  if (m) return result(m[1], m[2]);
   m = t.match(new RegExp(`^no (?:son|eran) (?:${number}) (.+?) (?:son|eran|era|sino) (${number})(?:\\s+en total)?$`));
   return m ? result(m[2], m[1]) : null;
 }
 
 export function correctionMatchesLine(line: WhatsappCartItem, query: string): boolean {
   const singular = (word: string) => word.endsWith('ces') ? word.slice(0, -3) + 'z'
-    : word.endsWith('s') ? word.slice(0, -1) : word;
+    : /^.+[aeiou][lrndj]es$/.test(word) ? word.slice(0, -2)
+      : word.endsWith('s') ? word.slice(0, -1) : word;
   const tokens = normalizeCorrection(query).split(' ').filter(w => !['el', 'la', 'los', 'las', 'de', 'con'].includes(w));
   const name = normalizeCorrection(line.name).split(' ').map(singular);
   const head = tokens[0] && singular(tokens[0]);

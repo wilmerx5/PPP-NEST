@@ -862,6 +862,11 @@ export function isDeliveryFeeChangeQuestion(text: string): boolean {
   return rise && /\b(?:todo|eso|tanto|valor|precio|total|\d+\s*mil|\d{1,3}(?:\.\d{3})+)\b/.test(t);
 }
 
+/** "Listo, agregué…", "ya lo dejé en 2", "he quitado…": a reply that reports a cart change. */
+export function replyClaimsCartChange(reply: string): boolean {
+  return /\b(?:agregu[eé]|añad[ií]|anad[ií]|sum[eé]|quit[eé]|elimin[eé]|borr[eé]|cambi[eé]|actualic[eé]|modifiqu[eé]|ajust[eé]|reemplac[eé]|(?:ya\s+)?(?:te\s+)?(?:lo|la|los|las)\s+dej[eé]|dej[eé]\s+(?:en|con|sin|solo)|he\s+(?:agregado|añadido|anadido|sumado|quitado|eliminado|borrado|cambiado|actualizado|modificado|ajustado|dejado))(?![\p{L}\p{N}_])/iu.test(reply || '');
+}
+
 /** "¿Te transfiero 57.000?", "son 57 mil?", "te consigno 57.000 por nequi": the customer checks the amount to pay.
  * A cash denomination for change («pago con 100.000») is not an amount to pay.
  */
