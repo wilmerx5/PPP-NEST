@@ -1,0 +1,19 @@
+{
+  "batch": 69,
+  "stagingCode": "b34e70a8ade834f5838acdaca4ab8c2c90468f5d",
+  "mainCode": "639e7cd77e64a301734ee6f004d3c704278fd301",
+  "newTests": 17,
+  "stagingGlobalPassed": 13315,
+  "stagingSuites": 153,
+  "sourceHashes": 450,
+  "mainFocusedPassed": 17,
+  "mainBuildTypescript": true,
+  "productionHealthy": true,
+  "stagingHealthy": true,
+  "privateConfigurationUnchanged": true,
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "productionVerifiedAt": "2026-10-21T04:07:39.287Z",
+  "stagingVerifiedAt": "2026-10-21T04:08:32.841Z",
+  "scope": "only closed-service hotfix promoted to Main"
+}

@@ -1,3 +1,19 @@
+## VIGENTE — cierre breve fuera de horario y hotfix a Main (20/10, tanda 69)
+
+Solicitud explícita: saludo + «Hay servicio de domicilio?» recibió invitación a pedir y, después, cerrado + tarifas + nueva invitación. tryHandleBusinessServiceInquiry concatenaba siempre tarifas/CTA incluso con isOpen=false. Ahora termina con una única respuesta breve: cerrado, horario configurado de hoy e invitación a escribir en horario de atención. No promete apertura mañana sin evidencia. El saludo informal «uy buenas noches» también pasa por el aviso de cerrado; estando abierto conserva el saludo habitual. No cambia carrito/estado ni tarifas de negocio abierto.
+
+17 pruebas nuevas del router: cuatro mensajes × agente simulado on/off × carrito vacío/existente, más servicio abierto. Baseline 12 fallos/5 verdes; 17/17 después, TypeScript general/build verdes. Cero API pagada, Meta u órdenes externas. No afirmar que ya estén cubiertas todas las consultas geográficas/horarios especiales por este cambio.
+
+Promoción puntual autorizada a Main: cherry-pick del código b34e70a8 como a9e0cac8, sin promover las otras 142 revisiones acumuladas de staging. Main no tenía whatsapp-accuracy.test-support.ts: primer intento de prueba falló en compilación por ese import. Se extrajo el harness existente en Main, sin modificar comportamiento productivo. Segundo intento 17/17 aprobado sobre Main; se comprueba también TypeScript de build. Los 454 archivos generados previamente modificados en el checkout Main se preservan; no hacer reset/clean.
+
+Global staging: 13315 pruebas / 153 suites, inventario exacto y 450 hashes intactos. Main: 17 regresiones focalizadas + TypeScript build aprobados; no se ejecutó su global histórica separada.
+
+Producción desplegada el 20/10 a las 23:07 Bogotá: Main 639e7cd77e64a301734ee6f004d3c704278fd301, imagen bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0, running, cero reinicios, health OK/DB connected/circuit CLOSED a 2026-10-21T04:07:39.287Z. Texto nuevo verificado en JS compilado. Hashes de compose y .env iguales antes/después; rollback ppp-nest-api:rollback-before-639e7cd7.
+
+Staging desplegado b34e70a8ade834f5838acdaca4ab8c2c90468f5d, imagen 903d1ef91b501deb8075ae36b6a27641cd90a8c366a15f60e420058e38d08b29, running/healthy/cero reinicios, health OK a 2026-10-21T04:08:32.841Z. Rollback ppp-nest-staging:rollback-before-b34e70a8. Bases, volúmenes y bin/ preservados. Main y staging conservan distintas mejoras acumuladas: solo este hotfix está en ambos, no afirmar paridad de todas las tandas.
+
+Siguiente: continuar en staging con sabores/acompañamientos; horarios especiales, consulta con zona y preguntas sobre pedidos ya confirmados merecen controles propios. No repetir deploy por commits documentales.
+
 ## VIGENTE — compra con pregunta de sabores, sin falso bloqueo por cita (20/10, tanda 68)
 
 Base cbfda295, tanda 67 validada y aún sin desplegar. Caso recibido durante su global: pollo en carrito → «una gaseosa, de que sabor tienes?» → «Dime la opción. El pedido sigue igual». quotedBotQuestionWithoutAnswer reconocía «que sabor» como cita del bot aunque «tienes/hay» sea una consulta del cliente. Excluir estas preguntas del guard era necesario, pero no suficiente: el router pasaba a catálogo/lista sin sabores. Se agregó interpretación acotada de compra + pregunta de sabores con consulta al catálogo y atributos disponibles. Producto inequívoco → pregunta de opciones sin default silencioso; varias presentaciones → lista con precio y sabores de cada una, elección de presentación y después sabor. No hay excepciones PPP.
