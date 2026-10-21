@@ -1,3 +1,15 @@
+## VIGENTE — tanda 76: aceptación y contacto en el mismo mensaje (21/10)
+
+Base 96f768b1, staging. 54 casos nuevos con tres menús (bowl, pasta, arroz) y agente simulado on/off. 36 recorridos hasta DTO: dos opciones y aceptación con teléfono separada por coma, punto y coma o salto de línea, incluyendo cortesía y puntuación. Dieciocho controles de carrito/estado/respuesta: aceptar una lista aún ambigua, elegir otra opción tras recotizar y segundo cambio de precio. La lista ambigua conserva alternativas, guarda teléfono y permite elegir después; no compra con «sí» sin referente.
+
+Baseline 24 fallos/12 verdes. Tras unificar gramática de aceptación y separar teléfonos etiquetados, pasan 36/36. Expansión descubre seis fallos: el mensaje mixto ambiguo conservaba carrito pero perdía pendingMatch. Se consume la cláusula afirmativa junto a datos sin ejecutar selección cuando no existe candidato recotizado. Alternativa explícita continúa usando el resolvedor existente y prevalece sobre el marcador de precio. No hay productos/precios de PPP codificados en runtime.
+
+Focalizado 300/300 en cinco suites; TypeScript general/build y 92 controles Node aprobados. Global aprobada: 13729 pruebas / 160 suites, inventario exacto y 457 hashes intactos. Cero API pagada, Meta y órdenes externas. Main preservado. Agrupar despliegue de tandas 75–76 solo tras validar.
+
+Límites: pruebas gratuitas del router con servicios y modelo simulados; no acredita precisión de inferencia, audio/visión ni todos los chats de PDF. Esta tanda comprueba sustituciones, no toda compra inicial. Falta estudiar mensajes sin separadores, dos elecciones en el mismo mensaje, cambio de intención a compra separada, y datos mezclados con consultas no resueltas. No declarar vendible por conteos.
+
+Plan próximo: (1) controles de compra inicial y rechazo de combo, (2) conversaciones completas reservadas desde saludo hasta confirmación con cambios de datos y preguntas, (3) una evaluación real acotada del candidato validado, con presupuesto registrado, (4) piloto supervisado con medición de pedidos correctos, turnos de cierre, latencia y costo. Las regresiones gratuitas son requisito, no sustituyen los puntos 3–4.
+
 ## VIGENTE — tanda 75: teléfono etiquetado y aceptación de precio (21/10)
 
 Base 7721a355, staging. 54 casos nuevos: 36 recorridos hasta DTO simulado con tres menús (bowl, pasta y arroz), agente simulado on/off, dos opciones ofrecidas y tres etiquetas de teléfono. Dieciocho controles adicionales vuelven a cambiar precio, retirar o agotar el producto antes del «sí»; verifican respuesta, carrito intacto y elección pendiente. Los controles de segundo cambio aceptan de nuevo y verifican el precio actual; no llegan a DTO.
