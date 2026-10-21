@@ -1,0 +1,61 @@
+{
+  "batch": 97,
+  "date": "2026-10-21",
+  "base": "451dc866",
+  "commit": "5b2467a04bc845ee7a0d747a235351617d479622",
+  "scope": "Audit of agent replies that report cart changes not applied (pending from batch 96) and quantity phrases that added units instead of setting them",
+  "audit": "Simulated agent claiming «agregué / quité / cambié / actualicé / eliminé / añadí / lo dejé en 2» with and without actions, 8 message types (thanks, chit-chat, schedule, delay, parking, laughter, third party) in building_cart, awaiting_name, awaiting_payment and awaiting_final_confirm: 288 combinations",
+  "baselineFindings": [
+    "Main agent path: only «agregué/añadí» without items fell back to the rules; a reply claiming a quantity change, removal, update or deletion with no action was relayed in building_cart (chit-chat recorded as order_progress)",
+    "Off-topic branch (batch 96 guard): «ya lo dejé en 2» was not in the claim list, relayed in every state for schedule or delay questions",
+    "«déjalo en 2 combos», «ponlo en 3 …», «cámbialo a 2 …» and «mejor 2 combos» added units (1 → 3) in both modes; «que sean 2 combos» already set the quantity",
+    "The plural matcher reduced «naturales/personales/panes» to «naturale/personale/pane», so «mejor 2 limonadas naturales» did not match the line"
+  ],
+  "fix": "replyClaimsCartChange (add, remove, change, update, delete, adjust, replace, «lo dejé…», «he …») shared by the off-topic branch and a new main-path guard: a reply that reports a cart change while no action at all is applied falls back to the rules (warning agent_claimed_change_without_actions). parseCartQuantityCorrection reads «déja/pon/cambia + lo/la/los/las + en/a + N + product»; the cart handler reads «mejor N <product>» only when exactly one cart line matches (otherwise it may be a switch) and «déjalo en N» with a single line; plural matching drops «-es» after vowel + l/r/n/d/j.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-unapplied-claims-quantity.spec.ts",
+    "count": 156,
+    "menus": ["chicken combo + lemonade", "pizza + soda", "sushi roll + juice"],
+    "agent": ["off (legacy model returns the same claim)", "on (simulated claim without actions)"],
+    "contrasts": [
+      "a removal backed by the action is still confirmed",
+      "«déjalo en 3» with two lines asks which line",
+      "«mejor N» of a product not in the cart is not a quantity correction",
+      "«mejor N … y …» is not a single-line correction",
+      "«¿Te lo agrego?», «Te dejo el menú arriba», «¿Quieres cambiar algo?» are not claims",
+      "«mejor 2 combos», «déjame 2 combos» and questions are not parsed without the cart"
+    ],
+    "baselineWithoutFix": "66 failed / 156 (orchestrator and quantity parser stashed; the spec imports the new claim helper)"
+  },
+  "validation": {
+    "focused": "10004 passed (46 suites: quantity corrections, cart edits, claims, off-topic, session intents)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 63 },
+      "rest": { "passed": 15181, "total": 15181, "suites": 180, "seconds": 450 },
+      "inventory": 181,
+      "unionEqualsInventory": true,
+      "hashes": 478,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 15261
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "5b2467a04bc845ee7a0d747a235351617d479622",
+    "image": "sha256:e6a31140c676415d609b35c60a83cebc656bf80ea2e4423d31da906932877831",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T22:59:35Z, healthy, 0 restarts (started 22:59:04Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-5b2467a0 (image 261cb109…)",
+    "production": "sha256:1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748 before and after"
+  },
+  "remainingGaps": [
+    "«déjame 2 combos» still adds (ambiguous: «give me» or «leave it at»)",
+    "«mejor dos combos y una limonada» adds both instead of restating the whole order",
+    "Claims that mismatch applied actions (e.g. claims 3 while applying 2) are not compared yet",
+    "The harness reply() skips customerLocationLabel; real model evaluation with a recorded budget"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
