@@ -1,0 +1,16 @@
+{
+  "batch": 67,
+  "base": "a941f2ae",
+  "newTests": 53,
+  "focusedPassed": 149,
+  "globalPassed": 13272,
+  "suites": 151,
+  "sourceHashes": 448,
+  "inventoryExact": true,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "deployment": "pending grouped with customer flavor inquiry fix"
+}

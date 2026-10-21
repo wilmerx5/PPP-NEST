@@ -1,3 +1,4 @@
+import {splitAccompanimentPurchase, includesAccompaniment} from './whatsapp-accompaniment-offer';
 import { drinkInclusion } from './whatsapp-drink-inclusion';
 import {variantUnitScope} from './whatsapp-variant-unit-scope';
 import {splitDeliveryAddressParts, splitAddressKitchenNote} from './whatsapp-address-parts';
@@ -1717,6 +1718,37 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Prefer an evidenced related presentation before buying a separate accompaniment.
+    const accompanimentRequest = splitAccompanimentPurchase(originalText);
+    if (accompanimentRequest && conv.state === 'building_cart' && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
+      const menu = await this.catalogService.getMenuProducts();
+      const query = this.normalizeForMatch(this.catalogService.stripQuantityFromSearchQuery(
+        this.catalogService.extractProductSearchQuery(accompanimentRequest.dishText)));
+      const bases = menu.filter(product=>product.availableNow !== false && this.normalizeForMatch(product.name) === query);
+      if (bases.length === 1 && !includesAccompaniment(bases[0],accompanimentRequest.accompaniment)) {
+        const base = bases[0];
+        const family = this.catalogService.findProductVariantFamily(base.name,menu,[base]);
+        const variants = (family?.variants || []).filter(product=>product.id !== base.id && product.availableNow !== false &&
+          includesAccompaniment(product,accompanimentRequest.accompaniment));
+        const open = cfg.ignoreBusinessHours || (await this.businessService.getStatus()).isOpen;
+        if (variants.length && open) {
+          const quantity = Math.max(1,this.catalogService.extractQuantityFromMessage(accompanimentRequest.dishText,menu));
+          session = {...session,pendingMatch:{query:originalText,intent:'order',quantity,candidates:variants,includesRequestedAccompaniment:true}};
+          await this.conversationService.saveSession(conv,session);
+          await this.reply(conv,msg.waId,'Antes de pedirlo por separado, estas presentaciones incluyen acompañamiento según la carta:\n\n'+
+            variants.map((product,index)=>`${this.catalogService.optionNumberEmoji(index+1)} *${product.name}* · #${product.code} · ${this.catalogService.formatMoney(product.price)}`+
+              (product.description ? `\n_${product.description}_` : '')).join('\n\n')+
+            `\n\nPediste ${quantity}. Elige el número de la presentación; todavía no agregué productos.`);
+          return;
+        }
+        // If no supported bundle exists, an exact sellable accompaniment is a separate item.
+        const sides = menu.filter(product=>product.availableNow !== false && this.normalizeForMatch(product.name)===accompanimentRequest.accompaniment);
+        if (!variants.length && sides.length === 1 && open) {
+          text = `${accompanimentRequest.dishText} y un ${sides[0].name}`;
+          originalText = text;
+        }
+      }
+    }
     // A taste preference asks for guidance, not a product literally named "algo ...".
     const tasteDiscovery = originalText.trim().match(/^(?:(?:hola|buenas tardes|buenas noches)[, ]+)?(?:quiero|quisiera|busco|me gustar[ií]a)\s+algo\s+((?:(?:no tan|poco|muy|bien)\s+)?(?:picante|dulce|salado|ligero|crocante|crujiente|caliente|fr[ií]o))(?:\s+por favor)?[.!?]*$/i);
     if (tasteDiscovery && conv.state === 'building_cart' && !session.pendingAttribute && !session.pendingMultiOrder && !session.pendingMatch) {
@@ -8588,7 +8620,7 @@ export class WhatsappOrchestratorService {
     // note. Recover only a verified preparation from an actual purchase source.
     const pendingOrderSource = pending.intent==='order' ||
       /^(?:quiero|quisiera|dame|ponme|me das|me regalas) (?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/.test(this.normalizeForMatch(pending.query));
-    if (!pending.note && pending.intent!=='info' && pendingOrderSource &&
+    if (!pending.includesRequestedAccompaniment && !pending.note && pending.intent!=='info' && pendingOrderSource &&
       !this.catalogService.isPriceInquiryIntent(pending.query) && !this.catalogService.isProductDescriptionInquiry(pending.query)) {
       pending.note=this.catalogService.extractProductModificationNote(pending.query) || undefined;
     }
@@ -8870,7 +8902,7 @@ export class WhatsappOrchestratorService {
     session = this.clearQuantityHint(added.session);
     // "4" y luego "2" siguen siendo filas de la misma lista.
     const keepList =
-      usedAsListIndex && bareNum != null && trimmed === String(bareNum);
+      !pending.includesRequestedAccompaniment && usedAsListIndex && bareNum != null && trimmed === String(bareNum);
     if (keepList) {
       session = { ...session, pendingMatch: { ...pending, selectionAdded: true } };
     }
@@ -8948,6 +8980,7 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    if (pending.includesRequestedAccompaniment) return false;
     const familyIds = new Set((pending.candidates || []).map((item) => item.id));
     const siblings = (pending.alsoAdd || [])
       .map((item) => {
