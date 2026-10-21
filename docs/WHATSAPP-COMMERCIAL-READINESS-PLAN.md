@@ -1,3 +1,15 @@
+## VIGENTE — tanda 74: elegir combo y enviar datos juntos (21/10)
+
+Base 4932d853. 84 casos nuevos: 72 recorridos completos con tres menús, agente simulado on/off, compra inicial/sustitución, filas 1/2 y elección por número inicial, ordinal inicial separado por coma o código al final separado por salto de línea. Verifican respuesta, datos, cantidad dos, nota previa, ausencia de pedido externo antes de confirmar y DTO simulado. Doce controles adicionales combinan datos y elección de una opción retirada o con precio cambiado, conservan carrito y vuelven a elegir alternativa o aceptar precio. Estos doce terminan en carrito, no DTO.
+
+Baseline 72/72 fallidos: no se resolvían simultáneamente datos y selección. Se amplía el handler de tanda 73 para aceptar una única cláusula de elección inequívoca de la lista ofrecida, guardar datos y usar tryResolvePendingMatchPick existente. No hay nueva vía que salte disponibilidad/precio/sustitución. Números telefónicos se reconocen antes que índices. Índices fuera de lista y nombres duplicados no califican en este handler. La elección con datos no confirma automáticamente la orden.
+
+Focalizado 144/144 primero; expansión 192/192 con tandas 72–73. 84 casos nuevos, sin contar reruns. TypeScript general/build y 92 Node aprobados. Global 13621 pruebas / 158 suites, inventario exacto y 455 hashes intactos. Resto cuatro workers 563,632 s. Publicación y despliegue agrupado 73–74 pendientes. Cero API pagada, Meta u órdenes externas. Main preservado. Agrupar despliegue staging 73–74 tras validar.
+
+Límites: elección expresada como cláusula separada; no cubre toda redacción libre ni selección final separada solo por coma, teléfono etiquetado, ambigüedad de nombres o múltiples elecciones. Reglas dependen del catálogo vigente, sin excepciones PPP. Modelo y servicios externos simulados; no acredita audio/visión ni todos los PDF.
+
+Siguiente: teléfono con etiqueta, datos+elección cuando cambió precio con aceptación breve, dos elecciones ambiguas, y controles de mensaje parcialmente reconocido sin perder resto. Conviene factorizar el parser de datos compartido con atributos solo con regresiones de ambos caminos. No declarar vendible por conteo.
+
 ## VIGENTE — tanda 73: contacto durante oferta de combo (21/10)
 
 Base 2d6e3aa3, staging. 72 recorridos nuevos: tres menús (bowl/pasta/arroz), agente simulado on/off, compra inicial o sustitución, seis formas de datos (nombre, teléfono, dirección, todos con saltos de línea/comas/punto y coma). Se repiten datos para verificar que no compren ni dupliquen; se conserva pendingMatch exactamente, cantidad y nota. Elegir después lleva al cierre y DTO simulado con dos unidades correctas, nombre/teléfono/dirección esperados. No acreditar una compra real ni precisión de modelo por estos mocks.

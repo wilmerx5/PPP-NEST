@@ -1718,7 +1718,7 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
-    if (await this.tryCaptureComboContactInterruption(conv, msg.waId, session, originalText)) return;
+    if (await this.tryCaptureComboContactInterruption(conv, msg.waId, session, originalText, cfg)) return;
     const includedOffer = session.pendingMatch?.includesRequestedAccompaniment ? session.pendingMatch : undefined;
     if (includedOffer && conv.state === 'building_cart') {
       const decision = this.normalizeForMatch(originalText).replace(/[,.!?¿¡]/g, '').trim();
@@ -8473,13 +8473,24 @@ export class WhatsappOrchestratorService {
 
   /** Contact details and an explicit replacement can interrupt a checkout purchase choice. */
   private async tryCaptureComboContactInterruption(
-    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     const pending = session.pendingMatch;
     if (!pending || !(pending.replacement || pending.includesRequestedAccompaniment) ||
       session.pendingAttribute || session.pendingMultiOrder || conv.state !== 'building_cart') return false;
     const clauses = text.trim().split(/\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|\d{10}\b|calle\b|carrera\b)/i).map(value => value.trim()).filter(Boolean);
     let name: string | undefined, phone: string | undefined, address: string | undefined;
+    let selection: string | undefined;
+    const isOfferedSelection = (clause: string) => {
+      const flat = this.normalizeForMatch(clause);
+      const ordinal = flat.match(/^(?:el|la) (primero|primera|segundo|segunda|tercero|tercera|cuarto|cuarta)$/);
+      const ranks: Record<string, number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3,cuarto:4,cuarta:4};
+      if (ordinal) return !!pending.candidates[ranks[ordinal[1]] - 1];
+      if (/^\d{1,2}$/.test(flat) && Number(flat) >= 1 && Number(flat) <= pending.candidates.length) return true;
+      const code = flat.match(/^(?:codigo\s*#?\s*|#)(\d{1,4})$/);
+      if (code) return pending.candidates.some(candidate => Number(candidate.code) === Number(code[1]));
+      return pending.candidates.filter(candidate => this.normalizeForMatch(candidate.name) === flat).length === 1;
+    };
     for (const clause of clauses) {
       const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
       if (named && isUsableWhatsappCustomerName(named[1]) && !this.looksLikeAddressRejectingPersonName(named[1])) {
@@ -8491,6 +8502,8 @@ export class WhatsappOrchestratorService {
       } else if (this.isStrongExplicitAddress(clause) && this.isPlausibleDeliveryAddress(clause)) {
         if (address) return false;
         address = clause;
+      } else if (!selection && isOfferedSelection(clause)) {
+        selection = clause;
       } else return false;
     }
     if (!name && !phone && !address) return false;
@@ -8502,6 +8515,11 @@ export class WhatsappOrchestratorService {
     if (phone) next = {...next, contactPhone: phone, phoneConfirmed: true};
     if (address) next = this.withDeliveryAddress({...next, address: undefined, addressConfirmed: false}, address);
     await this.conversationService.saveSession(conv, next);
+    if (selection) {
+      const menu = await this.catalogService.getMenuProducts();
+      // Reuse live availability, price re-acceptance and replacement safeguards.
+      if (await this.tryResolvePendingMatchPick(conv, waId, next, selection, menu, cfg)) return true;
+    }
     await this.reply(conv, waId, ['Anoté tus datos:', name ? `Nombre: ${name}` : '',
       phone ? `Teléfono: ${phone}` : '', address ? `Dirección: ${next.address}` : '',
       'El pedido sigue igual. Falta elegir la presentación:', this.formatPendingPurchaseReminder(next)].filter(Boolean).join('\n'));
