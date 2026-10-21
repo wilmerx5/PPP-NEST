@@ -43,3 +43,49 @@ for(const enabled of [false,true])it(`reported PPP conversation agent=${enabled}
  expect(h.conv.sessionData.cart).toHaveLength(1);expect(h.conv.sessionData.cart[0].name).toMatch(/Combo.*Broaster/i);
  expect(h.conv.sessionData.cart[0].note).toContain('arta papa');
 });
+
+for (const enabled of [false, true]) for (const dish of ['Pollo Frito', 'Bowl Vegetal', 'Hamburguesa Clasica']) for (const question of ['Trae bebida?', 'Trae gaseosa?']) {
+ it(`consumed list focuses chosen ${dish}: ${question} agent=${enabled}`, async () => {
+  const menu = [dish, `${dish} Especial`, `Combo De ${dish}`].map((name, i) => ({id: 98801+i, code: 98801+i, name, price: 18000+i*5000, description: i === 2 ? 'Incluye bebida de 1.5L' : 'Sin bebida', availableNow: true, attributes: []}));
+  const h = harness(menu, enabled);
+  h.service.aiService.generateTurn = jest.fn().mockResolvedValue({reply:'¿Cuál prefieres?', actions:{}});
+  Object.assign(h.conv.sessionData, {fulfillmentChosen:true, phoneConfirmed:true, contactPhone:h.conv.phoneE164, notesCollected:true});
+  h.service.ordersService.create = jest.fn().mockResolvedValue({id:988, dailyOrderNumber:98});
+  // Retained browse lists are valid router state after a numbered selection.
+  h.conv.sessionData.pendingMatch = {query:dish, intent:'order', candidates:menu.slice(0,2)};
+  await h.sendQueued('1');
+  expect(h.conv.sessionData.pendingMatch?.selectionAdded).toBe(true);
+  const before = structuredClone(h.conv.sessionData.cart);
+  expect(before).toHaveLength(1);
+  const reply = await h.sendQueued(question);
+  expect(reply).toContain(menu[2].name);
+  expect(reply).not.toContain(menu[1].name);
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.conv.sessionData.pendingMatch?.replacement?.originalLine).toEqual(before[0]);
+  await h.sendQueued(question === 'Trae bebida?' ? 'Trae gaseosa?' : 'Trae bebida?');
+  expect(h.conv.sessionData.pendingMatch?.replacement?.originalLine).toEqual(before[0]);
+  expect(h.conv.sessionData.cart).toEqual(before);
+  await h.sendQueued('1');
+  expect(h.conv.sessionData.cart).toHaveLength(1);
+  expect(h.conv.sessionData.cart[0].productId).toBe(98803);
+  await h.sendQueued('no más, recojo en el local');
+  if(h.conv.state==='awaiting_payment') await h.sendQueued('1');
+  await h.sendQueued('confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  expect(h.service.ordersService.create.mock.calls[0][0].items.map(item=>item.productId)).toEqual([98803]);
+ });
+}
+
+for (const enabled of [false,true]) for (const dish of ['Pollo Frito','Bowl Vegetal','Hamburguesa Clasica']) {
+ it(`unresolved list remains plural ${dish} agent=${enabled}`, async()=>{
+  const menu=[dish,`${dish} Especial`].map((name,i)=>({id:98701+i,code:98701+i,name,price:18000,description:'Sin bebida',availableNow:true,attributes:[]}));
+  const h=harness(menu,enabled);
+  h.service.aiService.generateTurn=jest.fn().mockResolvedValue({reply:'¿Cuál prefieres?',actions:{}});
+  h.conv.sessionData.pendingMatch={query:dish,intent:'order',candidates:menu};
+  const before=structuredClone(h.conv.sessionData.pendingMatch);
+  const reply=await h.sendQueued('Trae bebida?');
+  for(const product of menu) expect(reply).toContain(product.name);
+  expect(h.conv.sessionData.cart).toEqual([]);
+  expect(h.conv.sessionData.pendingMatch).toEqual(before);
+ });
+}

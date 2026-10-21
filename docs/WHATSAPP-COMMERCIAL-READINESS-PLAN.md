@@ -1,3 +1,15 @@
+## VIGENTE — tanda 70: decisiones de combo y referencia tras elegir (20/10)
+
+Base 4810d812. Trabajo en staging. Caso real: después de añadir pollo frito, «Trae bebida?/Trae gaseosa?» contestaba también sobre broaster. Se reprodujo un camino equivalente: pendingMatch.selectionAdded conserva una lista de navegación y el handler de inclusión la trataba como elección pendiente. Ahora prioriza la última confirmación o el único producto seleccionado de esa lista que está en el carrito. Puede ofrecer la variante con bebida y reemplazar la línea únicamente cuando el cliente elige. No inferir inclusión ausente en catálogo ni afirmar que bebida genérica equivale a gaseosa.
+
+La repetición de la pregunta descubrió otro fallo: al volver a presentar el mismo combo se perdía replacement.originalLine. Se conserva esa intención solo si el conjunto de alternativas es el mismo. Doce recorridos nuevos (tres menús × dos preguntas × agente simulado on/off) prueban elección inicial, consulta, segunda consulta, sustitución y DTO. Seis controles mantienen listas aún no elegidas sin comprar. Baseline contexto: 12 fallos/18 verdes; extensión repetición: seis fallos/30 verdes.
+
+También 42 casos nuevos (arroz, bowl, pasta; agente simulado on/off) para rechazar combo y pedir separado, mantener solo plato y preguntar precio. Baseline inicial: separado y precio fallaban (12 fallos/6 verdes); solo plato ya pasaba. La pregunta de precio llegaba a comprar el combo sin autorización. Ahora responde precios vigentes sin cambiar carrito; separado reinterpreta la compra explícita y conserva flujo normal. Alcance probado: una unidad; múltiples cantidades y disponibilidad cambiante siguen pendientes.
+
+Validación focalizada: 78/78 en dos suites; 60 casos nuevos, sin sumar reruns. TypeScript general/build verdes; Node 92 verdes. Global aprobada: 13375 pruebas / 154 suites, inventario exacto y 451 hashes de fuente intactos. Publicación y despliegue staging pendientes. Main preservado. Servicios/modelos simulados: no acreditar precisión del modelo real, audios o todos los chats/PDF. Cero API pagada, Meta u órdenes externas.
+
+Siguiente: oferta que cambia de disponibilidad, consulta repetida con varias alternativas, rechazo de sustitución y compras separadas con cantidades distintas. Revisar checkout sin perder datos. Mantener diferencia Main/staging explícita: Main recibió solo hotfix puntual de cerrado, no todas las tandas recientes.
+
 ## VIGENTE — cierre breve fuera de horario y hotfix a Main (20/10, tanda 69)
 
 Solicitud explícita: saludo + «Hay servicio de domicilio?» recibió invitación a pedir y, después, cerrado + tarifas + nueva invitación. tryHandleBusinessServiceInquiry concatenaba siempre tarifas/CTA incluso con isOpen=false. Ahora termina con una única respuesta breve: cerrado, horario configurado de hoy e invitación a escribir en horario de atención. No promete apertura mañana sin evidencia. El saludo informal «uy buenas noches» también pasa por el aviso de cerrado; estando abierto conserva el saludo habitual. No cambia carrito/estado ni tarifas de negocio abierto.

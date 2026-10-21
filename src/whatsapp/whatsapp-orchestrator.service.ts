@@ -1718,6 +1718,27 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    const includedOffer = session.pendingMatch?.includesRequestedAccompaniment ? session.pendingMatch : undefined;
+    if (includedOffer && conv.state === 'building_cart') {
+      const decision = this.normalizeForMatch(originalText).replace(/[,.!?¿¡]/g, '').trim();
+      if (this.catalogService.isPriceInquiryIntent(originalText) && !/\b(?:agrega|dame|quiero|ponme|cambia)\b/.test(decision)) {
+        const menu = await this.catalogService.getMenuProducts();
+        const current = includedOffer.candidates.map(candidate=>menu.find(product=>product.id===candidate.id)).filter(Boolean) as MenuProduct[];
+        await this.reply(conv,msg.waId,current.map(product=>`*${product.name}*: ${this.catalogService.formatMoney(product.price)}${product.availableNow===false ? ' (no disponible)' : ''}`).join('\n')+
+          '\n\nNo agregué productos. Elige una presentación o dime si prefieres por separado.');
+        return;
+      }
+      if (/^(?:no\s+)?(?:prefiero|los quiero|lo quiero|mejor|d[aá]melos)?\s*(?:por separado|separados|aparte)(?: por favor)?$/.test(decision)) {
+        const request = splitAccompanimentPurchase(includedOffer.query);
+        if (request) {
+          session = {...session,pendingMatch:undefined};
+          await this.conversationService.saveSession(conv,session);
+          // Separate purchase is explicit; do not offer the same bundle again.
+          originalText = `${request.dishText} y un ${request.accompaniment} aparte`;
+          text = originalText;
+        }
+      }
+    }
     // A customer's purchase + flavor question is not a quoted bot prompt.
     const purchaseFlavorQuestion = originalText.trim().match(/^(?:quiero\s+|dame\s+|me\s+das\s+)?((?:un[oa]?|dos|tres|\d{1,2})\s+[^?¿,;\n]+?)[,;]?\s+(?:¿\s*)?(?:de\s+)?qu[eé]\s+sabor(?:es)?\s+(?:tienes|tienen|hay|manejas|manejan)[?!.]*$/i);
     if (purchaseFlavorQuestion && conv.state === 'building_cart' && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
@@ -12246,6 +12267,17 @@ export class WhatsappOrchestratorService {
     } else if (checkout && session.cart.length) {
       const ids = new Set(session.cart.map(line => line.productId));
       context = products.filter(product => ids.has(product.id) && live(product));
+    } else if (session.pendingMatch?.selectionAdded) {
+      // A retained navigation list is not an unresolved choice. The latest
+      // acknowledgement (or its unique selected cart product) owns this question.
+      context = mentionedIn((await this.conversationService.getLastOutboundBody(conv.id)) || '');
+      if (!context.length) {
+        const selectedIds = new Set(session.cart.map(line => line.productId));
+        const selected = session.pendingMatch.candidates
+          .map(candidate => products.find(product => product.id === candidate.id))
+          .filter((product): product is MenuProduct => !!product && selectedIds.has(product.id) && live(product));
+        if (selected.length === 1) context = selected;
+      }
     } else if (session.pendingMatch?.candidates?.length) {
       context = session.pendingMatch.candidates
         .map(candidate => products.find(product => product.id === candidate.id))
@@ -12342,7 +12374,7 @@ export class WhatsappOrchestratorService {
     // A beverage question about one cart line can lead to its evidenced combo.
     // Keep generic "bebida" evidence distinct from confirmed soda, and make the offer actionable.
     const focusedLines = context.length === 1 ? session.cart.filter(line=>line.productId === context[0].id) : [];
-    if (focusedLines.length === 1 && !withItem.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
+    if (focusedLines.length === 1 && !withItem.length && (!session.pendingMatch || session.pendingMatch.selectionAdded) && !session.pendingAttribute && !session.pendingMultiOrder) {
       const family = this.catalogService.findProductVariantFamily(context[0].name, products, [context[0]]);
       const related = (family?.variants || []).filter(product=>product.id !== context[0].id &&
         product.availableNow !== false && this.catalogService.productImpliesCombo(product) && drinkInclusion(product,'bebida') === 'yes');
@@ -12378,10 +12410,14 @@ export class WhatsappOrchestratorService {
         if (product.description) lines.push(`   _${product.description}_`);
       });
       lines.push('', `_Dime el *número* si quieres ${offers.length === 1 ? 'pedirlo' : 'alguno'}${without.length ? `, o pide ${itemArticle} ${item} aparte` : ''}._`);
+      const sameReplacementOffer = session.pendingMatch?.replacement &&
+        offers.length === session.pendingMatch.candidates.length &&
+        offers.every(product => session.pendingMatch!.candidates.some(candidate => candidate.id === product.id));
       session = {
         ...session,
         pendingAddOffer: undefined,
         pendingMatch: {
+          ...(sameReplacementOffer ? {replacement: session.pendingMatch!.replacement, quantity: session.pendingMatch!.quantity} : {}),
           query: text,
           intent: 'order',
           candidates: offers.map(product => ({ id: product.id, code: product.code, name: product.name, price: product.price, description: product.description })),
