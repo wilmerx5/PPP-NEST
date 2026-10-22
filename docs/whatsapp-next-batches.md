@@ -1,3 +1,13 @@
+## VIGENTE — tanda 110: elegir combo por número conserva opciones y pregunta bebida (22/10)
+
+Base c06fec97, staging. Se cierra el pendiente de la tanda 104 para números simples en una oferta de reemplazo con combo preferido. Antes «1»/«2» entraban por selección genérica y asignaban primera bebida; ahora usan la misma elección de opciones que «sí», conservan atributos compatibles/cantidad/nota y mantienen el plato original hasta completar las opciones. Si el precio cambió, se delega primero a la ruta existente de aceptación de precio.
+
+30 regresiones nuevas en whatsapp-related-combo-offer.spec.ts: tres catálogos (arroz con pollo, hamburguesa con término, salchipapa con salsa), agente on/off; dos combos, número no ofrecido, dos unidades con nota y precio cambiado antes de seleccionar. Doce recorridos llegan al DTO simulado, sin crear orden antes de confirmar. Baseline 12/54 fallidos (primera extensión); extensión final 66/66. Foco 479/479 en 7 suites; TypeScript general/build OK, Node 92/92. Global 80 + 15.897 = 15.977, 192 suites, inventario exacto y 490 hashes intactos, 556,93 s, sin reintentos. Evidencia: [tanda 110](whatsapp-numeric-combo-options-validation-2210.md).
+
+Límites: solo números simples y ofertas de reemplazo con preferredId; no generalizar a todas las selecciones ni a «el combo 2 porfa». La compra inicial con pregunta («un pollo frito, ¿viene con papa francesa?») sigue pendiente. Modelos/servicios externos simulados; no API pagada, WhatsApp ni órdenes externas. Main sigue con tandas hasta 109. Despliegue staging pendiente de verificación al cierre.
+
+Siguiente bloque: pedido inicial + pregunta de contenido, mantener intención de compra sin convertir acompañamiento consultado en adicional; luego variantes de selección numérica con texto. Conservar límites de direcciones relativas y sustitución abreviada documentados anteriormente.
+
 ## VIGENTE — promoción a Main y producción verificada (22/10, 15:06 Bogotá)
 
 Solicitud explícita del usuario: desplegar los cambios en Main. Main remoto y local actualizados por fast-forward a 368723a8; incluye tandas 95–109. Producción /var/www/ppp-nest reconstruida: imagen ef426c93…, running, 0 reinicios, health OK/DB connected/circuit CLOSED. Hash agregado de módulos WhatsApp compilados idéntico al staging validado (cca1ccfc…). Sin cambios de código durante la promoción; aplica validación de tanda 109, 15.947 tests/192 suites. Compose privado conservado por SHA; bases y volúmenes intactos. Rollback ppp-nest-api:rollback-before-368723a8.

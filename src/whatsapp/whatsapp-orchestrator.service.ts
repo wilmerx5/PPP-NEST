@@ -12819,11 +12819,17 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean | WhatsappSessionData> {
     const pending = session.pendingMatch;
-    const preferredId = pending?.replacement?.preferredId ?? (pending?.candidates.length === 1 ? pending.candidates[0].id : undefined);
+    const row = /^\s*\d{1,2}\s*$/.test(text) ? Number(text.trim()) : null;
+    const numberedOffer = row != null && pending?.replacement?.preferredId != null
+      ? pending.candidates[row - 1] : undefined;
+    const preferredId = numberedOffer?.id ?? pending?.replacement?.preferredId ?? (pending?.candidates.length === 1 ? pending.candidates[0].id : undefined);
     if (!pending?.replacement || pending.intent !== 'order' || preferredId == null ||
-      !pending.candidates.some(candidate => candidate.id === preferredId) || /[¿?]/.test(text) || /^\s*\d+\s*$/.test(text)) return false;
+      !pending.candidates.some(candidate => candidate.id === preferredId) || /[¿?]/.test(text) ||
+      (/^\s*\d+\s*$/.test(text) && !numberedOffer)) return false;
     const products = await this.catalogService.getMenuProducts();
     const combo = this.catalogService.getProductById(preferredId, products);
+    // Let the existing re-quote path ask for approval before taking a changed price.
+    if (numberedOffer && combo && Number(numberedOffer.price) !== Number(combo.price)) return false;
     const original = pending.replacement.originalLine;
     if (!combo || combo.availableNow === false && !cfg.ignoreBusinessHours || !this.catalogService.productImpliesCombo(combo) ||
       !session.cart.some(line => line.productId === original.productId)) return false;
@@ -12867,7 +12873,7 @@ export class WhatsappOrchestratorService {
     const said = ` ${q.replace(/[^a-z0-9ñ]+/g, ' ')} `;
     const options = (drinkAttribute?.options || []).filter(option => said.includes(` ${this.normalizeForMatch(option).replace(/[^a-z0-9ñ]+/g, ' ').trim()} `));
     const affirmative = /^(?:si+|si si|dale|ok|okay|listo|de una|va|bueno|perfecto|hagale|claro|esta bien|cambialo|cambiamelo|pasalo|el combo|en combo|mejor (?:el )?combo|quiero el combo|ese|esa|si (?:cambialo|dale|el combo|ese|porfa|por favor))$/.test(q);
-    if (!affirmative && options.length !== 1 && !comboDrinkSize) return false;
+    if (!numberedOffer && !affirmative && options.length !== 1 && !comboDrinkSize) return false;
     const selected = options.length === 1 && drinkAttribute ? [{ attributeName: drinkAttribute.attributeName, attributeValue: options[0] }] : [];
     // The plain dish's own choices (pollo broaster, arepas fritas…) carry over when the combo offers them.
     for (const kept of original.attributes || []) {
