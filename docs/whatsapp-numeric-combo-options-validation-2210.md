@@ -19,3 +19,7 @@ Logs locales /tmp/ppp-110-baseline.log, /tmp/ppp-110-expanded.log, /tmp/ppp-110-
 ## Límites
 
 No acredita interpretación del modelo real ni todas las paráfrasis numéricas. No cambia ofertas sin preferredId ni compra inicial con pregunta de contenido. Los precios y catálogos son simulados; no se llamó API pagada, Meta, mapas reales ni se crearon órdenes externas. Main y producción se mantienen en tandas hasta 109; continuar integración en staging.
+
+## Despliegue
+
+Desplegado y verificado en staging el 22/10 a las 17:55 Bogotá: 4b2e84d5, imagen eca86842…, running/healthy, 0 reinicios, health OK/DB connected/circuit CLOSED. Rollback rollback-before-4b2e84d5. Producción conserva imagen ef426c93… y Main hasta tanda 109; sin cambios en bases, volúmenes ni archivos privados.
