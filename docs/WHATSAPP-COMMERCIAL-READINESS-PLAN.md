@@ -1,3 +1,15 @@
+## VIGENTE — tanda 109: recorrido completo, cantidad con adicionales y pin con acceso (22/10)
+
+Base a69c14f7, staging. 42 recorridos nuevos en tres catálogos sintéticos (pollo, hamburguesa, pasta), agente simulado on/off. Pregunta de acompañamiento → adicional → corrección de cantidad → bebida → nombre → dirección no ubicada → pin → consulta de importe → pago → DTO o cancelación. Se restauró reply real, con transporte y servicios externos simulados. Contrastes: opciones distintas requieren aclarar; destino previamente cotizado, petición de nueva dirección, pin identificado y fuera de cobertura no heredan el apartamento anterior.
+
+Dos fallos reproducidos: el pin borraba torre/apartamento; «solo pedí un X» con otro producto en el carrito no reducía X correctamente. La prueba anterior de la tanda 87 era débil (solo exigía no aumentar el conteo): ahora verifica una unidad exacta y conservación íntegra del adicional. Se permite disputa de cantidad limitada a las líneas nombradas; no se cambia la semántica de «deja solo…». Un pin desnudo que resuelve una geocodificación fallida conserva el texto anterior como referencia, usando las coordenadas nuevas para cotizar.
+
+Validación: baseline inicial 6/12 fallidos por pérdida de acceso; baseline definitivo contra HEAD anterior 12/42 fallidos (la corrección de cantidad bloqueaba seis recorridos antes del pin). Foco 650/650, 7 suites; TypeScript general/build OK; Node 92/92; global 80 + 15.867 = 15.947, 192 suites, inventario exacto y 490 hashes intactos, 534 s, sin reintentos. Evidencia: [tanda 109](whatsapp-checkout-full-journey-validation-2210.md).
+
+Límites: menús distintos con una estructura común de plato/adicional/bebida; no acredita todas las estructuras multitenant ni precisión de Maps/modelo reales. Pin nativo probado; enlace de Maps/foto de dirección no cubiertos por este cambio. No es replay literal de todas las respuestas del modelo en los chats históricos. Sin API pagada, WhatsApp ni órdenes externas. Main intacto. Publicación/despliegue: pendiente de registrar al cierre.
+
+Siguiente: compra con pregunta en el mismo mensaje («un pollo frito, ¿viene con papa francesa?»), elección numérica del combo conservando atributos y cambio deliberado de ubicación con notas de acceso; mantener pendientes de referencias relativas («aquí al frente») y reemplazos abreviados de la tanda 107. No declarar piloto listo por estos conteos.
+
 ## VIGENTE — tanda 108: referencias de dirección, corrección y confirmación respaldada (22/10)
 
 Base 2bef214f, staging. 90 casos nuevos: referencias posteriores y antepuestas, interiores, esquina/alfrente/costado/portería, nombres de lugares no recortados, dirección exacta del chat, cambios durante pago que eliminan pin/tarifa viejos, 24 DTO simulados, otra puerta rechazada y protestas que no convierten geocodificación fallida en dirección confirmada. Tres menús, agente on/off. Baseline 28/60 fallidos; extensión reprodujo respuesta ficticia de confirmación.

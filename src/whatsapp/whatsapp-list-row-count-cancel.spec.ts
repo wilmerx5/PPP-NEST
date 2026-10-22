@@ -113,14 +113,15 @@ describe.each(menus)('$id: list rows, disputed counts and cancel reasons', m => 
       expect(reply).toMatch(/cuál quitamos/);
     });
 
-    it('another dish in the cart leaves the dispute to the existing routes and adds nothing', async () => {
+    it('a quantity dispute corrects the named dish and preserves the unrelated drink', async () => {
       const h = rig();
       await order(h, m.members[0], 'dos');
       await h.sendQueued(`una ${m.drink.toLowerCase()}`);
-      const before = rows(h).length;
+      const drinkBefore = structuredClone(h.conv.sessionData.cart.find((line: any) => line.name === m.drink));
       await h.sendQueued(`solo pedí un ${m.word}`);
-      expect(rows(h).length).toBeLessThanOrEqual(before);
-      expect(rows(h).reduce((sum: number, r: any) => sum + r[1], 0)).toBeLessThanOrEqual(3);
+      expect(h.conv.sessionData.cart).toHaveLength(2);
+      expect(h.conv.sessionData.cart.find((line: any) => line.name === m.members[0])?.quantity).toBe(1);
+      expect(h.conv.sessionData.cart.find((line: any) => line.name === m.drink)).toEqual(drinkBefore);
     });
 
     // Cancel with a reason.

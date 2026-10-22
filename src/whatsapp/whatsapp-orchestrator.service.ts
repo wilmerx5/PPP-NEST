@@ -1065,7 +1065,19 @@ export class WhatsappOrchestratorService {
         return;
       }
       let sessionLoc = this.conversationService.getSession(conv);
-      const pendingUnit = [sessionLoc.pendingDeliveryUnit, sessionLoc.pendingDeliveryPlace].filter(Boolean).join(', ');
+      // A bare pin answering a failed address lookup locates the existing destination.
+      // Preserve its written access instructions, but never reuse an old confirmed
+      // destination or override the address supplied by a newly named pin.
+      const unresolvedAddress = sessionLoc.orderType === 'delivery' &&
+        sessionLoc.deliveryFeeCalculated === null && !sessionLoc.deliveryOutOfCoverage &&
+        sessionLoc.deliveryLat == null && sessionLoc.deliveryLng == null &&
+        !sessionLoc.freshDeliveryAddressRequested &&
+        !msg.locationAddress && !msg.locationName &&
+        !['completed', 'closed'].includes(conv.state)
+          ? sessionLoc.address?.trim() : undefined;
+      const pendingUnit = [unresolvedAddress, sessionLoc.pendingDeliveryUnit, sessionLoc.pendingDeliveryPlace]
+        .filter((part, index, parts) => !!part && !parts.slice(0, index).some(previous => previous?.includes(part!)))
+        .join(', ');
       sessionLoc = {
         ...sessionLoc,
         orderType: 'delivery',
@@ -17687,7 +17699,9 @@ export class WhatsappOrchestratorService {
     const query = (disputed?.[2] || keepOne?.[1] || '').trim();
     if (!quantity || quantity > 30 || !query || /\b(?:y|e|mas|otr[oa]s?|con|sin|pero)\b/.test(query)) return false;
     const lines = session.cart.flatMap((line, index) => correctionMatchesLine(line, query) ? [index] : []);
-    if (!lines.length || lines.length !== session.cart.length) return false;
+    // “Solo pedí un X” disputes X's quantity, not the presence of unrelated
+    // sides. Keep-only commands still require the whole-cart interpretation.
+    if (!lines.length || (!disputed && lines.length !== session.cart.length)) return false;
     const units = lines.reduce((sum, index) => sum + session.cart[index].quantity, 0);
     const reminder = (next: WhatsappSessionData) => this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next);
     const fee = (next: WhatsappSessionData) => this.deliveryFeeFor(next, cfg);
