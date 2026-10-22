@@ -1,3 +1,15 @@
+## VIGENTE — tanda 103: «… en combo con ginger los dos» y cambiar la gaseosa de los dos combos (22/10)
+
+Base 86a6a933, staging. Chat real en staging: «me das un pollo frito y uno broaster en combo con ginger los dos» respondía «Por ahora no manejamos: dos» y solo el segundo combo quedaba con Ginger; luego «nada mas pero quiero que la gaseosa de los dos combos sea ginger» listaba gaseosas sueltas. Al generalizar apareció un bug previo: «una X y una Y con <opción>» se fundía en un solo ítem (la cláusula del segundo plato se tomaba como bebida del primero) y se perdía un plato. Sin el arreglo fallan 34/59.
+
+59 regresiones nuevas (whatsapp-shared-line-option.spec.ts): tabla de sharedOrderModifier (6 positivos, 5 negativos: «para los dos», sin modificador, un solo ítem, conteo que no coincide); tres menús sintéticos (hamburguesas con bebida, pizzas con borde, salchipapas con salsa), agente on/off: «… con X las dos» y «…, ambas con X» aplican la opción a ambos; «X y Y con opción» conserva ambos platos; cada plato conserva su opción; seguimiento «la gaseosa/el borde/la salsa de las dos …» cambia ambas líneas; con «nada más pero …» pasa al checkout. Contrastes: «los tres» con dos líneas no cambia nada; una línea sin esa opción no se toca.
+
+Arreglo general: sharedOrderModifier quita el marcador distributivo (si su conteo coincide con los ítems) y el modificador compartido se suma a las opciones de cada línea; una cláusula que nombra otro plato no se pliega como bebida de la línea anterior; tryApplyOptionToAllCartLines (antes del agente) cambia una opción en todas las líneas que la ofrecen.
+
+Validación: foco 2691/2691 (44 suites); tsc ambos OK; node 92/0; diff --check OK; global en dos fases con hashes congelados (485) 80/80 + 15581/15581, unión = inventario 187, 570 s (118 + 452), sin reintentos. Commit 72b26624 desplegado solo en staging (imagen bc99f7d5…, health OK 16:49Z, 0 reinicios, rollback rollback-before-72b26624); producción 1d512d0c… intacta (Main 54c057b5, tandas hasta 94). Evidencia: docs/whatsapp-shared-line-option-validation-2210.json. Sin llamadas pagadas, WhatsApp ni órdenes externas.
+
+Pendiente: tandas 95–103 solo en staging hasta nueva promoción a Main; «X en combo con Y y Z en combo con Y» escrito ítem por ítem todavía no siempre arma ambos combos (el parser funde segmentos con «en combo»); pendientes anteriores sin cambio.
+
 ## VIGENTE — tanda 102: productos en dos categorías listados dos veces y «un ejecutivo» empatado (22/10)
 
 Base e9140594, staging. Chat real en staging: «… me das un ejecutivo» respondía «Pediste 1. ¿Cuál prefieres?» con las dos variantes repetidas (4 opciones). Causa: el catálogo real tiene 4 productos en dos categorías y getMenuProducts los agregaba una vez por categoría (el fixture no tiene categorías, por eso no lo veían las pruebas). Además, con agente apagado, «un ejecutivo» agregaba la primera variante empatada sin preguntar; «ola buenas tardes me das …» no contaba como pedido explícito; y «Pediste 1» salía con cantidad 1. Sin el arreglo fallan 29/48.

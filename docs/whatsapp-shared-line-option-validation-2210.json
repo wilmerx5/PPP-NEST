@@ -1,0 +1,77 @@
+{
+  "tanda": 103,
+  "topic": "shared-line-option",
+  "date": "2026-10-22",
+  "base": "86a6a933",
+  "commit": "72b26624",
+  "branch": "staging",
+  "trigger": "Chat real en staging: «me das un pollo frito y uno broaster en combo con ginger los dos» respondía «Por ahora no manejamos: dos» y solo un combo quedaba con Ginger; «nada mas pero quiero que la gaseosa de los dos combos sea ginger» listaba gaseosas sueltas. Datos personales no copiados.",
+  "rootCause": [
+    "«los dos» quedaba como segmento propio («dos») y el modificador compartido solo llegaba al último ítem",
+    "«X y Y con <opción>» se fundía en un solo ítem: la cláusula del segundo plato se tomaba como bebida del primero (bug previo, encontrado al generalizar)",
+    "No había camino para cambiar una opción en todas las líneas del carrito a la vez"
+  ],
+  "fix": [
+    "sharedOrderModifier detecta «los dos / las tres / ambos / todos» al final o antes del modificador, exige que el conteo coincida con los ítems, lo quita del texto y el modificador se aplica a cada línea",
+    "Una cláusula que nombra otro plato no se pliega como bebida de la línea anterior",
+    "tryApplyOptionToAllCartLines (antes del agente): «la gaseosa/el borde/la salsa de los dos … sea X» cambia esa opción en todas las líneas que la ofrecen; con «nada más pero …» sigue al checkout"
+  ],
+  "spec": {
+    "file": "src/whatsapp/whatsapp-shared-line-option.spec.ts",
+    "tests": 59,
+    "baselineFailures": 34,
+    "baselineNote": "implementación guardada en stash; sharedOrderModifier reemplazado por un stub que devuelve null porque el spec lo importa",
+    "menus": [
+      "burgers with drink",
+      "pizzas with crust",
+      "street food with sauce"
+    ]
+  },
+  "focused": {
+    "suites": 44,
+    "tests": 2691,
+    "failed": 0
+  },
+  "checks": {
+    "tsc": "ok",
+    "tscBuild": "ok",
+    "node": {
+      "pass": 92,
+      "fail": 0
+    },
+    "diffCheck": "ok"
+  },
+  "global": {
+    "hashes": 485,
+    "inventory": 187,
+    "union": 187,
+    "phase1": {
+      "pass": 80,
+      "fail": 0,
+      "seconds": 118
+    },
+    "phase2": {
+      "pass": 15581,
+      "fail": 0,
+      "seconds": 452
+    },
+    "totalPass": 15661,
+    "hashCheck": "ok",
+    "originAhead": 0
+  },
+  "deploy": {
+    "server": "staging",
+    "image": "bc99f7d52351aee549f5a25f22aba4f816bd0de2e553f132ddc9bce15eafdac4",
+    "health": "ok",
+    "checkedAt": "2026-10-22T16:49:41Z",
+    "restarts": 0,
+    "rollbackTag": "ppp-nest-staging:rollback-before-72b26624",
+    "productionImage": "1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748",
+    "productionTouched": false
+  },
+  "externalCalls": {
+    "paidModel": false,
+    "whatsapp": false,
+    "externalOrders": false
+  }
+}
