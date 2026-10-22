@@ -9604,6 +9604,7 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): MultiProductResolveResult | null {
+    text = this.sharedOrderModifier(text)?.body ?? text;
     // Catalog-backed alternate word order: "burger especial en combo" names
     // the same SKU as "Combo Burger Especial". Preserve quantities and extras.
     const combos = products.filter(product => /^combo\s+(?:de\s+)?/i.test(product.name));
@@ -9631,6 +9632,34 @@ export class WhatsappCatalogService {
       if (!parts.some((part) => normalizeText(part) === normalizeText(note))) target.note = [...parts, note].join('; ');
     }
     return result;
+  }
+
+  /**
+   * "un pollo frito y uno broaster en combo con ginger los dos" /
+   * "una hamburguesa y un perro, los dos con papas": the modifier belongs to every item.
+   * body drops the distributive marker; shared is the modifier every item takes.
+   */
+  sharedOrderModifier(text: string): { body: string; shared: string } | null {
+    const counted: Record<string, number> = { dos: 2, tres: 3, cuatro: 4, ambos: 2, ambas: 2 };
+    const all = '((?:los|las)\\s+(?:dos|tres|cuatro)|ambos|ambas|todos|todas)';
+    const fits = (marker: string, items: number) => {
+      const word = normalizeText(marker).split(/\s+/).pop() || '';
+      return items >= 2 && (counted[word] == null || counted[word] === items);
+    };
+    const tail = (text || '').match(new RegExp(`^(.+?)[\\s,]+${all}[\\s.!]*$`, 'i'));
+    if (tail) {
+      const items = tail[1].split(/\s*,\s*|\s+y\s+/i);
+      const last = items[items.length - 1];
+      const combo = last.search(/\ben\s+combo\b/i);
+      const joiners = [...last.matchAll(/\s(?:con|sin)\s/gi)];
+      const at = combo > 0 ? combo : joiners.length ? joiners[joiners.length - 1].index! : -1;
+      if (at <= 0 || !fits(tail[2], items.length)) return null;
+      return { body: tail[1].trim(), shared: last.slice(at).trim() };
+    }
+    const lead = (text || '').match(new RegExp(`^(.+?)[\\s,]+${all}\\s+((?:en\\s+combo|con|sin)\\b.+)$`, 'i'));
+    if (!lead || !fits(lead[2], lead[1].split(/\s*,\s*|\s+y\s+/i).length)) return null;
+    const shared = lead[3].trim().replace(/[.!]+$/, '');
+    return { body: `${lead[1].trim()} ${shared}`, shared };
   }
 
   /**
@@ -10295,8 +10324,11 @@ export class WhatsappCatalogService {
         }
         continue;
       }
+      // "una hamburguesa y una doble con uva": a clause naming another dish is that dish, not the previous drink.
+      const namesOtherDish = this.findProductEmbeddedInMessage(segment, products);
       if (!this.wantsSeparateDrink(text)) {
         const host = [...confident, ...needsAttributes].find((m) =>
+          (!namesOtherDish || namesOtherDish.id === m.product.id || this.isLikelyDrinkProduct(namesOtherDish)) &&
           this.drinkTextMatchesAttribute(m.product, segment),
         );
         if (host) {

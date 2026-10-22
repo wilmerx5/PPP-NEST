@@ -2397,6 +2397,7 @@ export class WhatsappOrchestratorService {
       return;
     }
     if (await this.tryHandleCartOptionPossibility(conv, msg.waId, session, originalText)) return;
+    if (await this.tryApplyOptionToAllCartLines(conv, msg.waId, session, originalText)) return;
     if (session.pendingMatch?.replacement) {
       const swap = await this.tryAnswerComboSwapOffer(conv, msg.waId, session, originalText, cfg);
       if (swap === true) return;
@@ -12723,6 +12724,55 @@ export class WhatsappOrchestratorService {
     session = { ...session, cart: session.cart.map((item, i) => i === index ? { ...item, attributes } : item) };
     await this.conversationService.saveSession(conv, session);
     await this.reply(conv, waId, `Sí ✅ *${line.name}* queda con *${attr.attributeName}: ${option}*.\n\n${reminder}`);
+    return true;
+  }
+
+  /** "quiero que la gaseosa de los dos combos sea ginger": one option for every cart line that offers it. */
+  private async tryApplyOptionToAllCartLines(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+  ): Promise<boolean> {
+    if (session.cart.length < 2 || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+      CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || text.length > 160) return false;
+    const said = this.normalizeForMatch(text).replace(/[^a-z0-9ñ]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const split = said.match(/^(.+?) (?:pero|y) (.+)$/);
+    const closing = !!split && isNothingElseOrderIntent(split[1]);
+    const q = ` ${closing ? split![2] : said} `;
+    const marker = q.match(/ (?:(?:los|las) (dos|tres|cuatro)|(ambos|ambas)|todos|todas|cada un[oa]) /);
+    if (!marker || / (?:otr[oa]s?|agrega\w*|anade\w*|adicional(?:es)?|aparte|extra|porcion(?:es)?|quita\w*|\d+) /.test(q)) return false;
+    const has = (value: string) => {
+      const words = this.normalizeForMatch(value).replace(/[^a-z0-9ñ]+/g, ' ').trim();
+      if (!words) return false;
+      const stem = words.replace(/(?:es|s)$/, '');
+      return [words, stem, `${stem}s`, `${stem}es`].some(form => q.includes(` ${form} `));
+    };
+    const drinkWord = / (?:gaseosas?|bebidas?|refrescos?|sodas?) /.test(q);
+    const products = await this.catalogService.getMenuProducts();
+    const hits = session.cart.flatMap((line, index) => {
+      const product = products.find(item => item.id === line.productId);
+      return (product?.attributes || [])
+        .filter(attr => has(attr.attributeName) || drinkWord && this.catalogService.isComboOnlyAttribute(attr))
+        .flatMap(attr => attr.options.filter(option => has(option)).map(option => ({ index, line, attr, option })));
+    });
+    const lines = new Set(hits.map(hit => hit.index));
+    const count = ({ dos: 2, tres: 3, cuatro: 4 } as Record<string, number>)[marker[1] || ''] ?? (marker[2] ? 2 : null);
+    if (new Set(hits.map(hit => this.normalizeForMatch(hit.option))).size !== 1 || lines.size < 2 ||
+      hits.length !== lines.size || count != null && count !== lines.size) return false;
+    session = { ...session, cart: session.cart.map((item, i) => {
+      const hit = hits.find(entry => entry.index === i);
+      if (!hit) return item;
+      const chosen = { attributeName: hit.attr.attributeName, attributeValue: hit.option };
+      return { ...item, attributes: item.attributes?.some(selected => selected.attributeName === chosen.attributeName)
+        ? item.attributes.map(selected => selected.attributeName === chosen.attributeName ? chosen : selected)
+        : [...(item.attributes || []), chosen] };
+    }) };
+    await this.conversationService.saveSession(conv, session);
+    const done = `Listo ✅ *${hits[0].attr.attributeName}: ${hits[0].option}* en ${hits.map(hit => `*${hit.line.name}*`).join(' y ')}.`;
+    if (closing) {
+      await this.reply(conv, waId, done);
+      await this.tryConfirmOrder(conv, waId, session);
+      return true;
+    }
+    await this.reply(conv, waId, `${done}\n\n${this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session)}`);
     return true;
   }
 
@@ -24790,7 +24840,9 @@ export class WhatsappOrchestratorService {
       // A sibling's clause ("y aparte una limonada") is its own item, not this dish's choice.
       const unownedSource = pending.confident.reduce((rest, other) => other === item || !other.segment ? rest :
         rest.replace(other.segment, ' '), sourceText || '').replace(/\s+/g, ' ').trim();
-      const attrSource = sameSkuSiblings || hasOwnedSource ? lineSource : [item.segment, unownedSource].filter(Boolean).join(' ');
+      const sharedModifier = sourceText ? this.catalogService.sharedOrderModifier(sourceText)?.shared : undefined;
+      const attrSource = [sameSkuSiblings || hasOwnedSource ? lineSource : [item.segment, unownedSource].filter(Boolean).join(' '),
+        sharedModifier].filter(Boolean).join(' ');
       const qty =
         sourceText &&
         this.catalogService.askedForOneComboEach(sourceText) &&
