@@ -116,7 +116,8 @@ export type WhatsappSessionData = {
     /** Explicit quantity replacement before selecting a candidate. */
     correctedQuantity?: number;
     /** Cart line replaced when the customer picks one of these options. */
-    replacement?: { originalLine: WhatsappCartItem };
+    /** preferredId: the combo of that very dish, taken by «sí» or a drink name when several are listed. */
+    replacement?: { originalLine: WhatsappCartItem; preferredId?: number };
     /** Otros platos del mismo mensaje, se agregan al elegir esta lista. */
     alsoAdd?: Array<{ productId: number; segment: string }>;
     /** Preparation the customer gave for the dish still being chosen. */

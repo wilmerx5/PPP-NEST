@@ -12781,9 +12781,11 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean | WhatsappSessionData> {
     const pending = session.pendingMatch;
-    if (!pending?.replacement || pending.intent !== 'order' || pending.candidates.length !== 1 || /[¿?]/.test(text)) return false;
+    const preferredId = pending?.replacement?.preferredId ?? (pending?.candidates.length === 1 ? pending.candidates[0].id : undefined);
+    if (!pending?.replacement || pending.intent !== 'order' || preferredId == null ||
+      !pending.candidates.some(candidate => candidate.id === preferredId) || /[¿?]/.test(text) || /^\s*\d+\s*$/.test(text)) return false;
     const products = await this.catalogService.getMenuProducts();
-    const combo = this.catalogService.getProductById(pending.candidates[0].id, products);
+    const combo = this.catalogService.getProductById(preferredId, products);
     const original = pending.replacement.originalLine;
     if (!combo || combo.availableNow === false && !cfg.ignoreBusinessHours || !this.catalogService.productImpliesCombo(combo) ||
       !session.cart.some(line => line.productId === original.productId)) return false;
@@ -12829,6 +12831,12 @@ export class WhatsappOrchestratorService {
     const affirmative = /^(?:si+|si si|dale|ok|okay|listo|de una|va|bueno|perfecto|hagale|claro|esta bien|cambialo|cambiamelo|pasalo|el combo|en combo|mejor (?:el )?combo|quiero el combo|ese|esa|si (?:cambialo|dale|el combo|ese|porfa|por favor))$/.test(q);
     if (!affirmative && options.length !== 1 && !comboDrinkSize) return false;
     const selected = options.length === 1 && drinkAttribute ? [{ attributeName: drinkAttribute.attributeName, attributeValue: options[0] }] : [];
+    // The plain dish's own choices (pollo broaster, arepas fritas…) carry over when the combo offers them.
+    for (const kept of original.attributes || []) {
+      const attr = (combo.attributes || []).find(entry => this.normalizeForMatch(entry.attributeName) === this.normalizeForMatch(kept.attributeName));
+      const value = attr?.options.find(option => this.normalizeForMatch(option) === this.normalizeForMatch(kept.attributeValue));
+      if (attr && value && !selected.some(choice => choice.attributeName === attr.attributeName)) selected.push({ attributeName: attr.attributeName, attributeValue: value });
+    }
     session = { ...session, pendingMatch: undefined, pendingAddOffer: undefined };
     const missing = (combo.attributes || []).filter(attr => !selected.some(choice => choice.attributeName === attr.attributeName));
     if (missing.length) {
@@ -12843,7 +12851,7 @@ export class WhatsappOrchestratorService {
     if (added.blocked || added.missingAttributes) return false;
     await this.conversationService.saveSession(conv, added.session, 'building_cart');
     await this.reply(conv, waId, 'Listo, lo cambié 👍\n\n' +
-      this.buildCartAddReply(added.session, this.deliveryFeeFor(added.session, cfg), selected.length ? `${combo.name} (${selected[0].attributeValue})` : combo.name));
+      this.buildCartAddReply(added.session, this.deliveryFeeFor(added.session, cfg), selected.length ? `${combo.name} (${selected.map(choice => choice.attributeValue).join(', ')})` : combo.name));
     return true;
   }
 
@@ -13002,17 +13010,25 @@ export class WhatsappOrchestratorService {
     const focusedLines = context.length === 1 ? session.cart.filter(line=>line.productId === context[0].id) : [];
     if (focusedLines.length === 1 && !withItem.length && (!session.pendingMatch || session.pendingMatch.selectionAdded) && !session.pendingAttribute && !session.pendingMultiOrder) {
       const family = this.catalogService.findProductVariantFamily(context[0].name, products, [context[0]]);
-      const comboVariants = (family?.variants || []).filter(product=>product.id !== context[0].id &&
-        product.availableNow !== false && this.catalogService.productImpliesCombo(product) && drinkInclusion(product,'bebida') === 'yes');
+      // "Arroz Chino Con Medio Pollo" relates to every "Combo Arroz Chino Con …", not to "Combo Arroz Paisa".
+      const dishBase = this.normalizeForMatch(context[0].name).replace(/\s+con\s+.*$/, '').trim();
+      const sharesBase = (product: MenuProduct) => {
+        const stripped = this.normalizeForMatch(product.name).replace(/^combo\s+(?:de\s+)?/, '');
+        return stripped === dishBase || stripped.startsWith(`${dishBase} con `);
+      };
+      const comboVariants = this.catalogService.dedupeProductsById([...(family?.variants || []), ...products.filter(sharesBase)])
+        .filter(product=>product.id !== context[0].id &&
+        product.availableNow !== false && this.catalogService.productImpliesCombo(product) && drinkInclusion(product,'bebida') === 'yes') as MenuProduct[];
       const dishName = ` ${this.normalizeForMatch(context[0].name)} `;
       const sameDish = comboVariants.filter(product => ` ${this.normalizeForMatch(product.name)} `.includes(dishName));
-      const related = sameDish.length ? sameDish : comboVariants;
+      const preferred = sameDish.length === 1 ? sameDish[0] : undefined;
+      const related = preferred ? [preferred, ...comboVariants.filter(product => product.id !== preferred.id)] : comboVariants;
       if (related.length) {
         const originalLine = focusedLines[0];
         const explanation = without.length ? `No trae ${item}: *${context[0].name}*.` :
           `La carta no confirma ${item} ${itemArticle === 'la' ? 'incluida' : 'incluido'} en *${context[0].name}*.`;
         session = {...session,pendingMatch:{query:text,intent:'order',candidates:related,quantity:originalLine.quantity,
-          replacement:{originalLine:structuredClone(originalLine)}}};
+          replacement:{originalLine:structuredClone(originalLine),...(preferred ? {preferredId:preferred.id} : {})}}};
         await this.conversationService.saveSession(conv,session);
         const choices = related.map((product,index)=>`${this.catalogService.optionNumberEmoji(index+1)} *${product.name}* · #${product.code} · ${this.catalogService.formatMoney(product.price)}\n` +
           (drinkInclusion(product,item)==='yes' ? `Incluye ${item}.${this.drinkChoicesLine(product)}` :
@@ -13021,6 +13037,7 @@ export class WhatsappOrchestratorService {
           (product.description ? `\n_${product.description}_` : ''));
         await this.reply(conv,waId,explanation+(related.length === 1 ? '\n\nEsta versión sí incluye bebida:\n' : '\n\nEstas versiones sí incluyen bebida:\n')+choices.join('\n\n')+
           (related.length === 1 ? '\n\nResponde *sí* o la bebida para cambiar ese plato al combo, conservando su cantidad y notas. El pedido sigue igual hasta que elijas.' :
+            preferred ? `\n\nResponde *sí* o la bebida para cambiarlo a *${preferred.name}*, o el número de otra versión. Conservo su cantidad y notas; el pedido sigue igual hasta que elijas.` :
             '\n\nDime el número para cambiar ese plato al combo, conservando su cantidad y notas. El pedido sigue igual hasta que elijas.'));
         return true;
       }

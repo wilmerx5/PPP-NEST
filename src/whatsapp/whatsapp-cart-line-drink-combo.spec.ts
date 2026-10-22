@@ -137,7 +137,7 @@ describe.each(menus)('$id: drink question about a cart line', m => {
 });
 
 describe.each([false, true])('agent %s: a family with combos of other dishes', agent => {
-  it('offers only the combo of the same dish and the named soda goes into it', async () => {
+  it('lists the same dish’s combo first, keeps the other combo visible, and the named soda goes into the first', async () => {
     const m = menus[0];
     const other = product(815, 'Combo Arroz Chino Con Pollo', 33000, 'Combos', [{ attributeName: 'Bebida', options: ['Coca Cola', 'Sprite', 'Kola'] }]);
     const plain = product(816, 'Arroz Chino Con Pollo', 27000, 'Arroz Chino');
@@ -149,7 +149,8 @@ describe.each([false, true])('agent %s: a family with combos of other dishes', a
     await h.sendQueued(m.order);
     const reply = String(await h.sendQueued('Ese viene con gaseosa?'));
     expect(reply).toContain(m.combo.name);
-    expect(reply).not.toContain(other.name);
+    expect(reply).toContain(other.name);
+    expect(reply.indexOf(m.combo.name)).toBeLessThan(reply.indexOf(other.name));
     await h.sendQueued('sprite');
     expect(h.cartRows()).toEqual([expect.objectContaining({ id: m.combo.id, attrs: ['Bebida:Sprite'] })]);
   });
