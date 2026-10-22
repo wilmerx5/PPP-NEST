@@ -1,8 +1,64 @@
 import { splitKitchenPreference } from './whatsapp-kitchen-preference';
 
+const ROAD = '(?:avenida\\s+(?:calle|carrera)|av\\.?\\s*(?:calle|carrera|cra|cl)|calle|cll?|carrera|cra?|kra?|kr|ak|ac|diagonal|diag|dg|transversal|transv|trv|tv|avenida|av)';
+const STREET = new RegExp(`\\b${ROAD}\\.?\\s*\\d`, 'i');
+const COLOR = '(?:blanc|negr|verde|azul|roj|amarill|gris|caf[eé]|marr[oó]n|naranja|morad|rosad|beige|vinotinto)';
+const REFERENCE = new RegExp('(?:^|[\\s,;(-])(' + [
+  '(?:en\\s*)?frente\\s+(?:a|al|de|del)\\b', 'al\\s+frente\\s+de(?:l)?\\b', 'al\\s+lado\\s+de(?:l)?\\b', 'junto\\s+a(?:l)?\\b',
+  'cerca\\s+de(?:l)?\\b', 'cerquita\\s+de(?:l)?\\b', 'diagonal\\s+(?:a|al|de|del)\\s+(?!\\d)', 'detr[aá]s\\s+de(?:l)?\\b',
+  'atr[aá]s\\s+de(?:l)?\\b', 'despu[eé]s\\s+de(?:l)?\\b', 'antes\\s+de(?:l)?\\b', 'enseguida\\s+de(?:l)?\\b',
+  'a\\s+(?:una|dos|tres|media|\\d)\\s+cuadras?\\b', 'en\\s+(?:toda\\s+)?la\\s+esquina\\b', 'esquinera\\b',
+  `(?:port[oó]n|reja|puerta|fachada|casa|edificio)\\s+(?:de\\s+)?(?:color\\s+)?${COLOR}`,
+  'timbr\\w*', 'tocar\\s+(?:el\\s+)?(?:timbre|puerta)', 'llam(?:ar|e|en|ame|enme)\\s+(?:al\\s+llegar|cuando\\s+llegue)',
+  'referencia\\b', 'ref\\.?\\s*:',
+].join('|') + ')', 'i');
+
+/** A landmark or access hint after a destination ("…, frente al parque") is for the driver, not the map. */
+export function splitAddressReference(source: string): { address: string; reference: string } {
+  const raw = (source || '').trim();
+  const match = REFERENCE.exec(raw);
+  if (!match) return { address: raw, reference: '' };
+  const start = match.index + match[0].indexOf(match[1]);
+  const address = raw.slice(0, start).replace(/[\s,;(-]+$/, '').trim();
+  if (!address || !(STREET.test(address) || /\b(?:conjunto|edificio|residencial|urbanizaci[oó]n|condominio|agrupaci[oó]n|torres?|barrio)\b/i.test(address))) {
+    return { address: raw, reference: '' };
+  }
+  return { address, reference: raw.slice(start).replace(/\)\s*$/, '').trim() };
+}
+
+/** "calle 38 sur 72 j 15" → "Calle 38 Sur # 72J-15"; null when the text has no full numbered street. */
+export function canonicalStreetAddress(source: string): string | null {
+  const text = (source || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const roadNames: Array<[RegExp, string]> = [
+    [/^(?:avenida\s+carrera|av\.?\s*(?:carrera|cra)|ak)$/, 'Avenida Carrera'], [/^(?:avenida\s+calle|av\.?\s*(?:calle|cl)|ac)$/, 'Avenida Calle'],
+    [/^(?:calle|cll?)$/, 'Calle'], [/^(?:carrera|cra?|kra?|kr)$/, 'Carrera'], [/^(?:diagonal|diag|dg)$/, 'Diagonal'],
+    [/^(?:transversal|transv|trv|tv)$/, 'Transversal'], [/^(?:avenida|av)$/, 'Avenida'],
+  ];
+  const part = '(\\d{1,3})\\s*([a-z](?![a-z]))?\\s*(bis\\b)?\\s*([a-z](?![a-z]))?';
+  const zone = '(?:\\s*\\b(sur|este|norte)\\b)?';
+  const re = new RegExp(`\\b(${ROAD})\\.?\\s*${part}${zone}\\s*(?:#|n[°ºo]\\.?|no\\.|numero|num\\.?)?\\s*${part}${zone}\\s*(?:-|\\s)\\s*(\\d{1,3})(?![\\d])${zone}`, 'i');
+  const m = re.exec(text);
+  if (!m) return null;
+  const road = roadNames.find(([pattern]) => pattern.test(m[1].replace(/\.$/, '').replace(/\s+/g, ' ')))?.[1];
+  if (!road) return null;
+  const piece = (n: string, a?: string, bis?: string, b?: string) =>
+    `${n}${(a || '').toUpperCase()}${bis ? ' Bis' : ''}${b ? ` ${b.toUpperCase()}` : ''}`;
+  const zone1 = m[6] ? ` ${m[6][0].toUpperCase()}${m[6].slice(1)}` : '';
+  const late = m[11] || m[13];
+  const zone2 = late && late !== m[6] ? ` ${late[0].toUpperCase()}${late.slice(1)}` : '';
+  return `${road} ${piece(m[2], m[3], m[4], m[5])}${zone1} # ${piece(m[7], m[8], m[9], m[10])}-${m[12]}${zone2}`;
+}
+
 /** Keep labelled internal access identifiers for the driver, out of map queries.
  * A standalone unit or a building name is not an external destination. */
 export function splitDeliveryAddressParts(source: string): { base: string; details: string } {
+  const referenced = splitAddressReference(source);
+  if (!referenced.reference) return splitDeliveryUnitParts(source);
+  const inner = splitDeliveryUnitParts(referenced.address);
+  return { base: inner.base, details: [inner.details, referenced.reference].filter(Boolean).join(', ') };
+}
+
+function splitDeliveryUnitParts(source: string): { base: string; details: string } {
   const raw = (source || '').trim();
   const label = '(?:entrada|torre|bloque|apartamento|apto|interior|int|casa|piso|local|oficina)';
   const identifier = '(?:\\d+[a-z]?(?:-\\d+[a-z]?)?|[a-z](?:-\\d+)?)';

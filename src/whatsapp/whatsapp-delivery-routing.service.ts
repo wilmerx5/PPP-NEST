@@ -1,4 +1,4 @@
-import {splitDeliveryAddressParts} from './whatsapp-address-parts';
+import {canonicalStreetAddress, splitDeliveryAddressParts} from './whatsapp-address-parts';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -202,14 +202,17 @@ export class WhatsappDeliveryRoutingService {
    */
   private geocodeQueryVariants(address: string): string[] {
     const q = splitDeliveryAddressParts(address).base.trim();
+    const street = canonicalStreetAddress(q);
     const out: string[] = [];
-    if (!/\b(bogot[aá]|colombia|cundinamarca)\b/i.test(q)) {
-      out.push(`${q}, Kennedy, Bogotá, Colombia`);
-      out.push(`${q}, Bogotá, Colombia`);
-      out.push(`${q}, Colombia`);
+    for (const text of street && street.toLowerCase() !== q.toLowerCase() ? [street, q] : [q]) {
+      if (!/\b(bogot[aá]|colombia|cundinamarca)\b/i.test(text)) {
+        out.push(`${text}, Kennedy, Bogotá, Colombia`);
+        out.push(`${text}, Bogotá, Colombia`);
+        out.push(`${text}, Colombia`);
+      }
+      out.push(text);
     }
-    out.push(q);
-    return out;
+    return [...new Set(out)];
   }
 
   private async geocodeOnce(
@@ -288,10 +291,10 @@ export class WhatsappDeliveryRoutingService {
   private resultMatchesNamedPlace(query: string, result: any): boolean {
     const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const streetKey=(value:string):string|null=>{
-      const match=normalize(value).match(/\b(calle|cll?|carrera|cra|kr|diagonal|diag|dg|transversal|tv|avenida|av)\.?\s*(\d+(?:\s*[a-z]\b)?(?:\s*bis)?(?:\s+(?:sur|norte|este|oeste))?)\s*(?:#|no\.?|numero)?\s*(\d+(?:\s*[a-z]\b)?)\s*[-# ]\s*(\d+(?:\s*[a-z]\b)?)(?:\s+(sur|norte|este|oeste))?/i);
-      if(!match)return null;
-      const road=/^(?:calle|cll?)$/.test(match[1])?'calle':/^(?:carrera|cra|kr)$/.test(match[1])?'carrera':/^(?:diagonal|diag|dg)$/.test(match[1])?'diagonal':/^(?:transversal|tv)$/.test(match[1])?'transversal':'avenida';
-      return [road,...match.slice(2).map(part=>(part||'').replace(/\s/g,''))].join(':');
+      const street=canonicalStreetAddress(value);
+      if(!street)return null;
+      const zones=[...new Set(street.match(/\b(?:Sur|Este|Norte)\b/g)||[])].sort();
+      return `${street.replace(/\b(?:Sur|Este|Norte)\b/g,'').replace(/^Avenida (Carrera|Calle)/,'$1').replace(/\s+/g,' ').trim().toLowerCase()}|${zones.join(',')}`;
     };
     const numberedStreet=streetKey(query);
     if(numberedStreet)return !result.partial_match && streetKey(result.formatted_address || '')===numberedStreet;

@@ -1,6 +1,7 @@
 import type { WhatsappSessionData } from './types/whatsapp-session.types';
 import type { WhatsappPaymentMethodConfig } from './whatsapp-payment-methods';
 import { paymentMethodLabel } from './whatsapp-payment-methods';
+import { splitAddressReference } from './whatsapp-address-parts';
 
 /**
  * WhatsApp: no usar order.extras para pago/notas (extras = salsas/productos extra).
@@ -14,7 +15,8 @@ export function composeWhatsappOrderAddress(
   >,
   paymentMethods: WhatsappPaymentMethodConfig[] = [],
 ): string {
-  const base = (session.address || '').trim();
+  const written = splitAddressReference((session.address || '').trim());
+  const base = written.reference ? `${written.address} / Ref: ${written.reference}` : written.address;
   const parts: string[] = [];
 
   if (session.paymentMethod?.trim()) {
