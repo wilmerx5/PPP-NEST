@@ -27258,7 +27258,14 @@ export class WhatsappOrchestratorService {
   }
 
   private async reply(conv: WhatsappConversation, waId: string, body: string) {
-    const rawAddress = this.conversationService.getSession?.(conv)?.address || conv.sessionData?.address;
+    const replySession = this.conversationService.getSession?.(conv) || conv.sessionData;
+    // A failed map lookup cannot be turned into verified delivery by free-form model prose.
+    const claimsVerifiedAddress = /\bdirecci[oó]n\b[^.!?\n]{0,50}\b(?:ya\s+)?(?:est[aá]|qued[oó]|queda)\s+(?:ya\s+)?(?:confirmada|verificada|validada|ubicada)\b/i.test(body || '');
+    if (replySession?.orderType === 'delivery' && replySession.address &&
+        replySession.deliveryFeeCalculated === null && !['completed', 'closed'].includes(conv.state) && claimsVerifiedAddress) {
+      body = 'Tengo anotada tu dirección, pero aún no pude verificarla en el mapa. ¿Me compartes la ubicación de WhatsApp para precisar el punto?';
+    }
+    const rawAddress = replySession?.address;
     const address = typeof rawAddress === 'string' ? rawAddress : undefined;
     const visibleBody = address ? (body || '').split(address).join(customerLocationLabel(address)) : body;
     const trimmed = scrubOutboundAsesorMentions(this.absorbCoverageNotice((visibleBody || '').trim(), waId));

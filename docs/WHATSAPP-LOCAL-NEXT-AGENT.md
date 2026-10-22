@@ -1,3 +1,11 @@
+## VIGENTE — tanda 108: referencias de dirección, corrección y confirmación respaldada (22/10)
+
+Base 2bef214f, staging. 90 casos nuevos: referencias posteriores y antepuestas, interiores, esquina/alfrente/costado/portería, nombres de lugares no recortados, dirección exacta del chat, cambios durante pago que eliminan pin/tarifa viejos, 24 DTO simulados, otra puerta rechazada y protestas que no convierten geocodificación fallida en dirección confirmada. Tres menús, agente on/off. Baseline 28/60 fallidos; extensión reprodujo respuesta ficticia de confirmación.
+
+Cambios: separación general de referencias, preservar intersecciones/nombres; mensaje distinto cuando ya hay calle/número; protección de respuesta final contra afirmación de dirección confirmada con tarifa nula por fallo. Estos tests restauran reply real (el harness general lo reemplaza), con transporte simulado. Foco 288/288; TypeScript general/build OK; Node 92/92; global 15.905/15.905, 191 suites, 489 hashes congelados, sin reintentos.
+
+Límites: Google/modelo simulados; no acredita el resultado real actual de Maps. Referencias antepuestas sin delimitador, cruces sin puerta y otras paráfrasis de confirmación requieren siguiente tanda. Siguen pendientes abreviaturas de reemplazos (107). Evidencia: [tanda 108](whatsapp-address-directions-validation-2210.md). Sin API pagada, WhatsApp ni órdenes externas. Despliegue a staging en preparación; Main intacto.
+
 ## VIGENTE — tanda 107: «quita X y dame Y» como reemplazo validado (22/10)
 
 Base d297c651, staging. 24/24 reproducciones iniciales fallaban: borrado sin reemplazo o duplicado. Ahora el patrón compuesto usa reemplazo validado en construcción y checkout, conserva opciones compatibles y permite cambiarlas explícitamente. 38 regresiones nuevas en arroces, hamburguesas y pizzas; agente on/off, compras adicionales, destino inexistente, seis DTO simulados y dos controles de abreviatura real. Foco 289/289; TypeScript general/build OK; Node 92/92; global 15.815/15.815, 190 suites, 488 hashes congelados, sin reintentos.

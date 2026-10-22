@@ -3,15 +3,18 @@ import { splitKitchenPreference } from './whatsapp-kitchen-preference';
 const ROAD = '(?:avenida\\s+(?:calle|carrera)|av\\.?\\s*(?:calle|carrera|cra|cl)|calle|cll?|carrera|cra?|kra?|kr|ak|ac|diagonal|diag|dg|transversal|transv|trv|tv|avenida|av)';
 const STREET = new RegExp(`\\b${ROAD}\\.?\\s*\\d`, 'i');
 const COLOR = '(?:blanc|negr|verde|azul|roj|amarill|gris|caf[eé]|marr[oó]n|naranja|morad|rosad|beige|vinotinto)';
-const REFERENCE = new RegExp('(?:^|[\\s,;(-])(' + [
+const REFERENCE = new RegExp('(?:^|[\\s,;(-])((?:(?:queda|es|estoy)\\s+)?(?:' + [
   '(?:en\\s*)?frente\\s+(?:a|al|de|del)\\b', 'al\\s+frente\\s+de(?:l)?\\b', 'al\\s+lado\\s+de(?:l)?\\b', 'junto\\s+a(?:l)?\\b',
   'cerca\\s+de(?:l)?\\b', 'cerquita\\s+de(?:l)?\\b', 'diagonal\\s+(?:a|al|de|del)\\s+(?!\\d)', 'detr[aá]s\\s+de(?:l)?\\b',
   'atr[aá]s\\s+de(?:l)?\\b', 'despu[eé]s\\s+de(?:l)?\\b', 'antes\\s+de(?:l)?\\b', 'enseguida\\s+de(?:l)?\\b',
   'a\\s+(?:una|dos|tres|media|\\d)\\s+cuadras?\\b', 'en\\s+(?:toda\\s+)?la\\s+esquina\\b', 'esquinera\\b',
   `(?:port[oó]n|reja|puerta|fachada|casa|edificio)\\s+(?:de\\s+)?(?:color\\s+)?${COLOR}`,
   'timbr\\w*', 'tocar\\s+(?:el\\s+)?(?:timbre|puerta)', 'llam(?:ar|e|en|ame|enme)\\s+(?:al\\s+llegar|cuando\\s+llegue)',
+  'alfrente\\s+de(?:l)?\\b', 'a\\s+un\\s+costado\\s+de(?:l)?\\b',
+  '(?:en\\s+)?(?:la\\s+)?esquina\\b', '(?:la\\s+)?casa\\s+esquinera\\b',
+  'por\\s+la\\s+entrada\\b', 'porter[ií]a\\s+(?:principal|de\\s+visitantes)\\b',
   'referencia\\b', 'ref\\.?\\s*:',
-].join('|') + ')', 'i');
+].join('|') + '))', 'i');
 
 /** A landmark or access hint after a destination ("…, frente al parque") is for the driver, not the map. */
 export function splitAddressReference(source: string): { address: string; reference: string } {
@@ -20,10 +23,25 @@ export function splitAddressReference(source: string): { address: string; refere
   if (!match) return { address: raw, reference: '' };
   const start = match.index + match[0].indexOf(match[1]);
   const address = raw.slice(0, start).replace(/[\s,;(-]+$/, '').trim();
-  if (!address || !(STREET.test(address) || /\b(?:conjunto|edificio|residencial|urbanizaci[oó]n|condominio|agrupaci[oó]n|torres?|barrio)\b/i.test(address))) {
+  if (!address) {
+    // A clearly delimited leading hint is not the street itself.
+    const delimiter = /[;\n]/.exec(raw);
+    if (delimiter) {
+      const destination = raw.slice(delimiter.index + 1).trim();
+      const hint = raw.slice(0, delimiter.index).trim();
+      if (canonicalStreetAddress(destination) && !STREET.test(hint)) {
+        return { address: destination, reference: hint };
+      }
+    }
     return { address: raw, reference: '' };
   }
-  return { address, reference: raw.slice(start).replace(/\)\s*$/, '').trim() };
+  const reference = raw.slice(start).replace(/\)\s*$/, '').trim();
+  const namedPlace = /\b(?:conjunto|edificio|residencial|urbanizaci[oó]n|condominio|agrupaci[oó]n|torres?|barrio)\s+\S+/i.test(address);
+  // Never truncate an intersection, a second street, or the name “Frente al Parque”.
+  if (STREET.test(reference) || !(canonicalStreetAddress(address) || (!STREET.test(address) && namedPlace))) {
+    return { address: raw, reference: '' };
+  }
+  return { address, reference };
 }
 
 /** "calle 38 sur 72 j 15" → "Calle 38 Sur # 72J-15"; null when the text has no full numbered street. */

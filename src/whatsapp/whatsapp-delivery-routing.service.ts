@@ -108,7 +108,9 @@ export class WhatsappDeliveryRoutingService {
       } catch (error) {
         if (!(error instanceof AmbiguousDeliveryAddressError)) throw error;
         return { ok: false, reason: 'address_ambiguous', message:
-          'No pude identificar con seguridad ese conjunto o lugar. ¿Me compartes la ubicación de WhatsApp o la dirección con calle y número?' };
+          canonicalStreetAddress(params.customerAddress)
+            ? 'No pude identificar con seguridad esa dirección en el mapa. Ya tengo la calle y el número; ¿me compartes la ubicación de WhatsApp para precisar el punto?'
+            : 'No pude identificar con seguridad ese conjunto o lugar. ¿Me compartes la ubicación de WhatsApp o la dirección con calle y número?' };
       }
       if (!geo) {
         return {
