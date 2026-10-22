@@ -1,3 +1,15 @@
+## VIGENTE — tanda 104: «¿lleva bebida?» muestra todos los combos relacionados (22/10)
+
+Base 18d8f87a, staging. Chat real en staging: al preguntar si el arroz chino llevaba bebida se ofreció solo el combo del mismo plato y no el otro combo de arroz chino con bebida. Causa: el filtro sameDish de la tanda 99. Además, al pasar al combo propio se volvía a preguntar la opción ya elegida (Pollo: Broaster). Sin el arreglo fallan 24/36.
+
+36 regresiones nuevas (whatsapp-related-combo-offer.spec.ts) con tres menús sintéticos (arroz, hamburguesa, salchipapa), agente on/off: lista el combo propio primero y el otro también; el nombre de la bebida y «sí» toman el combo propio y conservan la opción del plato (con «sí» solo pregunta la bebida); el número del otro combo lo reemplaza; «no» deja el plato; contraste: un plato sin un único combo propio no cambia con un «sí» suelto. Se actualizó la prueba de la tanda 99 que exigía ocultar el otro combo.
+
+Arreglo general: combos relacionados = familia del catálogo + combos «<base del plato> con …» (la base es el nombre antes de «con»; «Combo Arroz Paisa» no entra para arroz chino); el combo del mismo plato va primero como preferredId; las opciones del plato que el combo también ofrece se conservan. Revertido: atender el número dentro del manejador rompía 128 pruebas de aceptación de precio; el número sigue por la selección genérica (elige la primera bebida, pendiente conocido).
+
+Validación: foco 2919/2919 (45 suites); tsc ambos OK; node 92/0; diff --check OK; global en dos fases con hashes congelados (486): 80/80; fase 2 primera corrida 15614/15617 con 3 timeouts de 5 s en part-03 por carga alta (aislados 2.0–2.6 s, igual que sin el cambio), repetida completa 15617/15617, unión = inventario 188, 613 s con carga ~6. Commit a31c376b desplegado solo en staging (imagen d71cef9b…, health OK 17:28Z, 0 reinicios, rollback rollback-before-a31c376b); producción 1d512d0c… intacta (Main 54c057b5, tandas hasta 94). Evidencia: docs/whatsapp-related-combo-offer-validation-2210.json. Sin llamadas pagadas, WhatsApp ni órdenes externas.
+
+Pendiente: tandas 95–104 solo en staging hasta nueva promoción a Main; elegir el combo por número pone la primera bebida; la nota «con medio broaster y up» del chat (escrita por el agente) no se revisó; pendientes anteriores sin cambio.
+
 ## VIGENTE — tanda 103: «… en combo con ginger los dos» y cambiar la gaseosa de los dos combos (22/10)
 
 Base 86a6a933, staging. Chat real en staging: «me das un pollo frito y uno broaster en combo con ginger los dos» respondía «Por ahora no manejamos: dos» y solo el segundo combo quedaba con Ginger; luego «nada mas pero quiero que la gaseosa de los dos combos sea ginger» listaba gaseosas sueltas. Al generalizar apareció un bug previo: «una X y una Y con <opción>» se fundía en un solo ítem (la cláusula del segundo plato se tomaba como bebida del primero) y se perdía un plato. Sin el arreglo fallan 34/59.

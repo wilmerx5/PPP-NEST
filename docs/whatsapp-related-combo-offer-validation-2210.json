@@ -1,0 +1,91 @@
+{
+  "tanda": 104,
+  "topic": "related-combo-offer",
+  "date": "2026-10-22",
+  "base": "18d8f87a",
+  "commit": "a31c376b",
+  "branch": "staging",
+  "trigger": "Chat real en staging: al preguntar si el arroz chino llevaba bebida se ofreció solo el combo del mismo plato; había otro combo de arroz chino con bebida que no se mostró. Datos personales no copiados.",
+  "rootCause": [
+    "El filtro sameDish de la tanda 99 dejaba solo el combo cuyo nombre contiene el plato completo",
+    "La familia del catálogo no siempre agrupa los combos «<base> Con …» del mismo plato",
+    "Al pasar al combo propio se volvía a preguntar la opción ya elegida en el plato (p. ej. Pollo: Broaster)"
+  ],
+  "fix": [
+    "La oferta lista todos los combos relacionados: familia del catálogo + combos cuyo nombre sin «Combo (de)» empieza por la base del plato (nombre antes de «con») seguida de «con …» o nada",
+    "El combo del mismo plato va primero y queda como preferredId: «sí» o el nombre de la bebida lo toman; el número elige cualquiera por la selección genérica",
+    "Las opciones del plato original que el combo también ofrece se conservan"
+  ],
+  "spec": {
+    "file": "src/whatsapp/whatsapp-related-combo-offer.spec.ts",
+    "tests": 36,
+    "baselineFailures": 24,
+    "menus": [
+      "rice",
+      "burger",
+      "street food"
+    ]
+  },
+  "updatedTests": [
+    {
+      "file": "src/whatsapp/whatsapp-cart-line-drink-combo.spec.ts",
+      "reason": "La tanda 99 afirmaba ofrecer solo el combo del mismo plato; el usuario pidió mostrar todos. Ahora exige ambos, el propio primero, y la gaseosa nombrada sigue yendo al propio."
+    }
+  ],
+  "reverted": [
+    "Atender el número dentro de tryAnswerComboSwapOffer rompió 128 pruebas de aceptación de precio de combos; el número vuelve a la selección genérica"
+  ],
+  "focused": {
+    "suites": 45,
+    "tests": 2919,
+    "failed": 0
+  },
+  "checks": {
+    "tsc": "ok",
+    "tscBuild": "ok",
+    "node": {
+      "pass": 92,
+      "fail": 0
+    },
+    "diffCheck": "ok"
+  },
+  "global": {
+    "hashes": 486,
+    "inventory": 188,
+    "union": 188,
+    "phase1": {
+      "pass": 80,
+      "fail": 0,
+      "seconds": 123
+    },
+    "phase2FirstRun": {
+      "pass": 15614,
+      "fail": 3,
+      "seconds": 616,
+      "note": "3 timeouts de 5 s en whatsapp-general-accuracy-part-03 (cambio de intención) con carga alta; aislados tardan 2.0–2.6 s igual que sin el cambio"
+    },
+    "phase2": {
+      "pass": 15617,
+      "fail": 0,
+      "seconds": 613
+    },
+    "totalPass": 15697,
+    "hashCheck": "ok",
+    "originAhead": 0
+  },
+  "deploy": {
+    "server": "staging",
+    "image": "d71cef9bfa33cb99ed2eb9ec350df156ed03a2fe0a218ac10acc4e955e72c5a2",
+    "health": "ok",
+    "checkedAt": "2026-10-22T17:28:13Z",
+    "restarts": 0,
+    "rollbackTag": "ppp-nest-staging:rollback-before-a31c376b",
+    "productionImage": "1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748",
+    "productionTouched": false
+  },
+  "externalCalls": {
+    "paidModel": false,
+    "whatsapp": false,
+    "externalOrders": false
+  }
+}
