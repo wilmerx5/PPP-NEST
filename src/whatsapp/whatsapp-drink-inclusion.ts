@@ -1,8 +1,14 @@
 type Product = { description?: string | null; attributes?: { attributeName: string; options: string[] }[] };
 export type Inclusion = 'yes' | 'no' | 'unknown';
 const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const SODA_BRAND = /\b(?:coca[\s-]?cola|pepsi|sprite|fanta|seven[\s-]?up|7[\s-]?up|quatro|postobon|colombiana|kola roman|ginger ale)\b/;
 const kinds = (text: string) => [...normalize(text).matchAll(/\b(bebida|gaseosa|refresco|jugo|soda)s?\b/g)]
   .map(match => match[1] === 'soda' ? 'gaseosa' : match[1]);
+
+/** The soda brand named in a message, as written ("coca cola"), or null. */
+export function sodaBrandIn(text: string): string | null {
+  return normalize(text || '').match(SODA_BRAND)?.[0] || null;
+}
 
 /** Absence from a description is not evidence of exclusion. Generic drinks do not prove a specific type. */
 export function drinkInclusion(product: Product, requested: string): Inclusion {

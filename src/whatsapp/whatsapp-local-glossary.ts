@@ -125,11 +125,11 @@ const PHRASE_REWRITES: Array<{
   { re: /\ben\s+comboo\b/gi, to: 'en combo' },
   // Gaseosa: "1 colombiana 1,5" / "colombiana 1.5" → litros explícitos
   {
-    re: /\b(\d{1,2})\s+(colombiana|manzana|pepsi|coca\s*cola|gaseosa|sprite|postobon|uva)\s+(\d)\s*[.,]\s*(\d)\b/gi,
+    re: /\b(\d{1,2})\s+(colombiana|manzana|pepsi|coca\s*cola|gaseosa|sprite|postobon|uva)\s+(\d)\s*[.,]\s*(\d)\b(?!\s*(?:l|lt|lts|litros?|ml)\b)/gi,
     to: '$1 $2 $3.$4 litros',
   },
   {
-    re: /\b(colombiana|manzana|pepsi|coca\s*cola|gaseosa|sprite|postobon|uva)\s+(\d)\s*[.,]\s*(\d)\b/gi,
+    re: /\b(colombiana|manzana|pepsi|coca\s*cola|gaseosa|sprite|postobon|uva)\s+(\d)\s*[.,]\s*(\d)\b(?!\s*(?:l|lt|lts|litros?|ml)\b)/gi,
     to: '$1 $2.$3 litros',
   },
   // Add-on tardío (corpus): "alcanzo a encargarte una ensalada"
