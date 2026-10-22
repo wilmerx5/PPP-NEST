@@ -1,3 +1,15 @@
+## VIGENTE — tanda 102: productos en dos categorías listados dos veces y «un ejecutivo» empatado (22/10)
+
+Base e9140594, staging. Chat real en staging: «… me das un ejecutivo» respondía «Pediste 1. ¿Cuál prefieres?» con las dos variantes repetidas (4 opciones). Causa: el catálogo real tiene 4 productos en dos categorías y getMenuProducts los agregaba una vez por categoría (el fixture no tiene categorías, por eso no lo veían las pruebas). Además, con agente apagado, «un ejecutivo» agregaba la primera variante empatada sin preguntar; «ola buenas tardes me das …» no contaba como pedido explícito; y «Pediste 1» salía con cantidad 1. Sin el arreglo fallan 29/48.
+
+48 regresiones nuevas (whatsapp-shared-category-products.spec.ts) con tres menús sintéticos (almuerzos, hamburguesas, wraps) cuyos productos están en dos categorías: catálogo sin duplicados con ambas categorías, navegación por la segunda categoría, disponibilidad si está disponible en alguna; agente on/off: saludo + pedido lista cada opción una vez, elegir «2» toma esa opción, nombrar la variante la agrega directo, «quiero 2 …» sigue diciendo «Pediste *2*»; agente off: la palabra sola pregunta.
+
+Arreglo general: getMenuProducts deja un producto por id con categoryNames; navegación, agrupación, menú para IA y conceptos usan todas las categorías; empate en el primer puntaje lista los empatados; el pedido explícito ignora saludos iniciales; «Pediste *N*» solo con N > 1.
+
+Validación: foco 8816/8816 (35 suites); tsc ambos OK; node 92/0; diff --check OK; global en dos fases con hashes congelados (484) 80/80 + 15522/15522, unión = inventario 186, 542 s (112 + 430), sin reintentos. Commit ffee0370 desplegado solo en staging (imagen c2724b10…, health OK 16:28Z, 0 reinicios, rollback rollback-before-ffee0370); producción 1d512d0c… intacta (Main 54c057b5, tandas hasta 94). Evidencia: docs/whatsapp-shared-category-products-validation-2210.json. Sin llamadas pagadas, WhatsApp ni órdenes externas.
+
+Pendiente: tandas 95–102 solo en staging hasta nueva promoción a Main; «que tienen en <categoría de varias palabras>» no encuentra la categoría (sí con el nombre solo); pendientes anteriores sin cambio.
+
 ## VIGENTE — tanda 101: direcciones con referencia («…, frente al parque») y número con espacios sueltos (22/10)
 
 Base 795efddf, staging. Chat real: tras «a una nueva», una dirección numerada escrita con letras separadas y seguida de «, frente al parque» respondía «No pude identificar con seguridad ese conjunto o lugar». Causa: la referencia y el número sin normalizar llegaban a Google, que devolvía partial_match, y el validador de vía numerada lo rechazaba. Sin el arreglo fallan 23/68 (baseline parcial).

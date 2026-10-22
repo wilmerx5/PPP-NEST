@@ -1,0 +1,82 @@
+{
+  "tanda": 102,
+  "topic": "shared-category-products",
+  "date": "2026-10-22",
+  "base": "e9140594",
+  "commit": "ffee0370",
+  "branch": "staging",
+  "trigger": "Chat real en staging: «… me das un ejecutivo» listaba las dos variantes dos veces (4 opciones) con «Pediste 1». Datos personales no copiados.",
+  "rootCause": [
+    "El catálogo real lista 4 productos en dos categorías; getMenuProducts los agregaba una vez por categoría, así que toda lista los duplicaba. El fixture no tenía categorías.",
+    "Con agente apagado, «un ejecutivo» agregaba la primera variante empatada: isStrongProductMatch solo exige score ≥ 80 y ambas tenían el mismo puntaje.",
+    "«ola buenas tardes me das …» no contaba como pedido explícito por el saludo con error de escritura.",
+    "«Pediste 1» se mostraba también con cantidad 1."
+  ],
+  "fix": [
+    "getMenuProducts deja un producto por id con categoryNames (todas sus categorías) y lo marca disponible si lo está en alguna",
+    "Navegación por categoría, agrupación, menú para IA y conceptos de menú usan todas las categorías",
+    "Empate en el primer puntaje: se listan los empatados en vez de agregar el primero",
+    "El pedido explícito ignora saludos al inicio (hola/ola/buenas/buenos/buen + tardes/noches/días)",
+    "«Pediste *N*» solo con N > 1"
+  ],
+  "spec": {
+    "file": "src/whatsapp/whatsapp-shared-category-products.spec.ts",
+    "tests": 48,
+    "baselineFailures": 29,
+    "menus": [
+      "lunch plates",
+      "burgers",
+      "wraps"
+    ]
+  },
+  "focused": {
+    "suites": 35,
+    "tests": 8816,
+    "failed": 0
+  },
+  "checks": {
+    "tsc": "ok",
+    "tscBuild": "ok",
+    "node": {
+      "pass": 92,
+      "fail": 0
+    },
+    "diffCheck": "ok"
+  },
+  "global": {
+    "hashes": 484,
+    "inventory": 186,
+    "union": 186,
+    "phase1": {
+      "pass": 80,
+      "fail": 0,
+      "seconds": 112
+    },
+    "phase2": {
+      "pass": 15522,
+      "fail": 0,
+      "seconds": 430
+    },
+    "totalPass": 15602,
+    "hashCheck": "ok",
+    "originAhead": 0
+  },
+  "deploy": {
+    "server": "staging",
+    "image": "c2724b10c54f8d8431b70e54639bb54161cac36de135d655159104043c0a21ac",
+    "health": "ok",
+    "checkedAt": "2026-10-22T16:28:42Z",
+    "restarts": 0,
+    "rollbackTag": "ppp-nest-staging:rollback-before-ffee0370",
+    "productionImage": "1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748",
+    "productionTouched": false
+  },
+  "externalCalls": {
+    "paidModel": false,
+    "whatsapp": false,
+    "externalOrders": false
+  },
+  "readOnlyChecks": [
+    "GET /api/products/categories en staging (catálogo público) para confirmar la causa"
+  ]
+}
