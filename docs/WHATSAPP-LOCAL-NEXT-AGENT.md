@@ -1,3 +1,9 @@
+## VIGENTE — promoción a Main y producción verificada (22/10, 15:06 Bogotá)
+
+Solicitud explícita del usuario: desplegar los cambios en Main. Main remoto y local actualizados por fast-forward a 368723a8; incluye tandas 95–109. Producción /var/www/ppp-nest reconstruida: imagen ef426c93…, running, 0 reinicios, health OK/DB connected/circuit CLOSED. Hash agregado de módulos WhatsApp compilados idéntico al staging validado (cca1ccfc…). Sin cambios de código durante la promoción; aplica validación de tanda 109, 15.947 tests/192 suites. Compose privado conservado por SHA; bases y volúmenes intactos. Rollback ppp-nest-api:rollback-before-368723a8.
+
+Staging se conserva en su checkout y rama, imagen 43efcaaf… intacta, para la siguiente tanda. Cambios generados previos del checkout local Main preservados. Registro: [promoción 22/10](whatsapp-main-promotion-2210.json). Las entradas anteriores que indican «solo en staging» describen el estado histórico; todas las tandas hasta 109 están ahora en producción. Siguen vigentes los límites y pendientes de la tanda 109; no se acredita precisión del modelo real ni piloto completo por esta promoción.
+
 ## VIGENTE — tanda 109: recorrido completo, cantidad con adicionales y pin con acceso (22/10)
 
 Base a69c14f7, staging. 42 recorridos nuevos en tres catálogos sintéticos (pollo, hamburguesa, pasta), agente simulado on/off. Pregunta de acompañamiento → adicional → corrección de cantidad → bebida → nombre → dirección no ubicada → pin → consulta de importe → pago → DTO o cancelación. Se restauró reply real, con transporte y servicios externos simulados. Contrastes: opciones distintas requieren aclarar; destino previamente cotizado, petición de nueva dirección, pin identificado y fuera de cobertura no heredan el apartamento anterior.

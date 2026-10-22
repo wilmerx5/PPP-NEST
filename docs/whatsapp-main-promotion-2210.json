@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-22",
+  "user_authorized_main_and_production": true,
+  "promoted_commit": "368723a826fd3e4ffe7527d8dddf7269b767f5de",
+  "integration": "fast-forward from origin/Main 8bfd833f; production previously 54c057b5; batches through 109",
+  "validation": "Same source as validated staging: 15947 tests, 192 suites; TypeScript general/build and 92 Node contracts passed. No code changed for promotion.",
+  "production": {
+    "checkout": "/var/www/ppp-nest",
+    "image": "sha256:ef426c93966a809c007cfb0eb9bf0b83a3e2ef4b137498b23a632e8f61b7d613",
+    "status": "running, 0 restarts",
+    "health": "ok / db connected / circuit CLOSED",
+    "verified_at": "2026-10-22T20:06:36.758Z",
+    "rollback_tag": "ppp-nest-api:rollback-before-368723a8",
+    "previous_image": "sha256:1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748",
+    "compose_preserved_sha256": "d973f08a9a1708b7309e801c07738350ce8e4f61b17af295bf52b6828bdf3b84"
+  },
+  "staging": {
+    "preserved": true,
+    "image": "sha256:43efcaafd1a3f2eaf57c42dac16c9c22d78998d7b3c447a50342f9c786ba1620"
+  },
+  "compiled_whatsapp_modules_aggregate_sha256_both": "cca1ccfc7230069e7ed1099966a8d7658eebb21181af99e63b1a6807080c2dc5",
+  "local_Main": "fast-forwarded, existing generated dist changes preserved",
+  "limits": [
+    "No paid inference, WhatsApp messages or external orders",
+    "Equal compiled code does not guarantee identical catalog data or model responses",
+    "Private compose/environment, databases and volumes preserved"
+  ]
+}
