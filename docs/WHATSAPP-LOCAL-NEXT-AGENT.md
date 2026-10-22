@@ -1,3 +1,11 @@
+## VIGENTE — tanda 106: auditoría de chats y categoría antepuesta (22/10)
+
+Base d1020db1, staging. Revisadas tandas 101–105 frente a chats recientes: dirección numerada con referencia, ejecutivos duplicados, opción compartida entre combos y consulta de sopa con carrito. Se añaden 16 comprobaciones: dos formas de pregunta en tres menús y ambos modos (12), dirección exacta del chat en routing/checkout (4). Baseline 253/255: «postre de que tienes hoy» falla en ambos modos. Corrección general en findAskedCategory: reconoce categoría real antes de «de qué tienes». Foco 255/255, TypeScript general/build OK, Node 92/92; global 80 + 15.697 = 15.777, 189 suites (inventario exacto), 487 hashes congelados, sin reintentos.
+
+Detalle y límites: [auditoría 22/10](whatsapp-chats-2210-audit.md). Sin inferencia, mapas reales, WhatsApp ni órdenes externas. Cambio local validado para publicar en staging; sin despliegue nuevo ni promoción a Main. Staging activo verificado al inicio: 32e7f2ac, tanda 105.
+
+Siguiente: reproducir sustitución costillas → medio pollo broaster conservando 7up y quitando el anterior; probar afirmación «dirección confirmada» después de fallo de geocodificación, contrastada con estado y DTO. No declararlos corregidos por el resultado final del chat. Mantener los pendientes de tanda 104 sobre selección numérica del combo.
+
 ## VIGENTE — tanda 105: «¿de qué sopa hay?» lista la categoría aunque haya un plato en el carrito (22/10)
 
 Base bf111ad1, staging. Chat real en staging: con 1 Pollo Broaster en el carrito, «de que sopa hay?» respondió la ficha del pollo («Ya lo tienes en el carrito»). Causa: con agente la pregunta llegaba al modelo antes del listado de Nest; además «quiero saber de que sopa hay…» se descartaba por empezar con «quiero» (sin agente salía «No tenemos productos de quiero una sopa») y las categorías fuera de la lista fija (p. ej. Postres) caían en «Eso no lo resuelvo por este chat». Sin el arreglo fallan 28/63.

@@ -35,6 +35,8 @@ describe.each(menus)('$id: a category question with a cart line lists the catego
 
     it.each([
       () => `de que ${m.word} hay?`,
+      () => `${m.word} de que tienes hoy`,
+      () => `bueno y de que ${m.word} tienes?`,
       () => `que ${m.plural} tienen`,
       () => `y de que ${m.plural} hay?`,
       () => `si pero quiero saber de que ${m.word} hay quiero una ${m.word}`,

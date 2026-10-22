@@ -70,6 +70,7 @@ describe('references are separated from the map destination', () => {
 
 type Case = { written: string; formatted: string; reference: RegExp };
 const CASES: Case[] = [
+  { written: 'carrera 81 h 51 a 39 sur, frente al parque', formatted: 'Cra. 81h #51a-39 Sur, Bogotá, Colombia', reference: /parque/i },
   { written: 'calle 38 sur 72 j 15, frente al parque', formatted: 'Cl. 38 Sur #72j-15, Bogotá, Colombia', reference: /parque/i },
   { written: 'carrera 64 c 39 b 20 sur al lado de la droguería', formatted: 'Cra. 64c #39b-20 Sur, Bogotá, Colombia', reference: /drogu/i },
   { written: 'transversal 78 c 6 d 48, porton negro, timbre 2', formatted: 'Tv. 78c #6d-48, Bogotá, Colombia', reference: /porton|timbre/i },

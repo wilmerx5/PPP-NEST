@@ -761,6 +761,7 @@ export class WhatsappCatalogService {
     if (this.extractCodeFromMessage(text) != null) return null;
     const verbs = '(?:hay|tienen|tiene|tienes|manejan|ofrecen|venden|sirven)';
     const word =
+      q.match(new RegExp(`\\b([a-z]{4,})\\s+de\\s+que\\s+${verbs}\\b`))?.[1] ??
       q.match(new RegExp(`\\bque\\s+(?:clase\\s+de\\s+|tipo\\s+de\\s+)?([a-z]{4,})\\s+(?:[a-z]+\\s+)?${verbs}\\b`))?.[1] ??
       q.match(new RegExp(`\\bque\\s+${verbs}\\s+(?:de|en)\\s+([a-z]{4,})\\b`))?.[1];
     if (!word) return null;
