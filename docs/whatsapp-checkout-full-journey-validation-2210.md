@@ -23,3 +23,7 @@ Logs locales: /tmp/ppp-109-final-baseline.log, /tmp/ppp-109-targets.log, /tmp/pp
 ## Pendientes y límites
 
 No inferir precisión del modelo, audio o mapas reales de estos mocks. Los tres menús comparten estructura de plato/adicional/bebida. No se cubrió la reproducción literal completa con respuestas reales del agente, vínculos Maps, fotos de dirección, compra y consulta combinadas iniciales ni elección numérica del combo de los chats originales. Sigue pendiente resolver referencias relativas con aclaración antes de cotizar. Main no se modificó.
+
+## Publicación y despliegue
+
+Publicado y desplegado en staging: 603d7daa, imagen 43efcaaf…, verificado el 22/10 a las 15:03 Bogotá, running/healthy, 0 reinicios, health OK/DB connected/circuit CLOSED. Rollback rollback-before-603d7daa conserva imagen 5045bad1…. Producción conserva 1d512d0c… y Main intacto. No se tocaron bases, volúmenes ni bin/ privado. El aviso de mariadb_local huérfano se dejó intacto.
