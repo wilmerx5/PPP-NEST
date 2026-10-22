@@ -2396,6 +2396,7 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, 'Listo, no quito nada ✅ El pedido sigue igual.\n\n¿*Algo más*?');
       return;
     }
+    if (await this.tryHandleCartOptionPossibility(conv, msg.waId, session, originalText)) return;
     if (session.pendingMatch?.replacement) {
       const swap = await this.tryAnswerComboSwapOffer(conv, msg.waId, session, originalText, cfg);
       if (swap === true) return;
@@ -12680,6 +12681,44 @@ export class WhatsappOrchestratorService {
     await this.conversationService.saveSession(conv, added.session);
     await this.reply(conv, waId, this.buildCartAddReply(added.session, this.deliveryFeeFor(added.session, cfg), `${product.name}${quantity > 1 ? ` ×${quantity}` : ''}`) +
       (/^awaiting_/.test(conv.state) ? `\n\n${this.formatInterruptedStepReminder(conv, added.session)}` : ''));
+    return true;
+  }
+
+  /** «¿Las arepas se pueden fritas?» about an option of exactly one cart line changes that option. */
+  private async tryHandleCartOptionPossibility(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+  ): Promise<boolean> {
+    if (!session.cart.length || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+      CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || text.length > 120) return false;
+    const q = ` ${this.normalizeForMatch(text).replace(/[^a-z0-9ñ]+/g, ' ').replace(/\s+/g, ' ').trim()} `;
+    if (!/ (?:se pueden?|pueden? ser|pueden? venir|podrian?|me (?:las|los|la|lo) (?:puedes?|pueden|podrias?|podrian)|(?:las|los|la|lo) (?:puedes?|pueden|podrias?|podrian) (?:hacer|poner|mandar|enviar|dejar)) /.test(q) ||
+      / (?:quiero|dame|agrega\w*|anade\w*|otr[oa]s?|porcion(?:es)?|adicional(?:es)?|aparte|extra|\d+) /.test(q)) return false;
+    const has = (value: string) => {
+      const words = this.normalizeForMatch(value).replace(/[^a-z0-9ñ]+/g, ' ').trim();
+      if (!words) return false;
+      const stem = words.replace(/(?:es|s)$/, '');
+      return [words, stem, `${stem}s`, `${stem}es`].some(form => q.includes(` ${form} `));
+    };
+    const products = await this.catalogService.getMenuProducts();
+    const hits = session.cart.flatMap((line, index) => {
+      const product = products.find(item => item.id === line.productId);
+      return (product?.attributes || []).filter(attr => has(attr.attributeName)).flatMap(attr =>
+        attr.options.filter(option => has(option)).map(option => ({ index, line, attr, option })));
+    });
+    if (hits.length !== 1) return false;
+    const { index, line, attr, option } = hits[0];
+    const current = line.attributes?.find(selected => selected.attributeName === attr.attributeName)?.attributeValue;
+    const reminder = this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session);
+    if (current && this.normalizeForMatch(current) === this.normalizeForMatch(option)) {
+      await this.reply(conv, waId, `Sí ✅ *${line.name}* ya está con *${attr.attributeName}: ${option}*. El pedido sigue igual.\n\n${reminder}`);
+      return true;
+    }
+    const attributes = current
+      ? (line.attributes || []).map(selected => selected.attributeName === attr.attributeName ? { ...selected, attributeValue: option } : selected)
+      : [...(line.attributes || []), { attributeName: attr.attributeName, attributeValue: option }];
+    session = { ...session, cart: session.cart.map((item, i) => i === index ? { ...item, attributes } : item) };
+    await this.conversationService.saveSession(conv, session);
+    await this.reply(conv, waId, `Sí ✅ *${line.name}* queda con *${attr.attributeName}: ${option}*.\n\n${reminder}`);
     return true;
   }
 
