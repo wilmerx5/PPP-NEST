@@ -1,4 +1,5 @@
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
+import { productCategoryNames } from './whatsapp-product-categories';
 import { isNamedMenuDishOrderPhrase } from './whatsapp-named-menu-dish';
 
 export type MenuConceptGroup = {
@@ -402,7 +403,7 @@ function categoryMatchesConcept(
 
 function productMatchesConcept(p: WhatsappProductCandidate, concept: MenuConceptGroup): boolean {
   // 1) Categoría del menú (punta de anca / solomillo en "Carnes" sin listar cortes)
-  if (categoryMatchesConcept(p.categoryName, concept)) return true;
+  if (productCategoryNames(p).some(category => categoryMatchesConcept(category, concept))) return true;
 
   // 2) Keywords solo en nombre/descripcion (respaldo si el plato está mal categorizado)
   const hay = normalizeText(`${p.name} ${p.description || ''}`);
@@ -451,7 +452,7 @@ export function findByMenuConcept(
     // Prefer products belonging to the requested family over meals that only
     // mention it as an included side in their description. Descriptions remain
     // a fallback when the catalog has no category/name evidence.
-    const direct = matched.filter(product => categoryMatchesConcept(product.categoryName, concept) ||
+    const direct = matched.filter(product => productCategoryNames(product).some(category => categoryMatchesConcept(category, concept)) ||
       concept.productKeywords.some(keyword => keyword.length >= 3 &&
         hasWholeWordOrStem(normalizeText(product.name), normalizeText(keyword))));
     if (direct.length) matched = direct;
@@ -613,7 +614,7 @@ export function resolveConceptBrowseForAgent(
   if (!concept) return null;
 
   const available = products.filter((p) => p.availableNow !== false);
-  const fromSpecificCategory = available.filter((p) => categoryMatchesConcept(p.categoryName, concept));
+  const fromSpecificCategory = available.filter((p) => productCategoryNames(p).some(category => categoryMatchesConcept(category, concept)));
   const fromKeywords = available.filter((p) => keywordMatchesProduct(p, concept));
   const fromGenericCategories = available.filter(
     (p) =>

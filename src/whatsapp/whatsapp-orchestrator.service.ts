@@ -6716,9 +6716,12 @@ export class WhatsappOrchestratorService {
     // (Categoría ya se maneja arriba con tryHandleCategoryBrowse)
 
     // Si hay un ganador claro por título (ej. "arroz con pollo"), no listar ambigüedades débiles
+    const tiedTop = this.catalogService.dedupeProductsById(
+      nameScored.filter((x) => x.score === nameScored[0]?.score).map((x) => x.p),
+    );
     let resolvedMatches =
       strongProduct && nameScored.length >= 1 && nameScored[0].score >= 80
-        ? [nameScored[0].p]
+        ? tiedTop.length > 1 ? tiedTop : [nameScored[0].p]
         : uniqueNameMatches;
 
     // "5 pollos" / "cinco gaseosas": aunque el score sea flojo, tratar como pedido con cantidad
@@ -8101,7 +8104,8 @@ export class WhatsappOrchestratorService {
       looksLikeExplicitCartItemNote(text) || this.looksLikeStandaloneOrderNote(text)) return false;
     const quantity = this.catalogService.extractQuantityFromMessage(text, products);
     const explicitOrder = this.catalogService.looksLikeExplicitAddProductRequest(text) ||
-      /^(?:quiero|quieor|qiero|kiero|dame|ponme|me das|me regalas|regalame|pido)\b/.test(this.normalizeForMatch(text));
+      /^(?:quiero|quieor|qiero|kiero|dame|ponme|me das|me regalas|regalame|pido)\b/.test(this.normalizeForMatch(text)
+        .replace(/^(?:(?:h?ola|buenas|buenos|buen)(?:\s+(?:tardes|noches|dias|dia))?[\s,!.]*)+/, ''));
     if (quantity < 2 && !explicitOrder) return false;
     const query = this.catalogService.stripQuantityFromSearchQuery(
       this.catalogService.extractProductSearchQuery(text),
@@ -8126,7 +8130,7 @@ export class WhatsappOrchestratorService {
     };
     await this.conversationService.saveSession(conv, session, 'building_cart');
     await this.reply(conv, waId,
-      `Pediste *${quantity}*. ¿Cuál prefieres?\n\n` +
+      `${quantity > 1 ? `Pediste *${quantity}*. ` : ''}¿Cuál prefieres?\n\n` +
       available.map((p, i) => `${i + 1}. ${p.name} · ${this.catalogService.formatMoney(p.price)}`).join('\n'));
     return true;
   }

@@ -20,6 +20,8 @@ export type WhatsappProductCandidate = {
   price: number;
   description?: string | null;
   categoryName?: string;
+  /** Every menu category listing this product; categoryName is the first one. */
+  categoryNames?: string[];
   hasAttributes?: boolean;
   attributes?: WhatsappProductAttribute[];
   availableNow?: boolean;

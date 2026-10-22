@@ -6,6 +6,7 @@ import { Injectable } from '@nestjs/common';
 import { condimentIntensityNote, interpretProductNote, joinKitchenNotes, stripNonDishKitchenWords } from './whatsapp-product-intent';
 import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
+import { productCategoryNames, productInCategory } from './whatsapp-product-categories';
 import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 import { editDistance } from './whatsapp-message-classify';
@@ -482,6 +483,7 @@ export class WhatsappCatalogService {
 
     const grouped = await this.productsService.findProductsGroupedByCategory(forceRefresh);
     const products: WhatsappCatalogProduct[] = [];
+    const byId = new Map<number, WhatsappCatalogProduct>();
     const categories: string[] = [];
 
     for (const cat of grouped || []) {
@@ -494,17 +496,26 @@ export class WhatsappCatalogService {
             options: Array.isArray(a.options) ? a.options.map(String) : [],
           }),
         );
-        products.push({
+        const listed = byId.get(p.id);
+        if (listed) {
+          if (catName && !listed.categoryNames!.includes(catName)) listed.categoryNames!.push(catName);
+          if (p.availableNow !== false) listed.availableNow = true;
+          continue;
+        }
+        const product: WhatsappCatalogProduct = {
           id: p.id,
           name: p.name,
           code: Number(p.code) || 0,
           price: Number(p.price) || 0,
           description: p.description ? String(p.description).trim() : null,
           categoryName: catName || undefined,
+          categoryNames: catName ? [catName] : [],
           hasAttributes: !!p.hasAttributes && attrs.length > 0,
           attributes: attrs,
           availableNow: p.availableNow !== false,
-        });
+        };
+        byId.set(p.id, product);
+        products.push(product);
       }
     }
 
@@ -513,9 +524,10 @@ export class WhatsappCatalogService {
     // Menú para IA: agrupado por categoría + descripción + atributos
     const byCat = new Map<string, WhatsappCatalogProduct[]>();
     for (const p of available) {
-      const key = p.categoryName || 'Otros';
-      if (!byCat.has(key)) byCat.set(key, []);
-      byCat.get(key)!.push(p);
+      for (const key of productCategoryNames(p).length ? productCategoryNames(p) : ['Otros']) {
+        if (!byCat.has(key)) byCat.set(key, []);
+        byCat.get(key)!.push(p);
+      }
     }
     const detailedParts: string[] = [];
     for (const [cat, list] of byCat) {
@@ -553,9 +565,10 @@ export class WhatsappCatalogService {
     const available = products.filter((p) => p.availableNow !== false);
     const byCat = new Map<string, WhatsappCatalogProduct[]>();
     for (const p of available) {
-      const key = p.categoryName || 'Otros';
-      if (!byCat.has(key)) byCat.set(key, []);
-      byCat.get(key)!.push(p);
+      for (const key of productCategoryNames(p).length ? productCategoryNames(p) : ['Otros']) {
+        if (!byCat.has(key)) byCat.set(key, []);
+        byCat.get(key)!.push(p);
+      }
     }
     return byCat;
   }
@@ -6047,7 +6060,7 @@ export class WhatsappCatalogService {
 
     const available = products.filter((p) => p.availableNow !== false);
     const categoryNames = [
-      ...new Set(available.map((p) => p.categoryName).filter(Boolean) as string[]),
+      ...new Set(available.flatMap((p) => productCategoryNames(p))),
     ];
 
     const significantTokens = q.split(' ').filter((t) => t.length >= 3);
@@ -6072,7 +6085,7 @@ export class WhatsappCatalogService {
 
     if (!best) return null;
 
-    const list = available.filter((p) => p.categoryName === best!.categoryName);
+    const list = available.filter((p) => productInCategory(p, best!.categoryName));
     if (!list.length) return null;
     const refined = this.refineCategoryListByQuery(q, best.categoryName, list);
     if (!refined.products.length) return null;
