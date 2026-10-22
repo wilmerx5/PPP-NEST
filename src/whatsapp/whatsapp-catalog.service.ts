@@ -752,12 +752,35 @@ export class WhatsappCatalogService {
    * Pregunta de browse por categoría/concepto: "qué ofreces de carne", "qué sopas tienen".
    * No es un pedido de un plato concreto.
    */
+  /** "¿de qué postre hay?" / "qué tienen de postres": the asked word must be one of the menu's own category names. */
+  findAskedCategory(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): { categoryName: string; products: WhatsappCatalogProduct[] } | null {
+    const q = normalizeText(text);
+    if (this.extractCodeFromMessage(text) != null) return null;
+    const verbs = '(?:hay|tienen|tiene|tienes|manejan|ofrecen|venden|sirven)';
+    const word =
+      q.match(new RegExp(`\\bque\\s+(?:clase\\s+de\\s+|tipo\\s+de\\s+)?([a-z]{4,})\\s+(?:[a-z]+\\s+)?${verbs}\\b`))?.[1] ??
+      q.match(new RegExp(`\\bque\\s+${verbs}\\s+(?:de|en)\\s+([a-z]{4,})\\b`))?.[1];
+    if (!word) return null;
+    const same = (a: string, b: string) => a === b || `${a}s` === b || `${b}s` === a || `${a}es` === b || `${b}es` === a;
+    const available = products.filter((p) => p.availableNow !== false);
+    for (const p of available) {
+      const categoryName = productCategoryNames(p).find((c) => normalizeText(c).split(/\s+/).some((w) => w.length >= 4 && same(w, word)));
+      if (categoryName) {
+        return { categoryName, products: this.dedupeProductsById(available.filter((x) => productInCategory(x, categoryName))).slice(0, 16) };
+      }
+    }
+    return null;
+  }
+
   isCategoryBrowseQuestion(text: string): boolean {
     const q = normalizeText(text);
     if (!q || q.length < 5) return false;
     if (this.isRestaurantLocationInquiry(text)) return false;
     if (this.extractCodeFromMessage(text) != null) return false;
-    if (/^(quiero|dame|ponme|agrega)\b/.test(q)) return false;
+    if (/^(quiero|dame|ponme|agrega)\b/.test(q) && !/^(?:quiero|quisiera)\s+saber\b/.test(q)) return false;
     const catWord =
       '(?:bebidas?|sopas?|pollos?|arroces?|bandejas?|porciones?|gaseosas?|carnes?|hamburguesas?|combos?|platos?|categorias?|jugos?|limonadas?|aguas?)';
     return (
@@ -6301,7 +6324,7 @@ export class WhatsappCatalogService {
     const q = normalizeText(fixCommonOrderTypos((text || '').trim()));
     if (!q || q.length < 5) return null;
     if (this.isPriceInquiryIntent(text)) return null;
-    if (/^(quiero|dame|ponme|agrega|me\s+regalas|cambia|cambie|cambialo)\b/.test(q)) return null;
+    if (/^(quiero|dame|ponme|agrega|me\s+regalas|cambia|cambie|cambialo)\b/.test(q) && !/^(?:quiero|quisiera)\s+saber\b/.test(q)) return null;
     if (/\b(cambia|cambiar|cambie|en\s+vez|en\s+lugar)\b/.test(q)) return null;
     if (!/\b(que|tienes|tienen|tiene|hay|manejan|venden|ofreces|ofrecen)\b/.test(q)) return null;
 

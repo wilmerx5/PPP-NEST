@@ -5341,6 +5341,31 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // "¿de qué sopa hay?" names a menu category: list it instead of describing a cart line or reading "quiero una sopa" as a dish.
+    if (
+      conv.state === 'building_cart' && !session.pendingAttribute && !session.pendingMultiOrder &&
+      this.catalogService.isCategoryBrowseQuestion(originalText || text) &&
+      (this.catalogService.resolveCatalogQuestion(originalText || text, products)?.products.length ||
+        this.catalogService.findByCategory(originalText || text, products)?.products.length) &&
+      (await this.tryHandleDeterministicMenuBrowse(conv, msg.waId, session, originalText || text, products, cfg))
+    ) {
+      return;
+    }
+    const askedCategory =
+      conv.state === 'building_cart' && !session.pendingAttribute && !session.pendingMultiOrder
+        ? this.catalogService.findAskedCategory(originalText || text, products)
+        : null;
+    if (askedCategory?.products.length) {
+      session = {
+        ...session,
+        pendingCategoryBrowse: undefined,
+        pendingMatch: { query: askedCategory.categoryName, candidates: askedCategory.products },
+      };
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(conv, msg.waId, this.catalogService.formatCategoryList(askedCategory.categoryName, askedCategory.products));
+      return;
+    }
+
     if (!cfg.agentV1Enabled && (await answerMenuWithNest())) {
       return;
     }
@@ -14142,6 +14167,7 @@ export class WhatsappOrchestratorService {
     if (this.catalogService.isPriceInquiryIntent(text)) return null;
     if (this.catalogService.findProductEmbeddedInMessage(text, products)) return null;
     if (this.catalogService.productFullyNamedIn(text, products)) return null;
+    if (this.catalogService.findAskedCategory(text, products)) return null;
     if (this.catalogService.candidateNamedByDistinctToken(text, products.filter((p) => p.availableNow !== false))) return null;
     const rules: Array<[RegExp, string]> = [
       [/\b(?:venden|comercializan)\s+([a-z0-9 ]{3,40})$/, ''],
