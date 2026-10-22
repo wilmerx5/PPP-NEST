@@ -1,0 +1,80 @@
+{
+  "batch": 99,
+  "date": "2026-10-21",
+  "base": "3ad5f4ec",
+  "commit": "9e9697b49b5293d05b2bbef65d779d7569d0224a",
+  "scope": "Real chat: after adding a plain dish, «¿Ese viene con gaseosa?» answered drink ingredients instead of offering the dish's combo; the next message switched to the combo only by accident",
+  "audit": "Real router probe with the real beta menu fixture and three synthetic menus: the question with «ese/eso/esto» or no subject, then «sí», «1», «dale», «no gracias», a combo drink option, a sized standalone drink with and without brand, «mejor el combo»",
+  "baselineFindings": [
+    "tryHandleIncludedItemQuestion stripped «ese» only when followed by a space, so a bare «ese» stayed as subject, matched no product and the generic composition handler listed the sodas' (missing) ingredients and left them as a pending choice",
+    "«y eso trae bebida?» was taken by the short «eso trae …» composition shortcut (product card) before the inclusion handler",
+    "Once the combo offer was shown: «sí» re-asked the single option, «dale» went to checkout without swapping, «no gracias» swapped to the combo with the agent on, a combo drink name («sprite») did nothing, «una gaseosa 1.5 litros» swapped to the combo with the first drink",
+    "Variant families mixing proteins offered the other dish's combo too; with two candidates the answer «… coca cola» defaulted the combo drink to the first option",
+    "The glossary rewrote «gaseosa 1.5 litros» to «gaseosa 1.5 litros litros (litros)», so the standalone «Gaseosa 1.5L» was not found"
+  ],
+  "fix": "Bare demonstratives («ese/eso/esto…», «el plato/combo») are no subject, so the question falls back to the last confirmed product; the short composition shortcut skips drink objects. The combo offer keeps only combos whose name contains the full dish name when any does, lists the drink options («Incluye bebida a elegir: …») and fixes gender. tryAnswerComboSwapOffer (pre-agent, both modes) resolves a one-combo replacement offer: decline keeps the line; a combo drink option replaces the line with that drink; yes/«mejor el combo» asks the drink keeping the replacement; a sized drink matching the combo's own drink size goes into the combo; another sized menu drink without options is added apart with the brand as note and the dish stays. The glossary adds «litros» only when no unit follows. drinkInclusion is unchanged (brand options still do not prove soda); sodaBrandIn is new.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-cart-line-drink-combo.spec.ts",
+    "count": 77,
+    "menus": [
+      "fried rice + rice combo (Bebida)",
+      "burger + burger combo (Gaseosa attribute)",
+      "grill + grill combo (Bebida with juices)"
+    ],
+    "agent": [
+      "off",
+      "on (simulated generic reply)"
+    ],
+    "contrasts": [
+      "a combo already in the cart is not offered again",
+      "without a combo on the menu no swap offer and no drink ingredients",
+      "«no gracias» then «1» does not swap",
+      "a family with another dish's combo offers only the same-dish combo",
+      "drink options prove a drink, not soda; «Sin bebida» is not inclusion",
+      "glossary keeps an explicit unit"
+    ],
+    "baselineWithoutFix": "64 failed / 77 (orchestrator and glossary stashed; the spec imports the new drink helper)"
+  },
+  "existingSpecKept": "whatsapp-generic-included-drink.spec.ts: a first attempt counting soda brands as soda evidence renumbered a browse list; reverted, the assertion stays intact",
+  "validation": {
+    "focused": "2087 passed (34 suites: drinks, combos, glossary, inclusion, composition, variants, sides, replacements, user chats, recent batches)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": {
+        "passed": 80,
+        "total": 80,
+        "suites": 1,
+        "seconds": 62
+      },
+      "rest": {
+        "passed": 15358,
+        "total": 15358,
+        "suites": 182,
+        "seconds": 433
+      },
+      "inventory": 183,
+      "unionEqualsInventory": true,
+      "hashes": 480,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 15438,
+      "wallSeconds": 497
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "9e9697b49b5293d05b2bbef65d779d7569d0224a",
+    "image": "sha256:9a5088b5c57766c2c63323224d9a25afd6f5361a2f62a985cad72897703a0d90",
+    "health": "ok / db connected / circuit CLOSED 2026-10-22T01:05:04Z, healthy, 0 restarts (started 01:04:27Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-9e9697b4 (image 459d2b7a…)",
+    "production": "sha256:1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748 before and after"
+  },
+  "remainingGaps": [
+    "Choosing the combo by number still fills the first drink by default (by design); «sí» asks it",
+    "With several combo candidates a drink named in the answer is not applied",
+    "«déjame 2 combos» ambiguity; «mejor dos combos y una limonada»; claims vs applied actions; harness customerLocationLabel; real model evaluation with budget"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
