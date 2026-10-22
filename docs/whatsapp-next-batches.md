@@ -1,3 +1,13 @@
+## VIGENTE — tanda 111: compra inicial con pregunta de acompañamiento (22/10)
+
+Base cf510ed2, rama staging. 22 regresiones nuevas: compra de una/dos unidades más pregunta de contenido, respuesta afirmativa/negativa, aceptar/rechazar, 12 recorridos hasta DTO simulado y cuatro reproducciones del pollo frito/papa francesa. Tres menús sintéticos y fixture PPP, agente simulado on/off. Las doce compras hasta DTO y los cuatro casos literales restauran reply real; transporte/modelos/persistencia externos simulados.
+
+Se responde primero sobre el contenido y se conserva una oferta con cantidad, sin añadir el acompañamiento consultado. Solo se resuelve un nombre de catálogo inequívoco con carrito vacío; nombres con prefijo «1» pueden coincidir con la compra de «un…». La aceptación de una oferta limpia su estado antes del flujo de atributos, evitando conservar una oferta ya aceptada. Baseline: 18 fallidos/84 aprobados; tras corregir y ampliar: 106/106 en la suite. Foco 214/214, TypeScript general/build OK, Node 92/92. Global 15.999/15.999, 192 suites, inventario exacto, 490 hashes intactos, 997,5 s, sin reintentos. No inferir mejora del rendimiento: esta global tardó más que la anterior.
+
+Límites: pregunta con signos, hasta 120 caracteres y acompañamiento corto; nombre explícito único, no alias ambiguos. No incluye búsqueda automática de combo alternativo para esa pregunta inicial ni preguntas de bebida, que conservan su ruta. No acredita precisión de modelos/Maps reales. Evidencia: [tanda 111](whatsapp-initial-side-question-validation-2210.md). Cero llamadas pagadas, WhatsApp u órdenes externas. Main y su despliegue se preservan (hasta tanda 109). Esta tanda queda publicada en la rama staging, sin reconstruir el servidor; el despliegue de staging sigue en tanda 110 (4b2e84d5). Agrupar el siguiente despliegue validado.
+
+Siguiente: selección con texto («el combo 2 porfa»), contraste número de opción/cantidad, respuestas mientras elige bebida y conservación del DTO. Después ampliar nombres/acompañamientos y oferta de variantes sin asumir compra de adicionales.
+
 ## VIGENTE — tanda 110: elegir combo por número conserva opciones y pregunta bebida (22/10)
 
 Base c06fec97, staging. Se cierra el pendiente de la tanda 104 para números simples en una oferta de reemplazo con combo preferido. Antes «1»/«2» entraban por selección genérica y asignaban primera bebida; ahora usan la misma elección de opciones que «sí», conservan atributos compatibles/cantidad/nota y mantienen el plato original hasta completar las opciones. Si el precio cambió, se delega primero a la ruta existente de aceptación de precio.

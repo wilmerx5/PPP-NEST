@@ -1,3 +1,4 @@
+import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { harness } from './whatsapp-accuracy.test-support';
 
 type Menu = {
@@ -141,11 +142,72 @@ describe.each(menus)('$id: side questions and sides attached to a cart dish', m 
       expect(rows(h).slice(0, 1)).toEqual([[m.main, 1]]);
     });
 
+    it.each([1, 2])('initial purchase plus contents question keeps %i units pending, then confirms only the dish', async quantity => {
+      const h = harness(menuOf(m) as never, agent);
+      h.service.aiService.classifyMessage = jest.fn().mockResolvedValue(null);
+      h.service.reply = (WhatsappOrchestratorService.prototype as any).reply.bind(h.service);
+      h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 111, dailyOrderNumber: 111 });
+      const reply = String(await h.sendQueued(`quiero ${quantity} ${m.main}, ese viene con ${m.included[0]}?`));
+      expect(reply).toMatch(/^Sí ✅/);
+      expect(reply).toContain(m.main);
+      expect(rows(h)).toEqual([]);
+      expect(h.conv.sessionData.pendingAddOffer?.productId).toBe(800);
+      expect(h.conv.sessionData.pendingAddOffer?.quantity).toBe(quantity);
+      await h.sendQueued('sí');
+      if (h.conv.sessionData.pendingAttribute) await h.sendQueued('1');
+      expect(rows(h)).toEqual([[m.main, quantity]]);
+      expect(h.conv.sessionData.pendingAddOffer).toBeFalsy();
+      await h.sendQueued('nada mas');
+      await h.sendQueued('contraentrega');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.sendQueued('confirmar');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      expect(h.service.ordersService.create.mock.calls[0][0].items.map((i: any) => i.productId)).toEqual(Array(quantity).fill(800));
+    });
+
+    it('initial purchase with an absent accompaniment answers before adding and allows declining', async () => {
+      const h = harness(menuOf(m) as never, agent);
+      h.service.aiService.classifyMessage = jest.fn().mockResolvedValue(null);
+      const reply = String(await h.sendQueued(`un ${m.main} porfavor ese viene con ${m.extraAsk}?`));
+      expect(reply).toMatch(/^No, /);
+      expect(reply).toContain(m.main);
+      expect(rows(h)).toEqual([]);
+      expect(h.conv.sessionData.pendingAddOffer?.productId).toBe(800);
+      await h.sendQueued('no gracias');
+      expect(rows(h)).toEqual([]);
+      expect(h.conv.sessionData.pendingAddOffer).toBeFalsy();
+    });
+
     it('contrast: a drink question stays with the drink answer', async () => {
       const h = await rig();
       const reply = String(await h.sendQueued('trae gaseosa?'));
       expect(reply).not.toMatch(/^(?:Sí ✅|No, )\*.*Viene con/);
       expect(rows(h)).toEqual([[m.main, 1]]);
     });
+  });
+});
+
+
+describe.each([false, true])('literal initial purchase with question, agent %s', agent => {
+  it.each([
+    'Un pollo frito porfavor ese viene con papa francesa ?',
+    'quiero un pollo frito, viene con papa francesa?',
+  ])('%s answers about the whole chicken without adding the side', async text => {
+    const products = [
+      { id: 901, code: 1, name: '1 Pollo Frito', price: 41000, availableNow: true, categoryName: 'Pollo', hasAttributes: false,
+        attributes: [], description: 'Acompañado con papa salada y arepa' },
+      { id: 902, code: 9, name: 'Porcion De Papa Francesa', price: 7500, availableNow: true, categoryName: 'Porciones', hasAttributes: false, attributes: [] },
+    ];
+    const h = harness(products as never, agent);
+    h.service.aiService.classifyMessage = jest.fn().mockResolvedValue(null);
+    h.service.reply = (WhatsappOrchestratorService.prototype as any).reply.bind(h.service);
+    const reply = String(await h.sendQueued(text));
+    expect(reply).toContain('no trae papa francesa');
+    expect(reply).toContain('papa salada y arepa');
+    expect(h.conv.sessionData.cart).toEqual([]);
+    expect(h.conv.sessionData.pendingAddOffer?.productId).toBe(901);
+    await h.sendQueued('sí');
+    expect(h.cartRows().map(r => [r.id, r.qty])).toEqual([[901, 1]]);
+    expect(h.conv.sessionData.pendingAddOffer).toBeFalsy();
   });
 });

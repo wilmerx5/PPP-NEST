@@ -2576,6 +2576,9 @@ export class WhatsappOrchestratorService {
       session = {...session,pendingCompositionAsk:undefined};
       await this.conversationService.saveSession(conv,session);
     }
+    // Initial combined purchase/questions precede combo selection, which otherwise consumes the question.
+    if (conv.state === 'building_cart' && !session.cart.length && /[¿?]/.test(originalText) &&
+        await this.tryHandleCartSideInclusionQuestion(conv, msg.waId, session, originalText, await this.catalogService.getMenuProducts())) return;
     // Answer inclusion before checkout fields; only an explicit conditional authorizes a purchase.
     if (/^awaiting_(?:name|phone|address|payment|final_confirm)$/.test(conv.state) &&
       /(?:trae|viene|incluye|lleva)/i.test(originalText) &&
@@ -12664,6 +12667,23 @@ export class WhatsappOrchestratorService {
         .filter(product => correctionMatchesLine({ productId: product.id, name: product.name, code: product.code, unitPrice: product.price, quantity: 1 }, reference));
       target = matches.length === 1 ? matches[0] : undefined;
     }
+    // A purchase followed by a contents question has no cart reference yet.
+    // Resolve only one explicit catalog name; the questioned side is never a purchase.
+    let initialQuantity: number | undefined;
+    if (!target && !session.cart.length && conv.state === 'building_cart' &&
+        !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
+      const purchase = subject.replace(/\s+(?:ese|esa|este|esta)$/, '')
+        .replace(/\s+(?:por favor|porfavor|porfa)$/, '')
+        .match(/^(?:(?:quiero|dame|me das|me regalas)\s+)?(\d{1,2}|un[oa]?|dos|tres|cuatro|cinco)\s+(.+)$/);
+      if (purchase) {
+        const matches = products.filter(product => live(product) &&
+          this.normalizeForMatch(product.name).replace(/^1\s+/, '') === purchase[2].replace(/^1\s+/, ''));
+        if (matches.length === 1) {
+          target = matches[0];
+          initialQuantity = this.catalogService.extractQuantityFromMessage(`${purchase[1]} ${target.name}`);
+        }
+      }
+    }
     const description = (target?.description || '').trim().replace(/[.]+$/, '');
     if (!target || !description) return false;
     const listPrefix = /^(?:acompa[nñ]ad[oa]s?\s+(?:con|de)|incluye|trae|viene\s+con)\s+/i;
@@ -12676,7 +12696,12 @@ export class WhatsappOrchestratorService {
       this.sideTokensCovered(itemWords, this.sideTokens(product.name)));
     // Without a related component or a menu side, the listed contents cannot settle the question.
     if (!hit && !sides.length && !components.some(part => this.sideTokens(part).some(token => itemWords.some(word => token === word || this.catalogService.nearToken(word, token))))) return false;
-    const reminder = this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session);
+    if (initialQuantity != null) {
+      await this.savePendingAddOffer(conv, target, initialQuantity, { sourceText: `${initialQuantity} ${target.name}` });
+    }
+    const reminder = initialQuantity != null
+      ? `¿Te agrego ${initialQuantity === 1 ? 'una unidad' : `${initialQuantity} unidades`} de *${target.name}*?`
+      : this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session);
     const answer = hit
       ? `Sí ✅ *${target.name}* trae ${hit}. Viene con ${contents}.`
       : `No, *${target.name}* no trae ${item}. Viene con ${contents}.` +
@@ -24630,6 +24655,7 @@ export class WhatsappOrchestratorService {
 
     if (product.hasAttributes && product.attributes?.length) {
       session = { ...session, pendingAddOffer: undefined };
+      await this.conversationService.saveSession(conv, session);
       // Usar el texto de la cotización (menudencias / en salsa), no el "sí"
       const variantSource = (offer.quantity || 1) >= 2 && this.catalogService.extractQuantityFromMessage(sizeSource) < 2
         ? `${offer.quantity} ${product.name}. ${sizeSource}`
