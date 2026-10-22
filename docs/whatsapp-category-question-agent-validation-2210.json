@@ -1,0 +1,83 @@
+{
+  "tanda": 105,
+  "topic": "category-question-agent",
+  "date": "2026-10-22",
+  "base": "bf111ad1",
+  "commit": "32e7f2ac",
+  "branch": "staging",
+  "trigger": "Chat real en staging: con 1 Pollo Broaster en el carrito, «de que sopa hay?» respondió la ficha del pollo («Ya lo tienes en el carrito»); solo al repetir la pregunta el agente listó las sopas. Datos personales no copiados.",
+  "rootCause": [
+    "Con agente activo la pregunta de categoría llegaba al modelo antes del listado determinista de Nest, y el modelo describió la línea del carrito",
+    "isCategoryBrowseQuestion y resolveCatalogQuestion descartaban todo lo que empieza por «quiero», incluido «quiero saber de que sopa hay» (sin agente salía «No tenemos productos de quiero una sopa»)",
+    "La lista fija de palabras de categoría no conocía categorías propias del menú (p. ej. Postres) y sin agente esas preguntas caían en «Eso no lo resuelvo por este chat»"
+  ],
+  "fix": [
+    "Gancho previo al agente y a answerMenuWithNest (ambos modos): pregunta de categoría con resolveCatalogQuestion o findByCategory → listado determinista",
+    "«quiero/quisiera saber …» ya no se trata como pedido en isCategoryBrowseQuestion ni en resolveCatalogQuestion",
+    "findAskedCategory: «de qué X hay / qué X tienen / qué tienen de X» con X igual (singular o plural) a una palabra de un nombre de categoría real del menú → lista esa categoría; randomAsideLabel ya no la toma como consulta ajena"
+  ],
+  "spec": {
+    "file": "src/whatsapp/whatsapp-category-question-cart.spec.ts",
+    "tests": 63,
+    "baselineFailures": 28,
+    "menus": [
+      "home cooking (Sopas)",
+      "burger joint (Jugos)",
+      "pizzeria (Postres)"
+    ]
+  },
+  "realCatalogProbe": "Con el catálogo real de staging y 1 Pollo Broaster: «de que sopa hay?» y «si pero quiero saber de que sopa hay quiero una sopa» listan Sopas, «que bebidas tienen» lista Bebidas y «me das un ajiaco y un mondongo pequeño» agrega ambas sopas, con agente on y off",
+  "focused": {
+    "suites": 13,
+    "tests": 732,
+    "failed": 0
+  },
+  "checks": {
+    "tsc": "ok",
+    "tscBuild": "ok",
+    "node": {
+      "pass": 92,
+      "fail": 0
+    },
+    "diffCheck": "ok"
+  },
+  "global": {
+    "hashes": 487,
+    "inventory": 188,
+    "union": 188,
+    "phase1": {
+      "pass": 80,
+      "fail": 0,
+      "seconds": 113
+    },
+    "phase2FirstRun": {
+      "pass": 15678,
+      "fail": 2,
+      "seconds": 542,
+      "note": "2 timeouts de 5 s en whatsapp-general-accuracy-part-06 (retransmisión, agente on/off) con carga alta; aislados tardan ~1.2 s con el cambio y ~1.3 s sin él"
+    },
+    "phase2": {
+      "pass": 15680,
+      "fail": 0,
+      "seconds": 489
+    },
+    "totalPass": 15760,
+    "hashCheck": "ok",
+    "originAhead": 0
+  },
+  "deploy": {
+    "server": "staging",
+    "image": "aaa198cd76a93bd464d8030ae2b15cb0c9e15b9b1d2feb10196af6e94f5f69a0",
+    "health": "ok",
+    "checkedAt": "2026-10-22T17:56:59Z",
+    "restarts": 0,
+    "rollbackTag": "ppp-nest-staging:rollback-before-32e7f2ac",
+    "productionImage": "1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748",
+    "productionTouched": false
+  },
+  "externalCalls": {
+    "paidModel": false,
+    "whatsapp": false,
+    "externalOrders": false
+  }
+}

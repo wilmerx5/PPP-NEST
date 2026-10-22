@@ -1,3 +1,15 @@
+## VIGENTE — tanda 105: «¿de qué sopa hay?» lista la categoría aunque haya un plato en el carrito (22/10)
+
+Base bf111ad1, staging. Chat real en staging: con 1 Pollo Broaster en el carrito, «de que sopa hay?» respondió la ficha del pollo («Ya lo tienes en el carrito»). Causa: con agente la pregunta llegaba al modelo antes del listado de Nest; además «quiero saber de que sopa hay…» se descartaba por empezar con «quiero» (sin agente salía «No tenemos productos de quiero una sopa») y las categorías fuera de la lista fija (p. ej. Postres) caían en «Eso no lo resuelvo por este chat». Sin el arreglo fallan 28/63.
+
+63 regresiones nuevas (whatsapp-category-question-cart.spec.ts) con tres menús sintéticos (Sopas, Jugos, Postres) y un plato en el carrito, agente on/off: «de qué X hay?», «qué Xs tienen», «y de qué Xs hay?», «si pero quiero saber de qué X hay quiero una X», «quisiera saber…», «qué Xs venden?», «qué tienen de Xs?» listan toda la categoría sin tocar el carrito; elegir tras el listado agrega junto al plato; contrastes: pedir un producto de la categoría lo agrega, una categoría inexistente no lista nada, y una pregunta sobre el plato del carrito no responde con la categoría. Sonda con el catálogo real: el chat completo (incluido «me das un ajiaco y un mondongo pequeño») sale bien en ambos modos.
+
+Arreglo general: gancho previo al agente y a answerMenuWithNest (ambos modos) para preguntas de categoría resueltas por resolveCatalogQuestion o findByCategory; «quiero/quisiera saber» ya no cuenta como pedido; findAskedCategory reconoce la palabra preguntada contra los nombres reales de categoría del menú (singular o plural) y lista esa categoría; randomAsideLabel no la toma como consulta ajena.
+
+Validación: foco 732/732 (13 suites); tsc ambos OK; node 92/0; diff --check OK; global en dos fases con hashes congelados (487): 80/80; fase 2 primera corrida 15678/15680 con 2 timeouts de 5 s en part-06 (retransmisión) por carga alta (aislados ~1.2 s con el cambio y ~1.3 s sin él), repetida completa 15680/15680, unión = inventario 188, 489 s. Commit 32e7f2ac desplegado solo en staging (imagen aaa198cd…, health OK 17:56Z, 0 reinicios, rollback rollback-before-32e7f2ac); producción 1d512d0c… intacta (Main 54c057b5, tandas hasta 94). Evidencia: docs/whatsapp-category-question-agent-validation-2210.json. Sin llamadas pagadas, WhatsApp ni órdenes externas.
+
+Pendiente: tandas 95–105 solo en staging hasta nueva promoción a Main; elegir el combo por número pone la primera bebida; «que tienen en <categoría de varias palabras>» sigue sin reconocerse si la palabra no coincide; pendientes anteriores sin cambio.
+
 ## VIGENTE — tanda 104: «¿lleva bebida?» muestra todos los combos relacionados (22/10)
 
 Base 18d8f87a, staging. Chat real en staging: al preguntar si el arroz chino llevaba bebida se ofreció solo el combo del mismo plato y no el otro combo de arroz chino con bebida. Causa: el filtro sameDish de la tanda 99. Además, al pasar al combo propio se volvía a preguntar la opción ya elegida (Pollo: Broaster). Sin el arreglo fallan 24/36.
