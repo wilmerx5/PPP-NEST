@@ -4,7 +4,7 @@ Base 2bef214f, staging. 90 casos nuevos: referencias posteriores y antepuestas, 
 
 Cambios: separación general de referencias, preservar intersecciones/nombres; mensaje distinto cuando ya hay calle/número; protección de respuesta final contra afirmación de dirección confirmada con tarifa nula por fallo. Estos tests restauran reply real (el harness general lo reemplaza), con transporte simulado. Foco 288/288; TypeScript general/build OK; Node 92/92; global 15.905/15.905, 191 suites, 489 hashes congelados, sin reintentos.
 
-Límites: Google/modelo simulados; no acredita el resultado real actual de Maps. Referencias antepuestas sin delimitador, cruces sin puerta y otras paráfrasis de confirmación requieren siguiente tanda. Siguen pendientes abreviaturas de reemplazos (107). Evidencia: [tanda 108](whatsapp-address-directions-validation-2210.md). Sin API pagada, WhatsApp ni órdenes externas. Despliegue a staging en preparación; Main intacto.
+Límites: Google/modelo simulados; no acredita el resultado real actual de Maps. Referencias antepuestas sin delimitador, cruces sin puerta y otras paráfrasis de confirmación requieren siguiente tanda. Siguen pendientes abreviaturas de reemplazos (107). Evidencia: [tanda 108](whatsapp-address-directions-validation-2210.md). Sin API pagada, WhatsApp ni órdenes externas. Desplegado y verificado en staging el 22/10 a las 14:31 Bogotá: 34311fd1, imagen 5045bad1…, running/healthy, 0 reinicios, health OK, DB connected, circuito CLOSED. Rollback rollback-before-34311fd1. Producción conserva imagen 1d512d0c…; Main intacto.
 
 ## VIGENTE — tanda 107: «quita X y dame Y» como reemplazo validado (22/10)
 

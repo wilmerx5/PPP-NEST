@@ -42,3 +42,7 @@ Sin llamadas pagadas, WhatsApp ni órdenes externas. Main y producción intactos
 ## Validación final
 
 TypeScript general/build OK; Node 92/92; diff --check OK. Global: 80/80 + 15.825/15.825 = 15.905, 191 suites, unión exacta del inventario y 489 hashes congelados. Duraciones 64,142 s + 457,245 s. Sin reintentos de la global. Logs locales /tmp/ppp-t108-{bursts,rest}.json y /tmp/ppp-t108-targets-final.log.
+
+## Despliegue verificado
+
+Desplegado y verificado en staging el 22/10 a las 14:31 Bogotá: 34311fd1, imagen 5045bad1…, running/healthy, 0 reinicios, health OK, DB connected, circuito CLOSED. Rollback rollback-before-34311fd1. Producción conserva imagen 1d512d0c…; Main intacto.
