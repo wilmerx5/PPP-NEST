@@ -1,3 +1,15 @@
+## VIGENTE — tanda 101: direcciones con referencia («…, frente al parque») y número con espacios sueltos (22/10)
+
+Base 795efddf, staging. Chat real: tras «a una nueva», una dirección numerada escrita con letras separadas y seguida de «, frente al parque» respondía «No pude identificar con seguridad ese conjunto o lugar». Causa: la referencia y el número sin normalizar llegaban a Google, que devolvía partial_match, y el validador de vía numerada lo rechazaba. Sin el arreglo fallan 23/68 (baseline parcial).
+
+68 regresiones nuevas (whatsapp-address-reference.spec.ts): tabla de normalización (20 positivos, 8 negativos), tabla de referencias (13 separaciones, 8 sin separar), separación en orden y etiqueta, routing con Google simulado (puerta distinta y partial rechazados; zona en otra posición aceptada) y E2E agente on/off con tres direcciones sintéticas («…, frente al parque», «… al lado de la droguería», «…, portón negro, timbre 2»). Contraste: un punto de referencia solo («frente al parque principal») sigue siendo el destino y va entero a Maps.
+
+Arreglo general: splitAddressReference separa referencias (frente a, al lado de, junto a, cerca de, diagonal a, detrás de, a N cuadras, esquina, portón/fachada de color, timbre, llamar al llegar, referencia) solo si antes hay vía numerada o lugar nombrado; canonicalStreetAddress normaliza «calle 38 sur 72 j 15» → «Calle 38 Sur # 72J-15»; la geocodificación consulta primero la vía canónica sin referencia y compara vía + zonas como conjunto; partial_match y otra puerta se siguen rechazando. La dirección guardada queda como la escribió el cliente; la orden muestra « / Ref: …» y la etiqueta « · Referencia: …».
+
+Validación: foco 1296/1296 (30 suites); tsc ambos OK; node 92/0; diff --check OK; global en dos fases con hashes congelados (482) 80/80 + 15474/15474, unión = inventario 185, 532 s (108 + 424), sin reintentos. Commit 7c2ef0f8 desplegado solo en staging (imagen 76428d15…, health OK 15:44Z, 0 reinicios, rollback rollback-before-7c2ef0f8); producción 1d512d0c… intacta (Main 54c057b5, tandas hasta 94). Evidencia: docs/whatsapp-address-reference-validation-2210.json. Sin llamadas pagadas (Google simulado), WhatsApp ni órdenes externas.
+
+Pendiente: tandas 95–101 solo en staging hasta nueva promoción a Main; el harness no aplica customerLocationLabel; pendientes anteriores sin cambio.
+
 ## VIGENTE — tanda 100: chat real de combo con arepas, ubicación y nombre repasado; «¿las arepas se pueden fritas?» (22/10)
 
 Base f9e13b33, staging. Chat real del 21/10 15:06 (producción antes de promover Main) repasado con el router actual y la carta real: ya corregidos «2 que esté fría porfavor» (tanda 95) y todo el checkout — el nombre tras ubicación + referencia queda como nombre, el domicilio sigue en $2.000 y «Porque le sube 5…» / «No entiendo porque sube todo eso» se explican y no se guardan como nombre (8ba56bc3, ya en Main/producción). Regresión encontrada: «Las arepas se pueden fritas ?» agregaba una «Porcion De Arepas (Fritas)» aparte sin agente y no hacía nada con agente; la producción vieja cambiaba la opción del combo. Sin el arreglo fallan 18/48.

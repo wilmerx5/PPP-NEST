@@ -1,0 +1,70 @@
+{
+  "tanda": 101,
+  "topic": "address-reference",
+  "date": "2026-10-22",
+  "base": "795efddf",
+  "commit": "7c2ef0f8",
+  "branch": "staging",
+  "trigger": "Chat real: dirección nueva escrita con referencia («…, frente al parque») y número con espacios sueltos; respuesta «No pude identificar con seguridad ese conjunto o lugar». Datos personales no copiados.",
+  "rootCause": "La referencia y el número sin normalizar llegaban a la consulta de Google, que respondía partial_match; el validador de vía numerada lo rechazaba y se pedía aclaración.",
+  "fix": [
+    "splitAddressReference separa referencias (frente a, al lado de, junto a, cerca de, diagonal a, detrás de, a N cuadras, esquina, portón/fachada de color, timbre, llamar al llegar, referencia) solo si antes hay vía numerada o lugar nombrado",
+    "canonicalStreetAddress normaliza «calle 38 sur 72 j 15» a «Calle 38 Sur # 72J-15» (letras, bis, zona, #/no./número, avenida calle/carrera)",
+    "geocodeQueryVariants consulta primero la dirección canónica sin la referencia",
+    "resultMatchesNamedPlace compara la vía canónica con zonas como conjunto (la zona puede ir en otra posición); se mantiene el rechazo de partial_match y de otra puerta",
+    "La dirección guardada queda como la escribió el cliente; la orden muestra « / Ref: …» y la etiqueta « · Referencia: …»"
+  ],
+  "spec": {
+    "file": "src/whatsapp/whatsapp-address-reference.spec.ts",
+    "tests": 68,
+    "baselineFailures": 23,
+    "baselineNote": "baseline parcial: routing, order-address y location-label guardados en stash y separación de referencia desactivada; address-parts conserva exports nuevos importados por el spec"
+  },
+  "focused": {
+    "suites": 30,
+    "tests": 1296,
+    "failed": 0
+  },
+  "checks": {
+    "tsc": "ok",
+    "tscBuild": "ok",
+    "node": {
+      "pass": 92,
+      "fail": 0
+    },
+    "diffCheck": "ok"
+  },
+  "global": {
+    "hashes": 482,
+    "inventory": 185,
+    "union": 185,
+    "phase1": {
+      "pass": 80,
+      "fail": 0,
+      "seconds": 108
+    },
+    "phase2": {
+      "pass": 15474,
+      "fail": 0,
+      "seconds": 424
+    },
+    "totalPass": 15554,
+    "hashCheck": "ok",
+    "originAhead": 0
+  },
+  "deploy": {
+    "server": "staging",
+    "image": "76428d15fecaf00952d2555884e1f7f4def977350ff2d0eb546616568f8cf2a4",
+    "health": "ok",
+    "checkedAt": "2026-10-22T15:44:22Z",
+    "restarts": 0,
+    "rollbackTag": "ppp-nest-staging:rollback-before-7c2ef0f8",
+    "productionImage": "1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748",
+    "productionTouched": false
+  },
+  "externalCalls": {
+    "paidGoogleMaps": false,
+    "whatsapp": false,
+    "externalOrders": false
+  }
+}
