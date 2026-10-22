@@ -1,0 +1,75 @@
+{
+  "batch": 100,
+  "date": "2026-10-22",
+  "base": "f9e13b33",
+  "commit": "61df5207ee5eacd8d685e413cef191433fefe358",
+  "scope": "Real chat (21/10 15:06, production before the Main promotion) replayed on current staging: combo order with a drink note, «¿las arepas se pueden fritas?», pin + complex reference + name at the name step, fee questions, cash payment",
+  "replayFindings": [
+    "Already fixed: «2 que esté fría porfavor» (batch 95); name kept as name after pin and reference, fee stays $2.000, «Porque le sube 5…» and «No entiendo porque sube todo eso» explained and never saved as name (8ba56bc3, already in Main/production)",
+    "Regression found: «Las arepas se pueden fritas ?» added a separate side «Porcion De Arepas (Fritas)» with the agent off and did nothing with the agent on; the old production changed the combo's option"
+  ],
+  "fix": "tryHandleCartOptionPossibility (pre-agent, both modes): a possibility question («se puede(n) / puede(n) ser / puede venir / podría(n) / me las puedes hacer…») naming an attribute and one of its options that matches exactly one cart line changes that option in place (order kept); an option already chosen is confirmed; purchase words (quiero, dame, agrega, otra, porción, aparte, extra, numbers) and ambiguous or unknown options are left to the other paths.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-cart-option-possibility.spec.ts",
+    "count": 48,
+    "menus": [
+      "chicken combo arepas + side of arepas",
+      "burger bread + extra bread",
+      "pasta sauce + extra sauce"
+    ],
+    "agent": [
+      "off",
+      "on"
+    ],
+    "contrasts": [
+      "during checkout the step is asked again",
+      "option already chosen",
+      "option not on the menu",
+      "separate purchase",
+      "two lines with that option"
+    ],
+    "baselineWithoutFix": "18 failed / 48 (orchestrator stashed)"
+  },
+  "validation": {
+    "focused": "3647 passed (59 suites: attributes, options, cart edits, combos, drinks, checkout, user chats, notes, sides, variants, composition)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": {
+        "passed": 80,
+        "total": 80,
+        "suites": 1,
+        "seconds": 62
+      },
+      "rest": {
+        "passed": 15406,
+        "total": 15406,
+        "suites": 183,
+        "seconds": 372
+      },
+      "inventory": 184,
+      "unionEqualsInventory": true,
+      "hashes": 481,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 15486,
+      "wallSeconds": 435
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "61df5207ee5eacd8d685e413cef191433fefe358",
+    "image": "sha256:7af799e48cea89eb78e5e992b0937be4f154b8b8583cf58605d20ccf88e9e1db",
+    "health": "ok / db connected / circuit CLOSED 2026-10-22T05:27:40Z, healthy, 0 restarts (started 05:27:10Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-61df5207 (image 9a5088b5…)",
+    "production": "sha256:1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748 before and after (runs Main 54c057b5, batches up to 94)"
+  },
+  "remainingGaps": [
+    "Batches 95–100 are staging-only until a new Main promotion is requested",
+    "«Un pollo frito … ese viene con papa francesa?» lists versions with descriptions but does not answer yes/no explicitly",
+    "The fee explanation shows the raw stored address in the harness (real reply() uses the location label)",
+    "Previous gaps unchanged"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
