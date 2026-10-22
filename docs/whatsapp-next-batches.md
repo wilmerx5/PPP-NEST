@@ -4,7 +4,7 @@ Base d297c651, staging. 24/24 reproducciones iniciales fallaban: borrado sin ree
 
 Límite importante: «quita el de costilla y dame el combo con medio broaster y up» ahora conserva y pide aclaración; todavía no resuelve automáticamente los nombres incompletos. Siguiente: resolver referencias por familia y opciones del catálogo, sin alias globales injustificados; después impedir afirmaciones de dirección confirmada no respaldadas por estado.
 
-Evidencia: [tanda 107](whatsapp-compound-replacement-validation-2210.md). Sin API pagada, WhatsApp ni órdenes externas. Main intacto. Publicación/despliegue de staging en preparación; comprobar la evidencia de cierre antes de asumir que está activo.
+Evidencia: [tanda 107](whatsapp-compound-replacement-validation-2210.md). Sin API pagada, WhatsApp ni órdenes externas. Main intacto. Desplegado y verificado en staging el 22/10 a las 14:13 Bogotá: código 319c7ab4, imagen 399569af…, running/healthy, 0 reinicios, health OK/DB connected/circuit CLOSED. Incluye tandas 106 y 107. Rollback rollback-before-319c7ab4; producción conserva imagen 1d512d0c… y Main intacto.
 
 ## VIGENTE — tanda 106: auditoría de chats y categoría antepuesta (22/10)
 

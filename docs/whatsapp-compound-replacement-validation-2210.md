@@ -23,3 +23,7 @@ Main y producción quedan intactos. Agrupar despliegue de staging después de va
 ## Validación final
 
 TypeScript general y build OK; Node 92/92; diff --check OK. Global 80/80 + 15.735/15.735 = 15.815; 190 suites, unión exacta del inventario, 488 hashes iguales. Duraciones 64,390 s + 458,297 s, sin reintentos. Evidencia local /tmp/ppp-t107-{bursts,rest}.json y /tmp/ppp-t107-targets.log.
+
+## Cierre del despliegue
+
+Desplegado y verificado en staging el 22/10 a las 14:13 Bogotá: código 319c7ab4, imagen 399569af…, running/healthy, 0 reinicios, health OK/DB connected/circuit CLOSED. Incluye tandas 106 y 107. Rollback rollback-before-319c7ab4; producción conserva imagen 1d512d0c… y Main intacto.
