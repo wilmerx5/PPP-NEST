@@ -730,6 +730,7 @@ export function parseCartItemReplacement(
   if (!raw || raw.length < 12) return null;
 
   const patterns = [
+    /^(?:quita|retira|elimina)\s+(.+?)\s+y\s+(?:dame|ponme|agrega)\s+(.+)$/i,
     /^no\s+quiero\s+(.+?)(?:\s*[,;]\s*|\s+)(?:quiero|dame|pon(?:me)?|mejor(?:\s+quiero)?)\s+(.+)$/i,
     /^(?:cambia(?:r|me)?|c[aá]mbial[oa]|reemplaza(?:r|me)?)\s+(.+?)\s+por\s+(.+)$/i,
     /^(?:en\s+vez\s+de)\s+(.+?)(?:\s*[,;]\s*|\s+)(?:quiero|dame|pon(?:me)?)?\s*(.+)$/i,

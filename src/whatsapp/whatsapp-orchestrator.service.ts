@@ -1940,7 +1940,8 @@ export class WhatsappOrchestratorService {
     }
     // A product replacement interrupts checkout; never feed it to field
     // handlers or remove the original before validating the replacement.
-    if (['awaiting_address','awaiting_name','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+    if ((['awaiting_address','awaiting_name','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        (conv.state === 'building_cart' && (/^(?:quita|retira|elimina)\s+.+?\s+y\s+(?:dame|ponme|agrega)\s+/i.test(originalText) || !!session.pendingCartReplacement))) && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
         await this.tryHandleAtomicCartReplacement(conv, msg.waId, session, originalText,
           await this.catalogService.getMenuProducts(), cfg)) return;
 
@@ -14576,7 +14577,13 @@ export class WhatsappOrchestratorService {
     const base = { ...session, pendingCartReplacement: undefined };
     const quantity = /^(?:un|una|uno|dos|tres|cuatro|cinco|\d+)\b/i.test(addQuery)
       ? this.catalogService.extractQuantityFromMessage(addQuery) : original.quantity;
-    const added = this.tryAddProductToCart(base, product, quantity, cfg, undefined, undefined, { sourceText: addQuery, replacement });
+    const compatible = (original.attributes || []).filter(chosen => product.attributes?.some(attribute =>
+      attribute.attributeName === chosen.attributeName && attribute.options.includes(chosen.attributeValue)));
+    const explicit = this.catalogService.resolveAttributesFromMessage(product, addQuery, []);
+    const selected = explicit.status === 'complete' || explicit.status === 'partial'
+      ? [...compatible.filter(old => !explicit.attributes.some(next => next.attributeName === old.attributeName)), ...explicit.attributes]
+      : compatible;
+    const added = this.tryAddProductToCart(base, product, quantity, cfg, undefined, selected, { sourceText: addQuery, replacement });
     if (added.blocked) {
       await this.reply(conv, waId, 'No pude completar el reemplazo. El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, session));
       return true;
@@ -14592,7 +14599,7 @@ export class WhatsappOrchestratorService {
     }
     await this.conversationService.saveSession(conv, added.session, resumeState);
     await this.reply(conv, waId, `Listo, cambié *${original.name}* por *${product.name}*.\n\n` +
-      this.formatCartOnly(added.session, this.deliveryFeeFor(added.session, cfg)) + '\n\n' + this.formatInterruptedStepReminder(conv, added.session));
+      this.formatCartOnly(added.session, this.deliveryFeeFor(added.session, cfg)) + '\n\n' + (this.formatInterruptedStepReminder(conv, added.session) || this.formatContinueShoppingPrompt(added.session)));
     return true;
   }
 

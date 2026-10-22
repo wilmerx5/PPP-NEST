@@ -1,3 +1,11 @@
+## VIGENTE — tanda 107: «quita X y dame Y» como reemplazo validado (22/10)
+
+Base d297c651, staging. 24/24 reproducciones iniciales fallaban: borrado sin reemplazo o duplicado. Ahora el patrón compuesto usa reemplazo validado en construcción y checkout, conserva opciones compatibles y permite cambiarlas explícitamente. 38 regresiones nuevas en arroces, hamburguesas y pizzas; agente on/off, compras adicionales, destino inexistente, seis DTO simulados y dos controles de abreviatura real. Foco 289/289; TypeScript general/build OK; Node 92/92; global 15.815/15.815, 190 suites, 488 hashes congelados, sin reintentos.
+
+Límite importante: «quita el de costilla y dame el combo con medio broaster y up» ahora conserva y pide aclaración; todavía no resuelve automáticamente los nombres incompletos. Siguiente: resolver referencias por familia y opciones del catálogo, sin alias globales injustificados; después impedir afirmaciones de dirección confirmada no respaldadas por estado.
+
+Evidencia: [tanda 107](whatsapp-compound-replacement-validation-2210.md). Sin API pagada, WhatsApp ni órdenes externas. Main intacto. Publicación/despliegue de staging en preparación; comprobar la evidencia de cierre antes de asumir que está activo.
+
 ## VIGENTE — tanda 106: auditoría de chats y categoría antepuesta (22/10)
 
 Base d1020db1, staging. Revisadas tandas 101–105 frente a chats recientes: dirección numerada con referencia, ejecutivos duplicados, opción compartida entre combos y consulta de sopa con carrito. Se añaden 16 comprobaciones: dos formas de pregunta en tres menús y ambos modos (12), dirección exacta del chat en routing/checkout (4). Baseline 253/255: «postre de que tienes hoy» falla en ambos modos. Corrección general en findAskedCategory: reconoce categoría real antes de «de qué tienes». Foco 255/255, TypeScript general/build OK, Node 92/92; global 80 + 15.697 = 15.777, 189 suites (inventario exacto), 487 hashes congelados, sin reintentos.
