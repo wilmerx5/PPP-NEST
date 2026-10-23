@@ -1,7 +1,7 @@
 import {splitAccompanimentPurchase, includesAccompaniment} from './whatsapp-accompaniment-offer';
 import { drinkInclusion, sodaBrandIn } from './whatsapp-drink-inclusion';
 import {variantUnitScope} from './whatsapp-variant-unit-scope';
-import {splitDeliveryAddressParts, splitAddressKitchenNote} from './whatsapp-address-parts';
+import {canonicalStreetAddress, splitDeliveryAddressParts, splitAddressKitchenNote} from './whatsapp-address-parts';
 import {checkoutEnvelope} from './whatsapp-checkout-envelope';
 import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
 import { customerLocationLabel, googleMapsPin, validDeliveryCoordinates } from './whatsapp-location-label';
@@ -1756,12 +1756,33 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // A bare street supplied after an unresolved named complex completes that
+    // destination. An explicit change remains a replacement, handled normally.
+    if (session.address && session.deliveryFeeCalculated === null && !session.deliveryOutOfCoverage &&
+        session.deliveryLat == null && session.deliveryLng == null &&
+        !canonicalStreetAddress(session.address) && canonicalStreetAddress(originalText) &&
+        /^(?:calle|carrera|cra\.?|cll|diagonal|diag\.?|dg\.?|transversal|tv\.?|avenida)\s/i.test(originalText.trim()) &&
+        /\b(?:conjunto|condominio|residencial|urbanizaci[oó]n|edificio)\b/i.test(session.address) &&
+        !splitDeliveryAddressParts(originalText).details) {
+      originalText = `${originalText}; ${session.address}`;
+      text = originalText;
+    }
     const exclusiveWithNote = originalText.trim().match(/^solo quiero (.+?) y que lleve (.+?)[.!]*$/i);
     const exclusiveCorrection = exclusiveWithNote && parseCartQuantityCorrection('deja ' + exclusiveWithNote[1]);
     if (exclusiveCorrection && session.cart.length && !session.pendingAttribute && !session.pendingMultiOrder &&
         ['building_cart','awaiting_name','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) {
       const matches = session.cart.filter(line => correctionMatchesLine(line, exclusiveCorrection.query));
-      if (matches.length && new Set(matches.map(line => JSON.stringify([line.productId,line.attributes]))).size === 1) {
+      const lineIdentities = new Set(matches.map(line => JSON.stringify([
+        line.productId, [...(line.attributes || [])].sort((a,b)=>a.attributeName.localeCompare(b.attributeName)),
+        line.note && !this.catalogService.isProductDescriptionInquiry(line.note) ? this.normalizeForMatch(line.note) : '',
+      ])));
+      if (lineIdentities.size > 1) {
+        await this.reply(conv,msg.waId,'Hay varias líneas con opciones o notas distintas. ¿Cuál quieres conservar?\n\n'+
+          matches.map(line=>this.formatCartLineLabel(line)+(line.note ? ` · ${line.note}` : '')).join('\n')+
+          '\n\nDime el plato con su opción o nota, la cantidad y el acompañamiento. El pedido sigue igual.');
+        return;
+      }
+      if (matches.length && lineIdentities.size === 1) {
         const kept = matches[0];
         const notes = matches.map(line => line.note).filter(note => note && !this.catalogService.isProductDescriptionInquiry(note));
         const next = {...session, cart:[{...kept,quantity:exclusiveCorrection.quantity,
@@ -23117,6 +23138,10 @@ export class WhatsappOrchestratorService {
     deferAck?: (ack: string) => void,
   ): Promise<boolean> {
     if (!session.cart.length) return false;
+    const explicitAddition = this.normalizeForMatch(text).match(/^(?:agrega|anade|adiciona|quiero|dame)\s+(?:un|una|dos|tres|\d+)\s+(.+)$/);
+    if (explicitAddition && products.some(product =>
+      (` ${explicitAddition[1]} `).startsWith(` ${this.normalizeForMatch(product.name)} `))) return false;
+
     const negativeOption = !/[¿?]/.test(text) && text.match(/^no\s+(?:con\s+)?(.+?),?\s+(?:mejor|sino)\s+(?:con\s+)?(.+)$/i);
     const rejectedWithoutChoice = !negativeOption && /^no\s+con\s+/i.test(text);
     const negativeAlternative = negativeOption && /^(?:no|sin)\b/i.test(negativeOption[2]);

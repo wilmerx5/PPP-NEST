@@ -1,3 +1,11 @@
+## VIGENTE — tanda148: variantes con notas y conjunto completado con calle (23/10)
+
+Base e9635765, solo staging.24 conversaciones nuevas, tres cartas por familia y agente simulado on/off. Corrige compra adicional con preparación distinta que editaba la línea anterior; «solo quiero uno… y que lleve…» pide aclaración antes de descartar opciones/notas diferentes; calle que completa conjunto pendiente conserva torre/apartamento, cambio explícito reemplaza destino. Ver whatsapp-variant-place-completion-validation-2310.md.
+
+Foco24/24, TypeScript general/build OK, Node92/92. Global17.152/17.152,210suites,508hashes,767,34s, inventario exacto/fuente congelada. Evidencia /tmp/ppp-148-global-summary.json y /tmp/ppp-148-focus2.log. Cero API pagada/Meta/órdenes externas. Publicar solo staging; despliegue agrupado pendiente. Servidor último verificado eef121c1, producción intacta.
+
+Límites: servicios/modelo simulados, nombre completo de SKU en compra adicional; completar conjunto sin coordenadas con calle sin interior propio. Próximo: nueva calle con cambio de torre/apto y alias de compra frente a modificación de opción. Contraste real acotado sigue pendiente según whatsapp-api-validation-next-2310.md; no declarar vendible por conteos.
+
 ## VIGENTE — tandas146–147: acompañamientos, corrección exclusiva y nombre con ubicación pendiente (23/10)
 
 Base cdd54a1a, solo staging.48 casos nuevos:24 consultas/preparación/corrección de carrito y24 nombre/conjunto (18 recorridos completos +6 contratos de mapa). Separa compra singular de consulta de acompañamiento, evita consulta como compra/nota, conserva referente de preparación ofrecida y corrige «solo quiero… y que lleve…» a cantidad absoluta cuando las opciones coinciden. Nombre explícito reconoce «Mi nombre es», «Ya te dije que era» y «…es mi nombre real», persiste antes de continuar checkout. Descriptor condominio/condómino no altera identidad del conjunto; se siguen rechazando nombres distintos y resultados parciales. Sin excepciones PPP.
