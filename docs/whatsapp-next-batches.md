@@ -1,3 +1,13 @@
+## VIGENTE — tanda 112: elegir combo con número y cortesía (22/10)
+
+Base 8556c983, staging. 42 regresiones nuevas en tres catálogos y agente simulado on/off: «el combo 1 porfa», «el combo 2 por favor», «la opción 2 gracias», «quiero el número 1»; dos unidades con nota y opciones compatibles, 24 DTO simulados, número no ofrecido, consulta de contenido y cambio de precio. Baseline 30 fallidos/66 aprobados; final 108/108. Foco 534/534 en siete suites, TypeScript general/build OK, Node 92/92. Global 80 + 15.961 = 16.041 en 192 suites; inventario exacto y 490 hashes intactos; 561,62 s, sin reintentos.
+
+Se comparte el lector de referencias numéricas entre la lista general y la oferta de reemplazo por combo. Las palabras descriptivas deben pertenecer a todas las opciones ofrecidas. Números fuera de la lista de reemplazo no pasan a selección aproximada del combo preferido: se pide una opción válida conservando carrito. Precio cambiado mantiene la aceptación previa al flujo de bebida. Sin nombres/IDs/precios PPP en reglas.
+
+Límites: selección con cortesía y bebida en turno posterior; no acredita «el combo 2 con Uva» ni selección/cantidad/datos de entrega en el mismo mensaje. Estos casos usan router real y harness con reply/servicios externos simulados; no inferencia real, WhatsApp ni órdenes externas. Main y su despliegue siguen hasta tanda 109, sin cambios. Publicación/despliegue de staging agrupados con tanda 111; verificar registro final antes de asumir despliegue. Evidencia: [tanda 112](whatsapp-text-combo-selection-validation-2210.md).
+
+Siguiente: selección + bebida («el combo 2 con Uva»), selección + cantidad explícita, cambio de opinión durante opciones y contacto/dirección en la misma frase. Mantener controles de número no ofrecido, consultas que no compran y DTO completo.
+
 ## VIGENTE — tanda 111: compra inicial con pregunta de acompañamiento (22/10)
 
 Base cf510ed2, rama staging. 22 regresiones nuevas: compra de una/dos unidades más pregunta de contenido, respuesta afirmativa/negativa, aceptar/rechazar, 12 recorridos hasta DTO simulado y cuatro reproducciones del pollo frito/papa francesa. Tres menús sintéticos y fixture PPP, agente simulado on/off. Las doce compras hasta DTO y los cuatro casos literales restauran reply real; transporte/modelos/persistencia externos simulados.

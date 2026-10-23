@@ -9015,12 +9015,8 @@ export class WhatsappOrchestratorService {
     }
     // "El combo 2 por fa": words every row shares, then a row number.
     if (!chosenLite) {
-      const said = this.normalizeForMatch(trimmed).replace(/\s+/g, ' ').trim()
-        .replace(/(?:\s+(?:por favor|porfa|por fa|pls|gracias))+$/, '');
-      const rowRef = said.match(/^(?:(?:el|la|quiero|dame|deme|me das|mejor)\s+)*((?:[a-zñ]+\s+){0,3}?)(?:(?:numero|opcion|fila)\s+)?(\d{1,2})$/);
-      const row = rowRef ? Number(rowRef[2]) : 0;
-      const shared = (word: string) => pending.candidates.every(candidate => this.normalizeForMatch(candidate.name).split(' ').some(token => token === word || token === word.replace(/e?s$/, '')));
-      if (rowRef && row >= 1 && row <= pending.candidates.length && rowRef[1].trim().split(' ').filter(Boolean).every(shared)) {
+      const row = this.pendingTextListRow(trimmed, pending.candidates);
+      if (row != null && row >= 1 && row <= pending.candidates.length) {
         chosenLite = pending.candidates[row - 1];
       }
     }
@@ -12839,18 +12835,34 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** A named row reference, not a product quantity or a question. */
+  private pendingTextListRow(text: string, candidates: { name: string }[]): number | null {
+    if (!candidates.length || /[¿?]/.test(text)) return null;
+    const said = this.normalizeForMatch(text)
+      .replace(/(?:\s+(?:por favor|porfa|por fa|porfavor|pls|gracias))+$/, '');
+    const ref = said.match(/^(?:(?:el|la|quiero|dame|deme|me das|mejor)\s+)*((?:[a-zñ]+\s+){0,3}?)(?:(?:numero|opcion|fila)\s+)?(\d{1,2})$/);
+    if (!ref) return null;
+    const shared = (word: string) => candidates.every(candidate => this.normalizeForMatch(candidate.name)
+      .split(' ').some(token => token === word || token === word.replace(/e?s$/, '')));
+    return ref[1].trim().split(' ').filter(Boolean).every(shared) ? Number(ref[2]) : null;
+  }
+
   /** Answers to a one-combo offer that would replace an existing cart line. */
   private async tryAnswerComboSwapOffer(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean | WhatsappSessionData> {
     const pending = session.pendingMatch;
-    const row = /^\s*\d{1,2}\s*$/.test(text) ? Number(text.trim()) : null;
+    const row = this.pendingTextListRow(text, pending?.candidates || []);
     const numberedOffer = row != null && pending?.replacement?.preferredId != null
       ? pending.candidates[row - 1] : undefined;
+    if (row != null && pending?.replacement?.preferredId != null && pending.intent === 'order' && !numberedOffer) {
+      await this.reply(conv, waId, `Elige una opción entre 1 y ${pending.candidates.length}. El pedido sigue igual.`);
+      return true;
+    }
     const preferredId = numberedOffer?.id ?? pending?.replacement?.preferredId ?? (pending?.candidates.length === 1 ? pending.candidates[0].id : undefined);
     if (!pending?.replacement || pending.intent !== 'order' || preferredId == null ||
       !pending.candidates.some(candidate => candidate.id === preferredId) || /[¿?]/.test(text) ||
-      (/^\s*\d+\s*$/.test(text) && !numberedOffer)) return false;
+      (row != null && !numberedOffer)) return false;
     const products = await this.catalogService.getMenuProducts();
     const combo = this.catalogService.getProductById(preferredId, products);
     // Let the existing re-quote path ask for approval before taking a changed price.

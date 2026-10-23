@@ -110,6 +110,45 @@ describe.each(menus)('$id: a drink question lists every related combo', m => {
       expect(JSON.stringify(dto.items[0])).toContain('Uva');
     });
 
+    it.each([
+      ['el combo 1 porfa', 'own'],
+      ['el combo 2 por favor', 'other'],
+      ['la opción 2 gracias', 'other'],
+      ['quiero el número 1', 'own'],
+    ])('textual selection %s replaces two units without interpreting the row as quantity', async (text, target) => {
+      const h = await start(m.order.replace(/^(?:un|una) /, 'dos ') + ' sin cebolla');
+      await h.send('eso lleva bebida?');
+      const before = structuredClone(h.conv.sessionData.cart);
+      const chosen = target === 'own' ? m.own : m.other;
+      const reply = await h.send(text);
+      expect(reply).toContain('Bebida');
+      expect(h.conv.sessionData.pendingAttribute?.productId).toBe(chosen.id);
+      expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(2);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      await h.send('Uva');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: chosen.id, qty: 2, note: before[0].note })]);
+      expect(attr(h.cartRows()[0].attrs, 'Bebida')).toBe('Uva');
+      if (target === 'own') expect(attr(h.cartRows()[0].attrs, m.kept[0])).toBe(m.kept[1]);
+      h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 112, dailyOrderNumber: 112 });
+      await h.send('nada mas');
+      await h.send('contraentrega');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.send('confirmar');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const dto = h.service.ordersService.create.mock.calls[0][0];
+      expect(dto.items.map((i: any) => i.productId)).toEqual([chosen.id, chosen.id]);
+      for (const item of dto.items) expect(JSON.stringify(item)).toContain('Uva');
+    });
+
+    it('a textual unoffered row does not silently select the preferred combo', async () => {
+      const h = await start();
+      await h.send('eso lleva bebida?');
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.send('el combo 9 porfa');
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+    });
+
     it('numeric replacement preserves two units and their kitchen note', async () => {
       const h = await start(m.order.replace(/^(?:un|una) /, 'dos ') + ' sin cebolla');
       expect(h.cartRows()[0].qty).toBe(2);
@@ -124,13 +163,13 @@ describe.each(menus)('$id: a drink question lists every related combo', m => {
       expect(attr(h.cartRows()[0].attrs, m.kept[0])).toBe(m.kept[1]);
     });
 
-    it('changed combo price needs approval before asking the drink', async () => {
+    it.each(['1', 'el combo 1 porfa'])('changed combo price needs approval before asking the drink: %s', async selection => {
       const h = await start();
       await h.send('eso lleva bebida?');
       const before = structuredClone(h.conv.sessionData.cart);
       const changed = { ...m.own, price: m.own.price + 2000 };
       h.service.catalogService.getMenuProducts.mockResolvedValue([m.dish, changed, m.other, m.base]);
-      const reply = await h.send('1');
+      const reply = await h.send(selection);
       expect(reply).toMatch(/precio.*cambi|cambi.*precio/i);
       expect(h.conv.sessionData.cart).toEqual(before);
       expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
@@ -149,6 +188,18 @@ describe.each(menus)('$id: a drink question lists every related combo', m => {
       await h.send('9');
       expect(h.conv.sessionData.cart).toEqual(before);
       expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+    });
+
+    it('a contents question about a numbered option is not a selection', async () => {
+      const h = await start();
+      await h.send('eso lleva bebida?');
+      const before = structuredClone(h.conv.sessionData.cart);
+      const reply = await h.send('¿qué trae la opción 2?');
+      expect(reply).toContain(m.other.name);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+      await h.send('el combo 1 porfa');
+      expect(h.conv.sessionData.pendingAttribute?.productId).toBe(m.own.id);
     });
 
     it('declining keeps the dish', async () => {
