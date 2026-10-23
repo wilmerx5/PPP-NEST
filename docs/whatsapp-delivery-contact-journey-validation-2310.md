@@ -1,0 +1,14 @@
+# Tanda134 — contacto y destino durante cierre
+
+## VIGENTE — tanda 134: nombre, dirección y contacto desde carrito vacío (23/10)
+
+Base bb7ff7e5, staging. 24 conversaciones nuevas, tres menús sintéticos (lasagna, bowl, filete), agente simulado on/off, consulta de precio/contenido y dirección antes/después del nombre. Arrancan sin nombre ni carrito; compran dos unidades con nota, cierran, preguntan durante solicitud de nombre, aportan nombre/dirección con conjunto+torre+apto, cambian teléfono durante pago y confirman. Validan respuesta pertinente, conservación de carrito y estado, nombre no tratado como destino, ausencia de nueva cotización al dar nombre/teléfono y DTO con contacto, interiores y dos unidades con nota. Cero órdenes antes de confirmar.
+
+Sin cambios de producción. Foco final 121/121 en tres suites, 50,333 s; 24 casos nuevos. Primer ensayo: 6/12 fallos de fixture porque el agente genérico no seleccionaba domicilio y conservaba pickup del harness; se configuró respuesta simulada setOrderType solo al mensaje explícito «para un domicilio» y se añadió aserción inmediata de delivery. No atribuir esa corrección al modelo real. TypeScript general/build aprobados; contratos Node 92/92. No repetir global por test/documentación: última global ejecutable132, 16.812/16.812 en 197 suites; no sumar resultados focales solapados.
+
+Staging conserva ejecutable bd3f5e5e (tandas131+132), imagen7db0a13f…, última verificación23/10 10:59:49 Bogotá en tanda132, sin nueva comprobación remota en134. Main/producción intactas; publicChat=true/orderEvents=false. Cero API pagada, WhatsApp ni órdenes externas. Publicar tests/documentación sin rebuild.
+
+Límites: cotizador simulado exitoso, turnos seriales y productos sin atributos; la prueba acredita conservación de dirección/interiores, no selección real del mapa ni separación geográfica calle/interior dentro del servicio de rutas. El agente de domicilio está programado explícitamente: no mide comprensión real. Siguiente: catálogo con bebida incluida y extra vendible; consulta sobre acompañamiento durante selección y cierre. Después contrastar dirección ambigua/fuera de cobertura sin bloquear cambios, con origen de tarifa comprobado. [Plan de conversaciones](whatsapp-complete-conversations-next-2310.md). [Detalle134](whatsapp-delivery-contact-journey-validation-2310.md).
+
+
+Evidencia: src/whatsapp/whatsapp-empty-cart-delivery-contact.spec.ts. /tmp/ppp-134-fixture-delivery.log conserva baseline 6/12 fallidos; /tmp/ppp-134-focus.log, 12/12 tras corregir fixture; /tmp/ppp-134-final-focus.log, 121/121 incluyendo los 24 finales; /tmp/ppp-134-tsc.log y /tmp/ppp-134-node.log. No se sembró carrito final ni estado pendiente; la secuencia de mensajes los construye. Cotización/persistencia/Meta/modelo simulados. No declarar vendible por conteos.
