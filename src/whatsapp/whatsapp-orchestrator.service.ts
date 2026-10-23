@@ -2322,9 +2322,11 @@ export class WhatsappOrchestratorService {
       return;
     }
     const pairSplit = originalText.trim().match(/^(?:uno|una)\s+con\s+(.+?)\s+y\s+el\s+otro\s+con\s+(.+)$/i);
+    const bareDistribution = !!session.pendingAttribute && !/[¿?]/.test(originalText) &&
+      /^(?:\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+.+(?:\s+y\s+|[,;]\s*)(?:\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+/i.test(originalText.trim());
     const distributionText = pairSplit
       ? `los quiero 1 con ${pairSplit[1]} y 1 con ${pairSplit[2]}`
-      : originalText.trim();
+      : bareDistribution ? `los quiero ${originalText.trim()}` : originalText.trim();
     if (/^(?:los|las)\s+quiero\s+/i.test(distributionText)) {
       const distributionMenu = await this.catalogService.getMenuProducts();
       const available = cfg.ignoreBusinessHours ? distributionMenu.map(product => ({...product,availableNow:true})) : distributionMenu;
@@ -22724,7 +22726,7 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingAttribute;
     const distributionLines = pending ? [{productId:pending.productId,name:pending.name,
       quantity:pending.quantity || this.catalogService.extractQuantityFromSegment(pending.sourceText || '') || 1,
-      attributes:pending.selected, note:this.catalogService.extractProductModificationNote(pending.sourceText || '') || undefined}] : session.cart;
+      attributes:pending.selected, note:pending.replacement?.originalLine.note || this.catalogService.extractProductModificationNote(pending.sourceText || '') || undefined}] : session.cart;
     const candidates = distributionLines.flatMap((line,index) => {
       const product = products.find(product => product.id === line.productId);
       if (!product?.attributes?.length) return [];
@@ -22754,7 +22756,18 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, 'Ya tienes un enlace de pago. Para cambiar ese pedido debemos revisar el pago con el restaurante. El carrito sigue igual.');
       return true;
     }
-    let next: WhatsappSessionData = {...session,pendingAttribute:undefined,cart:pending ? session.cart : session.cart.filter((_,index) => index !== selected.index)};
+    let cart = pending ? session.cart : session.cart.filter((_,index) => index !== selected.index);
+    if (pending?.replacement) {
+      const matches = session.cart.flatMap((line,index) =>
+        JSON.stringify(line) === JSON.stringify(pending.replacement!.originalLine) ? [index] : []);
+      if (matches.length !== 1) {
+        await this.reply(conv, waId, 'El plato original cambió. Cancela este cambio y vuelve a indicar la variante; el carrito sigue igual.');
+        return true;
+      }
+      // Work on a tentative cart: save only after every group is valid.
+      cart = session.cart.filter((_,index) => index !== matches[0]);
+    }
+    let next: WhatsappSessionData = {...session,pendingAttribute:undefined,cart};
     for (let index = 0; index < parts.length; index++) {
       const attributes = [...(selected.line.attributes || [])].filter(attr => !selected.choices[index]!.some(choice => choice.attributeName === attr.attributeName))
         .concat(selected.choices[index]!);

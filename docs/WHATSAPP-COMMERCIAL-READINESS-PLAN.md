@@ -1,3 +1,13 @@
+## VIGENTE — tanda 119: reparto de bebidas durante reemplazo por combo (22/10)
+
+Base 73816c6b, staging. 36 regresiones nuevas, tres menús sintéticos y agente simulado on/off. Reparto de cuatro combos en Uva×2/Pepsi×2 mediante «los quiero 2 con…», «dos con… y dos con…» o comas. 18 recorridos hasta DTO; 18 controles de suma incorrecta, sabor desconocido y original modificado. Notas y opciones compatibles conservadas; ninguna orden antes de confirmar.
+
+Fallo reproducido: la distribución añadía combos sin retirar el plato original y omitía comprobar que el original siguiera intacto. Se prepara un carrito temporal retirando solo la coincidencia exacta y se guarda después de validar todos los grupos. Se hereda la nota del original. Durante pendingAttribute se reconoce el reparto breve sin «los quiero». Baseline inicial 12 fallidos/12 aprobados; extensión breve 12/12 fallidos antes de corregir. Foco final 636/636 en cinco suites; TS general/build OK; Node 92/92. Global 16.321/16.321, 192 suites, 490 hashes intactos, inventario exacto, 575,15 s, sin reintentos.
+
+Cero llamadas pagadas, WhatsApp u órdenes externas. Main/producción preservados. Despliegue agrupado 118/119 pendiente de verificación. Acceso público de staging debe permanecer activo y eventos de cocina bloqueados. Evidencia: [tanda 119](whatsapp-pending-combo-distribution-validation-2210.md).
+
+Límites: reparto completo de opciones mientras el producto ya está seleccionado; no cubre por esta tanda varias instrucciones de contacto/notas en la misma respuesta ni grupos enviados en mensajes separados. Siguiente: repartir por turnos («dos con Uva» / «los otros con Pepsi»), consultas entre ambos y cambio de opinión; conservar total y no confirmar un reparto incompleto.
+
 ## VIGENTE — tanda 118: cambiar una unidad de una línea dividida (22/10)
 
 Base cc4e71e5, staging. 36 regresiones nuevas: tres menús sintéticos, agente simulado on/off, compra/pago/confirmación y elección de línea explícita o mediante aclaración. Parten de cuatro combos con Uva y nota, cambian dos bebidas a Pepsi y solo una de las dos unidades restantes a Limonada. Verifican reparto final Uva×1/Pepsi×2/Limonada×1, opciones compatibles, notas, estado y 36 DTO completos sin crear órdenes antes de confirmar.

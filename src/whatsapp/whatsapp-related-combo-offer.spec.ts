@@ -464,6 +464,49 @@ describe.each(menus)('$id: a drink question lists every related combo', m => {
       });
     });
 
+    it.each(['valid', 'validBare', 'validCommas', 'wrongTotal', 'unknownFlavor', 'staleCart'])('distributes drinks during replacement selection: %s', async scenario => {
+      const h = await start(m.order.replace(/^(?:un|una) /, 'cuatro ') + ' sin cebolla');
+      h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 119, dailyOrderNumber: 119 });
+      await h.send('eso lleva bebida?');
+      await h.send('1');
+      expect(h.conv.sessionData.pendingAttribute?.productId).toBe(m.own.id);
+      if (scenario === 'staleCart') h.conv.sessionData.cart[0].note = 'sin tomate';
+      const before = structuredClone(h.conv.sessionData.cart);
+      const pending = structuredClone(h.conv.sessionData.pendingAttribute);
+      const input = scenario === 'wrongTotal' ? 'los quiero 2 con Uva y 1 con Pepsi'
+        : scenario === 'unknownFlavor' ? 'los quiero 2 con Uva y 2 con Tamarindo'
+        : scenario === 'validBare' ? 'dos con Uva y dos con Pepsi'
+        : scenario === 'validCommas' ? 'dos con Uva, dos con Pepsi' : 'los quiero 2 con Uva y 2 con Pepsi';
+      const response = await h.send(input);
+      if (!scenario.startsWith('valid')) {
+        expect(h.conv.sessionData.cart).toEqual(before);
+        expect(h.conv.sessionData.pendingAttribute).toEqual(pending);
+        expect(response).toMatch(/sigue igual|sin cambiar|cambió/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        return;
+      }
+      expect(response).toContain('Uva');
+      expect(response).toContain('Pepsi');
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.cartRows().map(row => [attr(row.attrs,'Bebida'),row.qty]).sort()).toEqual([['Pepsi',2],['Uva',2]]);
+      for (const row of h.cartRows()) {
+        expect(row.id).toBe(m.own.id);
+        expect(row.note).toMatch(/sin cebolla/i);
+        expect(attr(row.attrs,m.kept[0])).toBe(m.kept[1]);
+      }
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+      await h.send('no más, recojo en el local');
+      await h.send('contraentrega');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.send('confirmar');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const dto = h.service.ordersService.create.mock.calls[0][0];
+      expect(dto.items).toHaveLength(4);
+      expect(dto.items.map(item => item.productId)).toEqual(Array(4).fill(m.own.id));
+      expect(dto.items.map(item => item.attributes.find(a => a.attributeName === 'Bebida')?.attributeValue).sort()).toEqual(['Pepsi','Pepsi','Uva','Uva']);
+      for (const item of dto.items) expect(item.note).toMatch(/sin cebolla/i);
+    });
+
     it.each(['name', 'phone', 'address'])('keeps a pending drink while storing %s', async field => {
       const h = await start();
       h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 115, dailyOrderNumber: 115 });
