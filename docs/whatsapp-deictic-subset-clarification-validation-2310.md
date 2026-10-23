@@ -1,0 +1,11 @@
+## VIGENTE — tanda 130: referencias ambiguas y recuperación explícita (23/10)
+
+Base f5993513, staging. 24 casos nuevos, tres menús sintéticos (bao/salsa, pizza/masa, batido/base), agente simulado on/off. Dos líneas preparadas de tres unidades con opciones y notas propias en confirmación. «Cambia dos de esos/esas/de los que te dije a [opción]» y «Cambia dos de esos a como estaban» deben aclarar sin mutar. Consulta de precio intermedia conserva carrito; instrucción posterior por línea cambia solo dos unidades, conserva nota original y añade la nueva; DTO de seis unidades solo tras confirmar.
+
+Los casos pasan con código existente. Foco final 192/192 en tres suites, TypeScript general/build OK, Node 92/92. Solo pruebas/documentación, sin nueva global: última global ejecutable es tanda 129, 16.698/16.698 en 196 suites; no sumar esta cifra con ejecuciones focales. Cero API pagada, WhatsApp u órdenes externas.
+
+Despliegue agrupado 129/130 pendiente de verificación al escribir. Main/producción preservados; mantener publicChat=true/orderEvents=false. Límites: prueba aclaración segura con dos grupos posibles y lenguaje de cambio contado; no acredita resolver automáticamente «esos dos» con antecedente único, «deshaz eso» aislado ni revertir desde historial. Parten de carrito preparado. Siguiente: construir evidencia de la última mutación aplicada antes de aceptar un deshacer, o pedir una corrección explícita; contrastar antecedente único frente a varios y no inferirlo solo por cantidad. No declarar vendible por conteos.
+
+Detalle: [tanda 130](whatsapp-deictic-subset-clarification-validation-2310.md).
+
+Evidencia local: /tmp/ppp-130-focus.log (102/102, primeras 18 nuevas), /tmp/ppp-130-final-focus.log (192/192, 24 nuevas finales), /tmp/ppp-130-node.log (92/92). Regresiones en whatsapp-existing-variants-block.spec.ts. Modelo/servicios externos simulados; no sumar las ejecuciones solapadas.

@@ -1,3 +1,13 @@
+## VIGENTE — tanda 130: referencias ambiguas y recuperación explícita (23/10)
+
+Base f5993513, staging. 24 casos nuevos, tres menús sintéticos (bao/salsa, pizza/masa, batido/base), agente simulado on/off. Dos líneas preparadas de tres unidades con opciones y notas propias en confirmación. «Cambia dos de esos/esas/de los que te dije a [opción]» y «Cambia dos de esos a como estaban» deben aclarar sin mutar. Consulta de precio intermedia conserva carrito; instrucción posterior por línea cambia solo dos unidades, conserva nota original y añade la nueva; DTO de seis unidades solo tras confirmar.
+
+Los casos pasan con código existente. Foco final 192/192 en tres suites, TypeScript general/build OK, Node 92/92. Solo pruebas/documentación, sin nueva global: última global ejecutable es tanda 129, 16.698/16.698 en 196 suites; no sumar esta cifra con ejecuciones focales. Cero API pagada, WhatsApp u órdenes externas.
+
+Despliegue agrupado 129/130 pendiente de verificación al escribir. Main/producción preservados; mantener publicChat=true/orderEvents=false. Límites: prueba aclaración segura con dos grupos posibles y lenguaje de cambio contado; no acredita resolver automáticamente «esos dos» con antecedente único, «deshaz eso» aislado ni revertir desde historial. Parten de carrito preparado. Siguiente: construir evidencia de la última mutación aplicada antes de aceptar un deshacer, o pedir una corrección explícita; contrastar antecedente único frente a varios y no inferirlo solo por cantidad. No declarar vendible por conteos.
+
+Detalle: [tanda 130](whatsapp-deictic-subset-clarification-validation-2310.md).
+
 ## VIGENTE — tanda 129: retirar una nota conservando instrucciones posteriores (23/10)
 
 Base f7df399a, staging. 18 conversaciones nuevas en tres menús sintéticos (bao/salsa, pizza/masa, batido/base), agente simulado on/off. Carrito preparado con dos líneas de dos unidades, opciones y notas diferentes. Se añade sin ajo y después salsa aparte a la primera; se retira solo sin ajo, se repite la retirada o se solicita primero un producto con dos líneas (debe aclarar), se consulta total y se cierra hasta DTO de cuatro unidades.

@@ -92,3 +92,31 @@ describe('Repeated subset edits after the cart has already split',()=>{
   });
  }
 });
+
+describe('Deictic subset requests must clarify when two groups fit',()=>{
+ for(const f of menus)for(const enabled of [false,true])for(const wording of ['Cambia dos de esos','Cambia dos de esas','Cambia dos de los que te dije','Cambia dos de esos a como estaban']){
+  it(`${f.name} ${wording} agent=${enabled}`,async()=>{
+   const p={id:85001,code:85001,name:f.name,price:23000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.a,f.b,f.c]}]};
+   const h=harness([p],enabled);h.service.aiService.classifyMessage=jest.fn().mockResolvedValue(null);
+   h.conv.state='awaiting_final_confirm';
+   const line=(value:string,note:string)=>({productId:p.id,code:p.code,name:p.name,quantity:3,unitPrice:p.price,attributes:[{attributeName:f.attr,attributeValue:value}],note});
+   Object.assign(h.conv.sessionData,{cart:[line(f.a,f.note),line(f.b,'bien empacado')],orderType:'pickup',fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,paymentMethod:'contraentrega'});
+   h.service.ordersService.create=jest.fn().mockResolvedValue({id:130,dailyOrderNumber:130});
+   const before=structuredClone(h.conv.sessionData.cart);
+   const reply=await h.sendQueued(wording.endsWith('como estaban')?wording:`${wording} a ${f.c}`);
+   expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/cu[aá]l|aclar/i);
+   expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   const total=await h.sendQueued('cuánto cuesta todo');expect(total).toMatch(/138[.,]000/);
+   expect(h.conv.sessionData.cart).toEqual(before);
+   await h.sendQueued(`Cambia la ${f.attr} de dos unidades de la linea 2 a ${f.c} ${f.extra}`);
+   expect(h.conv.sessionData.cart).toEqual(expect.arrayContaining([before[0],{...before[1],quantity:1}]));
+   expect(h.conv.sessionData.cart.reduce((sum,l)=>sum+l.quantity,0)).toBe(6);
+   const changed=h.conv.sessionData.cart.find(l=>l.attributes?.some(a=>a.attributeValue===f.c));
+   expect(changed).toMatchObject({quantity:2});expect(changed!.note).toContain('bien empacado');expect(changed!.note).toContain(f.extra);
+   await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+   const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(6);
+   expect(items.filter(i=>i.note?.includes(f.extra))).toHaveLength(2);
+   expect(items.filter(i=>i.attributes.some(a=>a.attributeValue===f.a))).toHaveLength(3);
+  });
+ }
+});
