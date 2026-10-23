@@ -2303,6 +2303,7 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, 'Anoté la fecha y el horario solicitados. La disponibilidad para una entrega programada debe confirmarla el local; todavía no está reservada.');
       return;
     }
+    if (await this.tryStagePendingAttributeDistribution(conv, msg.waId, session, originalText, cfg)) return;
     const unitSplit = this.rememberIncomingUnitSplit(session, originalText);
     if (unitSplit.handled) {
       session = unitSplit.session;
@@ -9348,6 +9349,59 @@ export class WhatsappOrchestratorService {
       }),
     );
     await this.applyStashedUnitSplit(conv, waId, products, cfg);
+    return true;
+  }
+
+  /** Collect counted options over several turns without applying one group's choice to every unit. */
+  private async tryStagePendingAttributeDistribution(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const pending = session.pendingAttribute;
+    if (!pending || session.pendingMultiOrder || session.pendingMatch || /[¿?]/.test(text)) return false;
+    const total = pending.quantity || this.catalogService.extractQuantityFromSegment(pending.sourceText || '') || 1;
+    if (total < 2) return false;
+    let raw = text.trim();
+    if (pending.distributionParts?.length) {
+      const option = this.normalizeForMatch(raw.replace(/^con\s+/i, ''))
+        .replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '').trim();
+      const offered = pending.attributes.flatMap(attribute => attribute.options)
+        .filter(value => this.normalizeForMatch(value) === option);
+      if (offered.length === 1) raw = `los otros con ${offered[0]}`;
+      else if (/^\d{1,2}$/.test(raw)) {
+        await this.reply(conv, waId, 'Ya hay una parte elegida. Indica el sabor de las unidades restantes por nombre, o el reparto completo; el carrito sigue igual.');
+        return true;
+      }
+    }
+    const counted = raw.match(/^(\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+(.+)$/i);
+    const remaining = raw.match(/^(?:y\s+)?(?:(?:los|las)\s+(?:otros|otras|restantes)|el otro|la otra)\s+con\s+(.+)$/i);
+    if (!counted && !remaining) return false;
+    // Complete distributions belong to the existing atomic planner below.
+    if (/^(?:uno|una)\s+con\s+.+\s+y\s+el\s+otro\s+con\s+/i.test(raw)) return false;
+    if (/(?:\s+y\s+|[,;]\s*)(?:\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+/i.test(raw)) return false;
+    const parts = pending.distributionParts || [];
+    const quantityOf = (part: string) => this.catalogService.extractQuantityFromSegment(part.replace(/\s+con\s+.+$/i, ' platos'));
+    const assigned = parts.reduce((sum, part) => sum + quantityOf(part), 0);
+    const quantity = counted ? quantityOf(raw) : /^(?:y\s+)?(?:el otro|la otra)\s+/i.test(raw) ? 1 : total - assigned;
+    if (!parts.length && quantity === total && counted) return false;
+    if ((!parts.length && remaining) || quantity < 1 || assigned + quantity > total || parts.length >= 6) {
+      await this.reply(conv, waId, `Son ${total} unidades. Indica la cantidad y opción de cada grupo; el carrito sigue igual.`);
+      return true;
+    }
+    const menu = await this.catalogService.getMenuProducts();
+    const available = cfg.ignoreBusinessHours ? menu.map(product => ({...product, availableNow:true})) : menu;
+    const product = available.find(item => item.id === pending.productId);
+    const part = `${quantity} con ${counted?.[2] || remaining![1]}`;
+    const parsed = product && this.catalogService.resolveAttributesFromMessage(product, part, []);
+    if (!parsed || parsed.status === 'invalid' || !parsed.attributes.length) {
+      await this.reply(conv, waId, `No pude identificar esas opciones. El carrito sigue igual.\n\n${this.formatPendingPurchaseReminder(session)}`);
+      return true;
+    }
+    const nextParts = [...parts, part];
+    if (assigned + quantity === total) {
+      return this.tryHandleAttributeDistribution(conv, waId, session, `los quiero ${nextParts.join(' y ')}`, available, cfg);
+    }
+    await this.conversationService.saveSession(conv, {...session, pendingAttribute:{...pending, distributionParts:nextParts}});
+    await this.reply(conv, waId, `Anoté ${nextParts.join('; ')}. Faltan ${total - assigned - quantity} unidades: ¿con qué opción las quieres? El carrito sigue igual hasta completar el reparto.`);
     return true;
   }
 

@@ -1,3 +1,15 @@
+## VIGENTE — tanda 120: reparto de opciones en varios turnos (22/10)
+
+Base 054f45f9, staging. 66 regresiones nuevas, tres menús sintéticos (arroz, hamburguesa, salchipapa), agente simulado on/off. Cuatro unidades: «dos con Uva», luego «los otros con Pepsi», cantidad explícita o sabor solo/con cortesía. Incluye consulta intermedia, opción desconocida, exceso de unidades, índice ambiguo, reinicio, reparto completo corregido y original modificado. 54 recorridos hasta DTO; seis reinicios y seis protecciones de original modificado. Conserva notas/opciones compatibles, carrito original mientras falta reparto y ninguna orden antes de confirmar.
+
+Se reproducían 36/36 fallos iniciales: una elección parcial se aplicaba antes de terminar el reparto. Se guardan grupos en pendingAttribute.distributionParts y se usa el planificador atómico existente al completar la cantidad. El sabor solo completa las restantes; el índice aislado pide nombre para evitar aplicarlo a todas. Una distribución completa nueva sustituye la propuesta parcial. Extensión «Pepsi, por favor»: 6/6 fallos antes de normalizar cortesía. La primera global completa iniciada detectó una regresión del PDF («uno con… y el otro con…» completo); se detuvo y corrigió la prioridad, sin publicar esa versión. El reparto completo conserva su ruta previa.
+
+Validación: foco inicial 696/696 en cinco suites; tras cortesía, 444/444 de combos; reparación histórica + combos 1.170/1.170. TypeScript general/build OK; Node 92/92. Global final 16.387/16.387, 192 suites, inventario exacto y 490 hashes intactos, 587,22 s. No sumar runs de desarrollo como pruebas independientes. Cero API pagada, WhatsApp u órdenes externas.
+
+Publicación en rama staging; pendiente de despliegue agrupado. Servidor conserva e4fdb03a (118/119), imagen ddefc8e4…; acceso público de staging debe seguir activo, eventos de cocina bloqueados. Main/producción preservados. Evidencia: [tanda 120](whatsapp-multiturn-option-distribution-validation-2210.md).
+
+Límites: opciones de un producto ya seleccionado, dependencias/modelo simulados. No acredita inferencia real, reparto libre entre varios productos, notas diferentes por grupo ni contacto mezclado con cada fracción. Siguiente: notas y opciones sobre cada grupo en varios mensajes, corrección de solo uno, tres grupos y distintos atributos (temperatura, término, salsa), con varios menús y DTO. Mantener la validación histórica de repartos completos. No desplegar a Main sin solicitud explícita.
+
 ## VIGENTE — tanda 119: reparto de bebidas durante reemplazo por combo (22/10)
 
 Base 73816c6b, staging. 36 regresiones nuevas, tres menús sintéticos y agente simulado on/off. Reparto de cuatro combos en Uva×2/Pepsi×2 mediante «los quiero 2 con…», «dos con… y dos con…» o comas. 18 recorridos hasta DTO; 18 controles de suma incorrecta, sabor desconocido y original modificado. Notas y opciones compatibles conservadas; ninguna orden antes de confirmar.
