@@ -8597,6 +8597,11 @@ export class WhatsappOrchestratorService {
     let priceQuestion = false;
     const isOfferedSelection = (clause: string) => {
       if (this.isPriceQuoteAcceptance(clause)) return true;
+      if (pending.replacement?.preferredId != null && !/[¿?]/.test(clause)) {
+        const selection = clause.trim().replace(/^(?:(?:quiero|dame|deme|me das)\s+)?(?:-?\d{1,3}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(?:del|de la|de el)\s+/i, '');
+        const rowText = selection.split(/\s+con\s+/i)[0];
+        if (this.pendingTextListRow(rowText, pending.candidates) != null) return true;
+      }
       const flat = this.normalizeForMatch(clause);
       const ordinal = flat.match(/^(?:el|la) (primero|primera|segundo|segunda|tercero|tercera|cuarto|cuarta)$/);
       const ranks: Record<string, number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3,cuarto:4,cuarta:4};
@@ -8648,6 +8653,12 @@ export class WhatsappOrchestratorService {
     if (address) next = this.withDeliveryAddress({...next, address: undefined, addressConfirmed: false}, address);
     await this.conversationService.saveSession(conv, next);
     if (selection && (!this.isPriceQuoteAcceptance(selection) || pending.priceAcceptanceProductId)) {
+      // Resolve the chosen row, quantity and drink with the same safeguards
+      // as a selection without contact details; do not default its attributes.
+      if (pending.replacement?.preferredId != null) {
+        const swapped = await this.tryAnswerComboSwapOffer(conv, waId, next, selection, cfg);
+        if (swapped === true) return true;
+      }
       const menu = await this.catalogService.getMenuProducts();
       // Reuse live availability, price re-acceptance and replacement safeguards.
       if (await this.tryResolvePendingMatchPick(conv, waId, next, selection, menu, cfg)) return true;

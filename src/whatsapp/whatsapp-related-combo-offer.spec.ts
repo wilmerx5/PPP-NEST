@@ -325,6 +325,59 @@ describe.each(menus)('$id: a drink question lists every related combo', m => {
       expect(h.conv.sessionData.pendingMatch ?? null).toBeNull();
     });
 
+    it.each(['first', 'last', 'commas', 'counted'])('stores all contact fields with combo and drink: %s', async style => {
+      const h = await start(`${m.order} sin cebolla`);
+      h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 116, dailyOrderNumber: 116 });
+      await h.send('eso lleva bebida?');
+      const selection = style === 'counted' ? 'dos del combo 2 con Uva' : 'el combo 2 con Uva';
+      const details = 'a nombre de Ana Torres\n3001112233\nCarrera 12 #34-56';
+      const input = style === 'last' ? `${details}\n${selection}`
+        : style === 'commas' ? `${selection}, ${details.replace(/\n/g, ', ')}` : `${selection}\n${details}`;
+      const response = await h.send(input);
+      const quantity = style === 'counted' ? 2 : 1;
+      expect(h.cartRows()).toHaveLength(1);
+      expect(h.cartRows()[0]).toMatchObject({ id: m.other.id, qty: quantity, note: expect.stringMatching(/sin cebolla/i) });
+      expect(attr(h.cartRows()[0].attrs, 'Bebida')).toBe('Uva');
+      expect(response).toContain(m.other.name);
+      expect(h.conv.customerName).toBe('Ana Torres');
+      expect(h.conv.sessionData.contactPhone?.replace(/\D/g, '')).toContain('3001112233');
+      expect(h.conv.sessionData.address).toContain('34-56');
+      expect(h.conv.sessionData.pendingMatch).toBeFalsy();
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.send('nada más');
+      if (h.conv.state === 'awaiting_address') await h.send('sí');
+      if (h.conv.state === 'awaiting_payment') await h.send('contraentrega');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.send('confirmar');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const dto = h.service.ordersService.create.mock.calls[0][0];
+      expect(dto.items.map(item => item.productId)).toEqual(Array(quantity).fill(m.other.id));
+      for (const item of dto.items) {
+        expect(item.attributes).toContainEqual({ attributeName: 'Bebida', attributeValue: 'Uva' });
+        expect(item.note).toMatch(/sin cebolla/i);
+      }
+      expect(dto.customerName).toBe('Ana Torres');
+      expect(dto.phone.replace(/\D/g, '')).toContain('3001112233');
+      expect(dto.address).toContain('34-56');
+    });
+
+    it.each(['el combo 9 con Uva', 'el combo 2 con Tamarindo', 'cero del combo 2 con Uva', 'el combo 2 con Uva y Pepsi'])('contact does not authorize an unresolved selection: %s', async raw => {
+      const h = await start(`${m.order} sin cebolla`);
+      await h.send('eso lleva bebida?');
+      const before = structuredClone(h.conv.sessionData.cart);
+      // Numeric zero uses the same quantity validation as a standalone choice.
+      const selection = raw.replace(/^cero /, '0 ');
+      const response = await h.send(`${selection}\na nombre de Ana Torres\n3001112233\nCarrera 12 #34-56`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingMatch?.replacement).toBeTruthy();
+      expect(h.conv.customerName).toBe('Ana Torres');
+      expect(h.conv.sessionData.contactPhone?.replace(/\D/g, '')).toContain('3001112233');
+      expect(h.conv.sessionData.address).toContain('34-56');
+      expect(response).toMatch(/opción|bebida|cantidad/i);
+      expect(response).not.toMatch(/lo cambié|pedido quedó registrado/i);
+    });
+
     it.each(['name', 'phone', 'address'])('keeps a pending drink while storing %s', async field => {
       const h = await start();
       h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 115, dailyOrderNumber: 115 });
