@@ -1896,7 +1896,8 @@ export class WhatsappOrchestratorService {
         !/[¿?]/.test(originalText) &&
         (await this.tryAppendUnitDetailsToAddress(conv, msg.waId, session, originalText, cfg) ||
          await this.tryAppendDeliveryAccessReference(conv, msg.waId, session, originalText, cfg))) return;
-    if (await this.tryHandleStandardPortionPreference(conv,msg.waId,session,originalText,cfg,turn) ||
+    if (await this.tryUndoLastUnitOptionEdit(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryHandleStandardPortionPreference(conv,msg.waId,session,originalText,cfg,turn) ||
         await this.tryHandleUnavailableCountedPurchase(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleLineScopedPaidAddon(conv,msg.waId,session,originalText,cfg) ||
@@ -17586,6 +17587,34 @@ export class WhatsappOrchestratorService {
   }
 
   /** A counted option edit affects units, not the whole grouped cart line. */
+  /** Undo only a recorded, recent option mutation while its resulting cart is still intact. */
+  private async tryUndoLastUnitOptionEdit(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    const q = this.normalizeForMatch(text).replace(/[.!]+$/g, '').replace(/\s+(?:por favor|porfa|gracias)$/, '').trim();
+    if (!/^(?:deshaz (?:el ultimo cambio|ese cambio|eso)|revierte el ultimo cambio)$/.test(q)) return false;
+    const last = session.lastUnitOptionEdit;
+    const clarify = async () => {
+      await this.reply(conv, waId, 'No puedo identificar un cambio reciente que sea seguro deshacer. Indica el plato, cuántas unidades y cómo deben quedar. El pedido sigue igual.');
+      return true;
+    };
+    if (!['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || !last?.beforeCart?.length || !last.createdAt ||
+        Date.now() - last.createdAt < 0 || Date.now() - last.createdAt > 10 * 60 * 1000 ||
+        last.cartSignature !== JSON.stringify(session.cart)) return clarify();
+    const menu = await this.catalogService.getMenuProducts();
+    if (last.beforeCart.some(line => {
+      const product = menu.find(p => p.id === line.productId && p.availableNow !== false);
+      return !product || (line.attributes || []).some(value => !product.attributes?.some(attr =>
+        attr.attributeName === value.attributeName && attr.options.includes(value.attributeValue)));
+    })) return clarify();
+    const next = {...session, cart: structuredClone(last.beforeCart), lastUnitOptionEdit: undefined};
+    await this.conversationService.saveSession(conv, next);
+    await this.reply(conv, waId, 'Listo, deshecho el último cambio de opciones ✅\n\n' +
+      this.formatCartOnly(next, this.deliveryFeeFor(next, cfg)) + '\n\n' +
+      (this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next)));
+    return true;
+  }
+
   private async tryHandlePartialUnitOptionChange(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
     if (!session.cart.length || /[¿?]/.test(text) || text.length > 240 ||
         !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
@@ -17663,7 +17692,7 @@ export class WhatsappOrchestratorService {
       ...(target.note ? {note:target.note} : {}),
     }]},menu,this.catalogService);
     if (!plan.ok) return clarify();
-    session={...session,cart:plan.cart,lastUnitOptionEdit:{sourceText:this.normalizeForMatch(text),cartSignature:JSON.stringify(plan.cart)}};
+    session={...session,cart:plan.cart,lastUnitOptionEdit:{sourceText:this.normalizeForMatch(text),cartSignature:JSON.stringify(plan.cart),beforeCart:structuredClone(session.cart),createdAt:Date.now()}};
     await this.conversationService.saveSession(conv,session);
     await this.reply(conv,waId,this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+reminder);
     return true;
@@ -23029,7 +23058,7 @@ export class WhatsappOrchestratorService {
         return true;
       }
       const applied = [{attributeName:edit!.attributeName,attributeValue:edit!.attributeValue},...(edit!.extraAttributes || [])];
-      session={...session,cart:plan.cart,lastUnitOptionEdit:{sourceText:this.normalizeForMatch(pendingEdit.sourceText),cartSignature:JSON.stringify(plan.cart)}};
+      session={...session,cart:plan.cart,lastUnitOptionEdit:{sourceText:this.normalizeForMatch(pendingEdit.sourceText),cartSignature:JSON.stringify(plan.cart),beforeCart:structuredClone(session.cart),createdAt:Date.now()}};
       await this.conversationService.saveSession(conv,session);
       await this.reply(conv,waId,`Listo ✅ ${line.name}: ${edit!.quantity} unidad(es) con ${applied.map(option => `${option.attributeName}: ${option.attributeValue}`).join(' · ')}` +
         (edit!.note ? ` · ${edit!.note}` : '') + '\n\n' +

@@ -1,3 +1,15 @@
+## VIGENTE — tanda 131: deshacer el último cambio contado de opciones (23/10)
+
+Base c65f6e7a, staging. El registro lastUnitOptionEdit solo tenía texto/firma para idempotencia. Ahora guarda opcionalmente beforeCart y createdAt al aplicar el cambio directo o el resuelto por selección. «Deshaz el último cambio», «deshaz eso/ese cambio» y «revierte el último cambio» restauran exclusivamente ese carrito cuando la firma actual coincide, han pasado como máximo diez minutos, no hay selección/enlace de pago pendiente, el estado permite editar y las opciones originales siguen disponibles. Se consume el registro al restaurar. Se preservan estado, contacto y otros datos actuales. Sin nuevas tablas ni excepciones por restaurante.
+
+54 casos nuevos en tres menús sintéticos, agente simulado on/off: directo, consulta del total, cambio de nombre, nota posterior, vencimiento, registro ausente, repetición, opción retirada y selección pendiente. Los casos válidos llegan a DTO de tres unidades con opciones/notas originales; los rechazados conservan carrito y piden corrección explícita. Baseline funcional 39 fallos/3 aprobados; primer intento anterior no ejecutó tests por un campo incorrecto del fixture, corregido a conv.customerName. Foco final 180/180, TypeScript general/build OK, Node 92/92. Global 16.776/16.776, 197 suites, inventario exacto, 495 hashes intactos, 621,22 s. Cero API pagada, WhatsApp u órdenes externas.
+
+Publicado solo en staging; despliegue agrupado pendiente. Servidor conserva bb6c21eb, imagen 388efe82…; última verificación tanda 130 a las 09:44:45 Bogotá, no nueva verificación aquí. Main/producción intactos; conservar publicChat=true/orderEvents=false.
+
+Límites: solo último cambio contado de opciones con registro válido; no undo de compras, direcciones, pagos ni órdenes confirmadas. Carrito preparado en fixtures. No restaura tras una nota posterior para evitar borrarla; pide corrección explícita. No acredita aún dos cambios consecutivos y deshacer el segundo, la ruta de edición inicialmente ambigua seguida de selección, ni resolver «esos dos» con antecedente inequívoco. Siguiente: esas tres familias; verificar que no se revierte el primer cambio ni se reutiliza el registro después de reiniciar/confirmar. No declarar vendible por conteos.
+
+Detalle: [tanda 131](whatsapp-last-option-undo-validation-2310.md).
+
 ## VIGENTE — tanda 130: referencias ambiguas y recuperación explícita (23/10)
 
 Base f5993513, staging. 24 casos nuevos, tres menús sintéticos (bao/salsa, pizza/masa, batido/base), agente simulado on/off. Dos líneas preparadas de tres unidades con opciones y notas propias en confirmación. «Cambia dos de esos/esas/de los que te dije a [opción]» y «Cambia dos de esos a como estaban» deben aclarar sin mutar. Consulta de precio intermedia conserva carrito; instrucción posterior por línea cambia solo dos unidades, conserva nota original y añade la nueva; DTO de seis unidades solo tras confirmar.
