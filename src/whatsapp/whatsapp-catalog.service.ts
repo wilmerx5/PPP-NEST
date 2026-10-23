@@ -8783,6 +8783,7 @@ export class WhatsappCatalogService {
       /\bcon que va\b/,
       /\bcon que trae\b/,
       /\bcon que acompana\b/,
+      /\bcon que (?:esta|estan) acompanad[oa]s?\b/,
       /\bviene acompana/,
       /\by\s+con\s+que\s+(viene|va|trae)\b/,
       /\bque incluye\b/,

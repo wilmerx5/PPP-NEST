@@ -300,9 +300,9 @@ export class WhatsappDeliveryRoutingService {
     };
     const numberedStreet=streetKey(query);
     if(numberedStreet)return !result.partial_match && streetKey(result.formatted_address || '')===numberedStreet;
-    const raw = normalize(splitDeliveryAddressParts(query).base).replace(/^a\s+/,'').split(',')[0];
-    if (!/\b(?:plazuelas?|conjunto|residencial|urbanizacion|hotel|almacen|edificio|villa)\b/.test(raw)) return true;
-    const ignored = new Set(['plazuela','plazuelas','conjunto','residencial','urbanizacion','hotel','almacen','edificio','de','del','la','el','las','los','para','en']);
+    const raw = normalize(splitDeliveryAddressParts(query).base).replace(/^a\s+/,'').replace(/^condomino\b/, 'condominio').split(',')[0];
+    if (!/\b(?:plazuelas?|condominio|conjunto|residencial|urbanizacion|hotel|almacen|edificio|villa)\b/.test(raw)) return true;
+    const ignored = new Set(['plazuela','plazuelas','condominio','conjunto','residencial','urbanizacion','hotel','almacen','edificio','de','del','la','el','las','los','para','en']);
     const tokens = (raw.match(/[a-z0-9]+/g) || []).filter(token => !ignored.has(token));
     if (!tokens.length) return false;
     const candidate = normalize([result.formatted_address || '', result.name || '',

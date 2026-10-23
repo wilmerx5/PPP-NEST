@@ -1,3 +1,7 @@
+## Actualización 23/10 — implementación validada
+
+Los caminos reproducidos se corrigieron en146–147; ver whatsapp-side-detail-preparation-validation-2310.md. La auditoría siguiente conserva el diagnóstico previo. No extrapolar a modelo/mapa real.
+
 # Auditoría del chat: acompañamiento, compra y preparación ofrecida
 
 Estado: diagnóstico abierto, NO corrección terminada. Base1e6bcc46; staging limpio antes del diagnóstico. Sin cambio de runtime, inferencia pagada, Meta u órdenes externas. No modificar Main ni desplegar por esta auditoría.

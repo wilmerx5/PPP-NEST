@@ -1,3 +1,13 @@
+## VIGENTE — tandas146–147: acompañamientos, corrección exclusiva y nombre con ubicación pendiente (23/10)
+
+Base cdd54a1a, solo staging.48 casos nuevos:24 consultas/preparación/corrección de carrito y24 nombre/conjunto (18 recorridos completos +6 contratos de mapa). Separa compra singular de consulta de acompañamiento, evita consulta como compra/nota, conserva referente de preparación ofrecida y corrige «solo quiero… y que lleve…» a cantidad absoluta cuando las opciones coinciden. Nombre explícito reconoce «Mi nombre es», «Ya te dije que era» y «…es mi nombre real», persiste antes de continuar checkout. Descriptor condominio/condómino no altera identidad del conjunto; se siguen rechazando nombres distintos y resultados parciales. Sin excepciones PPP.
+
+Validación: foco146 final846/846 después de corregir regresión con «salsa con harto limón»; foco147374/374, TS general/build OK, Node92/92. Global agrupada17.128/17.128,208suites,506hashes,621,17s; inventario exacto y fuente congelada. /tmp/ppp-147-global-summary.json, /tmp/ppp-146-preparation-regression.log, /tmp/ppp-147-{focus,tsc,node}.log. Dos globales previas interrumpidas (nuevo caso y regresión), no acreditadas. No sumar focos/reintentos.
+
+Publicación/despliegue solo staging en curso; no afirmar activo hasta verificación posterior. Última imagen verificada antes de publicar siguec13f9ae2…/426b8eff, producciónef426c93… intacta. Cero API pagada, Meta u órdenes externas. Detalles en whatsapp-side-detail-preparation-validation-2310.md y whatsapp-name-place-recovery-validation-2310.md.
+
+Límites: texto y servicios/modelo simulados; la prueba de mapa verifica aceptación de candidato, no búsqueda Google real. No acredita que el conjunto concreto siempre se encuentre. Próximo: contraste real acotado según whatsapp-api-validation-next-2310.md, con presupuesto previo; conservación de conjunto/interior al recibir calle/número; «solo» con variantes incompatibles y notas diferentes. No declarar vendible por conteos.
+
 ## VIGENTE — tanda144: condiciones abreviadas con acción independiente (23/10)
 
 Base5e081a8c, solo staging.24 recorridos nuevos +4 controles: opción sin verbo «Mora si no cuesta más; aparte quita…», orden inverso, condición sola y ambas cláusulas condicionadas. Baseline12 fallos/36 aprobados: guarda superior reconocía condición con pendingChoice, pero separador no recibía contexto. Se propaga desde current.pendingAttribute con predeterminado false. Se conserva bebida pendiente y solo se aplica retirada independiente; luego elección firme y DTO exacto, sin órdenes prematuras. Sin excepciones PPP.
