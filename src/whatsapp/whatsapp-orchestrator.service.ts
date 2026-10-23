@@ -22825,7 +22825,12 @@ export class WhatsappOrchestratorService {
     for (let index = 0; index < parts.length; index++) {
       const attributes = [...(selected.line.attributes || [])].filter(attr => !selected.choices[index]!.some(choice => choice.attributeName === attr.attributeName))
         .concat(selected.choices[index]!);
-      const partNotes = parts[index].split(/\s+y\s+/i).map(clause =>
+      // Remove only the catalog option already resolved at the start of this group.
+      // Otherwise “con Pepsi con ají” is consumed as one drink phrase and loses the kitchen note.
+      const values = selected.choices[index]!.map(choice => choice.attributeValue)
+        .sort((a,b) => b.length - a.length).map(value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      const noteSource = parts[index].replace(new RegExp(`^\\S+\\s+con\\s+(?:${values.join('|')})(?=\\s|[,;]|$)`, 'i'), '').trim();
+      const partNotes = noteSource.split(/\s+y\s+/i).map(clause =>
         omitRedundantAttributeNote(this.catalogService.extractProductModificationNote(clause) || undefined, attributes)).filter(Boolean).join('; ');
       const noteEdit = editScopedCartNote(selected.line.note, {kind:'append',query:'',note:partNotes,preserve:[]});
       if (noteEdit.blocked) {

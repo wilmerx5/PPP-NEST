@@ -1,3 +1,15 @@
+## VIGENTE — tanda 121: notas separadas por grupo y correcciones parciales (22/10)
+
+Base cead288b, staging. 72 regresiones nuevas, tres menús sintéticos y agente simulado on/off, todas hasta DTO simulado. Cuatro unidades distribuidas en dos o tres grupos: notas sin tomate/con ají/sin sal, frases completas o por turnos, con/sin conjunción y comas; misma bebida con notas distintas; recuperación de sabor desconocido; cambio de una sola unidad en pago/confirmación; cubiertos, salsa aparte e hielo. Conserva nota común y opciones compatibles, suma cuatro unidades, no mezcla notas entre grupos y no crea orden antes de confirmar.
+
+Los primeros 36 casos pasaron sin cambios. Al ampliar redacción se reprodujeron 12 fallos (744 aprobados): «con Pepsi con ají» perdía la nota al consumirla como parte de la bebida. Se retira exclusivamente la opción resuelta del catálogo al inicio del grupo antes de extraer las notas; no se añade excepción por bebida, producto o restaurante. Los grupos con la misma bebida y notas distintas permanecen separados.
+
+Foco final 774/774 en cinco suites; TypeScript general/build OK; Node 92/92. Global final 16.459/16.459, 192 suites, inventario exacto, 490 hashes intactos, 565,33 s. Cero API pagada, WhatsApp u órdenes externas. Modelos y servicios externos simulados; no acredita mejora de transcripción/visión real ni calidad general para venta.
+
+Publicación y despliegue agrupado de 120/121 en staging pendientes de verificación de entrega. Main/producción preservados; mantener acceso público de staging y eventos de cocina bloqueados. Evidencia: [tanda 121](whatsapp-distributed-group-notes-validation-2210.md).
+
+Siguiente: varios atributos en cada grupo (bebida+término/salsa/temperatura), cambios de opinión antes de completar el reparto y notas/contacto intercalados. Contrastar respuestas sin cantidad, preguntas y disponibilidad cambiante. No usar conteos para declarar vendible ni cambiar Main sin solicitud explícita.
+
 ## VIGENTE — tanda 120: reparto de opciones en varios turnos (22/10)
 
 Base 054f45f9, staging. 66 regresiones nuevas, tres menús sintéticos (arroz, hamburguesa, salchipapa), agente simulado on/off. Cuatro unidades: «dos con Uva», luego «los otros con Pepsi», cantidad explícita o sabor solo/con cortesía. Incluye consulta intermedia, opción desconocida, exceso de unidades, índice ambiguo, reinicio, reparto completo corregido y original modificado. 54 recorridos hasta DTO; seis reinicios y seis protecciones de original modificado. Conserva notas/opciones compatibles, carrito original mientras falta reparto y ninguna orden antes de confirmar.
