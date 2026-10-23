@@ -1608,6 +1608,7 @@ export class WhatsappOrchestratorService {
     // Mismo chat por número: al escribir de nuevo tras pedido o cierre, empieza pedido nuevo
     let reopenedFreshOrder = false;
     if (conv.state === 'completed' || conv.state === 'closed') {
+      if (await this.tryUndoLastUnitOptionEdit(conv, msg.waId, this.conversationService.getSession(conv), originalText, cfg)) return;
       // A courtesy or repeated affirmative is not a new purchase. Preserve the
       // completed state so a trailing WhatsApp bubble cannot reopen the cart.
       if (this.catalogService.isCourtesyOnlyMessage(originalText) || isFinalConfirmAffirmation(originalText) ||
@@ -17591,6 +17592,12 @@ export class WhatsappOrchestratorService {
   private async tryUndoLastUnitOptionEdit(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
     const q = this.normalizeForMatch(text).replace(/[.!]+$/g, '').replace(/\s+(?:por favor|porfa|gracias)$/, '').trim();
     if (!/^(?:deshaz (?:el ultimo cambio|ese cambio|eso)|revierte el ultimo cambio)$/.test(q)) return false;
+    if (conv.state === 'completed' || conv.state === 'closed') {
+      await this.reply(conv, waId, conv.state === 'completed'
+        ? 'El pedido ya está registrado. No lo he modificado. Para solicitar cambios, contacta al restaurante.'
+        : 'Esta conversación está cerrada; no he deshecho ningún cambio. Si quieres hacer un pedido nuevo, dime qué te gustaría pedir.');
+      return true;
+    }
     const last = session.lastUnitOptionEdit;
     const clarify = async () => {
       await this.reply(conv, waId, 'No puedo identificar un cambio reciente que sea seguro deshacer. Indica el plato, cuántas unidades y cómo deben quedar. El pedido sigue igual.');

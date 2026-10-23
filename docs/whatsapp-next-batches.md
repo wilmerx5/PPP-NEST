@@ -1,3 +1,17 @@
+## VIGENTE — tanda 132: ciclo de vida del último cambio de opciones (23/10)
+
+Base e414e883, rama staging. 36 pruebas nuevas en tres menús sintéticos (bao/salsa, pizza/masa y batido/base), agente simulado on/off. Cubren dos cambios sucesivos y deshacer solo el segundo, consulta intermedia del total, reinicio, pedido confirmado, conversación cerrada manualmente y edición inicialmente ambigua resuelta por línea. Se comprueban respuesta, carrito, estado y DTO de orden simulada; no se crea otra orden al deshacer después de confirmar.
+
+Corrección general: interceptar deshacer antes de reabrir una conversación terminada. Distingue completed (pedido registrado) de closed (conversación cerrada sin acreditar una orden). No restaura carritos ni inicia pedidos nuevos en esos estados. No hay excepciones por restaurante.
+
+Validación final: foco previo 210/210 (30 nuevos), suite final ampliada 90/90 (36 nuevos), TypeScript general/build OK y Node 92/92. Global 16.812/16.812, 197 suites, inventario exacto y 495 hashes intactos; 1.592,57 s. Se ejecutó con timeout de test de 15 s y cuatro workers en el bloque general, sin cambiar plazos de producción. Dos intentos previos de ráfagas excedieron 5 s y un tercero se interrumpió por timeouts en otras suites: no acreditarlos como aprobados. Evidencia /tmp/ppp-132-global-summary.json y logs por fase. Cero API pagada, WhatsApp u órdenes externas. Publicación/despliegue agrupado 131+132 pendiente; Main intacta.
+
+Siguiente bloque preparado: [conversaciones completas](whatsapp-complete-conversations-next-2310.md), con doce familias y oráculos por turno/DTO. Son casos de desarrollo, no muestra reservada.
+
+Límites: deshacer un único cambio contado con registro vigente; no historial de undo, inferencia libre de «esos dos», ni evaluación real de voz/modelo. Los fixtures parten de carrito preparado. Siguiente: conversaciones completas desde carrito vacío con compras, notas repartidas, consulta y cierre, además de distinguir referencias a grupos explícitos de inferencias por cantidad. Mantener publicChat=true/orderEvents=false. No declarar vendible por conteos.
+
+Detalle: [tanda 132](whatsapp-option-undo-lifecycle-validation-2310.md).
+
 ## VIGENTE — tanda 131: deshacer el último cambio contado de opciones (23/10)
 
 Base c65f6e7a, staging. El registro lastUnitOptionEdit solo tenía texto/firma para idempotencia. Ahora guarda opcionalmente beforeCart y createdAt al aplicar el cambio directo o el resuelto por selección. «Deshaz el último cambio», «deshaz eso/ese cambio» y «revierte el último cambio» restauran exclusivamente ese carrito cuando la firma actual coincide, han pasado como máximo diez minutos, no hay selección/enlace de pago pendiente, el estado permite editar y las opciones originales siguen disponibles. Se consume el registro al restaurar. Se preservan estado, contacto y otros datos actuales. Sin nuevas tablas ni excepciones por restaurante.
