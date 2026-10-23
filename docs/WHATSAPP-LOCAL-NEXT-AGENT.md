@@ -1,3 +1,13 @@
+## VIGENTE — tanda 127: tres unidades con notas elípticas (23/10)
+
+Base c276bb01, staging. Se reproducen 18 fallos en «tres platos, uno sin…, otro sin… y el último sin…»: la expansión del resto implícito consumía el primer grupo y perdía la distribución. Se reconoce primero la distribución completa de tres unidades, con propietario único disponible obtenido del catálogo. Reconoce masculino/femenino, tres/3 y último/ultima; conserva cada nota en una unidad. Sin nombres, IDs ni precios especiales de producción.
+
+36 conversaciones nuevas (tres menús sintéticos: pasta, bowl, pescado; agente simulado on/off; dos formas elípticas × compra/coste/edición de segunda línea). Comprueban respuesta, cantidades, notas sin contaminación entre líneas, consulta sin mutación, cierre y DTO de tres unidades sin orden antes de confirmar. Suite de familia final 66/66; foco previo 107/107 (antes de añadir femenino), TypeScript general/build OK y Node 92/92. Global final 16.650/16.650, 195 suites, inventario exacto y 493 hashes intactos, 613,74 s. Cero API pagada, WhatsApp u órdenes externas.
+
+Solo publicación en staging: despliegue agrupado pendiente. Servidor conserva la tanda 126: 0a0e5365, imagen a1651634…; última verificación 23/10 08:58:25 Bogotá, no una nueva verificación en esta tanda. Main/producción intactos. Mantener publicChat=true y orderEvents=false. No atribuir resultados a modelo o audio real ni declarar vendible por conteos.
+
+Límites: tres grupos completos con notas acotadas y separadores explícitos; no acredita cualquier paráfrasis, reparto incompleto, cantidad contradictoria, ni instrucciones adicionales después del tercer grupo. Siguiente: correcciones parciales de grupos ya divididos («de esos tres, deja dos como estaban»), referencias ambiguas y consultas intercaladas; preservar total, notas y opciones, pedir aclaración cuando el grupo no sea único. Evidencia: [tanda 127](whatsapp-elliptical-three-notes-validation-2310.md).
+
 ## VIGENTE — tanda 126: tres líneas del mismo plato con notas distintas (23/10)
 
 Base 4e25463f, staging. El usuario pidió confirmar generalidad y continuar. Se detectó un fallo transversal: tres repeticiones explícitas y contadas del mismo SKU, cada una con nota distinta, se reducían a una por deduplicación por ID. Se permite conservar repeticiones con nota propia distinta cuando el segmento original trae cantidad explícita. No hay excepciones por producto/restaurante. Segundo fallo: «a la segunda ponle como nota sin ajo» no editaba la línea. El editor existente ahora resuelve ordinales del carrito y conserva las otras líneas; ante selección pendiente o posición inexistente pide aclarar sin modificar.

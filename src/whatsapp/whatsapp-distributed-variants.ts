@@ -2,7 +2,29 @@ import type { WhatsappCatalogProduct, WhatsappCatalogService } from './whatsapp-
 
 /** "Dos combos, uno con colombiana y el otro con coca cola" → dos líneas del mismo SKU. */
 export function expandSpokenSameSkuPair(text: string, products: WhatsappCatalogProduct[], catalog: WhatsappCatalogService): string {
-  return expandSpokenImpliedRemainderNote(expandSpokenSameSkuNotes(expandSpokenAttributePair(text, products, catalog), products, catalog), products, catalog);
+  text = expandSpokenThreeNotes(text, products, catalog);
+  text = expandSpokenAttributePair(text, products, catalog);
+  text = expandSpokenSameSkuNotes(text, products, catalog);
+  return expandSpokenImpliedRemainderNote(text, products, catalog);
+}
+
+/** Resolve a complete three-unit distribution before the implied-remainder rule consumes its first group. */
+function expandSpokenThreeNotes(text: string, products: WhatsappCatalogProduct[], catalog: WhatsappCatalogService): string {
+  const note = String.raw`(?:sin\s+|con\s+(?:h?art[oa]|much[oa]|bastante|poc[oa]|poquit[oa])\s+)[^,;\n.!?]{2,40}?`;
+  const pattern = new RegExp(String.raw`\b(tres|3)\s+([^,:;\n.!?]{3,70}?)\s*,\s*un[oa]\s+(${note})\s*,\s*(?:el\s+|la\s+)?otr[oa]\s+(${note})\s+y\s+(?:el|la)\s+[úu]ltim[oa]\s+(${note})(?=\s*(?:[.!?]|$))`, 'gi');
+  return text.replace(pattern, (original, _total: string, subject: string, first: string, second: string, last: string) => {
+    const notes = [first, second, last].map(value => value.trim());
+    // Coordinated purchases or a new clause must not become a kitchen note.
+    if (notes.some(value => /\b(?:y|o|pero|para|pago|quiero|agrega)\b/i.test(value))) return original;
+    let candidates = catalog.findAllProductsEmbeddedInMessage(subject, products)
+      .filter(product => product.availableNow !== false);
+    if (candidates.length > 1) {
+      const ranked = [...candidates].sort((a, b) => b.name.length - a.name.length);
+      if (ranked.slice(1).every(other => ranked[0].name.toLowerCase().includes(other.name.toLowerCase()))) candidates = [ranked[0]];
+    }
+    if (candidates.length !== 1) return original;
+    return notes.map(value => `1 ${candidates[0].name} ${value}`).join(' y ');
+  });
 }
 
 function expandSpokenAttributePair(text: string, products: WhatsappCatalogProduct[], catalog: WhatsappCatalogService): string {

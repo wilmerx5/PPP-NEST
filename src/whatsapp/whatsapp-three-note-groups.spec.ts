@@ -5,12 +5,16 @@ const menus = [
  {name:'Bowl Andino',notes:['sin cilantro','sin cebolla','sin tomate']},
  {name:'Filete Dorado',notes:['sin sal','sin cebolla','sin tomate']},
 ];
-for(const enabled of [false,true])for(const menu of menus)for(const scenario of ['complete','price','edit']){
- test(`${menu.name} three distinct notes ${scenario} agent=${enabled}`,async()=>{
+for(const form of ['explicit','elliptical','feminine'])for(const enabled of [false,true])for(const menu of menus)for(const scenario of ['complete','price','edit']){
+ test(`${menu.name} three distinct notes ${form} ${scenario} agent=${enabled}`,async()=>{
   const h=harness([{id:88001,code:88001,name:menu.name,description:'Plato de prueba',price:18000,availableNow:true,hasAttributes:false,attributes:[]}],enabled);
   h.service.aiService.classifyMessage=jest.fn().mockResolvedValue(null);
   h.service.ordersService.create=jest.fn().mockResolvedValue({id:126,dailyOrderNumber:126});
-  const reply=await h.send(`quiero un ${menu.name} ${menu.notes[0]}, un ${menu.name} ${menu.notes[1]} y un ${menu.name} ${menu.notes[2]}`);
+  const text=form==='explicit'
+   ? `quiero un ${menu.name} ${menu.notes[0]}, un ${menu.name} ${menu.notes[1]} y un ${menu.name} ${menu.notes[2]}`
+   : form==='feminine' ? `quiero 3 ${menu.name}, una ${menu.notes[0]}, la otra ${menu.notes[1]} y la ultima ${menu.notes[2]}`
+   : `quiero tres ${menu.name}, uno ${menu.notes[0]}, otro ${menu.notes[1]} y el último ${menu.notes[2]}`;
+  const reply=await h.send(text);
   expect(h.cartRows().map(row=>row.qty)).toEqual([1,1,1]);
   for(let i=0;i<3;i++){
    expect(h.cartRows()[i].note).toContain(menu.notes[i]);
