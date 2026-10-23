@@ -1,6 +1,6 @@
 import { WhatsappMetaService } from './whatsapp-meta.service';
 describe('Staging outbound isolation',()=> {
-  const keys=['PPP_STAGING','WHATSAPP_STAGING_OUTBOUND_ALLOW','STAGING_WHATSAPP_PHONE_NUMBER_ID','STAGING_WHATSAPP_RECIPIENTS'];
+  const keys=['PPP_STAGING','WHATSAPP_STAGING_OUTBOUND_ALLOW','STAGING_WHATSAPP_PHONE_NUMBER_ID','STAGING_WHATSAPP_RECIPIENTS','WHATSAPP_STAGING_PUBLIC_CHAT'];
   const saved=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
   let originalFetch:typeof fetch;let fetcher:jest.Mock;
   const settings={getEffectiveConfig:async()=>({accessToken:'synthetic',phoneNumberId:'12345'})};
@@ -30,6 +30,29 @@ describe('Staging outbound isolation',()=> {
   it('allows only the declared test channel and normalized recipient',async()=> {
     enable();await meta.sendText('+57 300 123 4567','test');expect(fetcher).toHaveBeenCalledTimes(1);
     expect(fetcher.mock.calls[0][0]).toContain('/12345/messages');expect(JSON.parse(fetcher.mock.calls[0][1].body).to).toBe('573001234567');
+  });
+  it.each(['573009999999', '573008888888', '+57 300 777 7777'])('public staging can reply to a new visitor %s', async recipient => {
+    enable(); process.env.WHATSAPP_STAGING_PUBLIC_CHAT = 'true'; process.env.STAGING_WHATSAPP_RECIPIENTS = '';
+    await meta.sendText(recipient, 'test');
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls[0][0]).toContain('/12345/messages');
+  });
+  it('public staging permits a media reply on the test channel', async () => {
+    enable(); process.env.WHATSAPP_STAGING_PUBLIC_CHAT = 'true'; process.env.STAGING_WHATSAPP_RECIPIENTS = '';
+    await meta.sendMediaMessage({toWaId:'573009999999',mediaId:'synthetic',kind:'image'});
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it.each(['wrongChannel', 'disabled', 'invalidRecipient'])('public staging still blocks %s before network', async scenario => {
+    enable(); process.env.WHATSAPP_STAGING_PUBLIC_CHAT = 'true';
+    if (scenario === 'wrongChannel') process.env.STAGING_WHATSAPP_PHONE_NUMBER_ID = '54321';
+    if (scenario === 'disabled') process.env.WHATSAPP_STAGING_OUTBOUND_ALLOW = 'false';
+    await expect(meta.sendText(scenario === 'invalidRecipient' ? 'abc' : '573009999999', 'test')).rejects.toThrow('outbound blocked');
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it.each(['false', 'yes', '1'])('public mode requires literal true, not %s', async value => {
+    enable(); process.env.WHATSAPP_STAGING_PUBLIC_CHAT = value;
+    await expect(meta.sendText('573009999999', 'test')).rejects.toThrow('outbound blocked');
+    expect(fetcher).not.toHaveBeenCalled();
   });
   it('preserves normal behavior outside the staging profile',async()=> {
     delete process.env.PPP_STAGING;await meta.sendText('573009999999','test');expect(fetcher).toHaveBeenCalledTimes(1);

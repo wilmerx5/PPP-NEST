@@ -44,10 +44,13 @@ export class WhatsappMetaService {
     if (process.env.PPP_STAGING !== 'true') return;
     const allowed=(process.env.STAGING_WHATSAPP_RECIPIENTS || '').split(',')
       .map(value=>value.replace(/\D/g,'')).filter(value=>/^\d{8,15}$/.test(value));
+    const publicChat = process.env.WHATSAPP_STAGING_PUBLIC_CHAT === 'true';
+    const normalizedRecipient = recipient?.replace(/\D/g, '');
     if (process.env.WHATSAPP_STAGING_OUTBOUND_ALLOW !== 'true' ||
       !process.env.STAGING_WHATSAPP_PHONE_NUMBER_ID ||
-      phoneNumberId !== process.env.STAGING_WHATSAPP_PHONE_NUMBER_ID || !allowed.length ||
-      (recipient!==undefined && !allowed.includes(recipient.replace(/\D/g,'')))) {
+      phoneNumberId !== process.env.STAGING_WHATSAPP_PHONE_NUMBER_ID || (!publicChat && !allowed.length) ||
+      (recipient !== undefined && (!/^\d{8,15}$/.test(normalizedRecipient || '') ||
+        (!publicChat && !allowed.includes(normalizedRecipient!))))) {
       throw new Error('Staging WhatsApp outbound blocked: verify test channel and recipients');
     }
   }
