@@ -1,3 +1,13 @@
+## VIGENTE — tanda 126: tres líneas del mismo plato con notas distintas (23/10)
+
+Base 4e25463f, staging. El usuario pidió confirmar generalidad y continuar. Se detectó un fallo transversal: tres repeticiones explícitas y contadas del mismo SKU, cada una con nota distinta, se reducían a una por deduplicación por ID. Se permite conservar repeticiones con nota propia distinta cuando el segmento original trae cantidad explícita. No hay excepciones por producto/restaurante. Segundo fallo: «a la segunda ponle como nota sin ajo» no editaba la línea. El editor existente ahora resuelve ordinales del carrito y conserva las otras líneas; ante selección pendiente o posición inexistente pide aclarar sin modificar.
+
+30 regresiones nuevas: tres menús sintéticos (pasta, bowl, pescado), agente simulado on/off; compra de tres líneas, consulta de total, edición de segunda línea y DTO de tres unidades. Doce controles de posición inexistente/selección pendiente conservan carrito. Baseline 18 fallos; tras corregir deduplicación quedaron seis de ordinal; final foco 89/89 en tres suites, TypeScript general/build OK, Node 92/92. No hay llamadas pagadas, WhatsApp ni órdenes externas. Global final 16.614/16.614, 195 suites, inventario exacto y 493 hashes intactos. El runner registró 30.128,87 s de reloj; no usar esa cifra como latencia del bot ni como benchmark de CPU (no se auditó suspensión/cambio de reloj).
+
+Límites: cantidades y nombres explícitos en cada segmento, notas de exclusión distintas; no acredita todavía elipsis de tres grupos («uno…, otro…, el último…»), reparto libre con notas parafraseadas ni cambios de stock. No atribuir a modelos reales los resultados de mocks. Siguiente: esas formas elípticas y correcciones de grupos pendientes, con conservación del total y consulta intermedia. Main/producción y configuración pública/aislamiento de staging se preservan. No declarar vendible por conteos.
+
+Publicación/despliegue pendiente de verificar. Detalle: [tanda 126](whatsapp-three-note-groups-validation-2310.md).
+
 ## VIGENTE — tanda 125: notas, cantidades repartidas y apertura (23/10)
 
 Base 1e6a2961, staging. Se reproducen los dos chats: milanesa/ajiaco rechazados por notas, pregunta de rechazo que compraba, y dos sopas convertidas en tres/cuatro. Notas de abundancia admiten femenino harta/arta y sustitución compacta anclada al plato; reparto de dos unidades con notas distintas se expande 1+1. Las herramientas validan cantidad contra el segmento identificado por nota literal única. Preguntas sobre un rechazo no compran. «Ya abriste?» y «puedo hacer un pedido?» consultan BusinessService y cerrado muestra agradecimiento/horario. Sin excepciones por nombres/IDs.

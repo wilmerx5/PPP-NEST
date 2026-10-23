@@ -15374,8 +15374,20 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const edit = parseScopedCartNote(text);
     if (!edit) return false;
-    const indices = session.cart.flatMap((line, index) => correctionMatchesLine(line, edit.query) ? [index] : []);
-    if (!indices.length) return false;
+    const positions: Record<string,number> = {primero:0,primera:0,segundo:1,segunda:1,tercero:2,tercera:2,cuarto:3,cuarta:3};
+    const position = positions[this.normalizeForMatch(edit.query)];
+    if (position !== undefined && (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
+        session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key => !!session[key]))) {
+      await this.reply(conv, waId, 'Hay una selección pendiente. Dime el nombre y la nota actual del plato que quieres cambiar. El pedido sigue igual.');
+      return true;
+    }
+    const indices = position !== undefined ? (session.cart[position] ? [position] : [])
+      : session.cart.flatMap((line, index) => correctionMatchesLine(line, edit.query) ? [index] : []);
+    if (!indices.length) {
+      if (position === undefined) return false;
+      await this.reply(conv, waId, 'Esa posición no está en el carrito. Dime cuál plato debe llevar la nota. El pedido sigue igual.');
+      return true;
+    }
     if (conv.state === 'awaiting_mp_payment' && session.mpPreferenceId) {
       await this.reply(conv, waId, 'Ya tienes un enlace de pago. Para cambiar ese pedido debemos revisar el pago con el restaurante. El carrito sigue igual.');
       return true;

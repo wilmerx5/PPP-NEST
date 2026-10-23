@@ -10264,8 +10264,18 @@ export class WhatsappCatalogService {
           selected.some(current => choiceKey(current) === choiceKey(choice) &&
             normalizeText(current.attributeValue) !== normalizeText(choice.attributeValue))));
     };
+    const repeatsWithNewNote = (product: WhatsappCatalogProduct, segment: string) => {
+      // An explicitly counted repeat with a different kitchen note owns its
+      // units. Deduplicating only by SKU would discard the second/third dish.
+      if (!segments.some(raw => normalizeText(raw).endsWith(normalizeText(segment)) &&
+        /^(?:quiero\s+)?(?:un[oa]?|uno|dos|tres|cuatro|cinco|\d{1,2})\s+/i.test(raw.trim()))) return false;
+      const note = this.orderKitchenNote(segment, product);
+      if (!note) return false;
+      return [...confident, ...needsAttributes].some(previous => previous.product.id === product.id &&
+        normalizeText(this.orderKitchenNote(previous.segment, product) || '') !== normalizeText(note));
+    };
     const alreadyUsed = (product: WhatsappCatalogProduct, segment: string) =>
-      usedProductIds.has(product.id) && !repeatsWithNewChoice(product, segment);
+      usedProductIds.has(product.id) && !repeatsWithNewChoice(product, segment) && !repeatsWithNewNote(product, segment);
 
     if (swap && swapNotedHostId != null && this.looksLikeClearlyMultiDishOrder(text)) {
       const host = products.find((p) => p.id === swapNotedHostId);
