@@ -1,11 +1,12 @@
+import { splitCostConditionFromIndependentAction } from './whatsapp-session-intents';
 import { harness } from './whatsapp-accuracy.test-support';
 
 for (const [name, option, side] of [
   ['Combo Sandwich Vegetal', 'Mora', 'Porcion De Papas'],
   ['Menu Crepe', 'Limonada', 'Porcion De Yuca'],
   ['Plato Pasta', 'Agua', 'Pan De Ajo'],
-]) for (const agent of [false, true]) for (const mode of ['first', 'last', 'conditionOnly', 'bothConditional']) {
-  test(`${name}: conditional choice and ${mode}, agent=${agent}`, async () => {
+]) for (const agent of [false, true]) for (const abbreviated of [false, true]) for (const mode of ['first', 'last', 'conditionOnly', 'bothConditional']) {
+  test(`${name}: conditional choice and ${mode}, abbreviated=${abbreviated}, agent=${agent}`, async () => {
     const h = harness([
       { id: 93001, code: 81, name, price: 30000, availableNow: true, hasAttributes: true,
         attributes: [{ attributeName: 'Bebida', options: ['Colombiana', option] }] },
@@ -20,7 +21,7 @@ for (const [name, option, side] of [
     const pending = structuredClone(h.conv.sessionData.pendingAttribute);
     expect(pending).toMatchObject({ productId: 93001, quantity: 1 });
     const keepSide = mode === 'conditionOnly' || mode === 'bothConditional';
-    const condition = `Cambia la bebida a ${option} si no cuesta más`;
+    const condition = `${abbreviated ? option : `Cambia la bebida a ${option}`} si no cuesta más`;
     const remove = `quita el ${side}`;
     const replyStart = h.replies.length;
     await h.sendQueued(mode === 'first' ? `${condition}; aparte ${remove}` :
@@ -50,5 +51,15 @@ for (const [name, option, side] of [
       expect.objectContaining({ productId: 93001, attributes: [{ attributeName: 'Bebida', attributeValue: option }] }),
     ]);
     expect(dto.items.filter((item: any) => item.productId === 93002)).toHaveLength(keepSide ? 1 : 0);
+  });
+}
+
+for (const context of [false, true]) {
+  test(`abbreviated split requires pending choice: ${context}`, () => {
+    const result = splitCostConditionFromIndependentAction('Mora si no cuesta más; aparte quita las papas', context);
+    expect(result).toEqual(context ? { condition: 'Mora si no cuesta más', action: 'quita las papas' } : null);
+  });
+  test(`two conditioned clauses never authorize independent action: ${context}`, () => {
+    expect(splitCostConditionFromIndependentAction('Mora si no cuesta más; aparte quita las papas si no hay recargo', context)).toBeNull();
   });
 }

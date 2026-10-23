@@ -1326,10 +1326,10 @@ export function isCostConditionalRequest(text: string, pendingChoice = false): b
 }
 
 /** Only an explicit independence marker separates an action from a price condition. */
-export function splitCostConditionFromIndependentAction(text: string): { condition: string; action: string } | null {
+export function splitCostConditionFromIndependentAction(text: string, pendingChoice = false): { condition: string; action: string } | null {
   const clauses = text.split(/(?:;|\n|\s+y)\s*(?:aparte|adem[aá]s|independientemente)\s*[,;:]?\s+/i).map(part => part.trim());
   if (clauses.length !== 2 || clauses.some(part => !part)) return null;
-  const conditioned = clauses.map(clause => isCostConditionalRequest(clause));
+  const conditioned = clauses.map(clause => isCostConditionalRequest(clause, pendingChoice));
   if (conditioned.filter(Boolean).length !== 1) return null;
   const conditionIndex = conditioned[0] ? 0 : 1;
   const action = clauses[1 - conditionIndex];
