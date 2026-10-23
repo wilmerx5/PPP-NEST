@@ -9860,6 +9860,7 @@ export class WhatsappOrchestratorService {
   ): string {
     const rawNames = (Array.isArray(added) ? added : [added]).filter(Boolean);
     let names = rawNames.map((n) => this.compactAddedProductLabel(session, n));
+    const itemLabels = [...names];
     // "Coca Cola 1.5L ×2, Coca Cola 1.5L ×2" only reads right with the option that tells them apart.
     const baseOf = (label: string) => this.normalizeForMatch(label.replace(/\s*×\s*\d+\s*$/, '').trim());
     const repeated = new Set(names.map(baseOf).filter((base, i, all) => all.indexOf(base) !== i));
@@ -9911,16 +9912,23 @@ export class WhatsappOrchestratorService {
       }
       if (hit?.note?.trim()) head += `\n📝 _${hit.note.trim()}_`;
     } else {
-      const cart = this.consolidateCart(session.cart);
-      const used = new Set<number>();
-      for (const name of names) {
-        const baseNorm = this.normalizeForMatch(name.replace(/\s*×\s*\d+\s*$/, '').trim());
-        const index = cart.findIndex((c, position) => !used.has(position) && this.normalizeForMatch(c.name) === baseNorm);
-        if (index < 0) continue;
-        used.add(index);
-        const hit = cart[index];
-        if (hit?.note?.trim()) head += `\n📝 _${hit.note.trim()}_`;
-      }
+      const seen = new Map<string,number>();
+      const entries = names.map((name,index) => {
+        const base = baseOf(itemLabels[index]);
+        const total = itemLabels.filter(label => baseOf(label) === base).length;
+        // New additions are at the end; never borrow notes from an older line of this dish.
+        const lines = session.cart.filter(line => this.normalizeForMatch(line.name) === base).slice(-total);
+        const occurrence = seen.get(base) || 0;
+        seen.set(base,occurrence+1);
+        const hit = lines[occurrence];
+        let entry = `${index+1}. *${name}*`;
+        const attributes = (hit?.attributes || []).map(attribute => attribute.attributeName?.trim()
+          ? `${attribute.attributeName}: ${attribute.attributeValue}` : attribute.attributeValue).filter(Boolean).join(' · ');
+        if (attributes) entry += `\n   _${attributes}_`;
+        if (hit?.note?.trim()) entry += `\n   📝 _${hit.note.trim()}_`;
+        return entry;
+      });
+      head = `Listo ✅\n\n${entries.join('\n')}`;
     }
     if (opts?.extraLine) {
       const shown = new Set(head.split('\n').map((line) => line.trim()).filter(Boolean));
