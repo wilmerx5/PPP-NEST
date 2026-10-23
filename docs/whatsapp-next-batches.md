@@ -1,3 +1,11 @@
+## VIGENTE — tanda143: condición explícita y acción independiente (23/10)
+
+Base07e56735, staging.24 conversaciones nuevas desde carrito vacío en tres cartas sintéticas, agente simulado on/off: condición antes/después de eliminación independiente, condición sola y ambas cláusulas condicionadas. Se compra adicional, abre elección de bebida, procesa mensaje compuesto, conserva selección pendiente, responde costo no confirmado y aplica solo eliminación independiente. Elección firme posterior y cierre para recoger verifican una unidad/opción exactas en DTO, adicional presente solo cuando no se autorizó quitarlo, cero órdenes prematuras.
+
+Sin cambios de runtime. Foco114/114,10,388s; TypeScript general/build y Node92/92. No se repite global por tests/documentación. Primer intento12 fallos/6 aprobados era oráculo incompleto: sendQueued devuelve solo último mensaje; se corrigió para inspeccionar todos los mensajes emitidos en ese turno. No acreditar ese intento como defecto del bot. Evidencia /tmp/ppp-143-{focus,replies,final-focus,tsc,node}.log.
+
+Publicar solo staging. No deploy:142 sigue pendiente de despliegue agrupado, servidor último verificado c82df32d. Main intacta. Cero API pagada/Meta/órdenes externas. Alcance: verbo explícito «Cambia», separador «; aparte», turnos seriales, retirada total de un adicional. NO acredita opción elíptica «Mora si no cuesta más; aparte…», conjunciones libres, retirada parcial ni costo real. Revisar la diferencia de contexto entre isCostConditionalRequest y splitCostConditionFromIndependentAction para esa elipsis antes de extrapolar. Sigue pendiente validación acotada con modelo real del plan API.
+
 ## VIGENTE — tanda142: sabor obligatorio en nuevas familias de bebidas (23/10)
 
 Base510ef1a1, solo staging. Corregido el hueco de141: malteadas, batidos y smoothies con varias opciones de Sabor ya no reciben el primero automáticamente. requiresExplicitAttributeChoice reconoce categoría o inicio del nombre; no modifica isLikelyDrinkProduct ni añade excepciones PPP.18 recorridos nuevos +6 controles de categoría/platos con bebida; respuesta, carrito, estado y DTO exactos. Los18 anteriores permanecen.
