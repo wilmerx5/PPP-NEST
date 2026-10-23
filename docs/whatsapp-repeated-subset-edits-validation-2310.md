@@ -1,0 +1,11 @@
+## VIGENTE — tanda 128: segundo cambio parcial sobre líneas divididas (23/10)
+
+Base 2d77a7bb, staging. 30 casos nuevos en tres menús sintéticos (bao/salsa, pizza/masa, batido/base), agente simulado on/off. Parten de un carrito preparado de seis unidades, dos líneas de tres con opciones y notas propias, en confirmación. Cambian dos unidades de la primera línea a otra opción con nota adicional; después cambian solo una de ese nuevo grupo. Contrastan consulta de precio, consulta del carrito, selección ambigua y exceso de cantidad antes de una corrección explícita válida.
+
+Los 30 pasan con el código existente: seis unidades conservadas, dos unidades con la nota adicional, las tres de la otra línea intactas, respuesta coherente, estado de confirmación conservado y DTO de seis unidades solo tras confirmar. Foco final 242/242 en tres suites, TypeScript general/build OK, Node 92/92. Solo pruebas/documentación: no repetir global. Última global del código ejecutable es tanda 127, 16.650/16.650 y 195 suites; no presentarla como global nueva. Cero API pagada, WhatsApp ni órdenes externas.
+
+Despliegue agrupado de 127/128 pendiente de verificación al escribir esta entrada. Main/producción se preservan. Mantener publicChat=true y orderEvents=false. Límites: los casos parten de carrito preparado y usan cambios explícitos por opción; no acreditan «de esos tres deja dos como estaban», deshacer semántico, audio/modelo real ni toda la compra desde carrito vacío. Siguiente: esas referencias libres y deshacer una modificación sin perder cambios posteriores, con variantes de menú, respuesta/carrito/estado/DTO. No declarar vendible por conteos.
+
+Detalle: [tanda 128](whatsapp-repeated-subset-edits-validation-2310.md).
+
+Evidencia: /tmp/ppp-128-focus.log (72/72 iniciales, 18 nuevos), /tmp/ppp-128-final-focus.log (242/242, 30 nuevos finales) y /tmp/ppp-128-node.log (92/92). No sumar los runs solapados como pruebas diferentes. Regresiones en whatsapp-existing-variants-block.spec.ts. Los datos y la creación de orden están simulados; se conserva el contrato real del router y del catálogo.
