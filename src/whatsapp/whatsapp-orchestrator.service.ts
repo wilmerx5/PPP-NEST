@@ -18147,6 +18147,8 @@ export class WhatsappOrchestratorService {
 
   /** "La salsa aparte", "bien empacado", "que no se riegue": packing asides go to the dish they name, the only dish or the whole order — never silence or a purchase. */
   private async tryHandleDishHandlingAside(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    // Explicit line-scoped notes belong to the note editor, not the generic packing aside.
+    if (parseScopedCartNote(text)) return false;
     if (!session.cart.length || /[¿?\d]/.test(text) || text.length > 120 ||
         !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
         session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
