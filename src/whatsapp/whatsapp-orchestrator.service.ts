@@ -1321,6 +1321,9 @@ export class WhatsappOrchestratorService {
     if (/\b(?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+[a-záéíóúñ]{3,}s\s+(?:de|con)\b/i.test(text)) {
       text = this.catalogService.singularizeCountedHeadNouns(text, await this.catalogService.getMenuProducts());
     }
+    if (!/[¿?]/.test(text) && this.conversationService.getSession(conv).cart.length) {
+      text = text.replace(/^mejor\s+(?=cambia\s)/i, '');
+    }
     let originalText = text;
     if (await this.tryHandleBinaryUnitSubset(conv,msg.waId,this.conversationService.getSession(conv),originalText,cfg)) return;
     // Resolve explicit one/other family plans before generic quantity/option
@@ -1878,6 +1881,23 @@ export class WhatsappOrchestratorService {
           await this.conversationService.saveSession(conv, session);
           await this.reply(conv, msg.waId, this.catalogService.formatCategoryBrowseReply(category));
           return;
+        }
+      }
+    }
+    if (session.pendingAttribute && !session.pendingMultiOrder && !session.pendingAttribute.replacement) {
+      const clauses = originalText.split(/[;\n]+/).map(part => this.normalizeForMatch(part)).filter(Boolean);
+      const priceReference = /^(?:cuanto (?:cuesta|vale)|que precio tiene) (?:ese|este|el) (?:plato|producto|combo|menu)$/;
+      const pending = session.pendingAttribute;
+      const attribute = pending.attributes.find(attr => !(pending.selected || []).some(value => value.attributeName === attr.attributeName));
+      if (clauses.length === 2 && clauses.filter(part => priceReference.test(part)).length === 1 && attribute) {
+        const choice = clauses.find(part => !priceReference.test(part))!;
+        const offered = attribute.options.some(option => this.normalizeForMatch(option) === choice) ||
+          (/^\d{1,2}$/.test(choice) && Number(choice) >= 1 && Number(choice) <= attribute.options.length);
+        // Keep the normal selection path; include prices only after its cart mutation succeeds.
+        if (offered) {
+          turn.purchasePriceQuestion = true;
+          text = choice;
+          originalText = choice;
         }
       }
     }
