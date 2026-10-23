@@ -1,6 +1,10 @@
+import { WhatsappCatalogService } from './whatsapp-catalog.service';
 import { harness } from './whatsapp-accuracy.test-support';
 
 const menus = [
+  { name: 'Malteada Artesanal', base: ['Entera', 'Deslactosada'], drinks: ['Vainilla', 'Fresa'] },
+  { name: 'Batido Tropical', base: ['Entera', 'Vegetal'], drinks: ['Mango', 'Banano'] },
+  { name: 'Smoothie Natural', base: ['Frío', 'Al clima'], drinks: ['Mora', 'Fresa'] },
   { name: 'Jugo Natural En Agua', base: ['Fría', 'Al clima'], drinks: ['Lulo', 'Mora'] },
   { name: 'Jugo Natural En Leche', base: ['Entera', 'Deslactosada'], drinks: ['Vainilla', 'Fresa'] },
   { name: 'Gaseosa Personal', base: ['Fría', 'Al clima'], drinks: ['Colombiana', 'Ginger'] },
@@ -56,3 +60,17 @@ for (const interruption of ['price', 'name', 'invalid']) {
     if (interruption === 'name') expect(dto.customerName).toBe('Ana Torres');
   });
 }
+
+const catalog = new WhatsappCatalogService({} as never);
+test.each(['Malteadas', 'Batidos naturales', 'Smoothies'])('category %s keeps flavor explicit', categoryName => {
+  const product = { id: 92001, code: 82, name: 'Especial Tropical', price: 9000, categoryName,
+    hasAttributes: true, attributes: [{ attributeName: 'Sabor', options: ['Mango', 'Fresa'] }] };
+  expect(catalog.requiresExplicitAttributeChoice(product, product.attributes[0])).toBe(true);
+  expect(catalog.fillDefaultAttributes(product, [])).toEqual([]);
+});
+test.each(['Hamburguesa con malteada', 'Bowl con batido', 'Desayuno con smoothie'])('dish %s stays food', name => {
+  const product = { id: 92002, code: 83, name, price: 30000, categoryName: 'Combos con bebidas',
+    hasAttributes: true, attributes: [{ attributeName: 'Sabor', options: ['Suave', 'Picante'] }] };
+  expect(catalog.isLikelyDrinkProduct(product)).toBe(false);
+  expect(catalog.fillDefaultAttributes(product, [])).toEqual([{ attributeName: 'Sabor', attributeValue: 'Suave' }]);
+});

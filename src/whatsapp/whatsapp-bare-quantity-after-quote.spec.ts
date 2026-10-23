@@ -48,7 +48,15 @@ describe.each(families)('$id: a bare number after a quote is a quantity, not a c
     it('price of a dish with options → «2» takes that dish ×2', async () => {
       const h = rig();
       await h.sendQueued(`qué precio tiene ${f.optioned.toLowerCase()}`);
-      await h.sendQueued('2');
+      const reply = await h.sendQueued('2');
+      if (f.id === 'burger') {
+        expect(rows(h)).toEqual([]);
+        expect(h.conv.sessionData.pendingAttribute).toMatchObject({ productId: 41, quantity: 2 });
+        expect(reply).toContain(f.options[1]);
+        await h.sendQueued(f.options[1]);
+        expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+        expect(h.conv.sessionData.cart[0].attributes).toContainEqual({ attributeName: f.attr, attributeValue: f.options[1] });
+      }
       expect(rows(h)).toEqual([[f.optioned, 2]]);
     });
 

@@ -1,3 +1,11 @@
+## VIGENTE — tanda142: sabor obligatorio en nuevas familias de bebidas (23/10)
+
+Base510ef1a1, solo staging. Corregido el hueco de141: malteadas, batidos y smoothies con varias opciones de Sabor ya no reciben el primero automáticamente. requiresExplicitAttributeChoice reconoce categoría o inicio del nombre; no modifica isLikelyDrinkProduct ni añade excepciones PPP.18 recorridos nuevos +6 controles de categoría/platos con bebida; respuesta, carrito, estado y DTO exactos. Los18 anteriores permanecen.
+
+Baseline18 fallos/18 aprobados. Primer intento amplió clasificación global y regresó cancelación; global interrumpida, no acreditada. Corrección acotada: foco90/90 seleccionados, TS general/build y Node92/92. Global final205suites:17.026 aprobados y2 expectativas antiguas fallidas (malteada sin elegir sabor). Se actualizó solo esa suite para comprobar cantidad2 pendiente y sabor explícito; revalidación60/60. Cobertura final17.028, sin sumar reintentos; inventario exacto y runtime intacto entre global/revalidación. No afirmar una sola corrida global verde. Evidencia /tmp/ppp-142-validation-summary.json y detalle whatsapp-flavor-families-validation-2310.md.
+
+Publicar staging; despliegue agrupado pendiente. Servidor no consultado/reconstruido: última versión verificada c82df32d (139+140). Main intacta. Cero API pagada, WhatsApp y órdenes externas. Próximo: condición+acción independiente, después contraste real acotado del plan API; no seguir posponiéndolo por volumen de pruebas. No acredita audio/visión/mapas ni producto vendible.
+
 ## VIGENTE — tanda141: dos atributos con interrupciones (23/10)
 
 Base 99d13261, solo staging. Añadidas18 conversaciones completas: jugo en agua, jugo en leche y gaseosa; agente simulado on/off; consulta de precio, nombre anticipado o número inválido entre Base y Sabor. Cada selección numérica se aplica al atributo actual; las interrupciones conservan pendiente y carrito vacío. Después se verifica respuesta con ambas opciones, una unidad en carrito, pago, confirmación y DTO exactos; ninguna orden prematura.

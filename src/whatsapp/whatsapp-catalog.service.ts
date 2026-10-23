@@ -8443,7 +8443,12 @@ export class WhatsappCatalogService {
   ): boolean {
     if (attribute.options.length <= 1) return false;
     const name = normalizeText(attribute.attributeName);
-    if (this.isLikelyDrinkProduct(product) && name === 'sabor') return true;
+    // Flavor is explicit for these beverage families even when older routing
+    // heuristics do not classify the SKU as a drink. Do not change routing here.
+    const flavorBeverage = /^(?:malteadas?|batidos?|smoothies?)(?:\s|$)/;
+    if (name === 'sabor' && (this.isLikelyDrinkProduct(product) ||
+      flavorBeverage.test(normalizeText(product.name)) ||
+      flavorBeverage.test(normalizeText(product.categoryName || '')))) return true;
     // A dish picked from a list never had its included drink mentioned.
     return !!opts?.askIncludedDrink && /^(?:bebida|gaseosa|refresco|jugo|soda)s?\b/.test(name);
   }
