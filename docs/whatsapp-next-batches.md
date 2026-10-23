@@ -1,3 +1,13 @@
+## VIGENTE — tanda 114: cantidad, opción y bebida (22/10)
+
+Base 2887c476, staging. 48 regresiones nuevas en tres catálogos y agente simulado on/off: «dos del combo 2 con Uva», «uno de la opción 1 con Uva», «dame 3 del combo 2 porfa»; aumento/reducción, notas/opciones compatibles, bebida pendiente y 18 DTO simulados. Contrastes de cantidad cero, negativa, superior al límite de lectura 30, fila no ofrecida y cantidad conservada después de cotizar precio nuevo. Baseline 42 fallidos/168 aprobados; suite final 216/216. Foco 558/558 en seis suites; TypeScript general/build OK; Node 92/92. Global 80 + 16.069 = 16.149, 192 suites; inventario exacto y 490 hashes intactos; 805,77 s, sin reintentos.
+
+Se separa cantidad explícita de referencia a fila y bebida. Reemplazar usa la cantidad solicitada, manteniendo el original intacto mientras faltan opciones. La cotización nueva conserva la cantidad en la selección pendiente. Cero/negativos/fuera de rango y filas no ofrecidas no reemplazan por el combo preferido. Se conservan límites de carrito existentes además del límite de lectura. No hay excepciones de productos PPP.
+
+Límites: oferta de reemplazo por combo con preferredId, cantidad explícita antes de «del/de la/de el», bebida validada por la tanda 113. No acredita reparto entre varias líneas/sabores ni contacto/dirección en el mismo mensaje. Router y dependencias simuladas; cero llamadas pagadas, WhatsApp u órdenes externas. Main y su despliegue permanecen sin cambios. Agrupar despliegue de tandas 113/114 en staging y verificar registro final. Evidencia: [tanda 114](whatsapp-counted-combo-selection-validation-2210.md).
+
+Siguiente: contacto/dirección mientras se elige combo y bebida, respuesta con varios datos y conservación del paso pendiente; luego distribución entre varias opciones. Mantener controles de precio, disponibilidad, notas y DTO.
+
 ## VIGENTE — tanda 113: opción y bebida en la misma frase (22/10)
 
 Base 1e7a6fdc, staging. 60 regresiones nuevas, tres catálogos y agente simulado on/off: «el combo 2 con Uva porfa», «la opción 2 con Pepsi», «quiero el número 1 con Uva», «la opción 2 con bebida Uva»; dos unidades con nota, atributos compatibles y 24 DTO simulados. Contrastes: número no ofrecido, bebida desconocida, dos sabores, producto retirado/agotado y cambio de precio. Baseline 30 fallidos/114 aprobados (primera extensión); final 168/168 en la suite ampliada. Foco 389/389 en cinco suites; TypeScript general/build OK y Node 92/92. Global 80 + 16.021 = 16.101, 192 suites, inventario exacto y 490 hashes intactos; 628,1 s, sin reintentos.

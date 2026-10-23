@@ -12852,9 +12852,18 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean | WhatsappSessionData> {
     const pending = session.pendingMatch;
-    const withDrink = !/[¿?]/.test(text) ? text.match(/^(.+?)\s+con\s+(.+)$/i) : null;
+    const counted = !/[¿?]/.test(text) ? text.trim().match(/^(?:(?:quiero|dame|deme|me das)\s+)?(-?\d{1,3}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(?:del|de la|de el)\s+(.+)$/i) : null;
+    const countWords: Record<string, number> = { un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
+    const requestedQuantity = counted ? countWords[counted[1].toLowerCase()] ?? Number(counted[1]) : undefined;
+    const selectionText = counted ? counted[2] : text;
+    const withDrink = !/[¿?]/.test(selectionText) ? selectionText.match(/^(.+?)\s+con\s+(.+)$/i) : null;
     const inlineRow = withDrink ? this.pendingTextListRow(withDrink[1], pending?.candidates || []) : null;
-    const row = this.pendingTextListRow(text, pending?.candidates || []) ?? inlineRow;
+    const row = this.pendingTextListRow(selectionText, pending?.candidates || []) ?? inlineRow;
+    if (requestedQuantity != null && row != null && pending?.replacement?.preferredId != null &&
+        (!Number.isInteger(requestedQuantity) || requestedQuantity < 1 || requestedQuantity > 30)) {
+      await this.reply(conv, waId, 'Indica una cantidad entre 1 y 30 para esa opción. El pedido sigue igual.');
+      return true;
+    }
     const numberedOffer = row != null && pending?.replacement?.preferredId != null
       ? pending.candidates[row - 1] : undefined;
     if (row != null && pending?.replacement?.preferredId != null && pending.intent === 'order' && !numberedOffer) {
@@ -12868,12 +12877,14 @@ export class WhatsappOrchestratorService {
     const products = await this.catalogService.getMenuProducts();
     const combo = this.catalogService.getProductById(preferredId, products);
     // Reuse the list's availability/price check without letting the drink choose another row.
-    if (numberedOffer && inlineRow != null && (!combo || combo.availableNow === false || Number(numberedOffer.price) !== Number(combo.price))) {
-      return this.tryResolvePendingMatchPick(conv, waId, session, String(row), products, cfg);
+    if (numberedOffer && (inlineRow != null || requestedQuantity != null) && (!combo || combo.availableNow === false || Number(numberedOffer.price) !== Number(combo.price))) {
+      const quotedSession = requestedQuantity != null ? { ...session, pendingMatch: { ...pending, quantity: requestedQuantity } } : session;
+      return this.tryResolvePendingMatchPick(conv, waId, quotedSession, String(row), products, cfg);
     }
     // Let the existing re-quote path ask for approval before taking a changed price.
     if (numberedOffer && combo && Number(numberedOffer.price) !== Number(combo.price)) return false;
     const original = pending.replacement.originalLine;
+    const replacementQuantity = requestedQuantity ?? pending.quantity ?? original.quantity;
     if (!combo || combo.availableNow === false && !cfg.ignoreBusinessHours || !this.catalogService.productImpliesCombo(combo) ||
       !session.cart.some(line => line.productId === original.productId)) return false;
     const q = this.normalizeForMatch(text).replace(/[!.,;]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -12937,12 +12948,12 @@ export class WhatsappOrchestratorService {
     const missing = (combo.attributes || []).filter(attr => !selected.some(choice => choice.attributeName === attr.attributeName));
     if (missing.length) {
       session = this.buildPendingAttributeSession(session, combo, selected, { sourceText: combo.name, replacement: pending.replacement });
-      session = { ...session, pendingAttribute: { ...session.pendingAttribute!, quantity: original.quantity } };
+      session = { ...session, pendingAttribute: { ...session.pendingAttribute!, quantity: replacementQuantity } };
       await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
       await this.reply(conv, waId, `Cambio *${original.name}* por *${combo.name}*.\n\n${this.formatPendingPurchaseReminder(session)}`);
       return true;
     }
-    const added = this.tryAddProductToCart(session, combo, original.quantity, cfg, undefined, selected,
+    const added = this.tryAddProductToCart(session, combo, replacementQuantity, cfg, undefined, selected,
       { sourceText: combo.name, replacement: pending.replacement });
     if (added.blocked || added.missingAttributes) return false;
     await this.conversationService.saveSession(conv, added.session, 'building_cart');
