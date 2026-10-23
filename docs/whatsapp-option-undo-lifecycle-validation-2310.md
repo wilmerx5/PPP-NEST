@@ -22,3 +22,7 @@ Global cerrada; pendiente publicación y despliegue agrupado 131+132 exclusivame
 ## Cierre de ejecución
 
 Cuarto intento sobre fuente final terminado: ambas fases exit0, inventario completo sin duplicaciones y hashes sin cambios. Ráfagas 80/80; bloque restante 16.732/16.732. El margen15s es del runner; los intentos fallidos se preservan. No medir latencia de producción con estos tiempos. Siguiente: publicar/desplegar agrupadas131+132 solo staging y verificar salud/flags/prod. Plan posterior: [conversaciones completas](whatsapp-complete-conversations-next-2310.md).
+
+## Despliegue verificado
+
+Tandas131+132 desplegadas juntas en staging: bd3f5e5e, imagen7db0a13f…, verificado23/10 10:59:49 Bogotá: running/healthy, cero reinicios, healthOK, DBconnected, circuitoCLOSED. publicChat=true/orderEvents=false. Producción conserva imagenef426c93… y cero reinicios; Main intacta. Rollback ppp-nest-staging:rollback-before-bd3f5e5e. Evidencia /tmp/ppp-132-deploy.log y /tmp/ppp-132-deploy-verified.log. Bases, volúmenes y archivos privados preservados.
