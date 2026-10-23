@@ -17519,7 +17519,7 @@ export class WhatsappOrchestratorService {
     if (session.pendingCartAttributeEdit?.unitChanges) session={...session,pendingCartAttributeEdit:undefined};
     const quantity = quantityFirst ? (amounts[quantityFirst[1]] ?? Number(quantityFirst[1])) : (amounts[attributeFirst![2]] ?? Number(attributeFirst![2]));
     const scope = quantityFirst ? quantityFirst[2] : attributeFirst![3];
-    const explicitLine = scope.match(/^(?:unidad(?:es)? de )?(?:la )?linea (\d{1,2})$/);
+    const explicitLine = scope.match(/^(?:(?:unidad(?:es)? )?de )?(?:la )?linea (\d{1,2})$/);
     const destination = quantityFirst ? quantityFirst[3] : attributeFirst![4];
     const reminder = this.formatInterruptedStepReminder(conv,session) || this.formatContinueShoppingPrompt(session);
     const clarify = async () => { await this.reply(conv,waId,'¿A cuál producto y cuántas unidades les cambio la opción? Aclara también la opción que prefieres; el pedido sigue igual.\n\n'+reminder); return true; };

@@ -416,6 +416,54 @@ describe.each(menus)('$id: a drink question lists every related combo', m => {
       }
     });
 
+    describe.each(['shopping', 'payment', 'confirmation'])('split drinks during %s', phase => {
+      it.each(['explicitLine', 'clarifiedLine'])('changes only one of the remaining units: %s', async style => {
+        const h = await start(m.order.replace(/^(?:un|una) /, 'cuatro ') + ' sin cebolla');
+        h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 118, dailyOrderNumber: 118 });
+        await h.send('eso lleva bebida?');
+        await h.send('el combo 1 con Uva');
+        expect(h.cartRows()).toEqual([expect.objectContaining({id:m.own.id,qty:4})]);
+        if (phase !== 'shopping') await h.send('no más, recojo en el local');
+        if (phase === 'confirmation') await h.send('contraentrega');
+        const state = h.conv.state;
+        const first = await h.send('cambia dos bebidas por Pepsi');
+        expect(first).toContain('Pepsi');
+        const counts = () => Object.fromEntries(h.cartRows().map(row => [attr(row.attrs,'Bebida'),row.qty]));
+        expect(counts()).toEqual({Uva:2,Pepsi:2});
+        expect(h.conv.state).toBe(state);
+        const before = structuredClone(h.conv.sessionData.cart);
+        const index = h.cartRows().findIndex(row => attr(row.attrs,'Bebida') === 'Uva');
+        if (style === 'clarifiedLine') {
+          const question = await h.send('cambia una bebida por Limonada');
+          expect(question).toMatch(/cuál línea/i);
+          expect(h.conv.sessionData.cart).toEqual(before);
+          const candidates = h.conv.sessionData.pendingCartAttributeEdit?.candidates || [];
+          const choice = candidates.findIndex(candidate => candidate.cartIndex === index) + 1;
+          expect(choice).toBeGreaterThan(0);
+          await h.send(String(choice));
+        } else await h.send(`cambia una de la linea ${index + 1} por Limonada`);
+        expect(counts()).toEqual({Uva:1,Pepsi:2,Limonada:1});
+        expect(h.conv.state).toBe(state);
+        for (const row of h.cartRows()) {
+          expect(row.id).toBe(m.own.id);
+          expect(row.note).toMatch(/sin cebolla/i);
+          expect(attr(row.attrs,m.kept[0])).toBe(m.kept[1]);
+        }
+        if (phase === 'shopping') await h.send('no más, recojo en el local');
+        if (h.conv.state === 'awaiting_payment') await h.send('contraentrega');
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        await h.send('confirmar');
+        expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+        const dto = h.service.ordersService.create.mock.calls[0][0];
+        expect(dto.items).toHaveLength(4);
+        expect(dto.items.map(item => item.attributes.find(a => a.attributeName === 'Bebida')?.attributeValue).sort()).toEqual(['Limonada','Pepsi','Pepsi','Uva']);
+        for (const item of dto.items) {
+          expect(item.productId).toBe(m.own.id);
+          expect(item.note).toMatch(/sin cebolla/i);
+        }
+      });
+    });
+
     it.each(['name', 'phone', 'address'])('keeps a pending drink while storing %s', async field => {
       const h = await start();
       h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 115, dailyOrderNumber: 115 });

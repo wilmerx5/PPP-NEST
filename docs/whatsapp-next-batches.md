@@ -1,3 +1,13 @@
+## VIGENTE — tanda 118: cambiar una unidad de una línea dividida (22/10)
+
+Base cc4e71e5, staging. 36 regresiones nuevas: tres menús sintéticos, agente simulado on/off, compra/pago/confirmación y elección de línea explícita o mediante aclaración. Parten de cuatro combos con Uva y nota, cambian dos bebidas a Pepsi y solo una de las dos unidades restantes a Limonada. Verifican reparto final Uva×1/Pepsi×2/Limonada×1, opciones compatibles, notas, estado y 36 DTO completos sin crear órdenes antes de confirmar.
+
+Baseline: 18 aprobados por aclaración y 18 fallidos con «cambia una de la línea N por Limonada». La regla de referencia explícita admite ahora «de la línea» además de «unidad de la línea»; no cambia selección por producto ni cantidades. Foco 600/600 en cinco suites; TS general/build OK, Node 92/92. Global 16.285/16.285, 192 suites, 490 hashes intactos, inventario exacto, 606,42 s, sin reintentos.
+
+Código publicado en staging, pendiente de despliegue agrupado. Servidor conserva 6863b72c (tanda 117), acceso público activo; Main/producción preservados. Cero llamadas pagadas, WhatsApp u órdenes externas. Evidencia: [tanda 118](whatsapp-split-combo-unit-validation-2210.md).
+
+Límite: cambios sobre combos ya añadidos y divididos, no selección inicial de varios sabores en una opción pendiente. Siguiente: reparto completo durante elección inicial de bebida y conservación de contacto/notas; contrastar cantidades que no suman y sabores no ofrecidos. No inferir calidad del modelo real a partir de mocks.
+
 ## VIGENTE — tanda 117: recuperación y acceso público de staging (22/10)
 
 Base 098e6e58, rama staging. 24 regresiones nuevas de recuperación en tres menús y agente simulado on/off: precio cambiado, combo retirado/agotado y bebida desconocida; datos de contacto conservados, dos unidades con nota, alternativa válida y 24 DTO completos. Pasaron en el código existente; no se parcheó el orquestador.
