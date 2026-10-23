@@ -12852,7 +12852,9 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean | WhatsappSessionData> {
     const pending = session.pendingMatch;
-    const row = this.pendingTextListRow(text, pending?.candidates || []);
+    const withDrink = !/[¿?]/.test(text) ? text.match(/^(.+?)\s+con\s+(.+)$/i) : null;
+    const inlineRow = withDrink ? this.pendingTextListRow(withDrink[1], pending?.candidates || []) : null;
+    const row = this.pendingTextListRow(text, pending?.candidates || []) ?? inlineRow;
     const numberedOffer = row != null && pending?.replacement?.preferredId != null
       ? pending.candidates[row - 1] : undefined;
     if (row != null && pending?.replacement?.preferredId != null && pending.intent === 'order' && !numberedOffer) {
@@ -12865,6 +12867,10 @@ export class WhatsappOrchestratorService {
       (row != null && !numberedOffer)) return false;
     const products = await this.catalogService.getMenuProducts();
     const combo = this.catalogService.getProductById(preferredId, products);
+    // Reuse the list's availability/price check without letting the drink choose another row.
+    if (numberedOffer && inlineRow != null && (!combo || combo.availableNow === false || Number(numberedOffer.price) !== Number(combo.price))) {
+      return this.tryResolvePendingMatchPick(conv, waId, session, String(row), products, cfg);
+    }
     // Let the existing re-quote path ask for approval before taking a changed price.
     if (numberedOffer && combo && Number(numberedOffer.price) !== Number(combo.price)) return false;
     const original = pending.replacement.originalLine;
@@ -12880,7 +12886,7 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const sizeOf = (value: string) => (value.toLowerCase().match(/\d+(?:[.,]\d+)?(?=\s*(?:ml|cc|l|lt|lts|litros?)\b)/g) || []).map(n => n.replace(',', '.'));
-    const sizes = sizeOf(text);
+    const sizes = inlineRow != null ? [] : sizeOf(text);
     const comboSizes = sizeOf([combo.name, combo.description || '', ...(combo.attributes || []).flatMap(attr => attr.options)].join(' '));
     const comboDrinkSize = sizes.some(size => comboSizes.includes(size));
     const sized = sizes.length && !comboDrinkSize ? products.filter(product => product.availableNow !== false && this.catalogService.isLikelyDrinkProduct(product) &&
@@ -12908,7 +12914,16 @@ export class WhatsappOrchestratorService {
     }
     const drinkAttribute = (combo.attributes || []).find(attr => /\b(?:bebida|gaseosa|refresco|jugo|soda)s?\b/.test(this.normalizeForMatch(attr.attributeName)));
     const said = ` ${q.replace(/[^a-z0-9ñ]+/g, ' ')} `;
-    const options = (drinkAttribute?.options || []).filter(option => said.includes(` ${this.normalizeForMatch(option).replace(/[^a-z0-9ñ]+/g, ' ').trim()} `));
+    const inlineDrink = inlineRow != null && withDrink ? this.normalizeForMatch(withDrink[2])
+      .replace(/(?:\s+(?:por favor|porfa|por fa|porfavor|gracias))+$/, '')
+      .replace(/^(?:bebida|gaseosa|refresco|jugo|soda)\s+(?:de\s+)?/, '') : null;
+    const options = (drinkAttribute?.options || []).filter(option => inlineDrink != null
+      ? this.normalizeForMatch(option) === inlineDrink
+      : said.includes(` ${this.normalizeForMatch(option).replace(/[^a-z0-9ñ]+/g, ' ').trim()} `));
+    if (inlineDrink != null && options.length !== 1) {
+      await this.reply(conv, waId, `No pude resolver esa bebida para *${combo.name}*.${this.drinkChoicesLine(combo)} Repite la opción y la bebida que prefieres. El pedido sigue igual.`);
+      return true;
+    }
     const affirmative = /^(?:si+|si si|dale|ok|okay|listo|de una|va|bueno|perfecto|hagale|claro|esta bien|cambialo|cambiamelo|pasalo|el combo|en combo|mejor (?:el )?combo|quiero el combo|ese|esa|si (?:cambialo|dale|el combo|ese|porfa|por favor))$/.test(q);
     if (!numberedOffer && !affirmative && options.length !== 1 && !comboDrinkSize) return false;
     const selected = options.length === 1 && drinkAttribute ? [{ attributeName: drinkAttribute.attributeName, attributeValue: options[0] }] : [];

@@ -149,6 +149,70 @@ describe.each(menus)('$id: a drink question lists every related combo', m => {
       expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
     });
 
+    it.each(['el combo 2 con Uva porfa', 'la opción 2 con Pepsi', 'quiero el número 1 con Uva', 'la opción 2 con bebida Uva'])('selection plus drink: %s', async text => {
+      const h = await start(m.order.replace(/^(?:un|una) /, 'dos ') + ' sin cebolla');
+      await h.send('eso lleva bebida?');
+      const note = h.cartRows()[0].note;
+      const chosen = text.includes('1') ? m.own : m.other;
+      const drink = text.includes('Pepsi') ? 'Pepsi' : 'Uva';
+      const reply = await h.send(text);
+      expect(reply).toContain(chosen.name);
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: chosen.id, qty: 2, note })]);
+      expect(attr(h.cartRows()[0].attrs, 'Bebida')).toBe(drink);
+      if (chosen === m.own) expect(attr(h.cartRows()[0].attrs, m.kept[0])).toBe(m.kept[1]);
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+      h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 113, dailyOrderNumber: 113 });
+      await h.send('nada mas');
+      await h.send('contraentrega');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.send('confirmar');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const dto = h.service.ordersService.create.mock.calls[0][0];
+      expect(dto.items.map((i: any) => i.productId)).toEqual([chosen.id, chosen.id]);
+      for (const item of dto.items) expect(JSON.stringify(item)).toContain(drink);
+    });
+
+    it.each(['el combo 9 con Uva', 'el combo 2 con bebida desconocida', 'el combo 2 con Uva y Pepsi'])('invalid compound selection preserves cart: %s', async text => {
+      const h = await start();
+      await h.send('eso lleva bebida?');
+      const before = structuredClone(h.conv.sessionData.cart);
+      const reply = await h.send(text);
+      expect(reply).toMatch(/opción|bebida|Bebida/);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+      await h.send('el combo 2 con Uva');
+      expect(h.cartRows()[0].id).toBe(m.other.id);
+      expect(attr(h.cartRows()[0].attrs, 'Bebida')).toBe('Uva');
+    });
+
+    it.each(['removed', 'unavailable'])('the selected combo becoming %s never substitutes the preferred one', async kind => {
+      const h = await start();
+      await h.send('eso lleva bebida?');
+      const before = structuredClone(h.conv.sessionData.cart);
+      h.service.catalogService.getMenuProducts.mockResolvedValue([
+        m.dish, m.own, m.base, ...(kind === 'removed' ? [] : [{ ...m.other, availableNow: false }]),
+      ]);
+      const reply = await h.send('el combo 2 con Uva');
+      expect(reply).toMatch(/no está disponible/i);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+    });
+
+    it('a changed price in the chosen second combo is requoted before applying its drink', async () => {
+      const h = await start();
+      await h.send('eso lleva bebida?');
+      const before = structuredClone(h.conv.sessionData.cart);
+      const changed = { ...m.other, price: m.other.price + 2000 };
+      h.service.catalogService.getMenuProducts.mockResolvedValue([m.dish, m.own, changed, m.base]);
+      const reply = await h.send('el combo 2 con Uva');
+      expect(reply).toMatch(/precio.*cambi|cambi.*precio/i);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      await h.send('el combo 2 con Uva');
+      expect(h.cartRows()[0].id).toBe(changed.id);
+      expect(h.conv.sessionData.cart[0].unitPrice).toBe(changed.price);
+      expect(attr(h.cartRows()[0].attrs, 'Bebida')).toBe('Uva');
+    });
+
     it('numeric replacement preserves two units and their kitchen note', async () => {
       const h = await start(m.order.replace(/^(?:un|una) /, 'dos ') + ' sin cebolla');
       expect(h.cartRows()[0].qty).toBe(2);
