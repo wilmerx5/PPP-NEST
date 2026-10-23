@@ -1318,10 +1318,10 @@ export function resolvePendingListOrMenuCode(opts: {
 }
 
 /** An edit authorized only under an unverified price condition is not a plain edit. */
-export function isCostConditionalRequest(text: string): boolean {
+export function isCostConditionalRequest(text: string, pendingChoice = false): boolean {
   const t = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
-  const action = /\b(?:cambia(?:r|lo|la|me)?|sustituye|sustituir|reemplaza(?:r)?|pon(?:me|lo|la)?|agrega(?:r|me)?|anade|quiero|dame|pide|pedir)\b/.test(t);
-  if (!action) return false;
+  const action = /\b(?:cambia(?:r|lo|la|me)?|sustituye|sustituir|reemplaza(?:r)?|pon(?:me|lo|la|le)?|agrega(?:r|me)?|anade|quiero|dame|pide|pedir)\b/.test(t);
+  if (!action && !pendingChoice) return false;
   return /\b(?:solo |solamente |unicamente )?si\s+(?:el cambio\s+)?(?:no\s+(?:(?:me |nos )?(?:cuesta|vale|sale|cobran?|cobras|cobre|cobren|tiene|hay|lleva|genera|aumenta))[^,;.]{0,70}\b(?:mas|extra|adicional|costo|recargo|precio)|(?:cuesta|vale|sale|cobran?|cobras|cobre|cobren)\s+(?:menos de|hasta|como maximo|maximo)\b|(?:es|sale|queda)\s+(?:gratis|sin (?:costo|recargo)|al mismo precio)\b)/.test(t);
 }
 
@@ -1329,7 +1329,7 @@ export function isCostConditionalRequest(text: string): boolean {
 export function splitCostConditionFromIndependentAction(text: string): { condition: string; action: string } | null {
   const clauses = text.split(/(?:;|\n|\s+y)\s*(?:aparte|adem[aá]s|independientemente)\s*[,;:]?\s+/i).map(part => part.trim());
   if (clauses.length !== 2 || clauses.some(part => !part)) return null;
-  const conditioned = clauses.map(isCostConditionalRequest);
+  const conditioned = clauses.map(clause => isCostConditionalRequest(clause));
   if (conditioned.filter(Boolean).length !== 1) return null;
   const conditionIndex = conditioned[0] ? 0 : 1;
   const action = clauses[1 - conditionIndex];

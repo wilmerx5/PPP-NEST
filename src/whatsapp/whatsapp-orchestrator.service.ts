@@ -1436,7 +1436,7 @@ export class WhatsappOrchestratorService {
     }
     // Do not strip the condition and execute an otherwise recognizable option.
     // Attribute availability does not establish a substitution surcharge policy.
-    if (isCostConditionalRequest(originalText)) {
+    if (isCostConditionalRequest(originalText, !!this.conversationService.getSession(conv).pendingAttribute)) {
       const current = this.conversationService.getSession(conv);
       const independent = splitCostConditionFromIndependentAction(originalText);
       const conditionNotice = 'No tengo un costo o recargo del cambio confirmado en la carta. No apliqué el cambio condicionado; debe confirmar ese costo el restaurante.';
