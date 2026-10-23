@@ -8,7 +8,7 @@ Los primeros 36 casos pasaron sin cambios. Al ampliar redacción se reprodujeron
 
 Foco final 774/774 en cinco suites; TypeScript general/build OK; Node 92/92. Global final 16.459/16.459, 192 suites, inventario exacto, 490 hashes intactos, 565,33 s. Cero API pagada, WhatsApp u órdenes externas. Modelos y servicios externos simulados; no acredita mejora de transcripción/visión real ni calidad general para venta.
 
-Publicación y despliegue agrupado de 120/121 en staging pendientes de verificación de entrega. Main/producción preservados; mantener acceso público de staging y eventos de cocina bloqueados. Evidencia: [tanda 121](whatsapp-distributed-group-notes-validation-2210.md).
+Tandas 120/121 publicadas y desplegadas juntas en staging: 17bc27a7, imagen 2a57360d…, verificado 22/10 a las 23:41 Bogotá: running/healthy, cero reinicios, health OK, DB connected y circuit CLOSED. publicChat=true, outbound=true, canal configurado, staging=true y orderEvents=false efectivos. Producción conserva imagen ef426c93…; Main intacta. Rollback ppp-nest-staging:rollback-before-17bc27a7; bin/ privado, bases y volúmenes preservados. Mantener acceso público de staging y eventos de cocina bloqueados. Evidencia: [tanda 121](whatsapp-distributed-group-notes-validation-2210.md).
 
 Siguiente: varios atributos en cada grupo (bebida+término/salsa/temperatura), cambios de opinión antes de completar el reparto y notas/contacto intercalados. Contrastar respuestas sin cantidad, preguntas y disponibilidad cambiante. No usar conteos para declarar vendible ni cambiar Main sin solicitud explícita.
 
@@ -28,3 +28,7 @@ No sumar ejecuciones solapadas como pruebas independientes. Global ejecutada una
 ## Límites
 
 Separa la opción confirmada al inicio del grupo de la nota posterior. No acredita toda redacción libre ni varias opciones mezcladas antes de cada nota. Los nombres y precios ficticios son fixtures; producción resuelve por catálogo. La disponibilidad, nombres/contactos intercalados y varios atributos se dejan como próxima tanda específica. Los despliegues se verifican aparte de publicar Git.
+
+## Despliegue verificado
+
+Evidencia local `/tmp/ppp-121-deploy.log` y `/tmp/ppp-121-deploy-verified.log`. Código `17bc27a7c4284039db5609314127f7b03e67bd31`; imagen staging `sha256:2a57360def71cd459003c43bd2e9077d648353389a5ddecef1f3eeef1c2ce56a`. Verificación 2026-10-23T04:41:11Z (22/10 23:41 Bogotá). Imagen de producción inalterada `sha256:ef426c93966a809c007cfb0eb9bf0b83a3e2ef4b137498b23a632e8f61b7d613`. Se ejecutó únicamente compose staging/up api; no se eliminaron orphans ni se tocaron datos. Commit posterior de documentación no requiere rebuild.
