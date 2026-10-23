@@ -8,7 +8,7 @@ Baseline funcional18/18 fallos; primer intento anterior carecía mock generateTu
 
 Cero API/Meta/órdenes externas. Límites: simulación textual serial, tres catálogos y tres referencias; no acredita modelo real, audios ni mapas. Siguiente: cambios de opinión y consulta+elección en un mismo mensaje; después contraste real acotado según whatsapp-api-validation-next-2310.md. No declarar vendible por conteos.
 
-Publicación y despliegue agrupado137+138 en staging en curso; registrar verificación al concluir. Main intacta.
+Desplegadas137+138 solo en staging:638d0d85, imagen5e97df19…, verificado23/10 13:53:41 Bogotá. Running/healthy,0reinicios, /api/health OK,DBconnected,circuitCLOSED. publicChat=true/orderEvents=false conservados. Producción mantiene imagenef426c93… y0reinicios; Main intacta. Rollback ppp-nest-staging:rollback-before-638d0d85. Archivos privados, bin/ ajeno, bases y volúmenes preservados. Evidencia /tmp/ppp-138-deploy.log, /tmp/ppp-138-verified.log y /tmp/ppp-138-health.log. Primera consulta a /health devolvió404 por ruta incorrecta; /api/health verificada después.
 
 ## VIGENTE — tanda137: señal de dirección pendiente y evaluación real (23/10)
 
