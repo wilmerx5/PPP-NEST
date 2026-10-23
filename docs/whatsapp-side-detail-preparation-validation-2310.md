@@ -1,6 +1,6 @@
 # Tanda 146 — consultas de acompañamiento, preparación y corrección exclusiva
 
-Base cdd54a1a, staging. Cierre de validación en curso; no acreditar despliegue por este documento.
+Base cdd54a1a, staging. Validación y despliegue cerrados; ver evidencia al final.
 
 ## Evidencia y fallos
 
@@ -27,4 +27,8 @@ Después de cerrar la global: publicar solo staging, documentar SHA; agrupar des
 
 ## Cierre global agrupado
 
-17.128/17.128 pruebas,208 suites,506 hashes,621,17s; inventario exacto y fuente congelada. Evidencia /tmp/ppp-147-global-summary.json. Publicación/despliegue solo staging pendientes de verificación; Main intacta.
+17.128/17.128 pruebas,208 suites,506 hashes,621,17s; inventario exacto y fuente congelada. Evidencia /tmp/ppp-147-global-summary.json. Despliegue verificado; Main intacta.
+
+## Despliegue verificado
+
+Desplegadas146–147 solo staging: eef121c13c6888d5732eb91a67c272db3e35eb0c, imagen sha256:20007c4f98b5ba8cfd0040adeedab800829729096ad8b9e8e00a8df116844fa6. Verificación independiente2026-10-23T23:25:25Z: running/healthy,0 reinicios, /api/health OK,DBconnected,circuitCLOSED. publicChat=true/orderEvents=false conservados. Producción mantiene ef426c93… y0reinicios. Rollback ppp-nest-staging:rollback-before-eef121c1. Evidencia /tmp/ppp-147-deploy.log y /tmp/ppp-147-verified.log. La conexión SSH original quedó sin finalizar aunque el contenedor arrancó22:23:42Z; se comprobó que no había compose remoto activo y se cerró solo el cliente SSH local. No confundir salida truncada de transporte con fallo del contenedor. Privados/bin/,bases y volúmenes preservados. Commit posterior solo documental no requiere reconstrucción.
