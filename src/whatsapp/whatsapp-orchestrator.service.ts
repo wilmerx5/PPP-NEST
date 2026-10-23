@@ -9860,7 +9860,7 @@ export class WhatsappOrchestratorService {
       (prizeDiscount ? `Premio −$${Math.round(prizeDiscount).toLocaleString('es-CO')}\n` : '') +
       `*Total $${Math.round(total).toLocaleString('es-CO')}*` +
       (includeAddress && session.orderType === 'delivery' && session.address?.trim()
-        ? `\n📍 ${customerLocationLabel(session.address.trim())}${session.addressConfirmed ? ' ✅' : ''}`
+        ? `\n📍 ${customerLocationLabel(session.address.trim())}${session.addressConfirmed && !session.deliveryOutOfCoverage && session.deliveryFeeCalculated != null ? ' ✅' : ''}`
         : '')
     );
   }

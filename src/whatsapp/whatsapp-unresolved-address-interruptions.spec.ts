@@ -43,6 +43,7 @@ for (const [dish, side] of menus) for (const enabled of [false, true]) for (cons
     expect(h.conv.sessionData.contactPhone?.replace(/\D/g, '')).toContain('3000000007');
     const premature = await h.sendQueued('confirmar');
     expect(premature).toMatch(reason === 'address_ambiguous' ? /Comparte calle y número/i : /fuera.*cobertura/i);
+    expect(premature).not.toMatch(/📍[^\n]*✅/);
     expect(h.service.ordersService.create).not.toHaveBeenCalled();
     expect(h.conv.state).not.toBe('completed');
 
