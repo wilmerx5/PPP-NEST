@@ -1,3 +1,15 @@
+## VIGENTE — tanda138: consultas durante opciones y contacto anticipado (23/10)
+
+Base d69c2518, staging.18 conversaciones nuevas desde carrito vacío en tres cartas sintéticas: combo pollo, menú hamburguesa, plato pasta; agente simulado on/off; datos separados/juntos/corregidos. Preguntan precio del producto pendiente mientras eligen bebida, aportan nombre/teléfono/dirección con interior, eligen por número y cierran. Respuesta, pendiente, carrito y DTO exacto de una unidad, bebida y contacto verificados; cero órdenes prematuras.
+
+Fallo: consulta «cuánto cuesta ese plato» en selección abierta desde compra (sin pendingCheckoutResume) no resolvía referente. Se responde con producto del catálogo del pendingAttribute para referencias explícitas plato/producto/combo/menú, antes de exigir estado de checkout. Se excluyen selecciones múltiples y sustituciones; resto del handler conserva su guardia. No depende de nombres/IDs PPP.
+
+Baseline funcional18/18 fallos; primer intento anterior carecía mock generateTurn (no contarlo como fallo del runtime). Añadirlo con respuesta neutra acreditó que no respondía precio. Primer cambio dentro del bloque checkout no alcanzó selección desde compra; se movió únicamente la consulta referencial antes de esa guardia. Foco final174/174,13,827s; TS general/build OK, Node92/92. Global16.926/16.926,202suites,500hashes,586,67s; inventario exacto y fuente congelada. Logs /tmp/ppp-138-{baseline,after,after2,final-focus,tsc,node}.log y /tmp/ppp-138-global-summary.json. No sumar focos solapados.
+
+Cero API/Meta/órdenes externas. Límites: simulación textual serial, tres catálogos y tres referencias; no acredita modelo real, audios ni mapas. Siguiente: cambios de opinión y consulta+elección en un mismo mensaje; después contraste real acotado según whatsapp-api-validation-next-2310.md. No declarar vendible por conteos.
+
+Publicación y despliegue agrupado137+138 en staging en curso; registrar verificación al concluir. Main intacta.
+
 ## VIGENTE — tanda137: señal de dirección pendiente y evaluación real (23/10)
 
 Base a2ed6950, staging. Se reforzaron los36 recorridos de136: un resumen con destino ambiguo o fuera de cobertura no debe marcar esa dirección con ✅. Baseline36/36 fallos. Corrección general en formatCartOnly: solo mostrar marca si dirección confirmada, cobertura no rechazada y tarifa calculada presente (incluye0). No cambia el texto de la dirección ni desbloquea órdenes. Se mantienen consultas, cambios de carrito/teléfono y salidas corregir/recoger/cancelar.

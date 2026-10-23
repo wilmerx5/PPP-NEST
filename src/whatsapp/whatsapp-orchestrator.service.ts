@@ -8703,7 +8703,17 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     const pending = session.pendingAttribute;
-    if (!pending || !session.pendingCheckoutResume || session.pendingMultiOrder || pending.replacement) return false;
+    if (!pending || session.pendingMultiOrder || pending.replacement) return false;
+    const pendingProductPrice = /^(?:cuanto (?:cuesta|vale)|que precio tiene) (?:ese|este|el) (?:plato|producto|combo|menu)$/.test(this.normalizeForMatch(text));
+    if (pendingProductPrice) {
+      const product = (await this.catalogService.getMenuProducts()).find(item => item.id === pending.productId);
+      if (product) {
+        await this.reply(conv, waId, `*${product.name}*: ${this.catalogService.formatMoney(product.price)} por unidad.` +
+          '\nEl pedido sigue igual.\n\n' + this.formatPendingPurchaseReminder(session));
+        return true;
+      }
+    }
+    if (!session.pendingCheckoutResume) return false;
     let selectedAlternative: MenuProduct | undefined;
     if (pending.alternativeProductIds !== undefined) {
       const menu = await this.catalogService.getMenuProducts();
