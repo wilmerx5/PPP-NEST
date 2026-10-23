@@ -4,7 +4,7 @@ Base5e081a8c, solo staging.24 recorridos nuevos +4 controles: opción sin verbo 
 
 Foco142/142,12,435s; TS general/build OK; Node92/92. Global17.080/17.080,206suites,504hashes,582,89s; inventario exacto/fuente congelada. Evidencia /tmp/ppp-144-global-summary.json, /tmp/ppp-144-{baseline,final-focus,tsc,node}.log. No sumar focos repetidos. Cero API pagada, WhatsApp u órdenes externas.
 
-Publicación y despliegue agrupado142–144 solo staging en curso; completar evidencia posterior. Predeploy c82df32d,a18b22c5…,0reinicios; producción ef426c93…,0reinicios. bin/ ajeno preservado; Main intacta. Límites: dos cláusulas con independencia explícita, texto serial/mocks, no acredita recargos reales ni audio/mapas/modelo. Próximo: ronda real acotada de conversaciones nuevas según whatsapp-api-validation-next-2310.md, con presupuesto registrado y stop ante fallo. No seguir posponiendo por conteos.
+Desplegadas142–144 solo staging:426b8eff, imagenc13f9ae2…, verificado23/10 16:40:07 Bogotá. Running/healthy,0reinicios; /api/health OK,DBconnected,circuitCLOSED. publicChat=true/orderEvents=false conservados. Producción conserva imagenef426c93… y0reinicios; Main intacta. Rollback ppp-nest-staging:rollback-before-426b8eff; bases,volúmenes,bin/ y privados preservados. Evidencia /tmp/ppp-144-deploy.log y /tmp/ppp-144-verified.log. Límites: dos cláusulas con independencia explícita, texto serial/mocks, no acredita recargos reales ni audio/mapas/modelo. Próximo: ronda real acotada de conversaciones nuevas según whatsapp-api-validation-next-2310.md, con presupuesto registrado y stop ante fallo. No seguir posponiendo por conteos.
 
 ## VIGENTE — tanda143: condición explícita y acción independiente (23/10)
 

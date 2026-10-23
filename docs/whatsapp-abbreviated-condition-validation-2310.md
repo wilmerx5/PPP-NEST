@@ -9,3 +9,7 @@ Foco142/142,12,435s; TypeScript general/build OK; Node92/92. Logs /tmp/ppp-144-b
 Límites: separador explícito «; aparte», dos cláusulas, texto serial, servicios/modelo simulados. No valida recargos comerciales reales, audio, mapas, conjunciones libres ni retiro parcial. Próximo paso: contraste real acotado de conversaciones nuevas según whatsapp-api-validation-next-2310.md; conservar contador compartido y registrar presupuesto antes de red. No declarar vendible por conteos.
 
 Predeploy de solo lectura: servidor staging c82df32d, imagen a18b22c5…,0reinicios; producción ef426c93…,0reinicios. bin/ no versionado preservado. Sin cambios al servidor durante global. Evidencia /tmp/ppp-144-before-deploy.log.
+
+## Despliegue verificado
+
+Desplegadas142–144 solo staging:426b8eff, imagenc13f9ae2…, verificado23/10 16:40:07 Bogotá. Running/healthy,0reinicios; /api/health OK,DBconnected,circuitCLOSED. publicChat=true/orderEvents=false conservados. Producción conserva imagenef426c93… y0reinicios; Main intacta. Rollback ppp-nest-staging:rollback-before-426b8eff; bases,volúmenes,bin/ y privados preservados. Evidencia /tmp/ppp-144-deploy.log y /tmp/ppp-144-verified.log.
