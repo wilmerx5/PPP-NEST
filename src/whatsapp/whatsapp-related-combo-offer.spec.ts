@@ -464,6 +464,70 @@ describe.each(menus)('$id: a drink question lists every related combo', m => {
       });
     });
 
+    it.each(['complete', 'turns', 'revise', 'nameInterruption', 'wrongTotal', 'incompleteOptions', 'question'])('distributes several attributes with scoped notes: %s', async scenario => {
+      const h = await start(m.order.replace(/^(?:un|una) /, 'cuatro ') + ' sin cebolla');
+      h.service.ordersService.create = jest.fn().mockResolvedValue({id:122,dailyOrderNumber:122});
+      await h.send('eso lleva bebida?');
+      await h.send('1');
+      const before = structuredClone(h.conv.sessionData.cart);
+      const otherValue = m.own.attributes.find(a => a.attributeName === m.kept[0])!.options.find(v => v !== m.kept[1])!;
+      const first = `2 con Uva y ${m.kept[0]} ${otherValue} y sin tomate`;
+      const second = `2 con Pepsi y ${m.kept[0]} ${m.kept[1]} y con ají`;
+      if (scenario === 'complete') await h.send(`los quiero ${first} y ${second}`);
+      else {
+        const response = await h.send(first);
+        expect(response).toMatch(/faltan 2/i);
+        expect(h.conv.sessionData.cart).toEqual(before);
+        expect(h.conv.sessionData.pendingAttribute?.productId).toBe(m.own.id);
+        if (scenario === 'nameInterruption') {
+          await h.send('a nombre de Ana Torres');
+          expect(h.conv.customerName).toBe('Ana Torres');
+          expect(h.conv.sessionData.cart).toEqual(before);
+          expect(h.conv.sessionData.pendingAttribute?.distributionParts).toHaveLength(1);
+        }
+        if (scenario === 'question') {
+          const response = await h.send('qué sabores tienes?');
+          expect(response).toMatch(/Pepsi/);
+          expect(h.conv.sessionData.cart).toEqual(before);
+          expect(h.conv.sessionData.pendingAttribute?.distributionParts).toHaveLength(1);
+        }
+        if (scenario === 'wrongTotal' || scenario === 'incompleteOptions') {
+          const pending = structuredClone(h.conv.sessionData.pendingAttribute);
+          const response = await h.send(scenario === 'wrongTotal' ? second.replace(/^2 /, '3 ') : 'los otros con Pepsi y con ají');
+          expect(response).toMatch(/opciones|cantidad|unidades|repart/i);
+          expect(h.conv.sessionData.cart).toEqual(before);
+          expect(h.conv.sessionData.pendingAttribute).toEqual(pending);
+          expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        }
+        if (scenario === 'revise') await h.send(`los quiero 1 con Uva y ${m.kept[0]} ${otherValue} y sin tomate y 3 con Pepsi y ${m.kept[0]} ${m.kept[1]} y con ají`);
+        else await h.send(second);
+      }
+      const rows = h.cartRows();
+      expect(rows).toHaveLength(2);
+      const uva = rows.find(row => attr(row.attrs,'Bebida') === 'Uva')!;
+      const pepsi = rows.find(row => attr(row.attrs,'Bebida') === 'Pepsi')!;
+      expect(uva.qty).toBe(scenario === 'revise' ? 1 : 2);
+      expect(pepsi.qty).toBe(scenario === 'revise' ? 3 : 2);
+      expect(attr(uva.attrs,m.kept[0])).toBe(otherValue);
+      expect(attr(pepsi.attrs,m.kept[0])).toBe(m.kept[1]);
+      expect(uva.note).toMatch(/sin tomate/i);
+      expect(uva.note).not.toMatch(/ají|aji/i);
+      expect(pepsi.note).toMatch(/ají|aji/i);
+      expect(pepsi.note).not.toMatch(/sin tomate/i);
+      for (const row of rows) { expect(row.id).toBe(m.own.id); expect(row.note).toMatch(/sin cebolla/i); }
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+      const expected = h.conv.sessionData.cart.flatMap(row => Array.from({length:row.quantity}, () => ({productId:row.productId,note:row.note,attributes:row.attributes})));
+      await h.send('no más, recojo en el local');
+      await h.send('contraentrega');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.send('confirmar');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const dto = h.service.ordersService.create.mock.calls[0][0];
+      expect(dto.items).toHaveLength(4);
+      expect(dto.items.map(item => ({productId:item.productId,note:item.note,attributes:item.attributes}))).toEqual(expected);
+      expect(dto.customerName).toBe(scenario === 'nameInterruption' ? 'Ana Torres' : 'Wilmer');
+    });
+
     it.each(['con cubiertos', 'con salsa aparte', 'sin hielo'])('keeps a trailing group instruction without a conjunction: %s', async note => {
       const h = await start(m.order.replace(/^(?:un|una) /, 'cuatro ') + ' sin cebolla');
       h.service.ordersService.create = jest.fn().mockResolvedValue({id:121,dailyOrderNumber:121});

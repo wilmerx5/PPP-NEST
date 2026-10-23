@@ -1,3 +1,13 @@
+## VIGENTE — tanda 122: varios atributos por grupo y recuperación (22/10)
+
+Base 245c5c7a, staging. 42 regresiones nuevas: tres menús sintéticos (arroz con preparación de pollo, hamburguesa con término y salchipapa con salsa), agente simulado on/off. Cada grupo lleva bebida y preparación distintas, nota propia sin tomate/con ají y nota común sin cebolla. Reparto completo o entre turnos, cambio de opinión mediante nuevo reparto 1+3, nombre y consulta de sabores intercalados, exceso de cantidad y selección incompleta seguida de recuperación válida. Todos terminan en DTO de cuatro unidades, sin crear orden antes de confirmar.
+
+No se encontró fallo en esta familia: los primeros 24 y la extensión de 18 pasaron con el código existente. Se añadieron tests, no reglas de producción. Foco final 816/816 en cinco suites (44,38 s); TypeScript general/build y Node 92/92 aprobados. No se repite global ni build de servidor porque no cambió código ejecutable: la última global de esa fuente sigue siendo 16.459/16.459, 192 suites, tanda 121. No presentar ese conteo como global nueva ni sumar ejecuciones solapadas.
+
+Solo pruebas/documentación publicadas en staging; no requiere despliegue. Servidor sigue ejecutando 17bc27a7 (120/121), imagen 2a57360d…, verificado en la tanda anterior 22/10 23:41 Bogotá. Main/producción intactos; acceso público de staging y bloqueo de eventos de cocina deben conservarse. Cero API pagada, WhatsApp u órdenes externas. Evidencia: [tanda 122](whatsapp-multiple-group-attributes-validation-2210.md).
+
+Límites: dependencias/modelos simulados, grupos explícitos y cambio de opinión mediante reparto completo. No acredita correcciones libres del grupo pendiente («los primeros mejor…»), cambio de producto/agotado entre turnos ni contacto múltiple en la misma respuesta. Siguiente: correcciones de un grupo aún pendiente, cancelar/reemplazar esa selección y retomar checkout; contrastar además conversación básica completa para evitar concentrar toda la cobertura en repartos. Sin cambios de fuente, focalizar; global solo cuando cambien reglas compartidas.
+
 ## VIGENTE — tanda 121: notas separadas por grupo y correcciones parciales (22/10)
 
 Base cead288b, staging. 72 regresiones nuevas, tres menús sintéticos y agente simulado on/off, todas hasta DTO simulado. Cuatro unidades distribuidas en dos o tres grupos: notas sin tomate/con ají/sin sal, frases completas o por turnos, con/sin conjunción y comas; misma bebida con notas distintas; recuperación de sabor desconocido; cambio de una sola unidad en pago/confirmación; cubiertos, salsa aparte e hielo. Conserva nota común y opciones compatibles, suma cuatro unidades, no mezcla notas entre grupos y no crea orden antes de confirmar.
