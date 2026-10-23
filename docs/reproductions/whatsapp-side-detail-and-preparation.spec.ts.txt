@@ -1,0 +1,36 @@
+import { harness } from './whatsapp-accuracy.test-support';
+
+for (const [name, side] of [['Arroz Con Pollo','ensalada'],['Plato De Pasta','salsa'],['Bowl Vegetal','aderezo']])
+for (const agent of [false,true]) {
+  test(`${name}: purchase plus unknown side detail, agent=${agent}`, async () => {
+    const h=harness([{id:94001,code:81,name,description:`Acompañado con ${side}`,price:30000,availableNow:true,attributes:[]}],agent);
+    h.service.aiService.classifyMessage=jest.fn().mockResolvedValue(null);
+    h.service.aiService.generateTurn=jest.fn().mockResolvedValue({reply:'¿Cuál prefieres?',actions:{}});
+    await h.sendQueued(`Me das un ${name} por favor, con qué viene acompañado?`);
+    const before=structuredClone(h.conv.sessionData.cart);
+    const response=await h.sendQueued(`De qué es la ${side}?`);
+    expect(response).toMatch(/no tengo.*(?:detalle|ingrediente|confirmad)|no.*(?:especifica|detalla)/i);
+    expect(h.conv.sessionData.cart).toEqual(before);
+    const added=await h.sendQueued(`Agrégalo al pedido por favor, pero de qué es la ${side} el día de hoy`);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:94001,qty:1})]);
+    expect(added).toMatch(/no tengo|no.*(?:especifica|detalla)/i);
+    expect(h.conv.sessionData.pendingMatch).toBeFalsy();
+    expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+  });
+}
+
+for (const [name,options] of [['Trucha',['Frita','Apanada','Asada']],['Tofu',['Frito','Apanado','Asado']],['Berenjena',['Frita','Apanada','Asada']]] as const)
+for (const agent of [false,true]) {
+  test(`${name}: unavailable preparation then offered option, agent=${agent}`, async () => {
+    const h=harness([{id:94002,code:82,name,price:29000,availableNow:true,hasAttributes:true,
+      attributes:[{attributeName:'Seleccion',options:[...options]}]}],agent);
+    h.service.aiService.classifyMessage=jest.fn().mockResolvedValue(null);
+    h.service.aiService.generateTurn=jest.fn().mockResolvedValue({reply:'¿Cuál prefieres?',actions:{}});
+    const offer=await h.sendQueued(`Me das un ${name} en salsa marinera`);
+    expect(offer).toMatch(/asada|asado/i);
+    const selected=await h.sendQueued(`Dame una ${options[2]} por favor`);
+    expect(selected).not.toMatch(/no manejamos/);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:94002,qty:1,attrs:[`Seleccion:${options[2]}`]})]);
+    expect(h.conv.sessionData.pendingMatch).toBeFalsy();
+  });
+}

@@ -1,3 +1,7 @@
+## PRIORIDAD ABIERTA — chat arroz/ensalada y trucha/asada (23/10)
+
+Auditoría posterior a144, base1e6bcc46. Nuevos ejemplos del usuario muestran detalle de acompañamiento ignorado, compra+consulta con confirmación redundante, posible pendiente residual y preparación ofrecida que pierde referente. Reproducción gratuita12/12 roja en etapas iniciales; no es tanda cerrada ni fix. Reproductor fuera de Jest en docs/reproductions/whatsapp-side-detail-and-preparation.spec.ts.txt; diagnóstico, límites y plan en whatsapp-rice-trout-chat-audit-2310.md. Runtime/Main/despliegue intactos; cero API. Priorizar corrección general y DTO final antes de afirmar resuelto. Último ejecutable validado/desplegado sigue426b8eff.
+
 ## VIGENTE — tanda144: condiciones abreviadas con acción independiente (23/10)
 
 Base5e081a8c, solo staging.24 recorridos nuevos +4 controles: opción sin verbo «Mora si no cuesta más; aparte quita…», orden inverso, condición sola y ambas cláusulas condicionadas. Baseline12 fallos/36 aprobados: guarda superior reconocía condición con pendingChoice, pero separador no recibía contexto. Se propaga desde current.pendingAttribute con predeterminado false. Se conserva bebida pendiente y solo se aplica retirada independiente; luego elección firme y DTO exacto, sin órdenes prematuras. Sin excepciones PPP.
