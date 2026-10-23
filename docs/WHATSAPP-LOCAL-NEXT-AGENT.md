@@ -1,3 +1,15 @@
+## VIGENTE — tanda 123: cancelar un reparto pendiente y retomar el cierre (22/10)
+
+Base 0ba5a9ce, staging. 36 regresiones nuevas: seis escenarios × tres menús sintéticos × agente simulado on/off. Después de iniciar el reemplazo de cuatro platos por combos y repartir solo dos con Uva/sin tomate: cancelar ese cambio, olvidarlo, cancelar la selección, cancelar y elegir de nuevo con Pepsi, reiniciar y comprar otra vez, o cancelar después de guardar un nombre. Todos llegan a DTO, sin orden antes de confirmar.
+
+Los 36 casos pasan con el código existente. Cancelar selección conserva el carrito original y su nota sin cebolla; la nota sin tomate del reparto abandonado desaparece; al reintentar no sobreviven sabores parciales; reiniciar vacía y permite una compra nueva de una unidad. El nombre explícito guardado antes de cancelar se conserva en el cierre. No se modificaron reglas de producción.
+
+Foco final 852/852 en cinco suites (84,349 s); TypeScript general/build OK y Node 92/92. Solo pruebas/documentación: no nueva global ni despliegue. La última global de código ejecutable sigue siendo tanda 121, 16.459/16.459 en 192 suites; no es un conteo global de esta tanda. Cero API pagada, WhatsApp u órdenes externas.
+
+Publicar en staging. Servidor conserva 17bc27a7, imagen 2a57360d…, última verificación de despliegue 22/10 23:41 Bogotá. No se cambió Main/producción ni acceso público de staging/bloqueo de eventos de cocina. Evidencia: [tanda 123](whatsapp-cancel-partial-distribution-validation-2210.md).
+
+Siguiente: corrección libre del grupo aún pendiente («los primeros mejor con…», «esos dos sin…») sin cancelar el producto; preservar el resto y preguntar si el grupo no es único. Sigue pendiente contrastar conversación básica completa con consulta, dirección y cierre fuera de la familia de combos. Esta tanda no acredita esas correcciones libres, cancelación de órdenes ya confirmadas, cambios de stock ni modelo real.
+
 ## VIGENTE — tanda 122: varios atributos por grupo y recuperación (22/10)
 
 Base 245c5c7a, staging. 42 regresiones nuevas: tres menús sintéticos (arroz con preparación de pollo, hamburguesa con término y salchipapa con salsa), agente simulado on/off. Cada grupo lleva bebida y preparación distintas, nota propia sin tomate/con ají y nota común sin cebolla. Reparto completo o entre turnos, cambio de opinión mediante nuevo reparto 1+3, nombre y consulta de sabores intercalados, exceso de cantidad y selección incompleta seguida de recuperación válida. Todos terminan en DTO de cuatro unidades, sin crear orden antes de confirmar.

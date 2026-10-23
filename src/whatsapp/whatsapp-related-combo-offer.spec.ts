@@ -464,6 +464,57 @@ describe.each(menus)('$id: a drink question lists every related combo', m => {
       });
     });
 
+    it.each(['cancel', 'forget', 'selection', 'retry', 'restart', 'cancelAfterName'])('withdraws a partially distributed replacement: %s', async scenario => {
+      const h = await start(m.order.replace(/^(?:un|una) /, 'cuatro ') + ' sin cebolla');
+      h.service.ordersService.create = jest.fn().mockResolvedValue({id:123,dailyOrderNumber:123});
+      const original = structuredClone(h.conv.sessionData.cart);
+      await h.send('eso lleva bebida?');
+      await h.send('1');
+      await h.send('dos con Uva y sin tomate');
+      expect(h.conv.sessionData.cart).toEqual(original);
+      expect(h.conv.sessionData.pendingAttribute?.distributionParts).toHaveLength(1);
+      if (scenario === 'cancelAfterName') {
+        await h.send('a nombre de Ana Torres');
+        expect(h.conv.customerName).toBe('Ana Torres');
+      }
+      const response = await h.send(scenario === 'forget' ? 'olvida ese cambio' : scenario === 'selection' ? 'cancela esa seleccion' : scenario === 'restart' ? 'reiniciar' : 'cancela ese cambio');
+      expect(response).toMatch(/cancel|conserv|vacia|vaciamos/i);
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+      expect(h.conv.sessionData.pendingMatch).toBeFalsy();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      if (scenario === 'restart') {
+        expect(h.cartRows()).toEqual([]);
+        await h.send(m.order);
+      } else expect(h.conv.sessionData.cart).toEqual(original);
+      if (scenario === 'retry') {
+        await h.send('eso lleva bebida?');
+        await h.send('el combo 1 con Pepsi');
+        expect(h.cartRows()).toHaveLength(1);
+        expect(h.cartRows()[0].id).toBe(m.own.id);
+        expect(h.cartRows()[0].qty).toBe(4);
+        expect(attr(h.cartRows()[0].attrs,'Bebida')).toBe('Pepsi');
+      }
+      for (const row of h.cartRows()) {
+        expect(row.note || '').not.toMatch(/sin tomate/i);
+        expect(attr(row.attrs,m.kept[0])).toBe(m.kept[1]);
+      }
+      await h.send('no más, recojo en el local');
+      await h.send('contraentrega');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.send('confirmar');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const dto = h.service.ordersService.create.mock.calls[0][0];
+      expect(dto.items).toHaveLength(scenario === 'restart' ? 1 : 4);
+      expect(dto.customerName).toBe(scenario === 'cancelAfterName' ? 'Ana Torres' : 'Wilmer');
+      for (const item of dto.items) {
+        expect(item.productId).toBe(scenario === 'retry' ? m.own.id : m.dish.id);
+        expect(item.note || '').not.toMatch(/sin tomate/i);
+        if (scenario !== 'restart') expect(item.note).toMatch(/sin cebolla/i);
+        expect(item.attributes).toContainEqual({attributeName:m.kept[0],attributeValue:m.kept[1]});
+        if (scenario === 'retry') expect(item.attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Pepsi'});
+      }
+    });
+
     it.each(['complete', 'turns', 'revise', 'nameInterruption', 'wrongTotal', 'incompleteOptions', 'question'])('distributes several attributes with scoped notes: %s', async scenario => {
       const h = await start(m.order.replace(/^(?:un|una) /, 'cuatro ') + ' sin cebolla');
       h.service.ordersService.create = jest.fn().mockResolvedValue({id:122,dailyOrderNumber:122});
