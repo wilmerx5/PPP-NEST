@@ -1361,3 +1361,9 @@ export function pendingCartEditCancellationAside(text: string): 'retain' | 'ques
       new RegExp(`^(?:solo |solamente )?si .+ ${withdrawal}$`).test(t)) return 'conditional';
   return null;
 }
+
+/** A request to explain a failed addition is not a second purchase command. */
+export function isFailedAdditionQuestion(text: string): boolean {
+  const q = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  return /^[¿?\s]*(?:y\s+)?por\s*que\s+no\s+(?:(?:me|lo|los|la|las)\s+)?(?:puedes?\s+|pudiste\s+|pudieron\s+)?(?:anadir|agregar|incluir|anades|agregas|incluyes|anadiste|agregaste|incluiste)\b/.test(q);
+}

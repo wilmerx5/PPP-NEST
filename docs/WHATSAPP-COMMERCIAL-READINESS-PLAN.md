@@ -1,3 +1,13 @@
+## VIGENTE — tanda 125: notas, cantidades repartidas y apertura (23/10)
+
+Base 1e6a2961, staging. Se reproducen los dos chats: milanesa/ajiaco rechazados por notas, pregunta de rechazo que compraba, y dos sopas convertidas en tres/cuatro. Notas de abundancia admiten femenino harta/arta y sustitución compacta anclada al plato; reparto de dos unidades con notas distintas se expande 1+1. Las herramientas validan cantidad contra el segmento identificado por nota literal única. Preguntas sobre un rechazo no compran. «Ya abriste?» y «puedo hacer un pedido?» consultan BusinessService y cerrado muestra agradecimiento/horario. Sin excepciones por nombres/IDs.
+
+40 regresiones nuevas, PPP y tres menús sintéticos; herramientas reales con proveedor simulado, router, respuesta, carrito y DTO simulado. Foco 71/71; TypeScript general/build OK; Node 92/92. Global final 16.584/16.584, 194 suites, inventario exacto, 492 hashes intactos, 762,95 s. Primer intento global detenido al llegar el segundo chat; no se acredita como aprobación. Cero API pagada, WhatsApp ni órdenes externas.
+
+Publicación/despliegue de esta tanda pendiente de verificar. Servidor observado al inicio conserva 4fec2b0f, imagen 8905126e…; producción ef426c93… intacta. GET público de BusinessService del 23/10 devuelve abierto, 00:00–23:59, America/Bogota; no acredita horario histórico de las 23:59 anteriores. No cambiar horarios/configuración, publicChat=true ni orderEvents=false.
+
+Siguiente: reparto en tres grupos y corrección libre de un grupo pendiente; notas parafraseadas en herramientas; consultas y cierre completo. Un «sí» después de preguntar por un fallo no ejecuta reintento automático: la respuesta solicita pedido explícito. La tanda no acredita audio real ni todos los repartos libres. Detalle y límites: [validación 125](whatsapp-qualified-notes-counts-validation-2310.md).
+
 ## VIGENTE — tanda 124: confirmación de varios productos con notas propias (22/10)
 
 Solicitud explícita: mostrar los productos añadidos en lista y la nota debajo de su producto, en vez de nombres separados por comas y notas al final. Base a52a6ec8, staging. buildCartAddReply presenta varias adiciones numeradas; opciones y nota quedan bajo cada producto. Una adición conserva el formato breve previo. Las notas se buscan entre las últimas líneas de ese producto, distinguiendo apariciones repetidas, sin tomar notas de líneas antiguas. No cambia carrito, cantidades, precios ni asignación de notas.

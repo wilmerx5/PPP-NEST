@@ -72,6 +72,7 @@ import { composeWhatsappOrderAddress } from './whatsapp-order-address';
 import {
   isAbandonPendingSelectionIntent,
   isWrongChatApology,
+  isFailedAdditionQuestion,
   orderAfterWrongChat,
   requestAfterRejectedProposal,
   isAddressChangeIntent,
@@ -1476,6 +1477,18 @@ export class WhatsappOrchestratorService {
         'No tengo un recargo de barrio confirmado en la carta; lo confirma el restaurante. ' +
           (session.cart.length ? 'El pedido sigue igual.' : 'No armé un pedido.'),
       );
+      return;
+    }
+
+    if (isFailedAdditionQuestion(originalText)) {
+      const menu = await this.catalogService.getMenuProducts();
+      const mentioned = this.catalogService.findAllProductsEmbeddedInMessage(originalText, menu)
+        .filter(product => product.availableNow !== false);
+      const explanation = mentioned.length
+        ? `En la carta sí aparecen: ${mentioned.map(product => product.name).join(', ')}. No pude completar la solicitud anterior como estaba escrita.`
+        : 'No puedo confirmar el motivo de la adición fallida con esta pregunta.';
+      await this.reply(conv, msg.waId, `${explanation} El pedido sigue igual. ` +
+        'Para reintentarlo, escribe los platos y las indicaciones de cada uno.');
       return;
     }
 
@@ -27118,6 +27131,8 @@ export class WhatsappOrchestratorService {
     if (/\b(horario|horarios|abierto|abiertos|abierta|abiertas)\b/.test(t)) return true;
     if (/\b(?:estan|siguen)\s+atendiendo\b/.test(t)) return true;
     if (/\b(?:a|hasta)\s+que\s+hora\b/.test(t) && /\b(?:cierran|abren|atienden)\b/.test(t)) return true;
+    if (/^(?:ya |todavia |aun )?(?:abriste|abrieron|abren)[?!. ]*$/.test(t) ||
+        /^(?:ya |todavia |aun )?(?:puedo|podemos|se puede) (?:hacer |realizar )?(?:un pedido|pedir|ordenar)[?!. ]*$/.test(t)) return true;
     // ¿Tienen (servicio a) domicilio? sin zona concreta
     if (
       /\b(tienen|tiene|hacen|hace|hay)\b/.test(t) &&
@@ -27142,7 +27157,7 @@ export class WhatsappOrchestratorService {
     if (!this.isBusinessServiceInquiry(text) && !greeting) return false;
     const status = await this.businessService.getStatus();
     if (!status.isOpen) {
-      await this.reply(conv, waId, `Ahora estamos *cerrados*. Horario de hoy: *${status.openTime}–${status.closeTime}*.\n\nEscríbenos en horario de atención y con gusto tomamos tu pedido.`);
+      await this.reply(conv, waId, `Gracias por escribirnos 🙂 Ahora estamos *cerrados*. Horario de hoy: *${status.openTime}–${status.closeTime}*.\n\nEscríbenos en horario de atención y con gusto tomamos tu pedido.`);
       return true;
     }
     if (greeting && !this.isBusinessServiceInquiry(text)) return false;

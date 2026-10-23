@@ -76,17 +76,24 @@ export function interpretProductNote(source: string, products: NamedProduct[]):
     const match = new RegExp(`\\b${name}\\b`,'i').exec(normalized);
     if (!match) continue;
     const tail = normalized.slice(match.index + match[0].length).trim()
-      .replace(/\s+(?:por favor|porfa|gracias)[.!]*$/, '').replace(/[.!]+$/, '').trim();
+      .replace(/[\s,]+(?:por favor|porfa|gracias)[.!]*$/, '').replace(/[.!]+$/, '').trim();
     if(!tail)return null; // An exact longer catalogue name owns its adjectives.
     const description=kitchenDescriptionNote(prepared.slice(match.index+match[0].length));
     if(description)return {productId:product.id,productText:prepared.slice(0,match.index+match[0].length).trim(),note:description};
+    // A compact accompaniment substitution is a kitchen request, not a new SKU.
+    // Require an exact dish anchor and two separate words after the article;
+    // never swallow a coordinated purchase or a question.
+    if (/^a cambio (?:del|de la|de el) \p{L}+ (?!y\b|con\b|un\b|una\b)\p{L}+(?: \p{L}+){0,2}$/u.test(tail) &&
+        !/\b(?:y|otro|otra|quiero|dame|agrega)\b/.test(tail)) {
+      return {productId:product.id,productText:prepared.slice(0,match.index+match[0].length).trim(),note:tail};
+    }
     const descriptor = '(?:dorad[oa]s?|delgad[oa]s?|grues[oa]s?|picad[oa]s?|tajad[oa]s?|crocantes?|crujientes?)';
     if (new RegExp(`^(?:(?:bien|muy)\\s+)?${descriptor}(?:\\s+(?:y\\s+)?(?:(?:bien|muy)\\s+)?${descriptor})*$`).test(tail)) {
       return {productId:product.id,productText:prepared.slice(0,match.index+match[0].length).trim(),note:tail};
     }
-    if (!/^(?:con\s+(?:harto|arto|mucho|mucha|bastante|extra|poco|poca)\s+\p{L}|con\s+aji\b)/u.test(tail)) continue;
+    if (!/^(?:con\s+(?:h?art[oa]|much[oa]|bastante|extra|poc[oa])\s+\p{L}|con\s+aji\b)/u.test(tail)) continue;
     if (tail.length>180 || /[?¿;,]|\b(?:y|agrega|quiero|dame|si|cambia|por)\b/.test(tail)) continue;
-    const note = tail.replace(/\barto\b/g,'harto').replace(/\bahi\b/g,'ají').replace(/\baji\b/g,'ají');
+    const note = tail.replace(/\bart([oa])\b/g,'hart$1').replace(/\bahi\b/g,'ají').replace(/\baji\b/g,'ají');
     return {productId:product.id,productText:prepared.slice(0,match.index+match[0].length).trim(),note};
   }
   return null;

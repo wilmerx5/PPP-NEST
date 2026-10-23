@@ -1,3 +1,4 @@
+import { isFailedAdditionQuestion } from './whatsapp-session-intents';
 import {splitIntensityPreference} from './whatsapp-kitchen-description';
 import { hasExplicitUnitOptionSource } from './whatsapp-unit-option-source';
 import { prepareUnitOptionActions, prepareUnitOptionPlan, type UnitOptionEdit } from './whatsapp-unit-option-plan';
@@ -1436,7 +1437,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             scopedChoices.push({attributeName:definition.attributeName,attributeValue:option});
           }
         }
-        const scopedSource = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products,scopedChoices) || ctx.userMessage || '';
+        const scopedSource = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products,scopedChoices,typeof args.note === 'string' ? args.note : undefined) || ctx.userMessage || '';
         const sourceForOptions = scopedSource;
         const optionText = ' '+normalizeOption(sourceForOptions)+' ';
         const familyToken = normalizeOption(product.name).split(' ')[0];
@@ -1459,6 +1460,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             hint:'Busca con search_menu el producto que permite esa opción. No la reemplaces por el valor predeterminado de otro SKU.'});
         }
         const asked =
+          isFailedAdditionQuestion(ctx.userMessage || '') ||
           this.catalogService.isAvailabilityInquiry(ctx.userMessage || '') ||
           this.catalogService.isPriceInquiryIntent?.(ctx.userMessage || '') ||
           this.catalogService.isCategoryBrowseQuestion(ctx.userMessage || '') ||

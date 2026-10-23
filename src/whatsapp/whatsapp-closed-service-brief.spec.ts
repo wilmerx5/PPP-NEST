@@ -12,3 +12,11 @@ for(const enabled of [false,true])for(const existing of [false,true])for(const t
 it('open service remains available',async()=>{
  const h=harness(products,false);const reply=await h.sendQueued('Hay servicio de domicilio?');expect(reply).toMatch(/atendiendo|domicilio/i);expect(reply).not.toMatch(/cerrados/i);
 });
+for(const enabled of [false,true])for(const text of ['ya abriste?','¿Ya abrieron?','puedo hacer un pedido?','Todavía puedo pedir?'])it(`closed followup ${text} agent=${enabled}`,async()=>{
+ const h=harness(products,enabled);h.cfg.ignoreBusinessHours=false;
+ h.service.businessService.getStatus=jest.fn().mockResolvedValue({isOpen:false,message:'Cerrado',openTime:'11:00',closeTime:'22:00'});
+ const reply=await h.send(text);
+ expect(reply).toMatch(/cerrados/i);expect(reply).toContain('11:00');expect(reply).toContain('22:00');
+ expect(reply).toMatch(/con gusto/i);expect(reply).not.toMatch(/estamos abiertos|no lo resuelvo/i);
+ expect(h.cartRows()).toEqual([]);
+});

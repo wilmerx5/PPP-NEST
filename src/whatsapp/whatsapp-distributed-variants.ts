@@ -34,7 +34,7 @@ function expandSpokenSameSkuNotes(text: string, products: WhatsappCatalogProduct
   const quantities: Record<string, number> = { un: 1, una: 1, uno: 1, dos: 2 };
   const quantity = (word: string) => quantities[word.toLowerCase()] ?? Number(word);
   const noteKey = (value: string) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
-  return text.replace(/\b(\d{1,2}|dos)\s+([^,:\n.]{3,70}?)\s*,?\s*(?:uno|una)\s+(sin\s+[^,\n.]{2,40}?)\s+y\s+(?:el|la)\s+otr[oa]\s+(sin\s+[^,\n.]{2,40}?)(?=\s*(?:,|para\b|pago\b|[.!?]|$))/gi,
+  return text.replace(/\b(\d{1,2}|dos)\s+([^,:\n.]{3,70}?)\s*,?\s*(?:uno|una)\s+((?:sin\s+|con\s+(?:h?art[oa]|much[oa]|bastante|poc[oa]|poquit[oa])\s+)[^,\n.]{2,40}?)\s+y\s+(?:el|la)\s+otr[oa]\s+((?:sin\s+|con\s+(?:h?art[oa]|much[oa]|bastante|poc[oa]|poquit[oa])\s+)[^,\n.]{2,40}?)(?=\s*(?:,|para\b|pago\b|[.!?]|$))/gi,
     (original, totalWord: string, subject: string, left: string, right: string) => {
       if (quantity(totalWord) !== 2 || noteKey(left) === noteKey(right)) return original;
       let candidates = catalog.findAllProductsEmbeddedInMessage(subject, products)

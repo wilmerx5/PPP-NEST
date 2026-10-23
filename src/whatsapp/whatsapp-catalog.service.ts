@@ -2382,7 +2382,7 @@ export class WhatsappCatalogService {
   }
 
   /** Scope choices to their own dish when a multi-order has a unique owner. */
-  orderSegmentForProduct(text: string, product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[], selected?: Array<{attributeName:string;attributeValue:string}>): string {
+  orderSegmentForProduct(text: string, product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[], selected?: Array<{attributeName:string;attributeValue:string}>, requestedNote?: string): string {
     text = expandDistributedVariants(text, products, this);
     const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
     const extraIndex = lines.findIndex(line => /^(?:y\s+)?(?:un|una|dos|tres|\d+)\b/i.test(line) && /\b(?:adicional|aparte|extra)\b/i.test(line));
@@ -2443,6 +2443,14 @@ export class WhatsappCatalogService {
           selected.some(choice => normalizeText(a.attributeName) === normalizeText(choice.attributeName) &&
             normalizeText(a.attributeValue) === normalizeText(choice.attributeValue)));
       });
+      if (matching.length === 1) return matching[0];
+    }
+    if (requestedNote?.trim()) {
+      const noteKey = (value: string) => normalizeText(value).replace(/\bh?art([oa])\b/g, 'hart$1').replace(/[.,;]+/g, ' ').replace(/\s+/g, ' ').trim();
+      const note = noteKey(requestedNote);
+      // A note can identify one explicit unit group just like an attribute.
+      // Only a unique literal match is evidence; otherwise keep the whole source.
+      const matching = [...new Set([...named, ...owned])].filter(segment => noteKey(segment).includes(note));
       if (matching.length === 1) return matching[0];
     }
     if (named.length === 1) return named[0];
