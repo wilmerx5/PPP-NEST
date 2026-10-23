@@ -8,5 +8,5 @@ Foco126/126,14,522s; TS general/build OK, Node92/92. Global16.986/16.986,204suit
 
 Límites: texto serial y servicios simulados; no prueba política comercial real de recargos ni todas las condiciones. No declara recargo cero por ver opción disponible. No acredita modelo real/audio/mapas. Próximas seis tandas en whatsapp-recovery-next-batches-2310.md; prioridad condición+acción independiente y dos atributos sucesivos; contraste real pendiente según whatsapp-api-validation-next-2310.md. No declarar vendible por conteos.
 
-Despliegue agrupado139+140 en staging en curso; registrar verificación al concluir. Main intacta.
+Desplegadas139+140 solo en staging:c82df32d, imagena18b22c5…, verificado23/10 14:35:04 Bogotá. Running/healthy,0reinicios, /api/health OK,DBconnected,circuitCLOSED. publicChat=true/orderEvents=false conservados. Producción conserva imagenef426c93… y0reinicios; Main intacta. Rollback ppp-nest-staging:rollback-before-c82df32d. Bases,volúmenes,bin/ ajeno y privados preservados. Evidencia /tmp/ppp-140-deploy.log y /tmp/ppp-140-verified.log.
 
