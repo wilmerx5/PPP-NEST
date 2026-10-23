@@ -325,6 +325,44 @@ describe.each(menus)('$id: a drink question lists every related combo', m => {
       expect(h.conv.sessionData.pendingMatch ?? null).toBeNull();
     });
 
+    it.each(['name', 'phone', 'address'])('keeps a pending drink while storing %s', async field => {
+      const h = await start();
+      h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 115, dailyOrderNumber: 115 });
+      await h.send('eso lleva bebida?');
+      await h.send('1');
+      const before = structuredClone(h.conv.sessionData.cart);
+      const pending = structuredClone(h.conv.sessionData.pendingAttribute);
+      expect(pending?.productId).toBe(m.own.id);
+      const input = field === 'name' ? 'a nombre de Ana Torres'
+        : field === 'phone' ? '3001112233' : 'Carrera 12 #34-56';
+      const response = await h.send(input);
+      expect(response).toMatch(/Bebida|bebida|Uva/);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingAttribute).toEqual(pending);
+      if (field === 'name') expect(h.conv.customerName).toBe('Ana Torres');
+      if (field === 'phone') expect(h.conv.sessionData.contactPhone?.replace(/\D/g, '')).toContain('3001112233');
+      if (field === 'address') expect(h.conv.sessionData.address).toContain('34-56');
+      await h.send('Uva');
+      expect(h.cartRows()).toHaveLength(1);
+      expect(h.cartRows()[0].id).toBe(m.own.id);
+      expect(h.cartRows()[0].qty).toBe(1);
+      expect(attr(h.cartRows()[0].attrs, 'Bebida')).toBe('Uva');
+      expect(attr(h.cartRows()[0].attrs, m.kept[0])).toBe(m.kept[1]);
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.send('nada más');
+      if (h.conv.state === 'awaiting_address') await h.send('sí');
+      if (h.conv.state === 'awaiting_payment') await h.send('contraentrega');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.send('confirmar');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const dto = h.service.ordersService.create.mock.calls[0][0];
+      expect(dto.items.map(item => item.productId)).toEqual([m.own.id]);
+      expect(dto.customerName).toBe(field === 'name' ? 'Ana Torres' : 'Wilmer');
+      if (field === 'phone') expect(dto.phone.replace(/\D/g, '')).toContain('3001112233');
+      if (field === 'address') expect(dto.address).toContain('34-56');
+    });
+
     it('contrast: a dish without a single own combo does not swap on a bare «sí»', async () => {
       const h = await start(`un ${m.base.name.toLowerCase()}`);
       expect(h.cartRows().map(r => r.id)).toEqual([m.base.id]);

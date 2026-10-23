@@ -8572,6 +8572,21 @@ export class WhatsappOrchestratorService {
   private async tryCaptureComboContactInterruption(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    // A labelled name is contact data even while a product option is pending.
+    // Keep the pending purchase intact; mixed instructions use the normal router.
+    if (['building_cart', 'awaiting_attribute'].includes(conv.state) && session.pendingAttribute && !session.pendingMultiOrder) {
+      const named = text.trim().match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+([^\n,;]+)$/i);
+      const name = named?.[1].trim();
+      if (name && isUsableWhatsappCustomerName(name) && !this.looksLikeAddressRejectingPersonName(name)) {
+        await this.conversationService.updateCustomerName(conv, name);
+        Object.assign(conv, await this.conversationService.reloadConversation(conv.id));
+        if (session.pendingCheckoutResume) {
+          await this.conversationService.saveSession(conv, { ...session, pendingCheckoutDetailsCaptured: true });
+        }
+        await this.reply(conv, waId, `Anoté el nombre: *${name}*.\n\n${this.formatPendingPurchaseReminder(session)}`);
+        return true;
+      }
+    }
     const pending = session.pendingMatch;
     if (!pending || !(pending.replacement || pending.includesRequestedAccompaniment) ||
       session.pendingAttribute || session.pendingMultiOrder || conv.state !== 'building_cart') return false;

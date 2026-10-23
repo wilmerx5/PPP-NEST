@@ -1,3 +1,13 @@
+## VIGENTE — tanda 115: nombre durante una opción pendiente (22/10)
+
+Base ff8c7f81, rama staging. 18 regresiones nuevas en tres menús sintéticos (arroz, hamburguesa y salchipapa), agente simulado on/off: nombre, teléfono o dirección mientras se elige bebida de un combo de reemplazo. Comprueban respuesta con elección pendiente, carrito y selección conservados, atributos compatibles, datos guardados y 18 recorridos hasta DTO simulado sin crear orden antes de confirmar.
+
+Se reproducía pérdida del nombre explícito: 6 fallidos / 228 aprobados. Se guarda el nombre etiquetado durante pendingAttribute y se recuerda que el dato ya se recibió cuando existe checkout pendiente. La primera global detectó una regresión en la reanudación del nombre; se corrigió y la global final pasó completa. Foco final 576/576 en cinco suites; TypeScript general/build OK; Node 92/92. Global final 16.167/16.167, 192 suites, 490 hashes intactos, inventario exacto, 522,28 s. Cero API pagada, WhatsApp u órdenes externas.
+
+Límite: nombre explícito como mensaje separado, sin cola multiorden. No acredita interpretación de mensajes mixtos con elección+bebida+contactos ni precisión de modelos reales. Código publicado en staging, pendiente de despliegue agrupado; servidor staging sigue en a254850e (tanda 114), Main/producción preservados. Evidencia: [tanda 115](whatsapp-pending-option-contact-validation-2210.md).
+
+Siguiente: elección textual + bebida + nombre/teléfono/dirección en un mensaje; datos antes/después de la elección; cambios de nombre y alternativas mientras se elige, con varios menús. Validar respuesta, carrito, estado y DTO sin confundir el número de opción con cantidad/teléfono.
+
 ## VIGENTE — tanda 114: cantidad, opción y bebida (22/10)
 
 Base 2887c476, staging. 48 regresiones nuevas en tres catálogos y agente simulado on/off: «dos del combo 2 con Uva», «uno de la opción 1 con Uva», «dame 3 del combo 2 porfa»; aumento/reducción, notas/opciones compatibles, bebida pendiente y 18 DTO simulados. Contrastes de cantidad cero, negativa, superior al límite de lectura 30, fila no ofrecida y cantidad conservada después de cotizar precio nuevo. Baseline 42 fallidos/168 aprobados; suite final 216/216. Foco 558/558 en seis suites; TypeScript general/build OK; Node 92/92. Global 80 + 16.069 = 16.149, 192 suites; inventario exacto y 490 hashes intactos; 805,77 s, sin reintentos.
