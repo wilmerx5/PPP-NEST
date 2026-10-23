@@ -6,7 +6,7 @@ Base 4e25463f, staging. El usuario pidió confirmar generalidad y continuar. Se 
 
 Límites: cantidades y nombres explícitos en cada segmento, notas de exclusión distintas; no acredita todavía elipsis de tres grupos («uno…, otro…, el último…»), reparto libre con notas parafraseadas ni cambios de stock. No atribuir a modelos reales los resultados de mocks. Siguiente: esas formas elípticas y correcciones de grupos pendientes, con conservación del total y consulta intermedia. Main/producción y configuración pública/aislamiento de staging se preservan. No declarar vendible por conteos.
 
-Publicación/despliegue pendiente de verificar. Detalle: [tanda 126](whatsapp-three-note-groups-validation-2310.md).
+Publicado y desplegado exclusivamente en staging: 0a0e5365, imagen a1651634…, verificado 23/10 08:58:25 Bogotá: running/healthy, cero reinicios, health OK, DB connected, circuito CLOSED. publicChat=true y orderEvents=false conservados. Main/producción intactos (imagen ef426c93…). Rollback ppp-nest-staging:rollback-before-0a0e5365; bin/ privado, bases y volúmenes preservados. Evidencia /tmp/ppp-126-deploy.log y /tmp/ppp-126-deploy-verified.log. Detalle: [tanda 126](whatsapp-three-note-groups-validation-2310.md).
 
 ## VIGENTE — tanda 125: notas, cantidades repartidas y apertura (23/10)
 
