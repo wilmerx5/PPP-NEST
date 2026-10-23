@@ -1,3 +1,11 @@
+## VIGENTE — tanda141: dos atributos con interrupciones (23/10)
+
+Base 99d13261, solo staging. Añadidas18 conversaciones completas: jugo en agua, jugo en leche y gaseosa; agente simulado on/off; consulta de precio, nombre anticipado o número inválido entre Base y Sabor. Cada selección numérica se aplica al atributo actual; las interrupciones conservan pendiente y carrito vacío. Después se verifica respuesta con ambas opciones, una unidad en carrito, pago, confirmación y DTO exactos; ninguna orden prematura.
+
+Validación: foco78/78 en tres suites,8,349s; TypeScript general/build OK; Node92/92. No cambian reglas de producción: no se repite global ni se reconstruye servidor. Última global ejecutable140:16.986/16.986; no sumar ejecuciones focales. Cero API pagada, WhatsApp u órdenes externas. Main intacta; último despliegue sigue c82df32d (139+140), sin nueva verificación remota.
+
+Hueco nuevo NO corregido: Malteada Artesanal con Base [Entera, Deslactosada] y Sabor [Vainilla, Fresa] completa Vainilla automáticamente después de elegir Base2. Reproducido6/6 combinaciones; no se cuentan como aprobadas. Detalle y reproducción en whatsapp-two-attributes-validation-2310.md. Priorizar criterio general de bebida/sabor explícito, después condición más acción independiente. Los mocks no acreditan comprensión del modelo real; sigue pendiente contraste acotado del plan API.
+
 ## VIGENTE — tanda140: selección condicionada y recuperación (23/10)
 
 Base f0820466, staging.24 conversaciones nuevas: tres cartas sintéticas (crepe,sándwich,pasta), agente simulado on/off, condición antes/después de opción, recargo y número9 fuera de lista. Desde carrito vacío se abre selector de bebida; mensaje condicionado o inválido no compra; consulta precio y nombre intermedios preservan pendiente; elección2 explícita permite cierre con DTO de una unidad/opción/nombre exactos y cero órdenes prematuras.
