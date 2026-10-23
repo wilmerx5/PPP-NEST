@@ -1790,10 +1790,12 @@ export class WhatsappOrchestratorService {
       const source = purchaseFlavorQuestion[1].trim();
       const menu = await this.catalogService.getMenuProducts();
       const query = this.normalizeForMatch(this.catalogService.stripQuantityFromSearchQuery(this.catalogService.extractProductSearchQuery(source)));
-      const exact = menu.filter(product => product.availableNow !== false && this.normalizeForMatch(product.name) === query);
+      const fullQuery = this.normalizeForMatch(source.replace(/^(?:un[oa]?|dos|tres|\d{1,2})\s+/i, ''));
+      const fullExact = menu.filter(product => product.availableNow !== false && this.normalizeForMatch(product.name) === fullQuery);
+      const exact = fullExact.length ? fullExact : menu.filter(product => product.availableNow !== false && this.normalizeForMatch(product.name) === query);
       const prefix = this.catalogService.findCatalogPrefixCandidates(source, menu);
       const candidates = (exact.length ? exact : prefix.length ? prefix : this.catalogService.resolveCatalogQuestion(originalText,menu)?.products || [])
-        .filter(product => product.availableNow !== false && product.attributes?.some(attribute => /sabor/i.test(attribute.attributeName)));
+        .filter(product => product.availableNow !== false && product.attributes?.some(attribute => /sabor|bebida/i.test(attribute.attributeName)));
       const quantity = Math.max(1,this.catalogService.extractQuantityFromMessage(source,menu));
       if (candidates.length === 1) {
         const product = candidates[0];
@@ -1807,7 +1809,7 @@ export class WhatsappOrchestratorService {
         await this.conversationService.saveSession(conv,session);
         await this.reply(conv,msg.waId,'Estos son los sabores según la presentación:\n\n'+candidates.map((product,index)=>
           `${this.catalogService.optionNumberEmoji(index+1)} *${product.name}* · ${this.catalogService.formatMoney(product.price)}\n`+
-          product.attributes!.filter(attribute=>/sabor/i.test(attribute.attributeName)).map(attribute=>attribute.options.join(', ')).join('; ')
+          product.attributes!.filter(attribute=>/sabor|bebida/i.test(attribute.attributeName)).map(attribute=>attribute.options.join(', ')).join('; ')
         ).join('\n\n')+'\n\n¿Cuál presentación prefieres? Escribe el número.');
         return;
       }
@@ -21461,12 +21463,15 @@ export class WhatsappOrchestratorService {
     const embedded = this.catalogService.findProductEmbeddedInMessage(text, products) ||
       (exactName.length === 1 ? exactName[0] : null);
     // "dame unas arepas fritas" orders the side itself; "con arepas fritas" still modifies a dish.
-    const sideOrderedAlone = (product: MenuProduct) => bareName(
+    const sideName = (value: string) => bareName(value)
+      .replace(/^porcion(?:es)?\s+(?:de\s+)?/, '')
+      .replace(/\s+adicional(?:es)?$/, '');
+    const sideOrderedAlone = (product: MenuProduct) => sideName(
       this.normalizeForMatch(text)
         .replace(/^(?:(?:quiero(?:\s+pedir)?|dame|me\s+das|me\s+regalas|regalame|agrega(?:me)?|ponme)\s+)?/, '')
         .replace(/^(?:(?:\d+|un[oa]?s?|dos|tres|cuatro|cinco)\s+)+/, '')
         .replace(/^porcion(?:es)?\s+(?:de\s+)?/, ''),
-    ) === bareName(product.name);
+    ) === sideName(product.name);
     if (
       !embedded ||
       (this.catalogService.isLikelySideOnlyProduct(embedded) &&
