@@ -1,3 +1,11 @@
+## VIGENTE — tanda159: categorías durante sabor pendiente (23/10)
+
+Based3239552, solo staging.18 conversaciones nuevas: tres menús (bowl/gaseosa+sopas, pizza/jugo+postres, arroz/refresco+entradas)×categoría disponible/agotada/ausente×agente simulado on/off. Baseline16 fallos/2 aprobados: categoría vacía borraba pendingAttribute o llegaba al filtro de preguntas ajenas al menú; repetía opción sin responder. Se adelanta consulta de catálogo ante compra pendiente, reconoce forma «qué [categoría] tienes» y responde ausencia sin limpiar selección. Excluye preguntas de sabor/opciones/tamaño/ingredientes del reconocimiento genérico. Listado informativo sin números, recordatorio de sabor, conservación de dos bebidas/notas y cierre con DTO exacto.
+
+Foco96/96,9,626s; TypeScript general/build OK, Node92/92. Global17.485/17.485,228suites,526hashes,606,52s; inventario exacto/fuente congelada. /tmp/ppp-159-global-summary.json y /tmp/ppp-159-{baseline,focus,tsc,node}.log. Cero API/Meta/órdenes externas. Publicado solo staging; tandas158–159 pendientes de deploy agrupado. Último servidor verificado0a3e2ae4 (154–157); Main/producción intactas.
+
+Próximo: consultar otra categoría y pedir uno de sus productos sin perder bebida pendiente; respuesta numérica tras listado informativo; ingredientes de otro plato mientras elige sabor; «qué tienes de…» y otras formulaciones. Esta tanda verifica consulta y regreso al sabor por nombre, no esas extensiones. Modelo/mapa simulados, contraste real aún pendiente; no declarar vendible por conteos. Ver whatsapp-pending-flavor-category-validation-2310.md.
+
 ## VIGENTE — tanda158: otras formas de preguntar por ingredientes (23/10)
 
 Base9a8eead4, solo staging.36 recorridos nuevos: tres menús×detalle conocido/desconocido×agente simulado on/off×nombre,pago,confirmación. Preguntas «la ensalada de qué es», «qué lleva esa salsa», «qué ingredientes tiene la guarnición». Baseline36/36 falló: respuesta incompleta o sin recordatorio del pendiente. Se normalizan consultas para reutilizar la respuesta del acompañamiento del plato enfocado, sin ampliar compras ni inventar ingredientes. Sesión completa, nombre, carrito y estado conservados; cierre con DTO y datos corregidos verificados.

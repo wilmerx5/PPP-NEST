@@ -3265,6 +3265,39 @@ export class WhatsappOrchestratorService {
         await this.tryHandleSideForCartLine(conv, msg.waId, session, originalText, products, cfg)) return;
     if (await this.tryHandleIncludedItemQuestion(conv, msg.waId, session, originalText, products, cfg)) return;
     if (await this.tryHandleFamilyBrowse(conv, msg.waId, session, originalText, products)) return;
+    // Catalogue availability is a read-only interruption, even when the category is empty.
+    // Resolve it before broad off-menu asides and preserve the configured purchase.
+    {
+      const categorySubject = this.normalizeForMatch(text).match(
+        /^que ([\p{L} ]{2,60}?) (?:tienes|tienen|hay|ofrecen|ofreces|venden)(?: hoy)?$/u)?.[1];
+      const attributeQuestion = categorySubject && /\b(?:sabor|sabores|opcion|opciones|tipo|tipos|tamano|tamanos|ingrediente|ingredientes)\b/.test(categorySubject);
+      const explicitCategoryQuestion = !!categorySubject && !attributeQuestion;
+      const browseWhilePending = explicitCategoryQuestion ||
+        this.catalogService.isMenuExploreIntent(text, products) ||
+        this.catalogService.isCategoryBrowseQuestion(text);
+      const hasPendingPurchase = session.pendingMatch?.intent === 'order' ||
+        !!session.pendingAttribute || !!session.pendingMultiOrder;
+      if (browseWhilePending && hasPendingPurchase && !this.catalogService.isPriceInquiryIntent(text)) {
+        const hit = this.catalogService.findCategoryBrowseHit(text, products, cfg.menuConceptGroups) ||
+          (explicitCategoryQuestion ? this.catalogService.findCategoryBrowseHit(categorySubject!, products, cfg.menuConceptGroups) : null);
+        if (hit?.products.length) {
+          // Only the pending purchase uses numbered choices, so "2" cannot
+          // silently select a numbered item in the informational list.
+          const information = this.catalogService.formatCategoryBrowseReply(hit, { numbered: false });
+          await this.reply(conv, msg.waId, information +
+            '\n\n' + this.formatPendingPurchaseReminder(session));
+          return;
+        }
+        // An empty catalogue answer must not discard the purchase being configured.
+        const missing = hit?.askedButMissing || hit?.categoryName ||
+          (explicitCategoryQuestion ? categorySubject : this.catalogService.resolveCatalogQuestion(text, products)?.label);
+        if (missing) {
+          await this.reply(conv, msg.waId, `No encuentro opciones disponibles de ${missing} en la carta.` +
+            '\n\n' + this.formatPendingPurchaseReminder(session));
+          return;
+        }
+      }
+    }
     const readOnlyAside = this.offMenuErrandQuery(originalText,products) || this.randomAsideLabel(originalText,products);
     if (cfg.agentV1Enabled && readOnlyAside &&
       (conv.state !== 'building_cart' || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder)) {
@@ -4051,17 +4084,6 @@ export class WhatsappOrchestratorService {
           await this.reply(conv, msg.waId, this.catalogService.formatMultiProductPriceReply(quoted, {
             offerAdd: false,
           }) + unitNote + incrementNote +
-            '\n\n' + this.formatPendingPurchaseReminder(session));
-          return;
-        }
-      }
-      if (browseWhilePending && hasPendingPurchase) {
-        const hit = this.catalogService.findCategoryBrowseHit(text, products, cfg.menuConceptGroups);
-        if (hit?.products.length) {
-          // Only the pending purchase uses numbered choices, so "2" cannot
-          // silently select a numbered item in the informational list.
-          const information = this.catalogService.formatCategoryBrowseReply(hit, { numbered: false });
-          await this.reply(conv, msg.waId, information +
             '\n\n' + this.formatPendingPurchaseReminder(session));
           return;
         }
