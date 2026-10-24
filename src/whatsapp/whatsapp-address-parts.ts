@@ -141,3 +141,16 @@ export function deliveryUnitConflict(source: string): { label: string; values: s
   }
   return null;
 }
+
+/** Resolve one explicitly offered unit value without losing the street or other units. */
+export function resolveDeliveryUnitConflict(source: string, label: string, value: string): string {
+  const aliases = label === 'apartamento' ? 'apartamento|apto|apt|ap' : label === 'interior' ? 'interior|int' : label;
+  if (!['apartamento','interior','torre','bloque','casa','piso','local','oficina','entrada'].includes(label)) return source;
+  const pattern = new RegExp(`\\b(?:${aliases})\\.?\\s*(?:#\\s*)?([a-z]\\d{0,3}|\\d{1,4}[a-z]?)\\b`, 'gi');
+  let replaced = false;
+  return source.replace(pattern, () => {
+    if (replaced) return '';
+    replaced = true;
+    return `${label} ${value}`;
+  }).replace(/\s+/g, ' ').trim();
+}

@@ -249,6 +249,8 @@ export type WhatsappSessionData = {
   addressConfirmed?: boolean;
   /** Unit fragment received before the destination street/location. Never geocode alone. */
   pendingDeliveryUnit?: string;
+  /** Conflicting unit values awaiting clarification; never use this address for an order. */
+  pendingAddressConflict?: { source: string; label: string; values: string[] };
   /** Neighborhood or landmark named before the street; joins the next complete street once. Never geocode alone. */
   pendingDeliveryPlace?: string;
   /** Do not reoffer a saved destination after the customer requested a new one. */

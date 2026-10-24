@@ -1,3 +1,11 @@
+## VIGENTE — tanda152: aclaración corta de interiores (23/10)
+
+Base c5aa493d, solo staging.20 casos nuevos:12 conversaciones en tres menús con agente simulado on/off y8 contratos de componentes. Baseline12/12 falló: «708» no recuperaba la calle contradictoria pendiente. Se conserva fuente/etiqueta/valores en sesión; una respuesta corta resuelve solo el componente ofrecido, conserva conjunto/torre y permite una consulta de precio intermedia. Número no ofrecido, etiqueta diferente y confirmar no eligen un apartamento ni crean orden. Dirección completa corregida limpia pendiente; tryConfirmOrder protege también entrada directa con skipFinalConfirm. La limpieza usa undefined porque saveSession real fusiona el patch.
+
+Foco44/44, TypeScript general/build OK, Node92/92. Global17.275/17.275,220suites,518hashes,834,79s; inventario exacto/fuente congelada. /tmp/ppp-152-global-summary.json. Cero API pagada/Meta/órdenes externas. Publicación staging; sin deploy para agrupar. Último servidor verificado2f7f9d86 (150–151); Main/producción intactas. Ver whatsapp-short-address-clarification-validation-2310.md.
+
+Límites/próximo: primer mensaje compra+dirección contradictoria, cambio a recogida o ubicación GPS durante el pendiente, coexistencia con elección de producto/opción y caducidad. En particular comprobar que el nuevo pendiente no impida cerrar recogida cuando ya no necesita dirección; no acreditar este escape sin prueba. Solo respuesta corta con valor ofrecido o dirección numerada completa. Mapa/modelos simulados; validación real acotada sigue pendiente según whatsapp-api-validation-next-2310.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda151: disponibilidad al elegir y conflicto de interiores (23/10)
 
 Baseb420c1cb, staging.42 casos nuevos:24 productos no disponibles/retirados durante elección desde compra/pago,12 direcciones repetidas/contradictorias,6 contratos. Stock ya estaba protegido: primer fallo se debía a ignoreBusinessHours=true del harness, corregido a false con negocio simulado abierto. No acreditar ese baseline como bug. Runtime ahora aclara dos componentes de dirección contradictorios antes de guardar/geocodificar; conserva sesión y continúa al recibir dirección corregida. Ver whatsapp-stock-address-conflict-validation-2310.md.

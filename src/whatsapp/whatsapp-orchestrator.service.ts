@@ -1,7 +1,7 @@
 import {splitAccompanimentPurchase, includesAccompaniment} from './whatsapp-accompaniment-offer';
 import { drinkInclusion, sodaBrandIn } from './whatsapp-drink-inclusion';
 import {variantUnitScope} from './whatsapp-variant-unit-scope';
-import {canonicalStreetAddress, splitDeliveryAddressParts, splitAddressKitchenNote, mergeDeliveryUnitDetails, deliveryUnitConflict} from './whatsapp-address-parts';
+import {canonicalStreetAddress, splitDeliveryAddressParts, splitAddressKitchenNote, mergeDeliveryUnitDetails, deliveryUnitConflict, resolveDeliveryUnitConflict} from './whatsapp-address-parts';
 import {checkoutEnvelope} from './whatsapp-checkout-envelope';
 import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
 import { customerLocationLabel, googleMapsPin, validDeliveryCoordinates } from './whatsapp-location-label';
@@ -1756,9 +1756,29 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    if (session.pendingAddressConflict && !['completed','closed','human_takeover'].includes(conv.state)) {
+      const pending = session.pendingAddressConflict;
+      const aliases = pending.label === 'apartamento' ? ['apartamento','apto','apt'] : pending.label === 'interior' ? ['interior','int'] : [pending.label];
+      const suppliedLabel = originalText.trim().replace(/^el\s+/i, '').match(/^([a-z]+)\.?\s+/i)?.[1].toLowerCase();
+      const shortAnswer = originalText.trim().replace(/[.!]+$/, '').match(/^(?:el\s+)?(?:(?:apartamento|apto|apt|interior|int|torre|bloque|casa|piso|local|oficina|entrada)\.?\s*)?#?\s*([a-z]\d{0,3}|\d{1,4}[a-z]?)$/i);
+      if (shortAnswer && (!suppliedLabel || aliases.includes(suppliedLabel)) && pending.values.includes(shortAnswer[1].toUpperCase())) {
+        originalText = resolveDeliveryUnitConflict(pending.source, pending.label, shortAnswer[1].toUpperCase());
+        text = originalText;
+        session.pendingAddressConflict = undefined;
+        await this.conversationService.saveSession(conv, session);
+      } else if (canonicalStreetAddress(originalText)) {
+        session.pendingAddressConflict = undefined;
+        await this.conversationService.saveSession(conv, session);
+      } else if (shortAnswer || /^(?:s[ií]|confirmar|confirmo|correcto)$/i.test(originalText.trim())) {
+        await this.reply(conv, msg.waId, `Falta aclarar ${pending.label}: ${pending.values.join(' o ')}. ¿Cuál es el correcto?`);
+        return;
+      }
+    }
     const addressConflict = canonicalStreetAddress(originalText) ? deliveryUnitConflict(originalText) : null;
     if (addressConflict && session.cart.length && !['completed','closed','human_takeover'].includes(conv.state)) {
-      await this.reply(conv, msg.waId, `Veo dos datos distintos para ${addressConflict.label}: ${addressConflict.values.join(' y ')}. ¿Cuál es el correcto? Envíame la dirección con ese dato para continuar. Tu pedido sigue igual.`);
+      session.pendingAddressConflict = { source: originalText, ...addressConflict };
+      await this.conversationService.saveSession(conv, session);
+      await this.reply(conv, msg.waId, `Veo dos datos distintos para ${addressConflict.label}: ${addressConflict.values.join(' y ')}. ¿Cuál es el correcto? Puedes responder con el dato correcto o enviar la dirección completa. Tu pedido sigue igual.`);
       return;
     }
     // A bare street supplied after an unresolved named complex completes that
@@ -10654,6 +10674,12 @@ export class WhatsappOrchestratorService {
 
     if (!session.cart.length) {
       await say('Aún no tienes nada en el carrito. Dime qué quieres por nombre o código.');
+      return;
+    }
+
+    if (session.pendingAddressConflict) {
+      const pending = session.pendingAddressConflict;
+      await say(`Antes de confirmar falta aclarar ${pending.label}: ${pending.values.join(' o ')}. ¿Cuál es el correcto?`);
       return;
     }
 

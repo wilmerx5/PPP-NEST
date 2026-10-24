@@ -19,11 +19,12 @@ for(const agent of [false,true]) for(const conflict of [false,true]) {
   h.service.deliveryRouting.quoteDeliveryFee.mockClear();
   const response=await h.sendQueued(`Calle 10 #20-30 apto 708 apartamento ${conflict?'709':'708'}`);
   if(conflict) {
-   expect(h.conv.sessionData).toEqual(before);
+   expect(h.conv.sessionData).toEqual({...before, pendingAddressConflict: {source: 'Calle 10 #20-30 apto 708 apartamento 709', label: 'apartamento', values: ['708','709']}});
    expect(h.service.deliveryRouting.quoteDeliveryFee).not.toHaveBeenCalled();
    expect(response).toMatch(/cu[aá]l|confirma|dos/i);
    expect(response).toContain('708');expect(response).toContain('709');
    await h.sendQueued('Calle 10 #20-30 apto 708');
+   expect(h.conv.sessionData.pendingAddressConflict).toBeUndefined();
   }
   expect(h.conv.sessionData.address).toContain(place);
   expect(h.conv.sessionData.address).toMatch(/torre 3/);
