@@ -1,3 +1,11 @@
+## VIGENTE — tanda149: compras abreviadas y revisión de interior (23/10)
+
+Base95089843, solo staging.30 casos nuevos:12 compras abreviadas con opción/nota,6 cambios explícitos de opción,12 direcciones completadas con torre/apto nuevos frente a reemplazo explícito. Se expande cabeza única del catálogo con opción configurada antes de los manejadores de producto no encontrado/cambio; completar calle conserva nombre de conjunto y usa interior nuevo. Ver whatsapp-abbreviated-interior-validation-2310.md.
+
+Foco54/54, TypeScript general/build OK, Node92/92. Global17.182/17.182,212suites,510hashes,654,12s; inventario exacto/fuente congelada. /tmp/ppp-149-global-summary.json. Cero API pagada/Meta/órdenes externas. Publicación solo staging; despliegue148–149 en preparación, no acreditado aún. Main/producción intactas.
+
+Límites: servicios/modelo simulados; cabeza única y opción explícita, interior completo nuevo. Siguiente: corrección de solo apartamento manteniendo torre, cabezas compartidas y descriptores no configurados; contraste real acotado según whatsapp-api-validation-next-2310.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda148: variantes con notas y conjunto completado con calle (23/10)
 
 Base e9635765, solo staging.24 conversaciones nuevas, tres cartas por familia y agente simulado on/off. Corrige compra adicional con preparación distinta que editaba la línea anterior; «solo quiero uno… y que lleve…» pide aclaración antes de descartar opciones/notas diferentes; calle que completa conjunto pendiente conserva torre/apartamento, cambio explícito reemplaza destino. Ver whatsapp-variant-place-completion-validation-2310.md.

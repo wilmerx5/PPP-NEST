@@ -1763,8 +1763,12 @@ export class WhatsappOrchestratorService {
         !canonicalStreetAddress(session.address) && canonicalStreetAddress(originalText) &&
         /^(?:calle|carrera|cra\.?|cll|diagonal|diag\.?|dg\.?|transversal|tv\.?|avenida)\s/i.test(originalText.trim()) &&
         /\b(?:conjunto|condominio|residencial|urbanizaci[oó]n|edificio)\b/i.test(session.address) &&
-        !splitDeliveryAddressParts(originalText).details) {
-      originalText = `${originalText}; ${session.address}`;
+        !/\b(?:conjunto|condominio|residencial|urbanizaci[oó]n|edificio)\b/i.test(originalText)) {
+      const incoming = splitDeliveryAddressParts(originalText);
+      const previous = splitDeliveryAddressParts(session.address);
+      originalText = incoming.details
+        ? `${incoming.base}; ${previous.base} ${incoming.details}`
+        : `${originalText}; ${session.address}`;
       text = originalText;
     }
     const exclusiveWithNote = originalText.trim().match(/^solo quiero (.+?) y que lleve (.+?)[.!]*$/i);
@@ -1982,6 +1986,21 @@ export class WhatsappOrchestratorService {
         !/[¿?]/.test(originalText) &&
         (await this.tryAppendUnitDetailsToAddress(conv, msg.waId, session, originalText, cfg) ||
          await this.tryAppendDeliveryAccessReference(conv, msg.waId, session, originalText, cfg))) return;
+    // Resolve an abbreviated explicit addition before unavailable-product and
+    // cart-option handlers. Only a unique catalog head plus a configured option
+    // qualifies; an unknown descriptor must still be clarified.
+    const abbreviatedAddition = originalText.match(/^(agrega|añade|adiciona)\s+(un|una|dos|tres|\d+)\s+(\S+)\s+(.+)$/i);
+    if (abbreviatedAddition && !/[¿?]/.test(originalText)) {
+      const menu = await this.catalogService.getMenuProducts();
+      const product = this.catalogService.productWhoseHeadWasSpoken(abbreviatedAddition[3], menu);
+      const suffix = this.normalizeForMatch(abbreviatedAddition[4]);
+      const configured = product?.attributes?.some(attribute => attribute.options.some(option =>
+        suffix === this.normalizeForMatch(option) || suffix.startsWith(this.normalizeForMatch(option) + ' ')));
+      if (product && configured && !this.catalogService.productFullyNamedIn(originalText, menu)) {
+        originalText = `${abbreviatedAddition[1]} ${abbreviatedAddition[2]} ${product.name} ${abbreviatedAddition[4]}`;
+        text = originalText;
+      }
+    }
     if (await this.tryUndoLastUnitOptionEdit(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleStandardPortionPreference(conv,msg.waId,session,originalText,cfg,turn) ||
         await this.tryHandleUnavailableCountedPurchase(conv,msg.waId,session,originalText,cfg) ||
