@@ -108,3 +108,22 @@ export function splitAddressKitchenNote(source: string): { address: string; note
   const count = /^(?:ambos|ambas)$/.test(scope) ? 2 : counts[amount] || (/^\d+$/.test(amount) ? Number(amount) : undefined);
   return { address: match[1].trim(), note: preference.note, count, all: /^(?:todos|todas)$/.test(scope) };
 }
+
+/** Replace only supplied access components, retaining the rest of the destination's details. */
+export function mergeDeliveryUnitDetails(previous: string, incoming: string): string {
+  const groups = ['apartamento|apto|apt|ap', 'interior|int', 'torre', 'bloque', 'casa', 'piso', 'local', 'oficina', 'entrada'];
+  const identifier = '[a-z]\\d{0,3}|\\d{1,4}[a-z]?';
+  let kept = previous.trim();
+  let rest = incoming.trim();
+  const additions: string[] = [];
+  for (const aliases of groups) {
+    const pattern = new RegExp(`\\b(?:${aliases})\\.?\\s*(?:#\\s*)?(${identifier})\\b`, 'i');
+    const found = rest.match(pattern);
+    if (!found) continue;
+    if (pattern.test(kept)) kept = kept.replace(pattern, found[0]);
+    else additions.push(found[0]);
+    rest = rest.replace(pattern, '');
+  }
+  rest = rest.replace(/^[\s,;]+|[\s,;]+$/g, '').trim();
+  return [kept, ...additions, rest].filter(Boolean).join(', ');
+}

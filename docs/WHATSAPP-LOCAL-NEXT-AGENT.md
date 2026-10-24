@@ -1,3 +1,11 @@
+## VIGENTE — tanda150: interior parcial y compra ambigua con consulta (23/10)
+
+Base6ac84a03, solo staging.31 casos nuevos:12 direcciones,12 recorridos de compra ambigua desde compra/pago con pregunta de precio,7 contratos de detalles. Completar calle con apartamento nuevo conserva torre y demás componentes; reemplazo explícito no hereda destino. Compra adicional por cabeza compartida abre alternativas reales sin editar unidad anterior, conserva opción/nota y retoma checkout. Ver whatsapp-partial-interior-ambiguous-addition-validation-2310.md.
+
+Foco66/66 + contratos7/7; TypeScript general/build OK, Node92/92. Global17.213/17.213,215suites,513hashes,642,96s; inventario exacto/fuente congelada. /tmp/ppp-150-global-summary.json. Cero API pagada/Meta/órdenes externas. Publicación solo staging; deploy150 pendiente para agrupar. Último servidor verificado2c02456a (148–149), Main/producción intactas.
+
+Límites: modelos/mapa simulados, cabeza exacta compartida y opción admitida por todas las candidatas. Siguiente: alternativa agotada, opción disponible en solo una candidata, cambios de opinión en esa selección y dos apartamentos contradictorios. Contraste real acotado sigue pendiente según whatsapp-api-validation-next-2310.md; no declarar vendible por conteos.
+
 ## VIGENTE — tanda149: compras abreviadas y revisión de interior (23/10)
 
 Base95089843, solo staging.30 casos nuevos:12 compras abreviadas con opción/nota,6 cambios explícitos de opción,12 direcciones completadas con torre/apto nuevos frente a reemplazo explícito. Se expande cabeza única del catálogo con opción configurada antes de los manejadores de producto no encontrado/cambio; completar calle conserva nombre de conjunto y usa interior nuevo. Ver whatsapp-abbreviated-interior-validation-2310.md.

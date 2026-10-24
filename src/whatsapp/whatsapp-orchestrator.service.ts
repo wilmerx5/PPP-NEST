@@ -1,7 +1,7 @@
 import {splitAccompanimentPurchase, includesAccompaniment} from './whatsapp-accompaniment-offer';
 import { drinkInclusion, sodaBrandIn } from './whatsapp-drink-inclusion';
 import {variantUnitScope} from './whatsapp-variant-unit-scope';
-import {canonicalStreetAddress, splitDeliveryAddressParts, splitAddressKitchenNote} from './whatsapp-address-parts';
+import {canonicalStreetAddress, splitDeliveryAddressParts, splitAddressKitchenNote, mergeDeliveryUnitDetails} from './whatsapp-address-parts';
 import {checkoutEnvelope} from './whatsapp-checkout-envelope';
 import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
 import { customerLocationLabel, googleMapsPin, validDeliveryCoordinates } from './whatsapp-location-label';
@@ -1767,7 +1767,7 @@ export class WhatsappOrchestratorService {
       const incoming = splitDeliveryAddressParts(originalText);
       const previous = splitDeliveryAddressParts(session.address);
       originalText = incoming.details
-        ? `${incoming.base}; ${previous.base} ${incoming.details}`
+        ? `${incoming.base}; ${previous.base} ${mergeDeliveryUnitDetails(previous.details, incoming.details)}`
         : `${originalText}; ${session.address}`;
       text = originalText;
     }
@@ -1992,6 +1992,21 @@ export class WhatsappOrchestratorService {
     const abbreviatedAddition = originalText.match(/^(agrega|añade|adiciona)\s+(un|una|dos|tres|\d+)\s+(\S+)\s+(.+)$/i);
     if (abbreviatedAddition && !/[¿?]/.test(originalText)) {
       const menu = await this.catalogService.getMenuProducts();
+      const heads = menu.filter(product => product.availableNow !== false &&
+        this.catalogService.dishHeadToken(product.name) === this.normalizeForMatch(abbreviatedAddition[3]));
+      const requestedSuffix = this.normalizeForMatch(abbreviatedAddition[4]);
+      if (heads.length > 1 && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+          heads.every(product => product.attributes?.some(attribute => attribute.options.some(option =>
+            requestedSuffix === this.normalizeForMatch(option) || requestedSuffix.startsWith(this.normalizeForMatch(option) + ' '))))) {
+        const quantity = this.catalogService.extractQuantityFromMessage(originalText);
+        const checkout = ['awaiting_address','awaiting_name','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state);
+        await this.conversationService.saveSession(conv, {...session,
+          pendingMatch: {query: originalText, candidates: heads, quantity, intent: 'order'},
+          ...(checkout ? {pendingCheckoutResume: conv.state as WhatsappSessionData['pendingCheckoutResume']} : {})}, 'building_cart');
+        await this.reply(conv, msg.waId, '¿Cuál quieres agregar? Conservo lo que ya tienes.\n' +
+          heads.map((product,index) => `${index+1}. ${product.name}`).join('\n'));
+        return;
+      }
       const product = this.catalogService.productWhoseHeadWasSpoken(abbreviatedAddition[3], menu);
       const suffix = this.normalizeForMatch(abbreviatedAddition[4]);
       const configured = product?.attributes?.some(attribute => attribute.options.some(option =>
