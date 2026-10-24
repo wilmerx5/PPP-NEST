@@ -17077,6 +17077,7 @@ export class WhatsappOrchestratorService {
     return {
       ...session,
       orderType: 'pickup',
+      pendingAddressConflict: undefined,
       pendingDeliveryUnit: undefined,
       pendingDeliveryPlace: undefined,
       freshDeliveryAddressRequested: undefined,

@@ -1,3 +1,11 @@
+## VIGENTE — tanda153: salida del conflicto de domicilio (23/10)
+
+Base952632de, solo staging.18 recorridos nuevos: tres cartas×agente simulado on/off×recogida/reinicio/GPS seguido de dirección corregida. Se reproduce bloqueo al cambiar a recogida: applyPickupIntent conservaba pendingAddressConflict y tryConfirmOrder exigía apartamento. Se limpia ese pendiente junto con los demás componentes de entrega al elegir recogida. Reinicio ya limpiaba. Pin válido conserva la duda del apartamento hasta aclaración; no autoriza confirmar por sí solo. Carrito, respuesta, estado y DTO de una unidad verificados.
+
+Foco30/30, TypeScript general/build OK, Node92/92. Global17.293/17.293,221suites,519hashes,609,52s; inventario exacto/fuente congelada. /tmp/ppp-153-global-summary.json. Cero API/Meta/órdenes externas. Publicación staging y deploy agrupado152–153 pendiente de verificar. Main intacta. Ver whatsapp-address-conflict-exits-validation-2310.md.
+
+Próximo: elecciones de producto y dirección simultáneas; GPS seguido de respuesta corta preservando coordenadas y referencias; primera compra con dirección contradictoria. No acreditar esos caminos con estos tests. Sigue pendiente contraste acotado con modelo/mapa real según whatsapp-api-validation-next-2310.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda152: aclaración corta de interiores (23/10)
 
 Base c5aa493d, solo staging.20 casos nuevos:12 conversaciones en tres menús con agente simulado on/off y8 contratos de componentes. Baseline12/12 falló: «708» no recuperaba la calle contradictoria pendiente. Se conserva fuente/etiqueta/valores en sesión; una respuesta corta resuelve solo el componente ofrecido, conserva conjunto/torre y permite una consulta de precio intermedia. Número no ofrecido, etiqueta diferente y confirmar no eligen un apartamento ni crean orden. Dirección completa corregida limpia pendiente; tryConfirmOrder protege también entrada directa con skipFinalConfirm. La limpieza usa undefined porque saveSession real fusiona el patch.
