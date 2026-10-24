@@ -1,3 +1,11 @@
+## VIGENTE — tanda165: cancelar activa y continuar compras resueltas (24/10)
+
+Base19eb7e03, solo staging.12 recorridos nuevos: tres menús×agente simulado on/off×segunda compra resuelta/segunda y tercera resueltas. Baseline12/12 falló: cancelar la activa abría de nuevo opciones ya indicadas de la siguiente. Ahora retira solo fila activa, añade sucesoras completas con cantidad/nota y continúa hasta la primera incompleta; respuesta informa las adiciones reales. No hardcodes de productos/IDs.
+
+Foco84/84,41,655s; TypeScript general/build OK; Node92/92. Global17.605/17.605,234suites,532hashes,825,61s; inventario exacto/fuente congelada. /tmp/ppp-165-{baseline,focus,tsc,node}.log y global-summary.json. Cero API/Meta/órdenes externas. Main intacta. Deploy agrupado161–165 pendiente de verificación; servidor previoe8cf6ffa(158–160).
+
+Próximo: cancelar una fila posterior por nombre, producto agotado tras encolar, mismo SKU activo y referencias «otras dos de esas».165 prueba cancelar activa cuando sucesoras distintas ya tienen opciones completas; no acredita estos pendientes. Modelo/mapa simulados, checkout inicial sembrado y DTO final verificado. Ver whatsapp-cancel-explicit-queue-validation-2410.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda164: mismo producto, líneas y orden de llegada (23/10)
 
 Based51589ca, solo staging.24 recorridos nuevos: tres menús×agente simulado on/off×sabores diferentes/mismo sabor con notas diferentes×orden normal/invertido. Baseline12/12 pasó; al invertir el orden aparecieron2 fallos/22 aprobados: Chocolate de una nueva malteada se aplicaba como Cola de la gaseosa activa. Antes de absorber opciones se prioriza compra explícita de otro producto nombrado inequívocamente, sin pedidos múltiples. Se reutiliza helper de cola; no hardcodes de productos/IDs.

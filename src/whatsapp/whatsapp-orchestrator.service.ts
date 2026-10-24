@@ -1725,26 +1725,41 @@ export class WhatsappOrchestratorService {
       let next: WhatsappSessionData = { ...pendingSelection, pendingAttribute: undefined, pendingMatch: undefined,
         pendingQuantityHint: undefined, pendingUnitSplit: undefined, pendingSideSwap: undefined, pendingMultiOrder: undefined };
       let nextPrompt = '';
+      let addedQueuedPurchases = false;
       if (queuedAttributeCancellation && currentQueue) {
-        // The active row is first; remove one row, never every row of that SKU.
+        // Remove only the active row, then preserve/complete each following purchase.
         const remaining = currentQueue.needsAttributes.slice(1);
         if (remaining.length) {
           next.pendingMultiOrder = {...currentQueue,needsAttributes:remaining};
-          const item = remaining[0];
-          const product = (await this.catalogService.getMenuProducts()).find(p=>p.id===item.productId);
-          if (product) {
+          const menu = await this.catalogService.getMenuProducts();
+          while (next.pendingMultiOrder?.needsAttributes.length) {
+            const item = next.pendingMultiOrder.needsAttributes[0];
+            const product = menu.find(p=>p.id===item.productId);
+            if (!product) break;
             const parsed = this.catalogService.resolveAttributesFromMessage(product,item.segment,[]);
-            const selected = parsed.status === 'invalid' ? [] : parsed.attributes;
+            const ready = this.catalogService.applyDefaultAttributeStep(product,parsed);
+            if (ready.status === 'complete') {
+              const added = this.tryAddProductToCart(next,product,
+                this.quantityForMultiSegment(item.segment,product.name),cfg,
+                this.catalogService.orderKitchenNote(item.segment,product),ready.attributes);
+              if (!added.blocked && !added.missingAttributes) {
+                next = this.popCompletedNeedsAttribute(added.session,product.id);
+                addedQueuedPurchases = true;
+                continue;
+              }
+            }
+            const selected = ready.status === 'invalid' ? [] : ready.attributes;
             next = this.buildPendingAttributeSession(next,product,selected,{sourceText:item.segment,pendingMultiOrder:next.pendingMultiOrder});
             next.pendingAttribute!.quantity = this.quantityForMultiSegment(item.segment,product.name);
             nextPrompt = this.catalogService.formatProductOptionsPrompt(product,selected);
+            break;
           }
         }
       }
       const resumeState = !nextPrompt ? next.pendingCheckoutResume : undefined;
       if (resumeState) next = { ...next, pendingCheckoutResume: undefined };
       await this.conversationService.saveSession(conv, next, nextPrompt ? 'awaiting_attribute' : resumeState);
-      await this.reply(conv, msg.waId, (replacing ? 'Cancelé ese cambio. Conservo el producto original y el resto del carrito.' : 'Cancelé la selección pendiente. Los platos del carrito siguen igual.') +
+      await this.reply(conv, msg.waId, (addedQueuedPurchases ? 'Cancelé la selección pendiente y añadí las otras compras que ya tenían sus opciones completas.' : replacing ? 'Cancelé ese cambio. Conservo el producto original y el resto del carrito.' : 'Cancelé la selección pendiente. Los platos del carrito siguen igual.') +
         (next.cart.length ? '\n\n' + this.formatCartOnly(next, this.deliveryFeeFor(next, cfg)) : '') +
         '\n\n' + (nextPrompt || this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next)));
       return;
