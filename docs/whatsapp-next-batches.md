@@ -1,3 +1,11 @@
+## VIGENTE — tanda154: número ambiguo entre producto y apartamento (23/10)
+
+Base0ed2d7ca, solo staging.24 recorridos nuevos en tres menús (Bowl/Hamburguesa/Sandwich), agente simulado on/off, respuesta1/2 y resolución producto primero/dirección primero. Baseline12/12 falló: número elegía apartamento y cotizaba aunque también podía elegir producto. Con ambos pendientes, respuesta corta sin etiqueta pide indicar apartamento o nombre del producto/opción y no muta sesión. Se verifica consulta intermedia de precio, conservación de pendientes/carrito, selección explícita en ambos órdenes y DTO final con dos líneas, opciones/notas y apartamento2.
+
+Foco54/54, TypeScript general/build OK, Node92/92. Global17.317/17.317,222suites,520hashes,584,79s; inventario exacto/fuente congelada. /tmp/ppp-154-global-summary.json. Cero API/Meta/órdenes externas. Publicada solo staging; despliegue pendiente para agrupar. Servidor último verificado82b77757 (152–153); Main/producción intactas. Ver whatsapp-address-product-collision-validation-2310.md.
+
+Próximo: atributo/sabor pendiente con conflicto de interior, caducidad/cancelación de una elección, código explícito frente a número desnudo, GPS+respuesta corta conservando pin y referencias. Los24 casos acreditan pendingMatch; no extrapolar a todos los tipos de pendiente aunque la guarda también los detecte. Sigue pendiente contraste real acotado según whatsapp-api-validation-next-2310.md; no declarar vendible por conteos.
+
 ## VIGENTE — tanda153: salida del conflicto de domicilio (23/10)
 
 Base952632de, solo staging.18 recorridos nuevos: tres cartas×agente simulado on/off×recogida/reinicio/GPS seguido de dirección corregida. Se reproduce bloqueo al cambiar a recogida: applyPickupIntent conservaba pendingAddressConflict y tryConfirmOrder exigía apartamento. Se limpia ese pendiente junto con los demás componentes de entrega al elegir recogida. Reinicio ya limpiaba. Pin válido conserva la duda del apartamento hasta aclaración; no autoriza confirmar por sí solo. Carrito, respuesta, estado y DTO de una unidad verificados.

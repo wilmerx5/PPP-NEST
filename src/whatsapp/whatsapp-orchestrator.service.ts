@@ -1761,6 +1761,12 @@ export class WhatsappOrchestratorService {
       const aliases = pending.label === 'apartamento' ? ['apartamento','apto','apt'] : pending.label === 'interior' ? ['interior','int'] : [pending.label];
       const suppliedLabel = originalText.trim().replace(/^el\s+/i, '').match(/^([a-z]+)\.?\s+/i)?.[1].toLowerCase();
       const shortAnswer = originalText.trim().replace(/[.!]+$/, '').match(/^(?:el\s+)?(?:(?:apartamento|apto|apt|interior|int|torre|bloque|casa|piso|local|oficina|entrada)\.?\s*)?#?\s*([a-z]\d{0,3}|\d{1,4}[a-z]?)$/i);
+      const otherChoice = session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
+        session.pendingCartAttributeEdit || session.pendingCartRemoval;
+      if (shortAnswer && !suppliedLabel && otherChoice) {
+        await this.reply(conv, msg.waId, `Hay una elección de producto y una aclaración de ${pending.label} pendientes. Para la dirección, escribe «${pending.label} ${pending.values[0]}»; para el producto, escribe el nombre del plato o de la opción. El pedido sigue igual.`);
+        return;
+      }
       if (shortAnswer && (!suppliedLabel || aliases.includes(suppliedLabel)) && pending.values.includes(shortAnswer[1].toUpperCase())) {
         originalText = resolveDeliveryUnitConflict(pending.source, pending.label, shortAnswer[1].toUpperCase());
         text = originalText;
