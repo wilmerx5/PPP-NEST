@@ -1709,7 +1709,7 @@ export class WhatsappOrchestratorService {
       }
     }
     const replacing = pendingSelection.pendingAttribute?.replacement || pendingSelection.pendingMatch?.replacement;
-    const rejectSelection = explicitPurchaseWithdrawal || (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto))$/.test(cancellationText);
+    const rejectSelection = explicitPurchaseWithdrawal || (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto|esa bebida))$/.test(cancellationText);
     const currentQueue = pendingSelection.pendingMultiOrder;
     const queuedAttributeCancellation = !!pendingSelection.pendingAttribute && !!currentQueue &&
       !currentQueue.confident.length && !currentQueue.ambiguous.length && !currentQueue.unresolved.length &&
@@ -1756,6 +1756,19 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // An explicitly named unavailable addition must not be swallowed by the pending option.
+    if (session.pendingAttribute && !cfg.ignoreBusinessHours && !/[¿?]/.test(originalText) &&
+        /^(?:agrega|agregame|anade|anademe|quiero|dame)\b/.test(this.normalizeForMatch(originalText))) {
+      const menu = await this.catalogService.getMenuProducts();
+      const said = ` ${this.normalizeForMatch(originalText).replace(/[^\p{L}\p{N} ]/gu, ' ')} `;
+      const named = menu.filter(product => said.includes(` ${this.normalizeForMatch(product.name)} `));
+      if (named.length === 1 && named[0].availableNow === false) {
+        await this.reply(conv, msg.waId, `*${named[0].name}* no está disponible ahora. No lo agregué.\n\n` +
+          this.formatPendingPurchaseReminder(session));
+        return;
+      }
+    }
+
     if (session.pendingAddressConflict && !['completed','closed','human_takeover'].includes(conv.state)) {
       const pending = session.pendingAddressConflict;
       const aliases = pending.label === 'apartamento' ? ['apartamento','apto','apt'] : pending.label === 'interior' ? ['interior','int'] : [pending.label];
@@ -27164,18 +27177,6 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    if (candidate.hasAttributes && candidate.attributes?.length) {
-      await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
-      await this.reply(
-        conv,
-        waId,
-        `Primero terminemos *${pendingProduct.name}* (falta elegir opciones). ` +
-          `Después te ayudo con *${candidate.name}*.\n\n` +
-          this.catalogService.formatProductOptionsPrompt(pendingProduct, pa.selected || []),
-      );
-      return true;
-    }
-
     if (candidate.availableNow === false) {
       await this.reply(
         conv,
@@ -27184,6 +27185,30 @@ export class WhatsappOrchestratorService {
           `Primero elige las opciones de *${pendingProduct.name}*:\n\n` +
           this.catalogService.formatProductOptionsPrompt(pendingProduct, pa.selected || []),
       );
+      return true;
+    }
+
+    if (candidate.hasAttributes && candidate.attributes?.length) {
+      if (!/^(?:agrega|agregame|anade|anademe|quiero|dame)\b/.test(this.normalizeForMatch(text))) {
+        await this.reply(conv, waId, `Primero terminemos *${pendingProduct.name}*. Después te ayudo con *${candidate.name}*.\n\n` +
+          this.catalogService.formatProductOptionsPrompt(pendingProduct, pa.selected || []));
+        return true;
+      }
+      const current = session.pendingMultiOrder || {
+        confident: [], ambiguous: [], unresolved: [],
+        needsAttributes: [{ productId: pendingProduct.id, name: pendingProduct.name,
+          code: pendingProduct.code, price: pendingProduct.price,
+          segment: pa.sourceText || `${pa.quantity || 1} ${pendingProduct.name}` }],
+      };
+      const next = { ...session, pendingMultiOrder: { ...current,
+        needsAttributes: [...current.needsAttributes, { productId: candidate.id, name: candidate.name,
+          code: candidate.code, price: candidate.price, segment: text,
+          note: this.catalogService.extractProductModificationNote(text) || undefined }],
+      } };
+      await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
+      await this.reply(conv, waId,
+        `Anoté *${candidate.name}* para elegir sus opciones después. Primero terminemos *${pendingProduct.name}*:\n\n` +
+          this.catalogService.formatProductOptionsPrompt(pendingProduct, pa.selected || []));
       return true;
     }
 

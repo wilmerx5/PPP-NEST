@@ -1,3 +1,11 @@
+## VIGENTE — tanda161: dos productos configurables y cancelación (23/10)
+
+Base9702fbcd, solo staging.24 recorridos nuevos: tres menús×agente simulado on/off×completar ambas bebidas/cancelar primera/cancelar segunda/segunda agotada. Baseline inicial18/18 falló: segunda solicitud no quedaba almacenada. Se reutiliza pendingMultiOrder con fila activa y siguiente, guardando segmento/cantidad/notas; al resolver o cancelar activa pasa a la siguiente. «Cancela esa bebida» entra en cancelación de selección, conserva carrito y resto de cola. Adición explícita de SKU agotado informa ausencia y conserva pendiente. No se añade producto por consultar.
+
+Foco66/66,11,134s; TypeScript general/build OK, Node92/92. Primera global interrumpida tras detectar regresión en combo→«de broster»: la cola interpretaba una respuesta corta como adición. Se restringe creación de cola a compra explícita (agrega/añade/quiero/dame). Regresión histórica pasó aislada; global FINAL17.533/17.533,230suites,528hashes,780,10s; inventario exacto/fuente congelada. /tmp/ppp-161-global-summary.json. Cero API/Meta/órdenes externas. Publicación solo staging;161 pendiente de deploy agrupado. Último servidor acreditadoe8cf6ffa (158–160). Main intacta.
+
+Próximo: segundo producto con sabor ya explícito, más de dos productos configurables, mismas referencias/IDs, cambio de cantidad o agotamiento después de encolarlo. No acreditar estos caminos con161. Esta tanda prueba dos bebidas distintas, consultas de contenido intermedias, cancelaciones y DTO final exacto. Modelo/mapa simulados; contraste real pendiente. Ver whatsapp-two-product-queue-validation-2310.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda160: compra adicional mientras elige sabor (23/10)
 
 Base10bbfd60, solo staging.24 recorridos nuevos: tres menús×agente simulado on/off×añadir uno/añadir dos/añadir con nota/selección numérica de sabor tras consultar categoría. Baseline inicial12:3 fallos/9 aprobados; solo agente activado desviaba compra explícita antes del helper existente. Se reconoce también la forma normalizada «quiero», se ejecuta compra adicional inequívoca antes de deferir al agente, sin consumir respuestas de atributo ni pedidos múltiples. Helper de adición preserva cantidad y nota (antes fijaba una unidad sin nota). Carrito, pendiente, respuesta, estado y DTO verificados.
