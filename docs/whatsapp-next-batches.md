@@ -1,3 +1,11 @@
+## VIGENTE — tanda166: disponibilidad cambia en la cola (24/10)
+
+Base90444258, solo staging.24 recorridos nuevos: tres menús×agente simulado on/off×producto agotado/retirado después de encolar×resolver/cancelar selección activa. Baseline corregido24/24 falló. Ahora cada avance verifica catálogo actual, informa y retira solo la fila no disponible, conserva posteriores y continúa. Al volver al pago se conserva aviso mediante contexto efímero del turno: antes el resumen sobrescribía la explicación aunque el carrito ya fuera correcto.
+
+Foco72/72,36,097s; TypeScript general/build OK; Node92/92. Global17.629/17.629,235suites,533hashes,816,07s; inventario exacto/fuente congelada. /tmp/ppp-166-baseline-corrected.log, focus-approved.log, tsc.log, node.log y global-summary.json (mismo prefijo). Cero API/Meta/órdenes externas. Main intacta. Publicación solo staging;166 pendiente de deploy agrupado. Último servidor verificadob8a6567a(161–165), healthy.
+
+Próximo: sabor retirado de un producto aún disponible, cantidades cambiadas después de encolar, cancelación de fila posterior por nombre y referencias «otras dos de esas».166 acredita compra posterior completa retirada/agotada, no estos caminos. Inicio de checkout sembrado, modelo/mapa simulados y DTO final exacto. Ver whatsapp-queue-availability-validation-2410.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda165: cancelar activa y continuar compras resueltas (24/10)
 
 Base19eb7e03, solo staging.12 recorridos nuevos: tres menús×agente simulado on/off×segunda compra resuelta/segunda y tercera resueltas. Baseline12/12 falló: cancelar la activa abría de nuevo opciones ya indicadas de la siguiente. Ahora retira solo fila activa, añade sucesoras completas con cantidad/nota y continúa hasta la primera incompleta; respuesta informa las adiciones reales. No hardcodes de productos/IDs.

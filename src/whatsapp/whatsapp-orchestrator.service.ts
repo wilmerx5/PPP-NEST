@@ -187,6 +187,7 @@ type InboundTurnContext = {
   initialPendingMatch?: NonNullable<WhatsappSessionData['droppedPick']>;
   purchasePriceQuestion?: boolean;
   independentInquiryAnswer?: string;
+  queuedPurchaseNotices?: string[];
   subsetNoteHandled?: boolean;
   closePurchase?: boolean;
   decision?: TurnDecisionFrame;
@@ -621,7 +622,7 @@ export class WhatsappOrchestratorService {
           const cfg = await this.settingsService.getEffectiveConfig();
           const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
           if (this.outboundHoldByWaId.has(key)) this.outboundHoldByWaId.set(key, []);
-          await this.reply(conv, msg.waId, this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) +
+          await this.reply(conv, msg.waId, (turn.queuedPurchaseNotices?.length ? turn.queuedPurchaseNotices.join('\n') + '\n\n' : '') + this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) +
             '\n\n' + (resumeState === 'awaiting_address' ? this.buildAskAddressMessage(session, this.deliveryFeeFor(session, cfg))
               : this.formatInterruptedStepReminder(conv, session)));
         }
@@ -1726,6 +1727,7 @@ export class WhatsappOrchestratorService {
         pendingQuantityHint: undefined, pendingUnitSplit: undefined, pendingSideSwap: undefined, pendingMultiOrder: undefined };
       let nextPrompt = '';
       let addedQueuedPurchases = false;
+      const unavailableQueued: string[] = [];
       if (queuedAttributeCancellation && currentQueue) {
         // Remove only the active row, then preserve/complete each following purchase.
         const remaining = currentQueue.needsAttributes.slice(1);
@@ -1735,7 +1737,11 @@ export class WhatsappOrchestratorService {
           while (next.pendingMultiOrder?.needsAttributes.length) {
             const item = next.pendingMultiOrder.needsAttributes[0];
             const product = menu.find(p=>p.id===item.productId);
-            if (!product) break;
+            if (!product || (!cfg.ignoreBusinessHours && product.availableNow === false)) {
+              unavailableQueued.push(`*${item.name}* ${product ? 'no está disponible ahora' : 'ya no está en la carta'}. No lo agregué.`);
+              next = this.popCompletedNeedsAttribute(next,item.productId);
+              continue;
+            }
             const parsed = this.catalogService.resolveAttributesFromMessage(product,item.segment,[]);
             const ready = this.catalogService.applyDefaultAttributeStep(product,parsed);
             if (ready.status === 'complete') {
@@ -1759,7 +1765,7 @@ export class WhatsappOrchestratorService {
       const resumeState = !nextPrompt ? next.pendingCheckoutResume : undefined;
       if (resumeState) next = { ...next, pendingCheckoutResume: undefined };
       await this.conversationService.saveSession(conv, next, nextPrompt ? 'awaiting_attribute' : resumeState);
-      await this.reply(conv, msg.waId, (addedQueuedPurchases ? 'Cancelé la selección pendiente y añadí las otras compras que ya tenían sus opciones completas.' : replacing ? 'Cancelé ese cambio. Conservo el producto original y el resto del carrito.' : 'Cancelé la selección pendiente. Los platos del carrito siguen igual.') +
+      await this.reply(conv, msg.waId, (unavailableQueued.length ? unavailableQueued.join('\n') + '\n\n' : '') + (addedQueuedPurchases ? 'Cancelé la selección pendiente y añadí las otras compras que ya tenían sus opciones completas.' : replacing ? 'Cancelé ese cambio. Conservo el producto original y el resto del carrito.' : 'Cancelé la selección pendiente. Los platos del carrito siguen igual.') +
         (next.cart.length ? '\n\n' + this.formatCartOnly(next, this.deliveryFeeFor(next, cfg)) : '') +
         '\n\n' + (nextPrompt || this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next)));
       return;
@@ -4501,12 +4507,19 @@ export class WhatsappOrchestratorService {
           session.pendingAttribute = undefined;
           session = this.popCompletedNeedsAttribute(session, product.id);
           const addedLabels = [`${product.name} (${step.attributes.map((a) => a.attributeValue).join(', ')})`];
+          const unavailableQueued: string[] = [];
+          turn.queuedPurchaseNotices = unavailableQueued;
           // Drain already-specified choices, stopping at the first option still missing.
           while (true) {
             const nextNeeds = session.pendingMultiOrder?.needsAttributes?.[0];
             const nextProduct = nextNeeds
               ? products.find((p) => p.id === nextNeeds.productId)
               : null;
+            if (nextNeeds && (!nextProduct || (!cfg.ignoreBusinessHours && nextProduct.availableNow === false))) {
+              unavailableQueued.push(`*${nextNeeds.name}* ${nextProduct ? 'no está disponible ahora' : 'ya no está en la carta'}. No lo agregué.`);
+              session = this.popCompletedNeedsAttribute(session,nextNeeds.productId);
+              continue;
+            }
             if (nextProduct?.hasAttributes && nextProduct.attributes?.length) {
               const fromSeg = this.catalogService.resolveAttributesFromMessage(
                 nextProduct,
@@ -4549,7 +4562,7 @@ export class WhatsappOrchestratorService {
               await this.reply(
                 conv,
                 msg.waId,
-                `${this.buildCartAddReply(
+                (unavailableQueued.length ? unavailableQueued.join('\n') + '\n\n' : '') + `${this.buildCartAddReply(
                   session,
                   this.deliveryFeeFor(session, cfg),
                   addedLabels,
@@ -4569,7 +4582,7 @@ export class WhatsappOrchestratorService {
           await this.reply(
             conv,
             msg.waId,
-            this.buildCartAddReply(
+            (unavailableQueued.length ? unavailableQueued.join('\n') + '\n\n' : '') + this.buildCartAddReply(
               session,
               this.deliveryFeeFor(session, cfg),
               addedLabels,
