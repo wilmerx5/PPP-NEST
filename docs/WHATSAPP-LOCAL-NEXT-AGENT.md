@@ -1,3 +1,11 @@
+## VIGENTE — tanda160: compra adicional mientras elige sabor (23/10)
+
+Base10bbfd60, solo staging.24 recorridos nuevos: tres menús×agente simulado on/off×añadir uno/añadir dos/añadir con nota/selección numérica de sabor tras consultar categoría. Baseline inicial12:3 fallos/9 aprobados; solo agente activado desviaba compra explícita antes del helper existente. Se reconoce también la forma normalizada «quiero», se ejecuta compra adicional inequívoca antes de deferir al agente, sin consumir respuestas de atributo ni pedidos múltiples. Helper de adición preserva cantidad y nota (antes fijaba una unidad sin nota). Carrito, pendiente, respuesta, estado y DTO verificados.
+
+Foco84/84,14,363s; TypeScript general/build OK, Node92/92. Global17.509/17.509,229suites,527hashes,616,79s; inventario exacto/fuente congelada. Evidencia /tmp/ppp-160-{baseline,focus,tsc,node}.log y global-summary.json. Cero API/Meta/órdenes externas. Main intacta. Publicación staging y deploy agrupado158–160 a verificar; último servidor acreditado0a3e2ae4.
+
+Próximo: segundo producto también exige opciones; dos selecciones con consultas/cancelación intermedia, agotados y compra con sabor ya explícito. Esta tanda acredita producto adicional sin atributos y respuesta1 que elige sabor (no producto del listado informativo). No acredita cola de dos productos configurables. Ver whatsapp-pending-category-purchase-validation-2310.md. Contraste real pendiente; no declarar vendible por conteos.
+
 ## VIGENTE — tanda159: categorías durante sabor pendiente (23/10)
 
 Based3239552, solo staging.18 conversaciones nuevas: tres menús (bowl/gaseosa+sopas, pizza/jugo+postres, arroz/refresco+entradas)×categoría disponible/agotada/ausente×agente simulado on/off. Baseline16 fallos/2 aprobados: categoría vacía borraba pendingAttribute o llegaba al filtro de preguntas ajenas al menú; repetía opción sin responder. Se adelanta consulta de catálogo ante compra pendiente, reconoce forma «qué [categoría] tienes» y responde ausencia sin limpiar selección. Excluye preguntas de sabor/opciones/tamaño/ingredientes del reconocimiento genérico. Listado informativo sin números, recordatorio de sabor, conservación de dos bebidas/notas y cierre con DTO exacto.

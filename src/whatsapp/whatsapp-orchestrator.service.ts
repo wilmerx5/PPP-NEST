@@ -4281,6 +4281,11 @@ export class WhatsappOrchestratorService {
         (spokenOptions.status === 'complete' || spokenOptions.status === 'partial') &&
         spokenOptions.attributes.some(attribute => !(pa?.selected || []).some(selected =>
           selected.attributeName === attribute.attributeName && selected.attributeValue === attribute.attributeValue));
+      // A clear additional purchase must not be deferred merely because it is a sentence.
+      // Keep actual option answers and multi-item requests on their existing paths.
+      if (pa && product && !progressesPendingOptions && !absorbed.answers && !multiDishUpFront &&
+          /^(?:agrega|agregame|anade|anademe|quiero|dame)\b/.test(this.normalizeForMatch(text)) &&
+          await this.tryAddProductDuringPendingAttribute(conv, msg.waId, session, text, products, cfg, product)) return;
       if (pa && product && cfg.agentV1Enabled && this.looksLikeHumanIntentSentence(text) && !progressesPendingOptions && !absorbed.answers) {
         deferHumanIntentToAgent = true;
       } else if (pa && product) {
@@ -27194,7 +27199,9 @@ export class WhatsappOrchestratorService {
       pendingAttribute: pa,
     };
 
-    const added = this.tryAddProductToCart(liveSession, candidate, 1, cfg);
+    const quantity = this.catalogService.extractQuantityFromSegment(text);
+    const note = this.catalogService.extractProductModificationNote(text) || undefined;
+    const added = this.tryAddProductToCart(liveSession, candidate, quantity, cfg, note, undefined, { sourceText: text });
     if (added.blocked) {
       await this.conversationService.saveSession(conv, liveSession, 'awaiting_attribute');
       await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
