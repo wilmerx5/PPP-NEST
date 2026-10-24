@@ -4149,7 +4149,8 @@ export class WhatsappOrchestratorService {
       this.catalogService.isProductDescriptionInquiry(text)) {
       const candidates = this.findProductsForCompositionQuestion(text, products, session);
       if (candidates.length === 1) {
-        await this.reply(conv, msg.waId, this.buildProductCompositionReply(text, candidates[0], cfg, session, {offerAdd:false}));
+        await this.reply(conv, msg.waId, this.buildProductCompositionReply(text, candidates[0], cfg, session, {offerAdd:false}) +
+          '\n\n' + this.formatPendingPurchaseReminder(session));
         return;
       }
       if (candidates.length > 1) {
@@ -8919,7 +8920,35 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     const pending = session.pendingAttribute;
-    if (!pending || session.pendingMultiOrder || pending.replacement) return false;
+    if (!pending) return false;
+    // A declarative quantity correction plus a price question has two intents.
+    // Resolve only an explicitly named, unique pending purchase; never guess
+    // between a cart line and another queued row with the same product.
+    const quantityClauses = text.split(/[,;\n]+/).map(part => part.trim()).filter(Boolean);
+    const priceClause = (part: string) => /^(?:cuanto (?:cuesta|vale)(?: cada (?:uno|una|unidad))?|que precio tiene)$/.test(this.normalizeForMatch(part));
+    if (!pending.replacement && quantityClauses.length === 2 && quantityClauses.filter(priceClause).length === 1) {
+      const instruction = quantityClauses.find(part => !priceClause(part))!;
+      const namedFirst = this.normalizeForMatch(instruction).match(/^de (.+?) dejame (?:solo )?(\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)$/);
+      const correction = parseCartQuantityCorrection(namedFirst ? `deja ${namedFirst[2]} ${namedFirst[1]}` : instruction);
+      const menu = await this.catalogService.getMenuProducts();
+      const product = menu.find(item => item.id === pending.productId);
+      if (correction && product && this.normalizeForMatch(correction.query) === this.normalizeForMatch(product.name)) {
+        const ambiguous = session.cart.some(line => line.productId === product.id) ||
+          (session.pendingMultiOrder?.needsAttributes.filter(item => item.productId === product.id).length || 0) > 1;
+        if (ambiguous || correction.quantity < 1 || correction.quantity > 30) {
+          await this.reply(conv, waId, `*${product.name}*: ${this.catalogService.formatMoney(product.price)} por unidad.\n\n` + (ambiguous
+            ? '¿Te refieres a la compra pendiente o a otra línea de ese producto? Conservo las cantidades.'
+            : 'Dime una cantidad entre 1 y 30. Conservo la compra pendiente.'));
+          return true;
+        }
+        const next = {...session, pendingAttribute: {...pending, quantity: correction.quantity}};
+        await this.conversationService.saveSession(conv, next);
+        await this.reply(conv, waId, `Listo, quedan ${correction.quantity} unidades pendientes de *${product.name}*. ` +
+          `${this.catalogService.formatMoney(product.price)} por unidad.\n\n` + this.formatPendingPurchaseReminder(next));
+        return true;
+      }
+    }
+    if (session.pendingMultiOrder || pending.replacement) return false;
     const pendingProductPrice = /^(?:cuanto (?:cuesta|vale)|que precio tiene) (?:ese|este|el) (?:plato|producto|combo|menu)$/.test(this.normalizeForMatch(text));
     if (pendingProductPrice) {
       const product = (await this.catalogService.getMenuProducts()).find(item => item.id === pending.productId);

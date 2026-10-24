@@ -1,3 +1,11 @@
+## VIGENTE — tanda168: consultas y cantidades con compras en cola (24/10)
+
+Base a353bdf4, solo staging. 54 casos nuevos: tres menús × agente simulado on/off × nueve escenarios. Baseline 18/30 pasó y 12 falló: consulta de contenido omitía recordar sabor; cantidad + precio respondía sin cambiar unidades. Ahora descripción añade recordatorio; corrección declarativa + precio actualiza cantidad pendiente y responde ambas intenciones. Exige nombre completo normalizado del producto activo; ambigüedad con otra línea o cantidad inválida informa precio y conserva cantidades. No hardcodes de restaurantes/productos.
+
+42 recorridos completan DTO con cantidades, sabores y notas exactos; 12 negativos terminan en aclaración sin mutación ni orden. Foco 234/234, 113,303 s; TypeScript general/build OK; Node92/92. Global 17.707/17.707, 237 suites, 535 hashes, 1.099,85 s; inventario exacto/fuente congelada. /tmp/ppp-168-{baseline,focus,tsc-final,node}.log y global-summary.json. Primer intento de fix tuvo conflicto de variable clauses, corregido antes de ejecución; no confundir con baseline funcional. Cero API/Meta/órdenes externas. Main intacta; publicación staging, sin deploy. Runtime166 y168 pendientes de despliegue agrupado; servidor último acreditado b8a6567a (161–165).
+
+Próximo: comentarios sin pregunta explícita, consulta + corrección de otra línea, resolución de ambigüedad de SKU repetido, opciones retiradas/reordenadas en filas posteriores. Esta tanda prueba comentarios CON pregunta de precio, nombre explícito y cláusulas separadas; no acredita lenguaje libre, inferencia real ni referencias abreviadas. Inicio de checkout sembrado y modelo/mapa simulados. Ver whatsapp-pending-queue-inquiries-validation-2410.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda167: sabor activo retirado y salida de la selección (24/10)
 
 Base59dfc826, solo staging.24 recorridos nuevos: tres menús×agente simulado on/off×nombre/número de sabor retirado×elegir alternativa/cancelar bebida. Baseline12/12 pasó y ampliación24/24 pasó sin cambio runtime. Se cambia el catálogo después de ofrecer sabores: opción anterior ya no existe; bot avisa, muestra Naranja, conserva carrito y cola; consulta de contenido no consume pendiente. Alternativa o cancelación termina sucesoras completas conservando cantidades/notas y DTO exacto.
