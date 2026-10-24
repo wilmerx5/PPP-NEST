@@ -1,3 +1,11 @@
+## VIGENTE — tanda164: mismo producto, líneas y orden de llegada (23/10)
+
+Based51589ca, solo staging.24 recorridos nuevos: tres menús×agente simulado on/off×sabores diferentes/mismo sabor con notas diferentes×orden normal/invertido. Baseline12/12 pasó; al invertir el orden aparecieron2 fallos/22 aprobados: Chocolate de una nueva malteada se aplicaba como Cola de la gaseosa activa. Antes de absorber opciones se prioriza compra explícita de otro producto nombrado inequívocamente, sin pedidos múltiples. Se reutiliza helper de cola; no hardcodes de productos/IDs.
+
+Foco84/84,38,345s; TypeScript general/build OK; Node92/92. Global17.593/17.593,233suites,531hashes,781s; inventario exacto/fuente congelada. Evidencia /tmp/ppp-164-fixed-focus3.log, tsc-approved.log, node-approved.log y global-summary.json (mismo prefijo). Cero API/Meta/órdenes externas. Publicación solo staging; runtime161,163–164 pendientes de deploy agrupado. Último servidor acreditadoe8cf6ffa(158–160). Main intacta.
+
+Próximo: cancelar activa con sucesoras ya resueltas, mismo producto que la selección activa, compras por referencia («otras dos de esas»), agotamiento/cantidad tras encolar.164 acredita dos filas del mismo SKU distinto del activo, sabores explícitos, notas separadas y orden invertido. No extrapolar a estos pendientes. Modelo/mapa simulados y checkout inicial sembrado; contraste real pendiente. Ver whatsapp-same-product-queue-validation-2310.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda163: opciones explícitas al avanzar la cola (23/10)
 
 Base4d6973c4, solo staging.12 recorridos nuevos: tres menús×agente simulado on/off×segunda compra con sabor explícito/segunda y tercera con sabor explícito. Baseline12/12 falló: la segunda compra perdía sin azúcar. La rama de avance añadía una sola fila completa sin nota y retornaba; ahora drena filas completas conservando orderKitchenNote y cantidades, acumula sus confirmaciones y se detiene ante la siguiente opción faltante. No nombres/IDs de PPP en runtime.

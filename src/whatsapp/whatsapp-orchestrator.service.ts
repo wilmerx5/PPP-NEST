@@ -4140,6 +4140,22 @@ export class WhatsappOrchestratorService {
     }
 
     if (session.pendingAttribute || conv.state === 'awaiting_attribute') {
+      const multiDishUpFront =
+        this.catalogService.looksLikeClearlyMultiDishOrder(originalText || text) ||
+        this.catalogService.looksLikeMultiItemOrderMessage(originalText || text) ||
+        this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
+        this.catalogService.looksLikeMultiItemOrderMessage(text);
+      // Route an explicit purchase of another named product before interpreting
+      // its flavor as an answer to the active product's option.
+      const purchaseText = this.normalizeForMatch(originalText || text);
+      const namedText = ` ${purchaseText.replace(/[^\p{L}\p{N} ]/gu, ' ')} `;
+      const activeProduct = products.find(candidate => candidate.id === session.pendingAttribute?.productId);
+      const namedProducts = products.filter(candidate =>
+        namedText.includes(` ${this.normalizeForMatch(candidate.name)} `));
+      if (activeProduct && !multiDishUpFront &&
+          /^(?:agrega|agregame|anade|anademe|quiero|dame)\b/.test(purchaseText) &&
+          namedProducts.length === 1 && namedProducts[0].id !== activeProduct.id &&
+          await this.tryAddProductDuringPendingAttribute(conv, msg.waId, session, originalText || text, products, cfg, activeProduct)) return;
       const absorbed = await this.absorbPendingOptionAnswer(conv, msg.waId, session, originalText || text, products);
       if (!absorbed) return;
       session = absorbed.session;
@@ -4213,11 +4229,7 @@ export class WhatsappOrchestratorService {
       ) {
         return;
       }
-      const multiDishUpFront =
-        this.catalogService.looksLikeClearlyMultiDishOrder(originalText || text) ||
-        this.catalogService.looksLikeMultiItemOrderMessage(originalText || text) ||
-        this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
-        this.catalogService.looksLikeMultiItemOrderMessage(text);
+
       if (
         !multiDishUpFront &&
         (this.catalogService.isAvailabilityInquiry(text) ||
