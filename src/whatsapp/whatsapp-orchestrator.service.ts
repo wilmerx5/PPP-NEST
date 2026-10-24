@@ -11657,7 +11657,11 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
-    const question = text.trim().match(/^(?:(agr[eé]galo al pedido(?: por favor)?),?\s+pero\s+)?[¿]?de qu[eé] es (?:la|el) ([\p{L} ]+?)(?: el d[ií]a de hoy| hoy)?[?.!]*$/iu);
+    // Normalize read-only ingredient questions while retaining the explicit purchase prefix.
+    const inquiryText = text.trim()
+      .replace(/^[¿]?(?:la|el|esa|ese) ([\p{L} ]+?) de qu[eé] es[?.!]*$/iu, 'de qué es la $1')
+      .replace(/^[¿]?qu[eé] (?:lleva|ingredientes (?:tiene|lleva)) (?:la|el|esa|ese) ([\p{L} ]+?)[?.!]*$/iu, 'de qué es la $1');
+    const question = inquiryText.match(/^(?:(agr[eé]galo al pedido(?: por favor)?),?\s+pero\s+)?[¿]?de qu[eé] es (?:la|el) ([\p{L} ]+?)(?: el d[ií]a de hoy| hoy)?[?.!]*$/iu);
     if (!question || !['building_cart', 'awaiting_name', 'awaiting_address', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) || session.pendingMultiOrder || session.pendingAttribute || session.pendingMatch) return false;
     if (question[1] && !['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state)) return false;
     const menu = await this.catalogService.getMenuProducts();

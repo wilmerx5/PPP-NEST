@@ -1,3 +1,11 @@
+## VIGENTE — tanda158: otras formas de preguntar por ingredientes (23/10)
+
+Base9a8eead4, solo staging.36 recorridos nuevos: tres menús×detalle conocido/desconocido×agente simulado on/off×nombre,pago,confirmación. Preguntas «la ensalada de qué es», «qué lleva esa salsa», «qué ingredientes tiene la guarnición». Baseline36/36 falló: respuesta incompleta o sin recordatorio del pendiente. Se normalizan consultas para reutilizar la respuesta del acompañamiento del plato enfocado, sin ampliar compras ni inventar ingredientes. Sesión completa, nombre, carrito y estado conservados; cierre con DTO y datos corregidos verificados.
+
+Foco162/162,16,895s; TypeScript general/build OK, Node92/92. Global17.467/17.467,227suites,525hashes,588,18s; inventario exacto/fuente congelada. Evidencia /tmp/ppp-158-baseline.log, focus.log, tsc.log, node.log (mismo prefijo) y /tmp/ppp-158-global-summary.json. Cero API/Meta/órdenes externas. Publicación solo staging; despliegue pendiente para agrupar. Último servidor verificado0a3e2ae4 (154–157). Main/producción intactas.
+
+Próximo: cambio de categoría durante sabor pendiente, ingredientes de otro plato mientras elige bebida, consultas+acción y después de confirmar. No acreditar esos caminos con158: mantiene guardas de selección pendiente. Contraste real pendiente según whatsapp-api-validation-next-2310.md. Ver whatsapp-side-paraphrases-validation-2310.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda157: ingredientes consultados durante datos del checkout (23/10)
 
 Base9e76e0b1, staging.60 recorridos nuevos: tres platos/acompañamientos×detalle conocido/desconocido×agente simulado on/off×nombre,dirección,teléfono,pago,confirmación. Baseline36 fallos/24 aprobados: tryHandleReferencedSideDetail excluía nombre/dirección/teléfono; pregunta se rechazaba o iba al fallback. Consulta de solo lectura ahora permitida en esos estados, responde carta o reconoce ingredientes no confirmados y añade recordatorio del paso pendiente. No amplía compra+pregunta a esos estados. Conserva sesión, carrito y contacto; cierre con DTO verificado.
