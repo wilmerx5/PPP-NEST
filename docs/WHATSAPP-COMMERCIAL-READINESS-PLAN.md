@@ -1,3 +1,11 @@
+## VIGENTE — tanda169: comentarios sin interrogación y continuidad (24/10)
+
+Base4092e1c6, solo staging.108 recorridos nuevos: tres menús×agente simulado on/off×nombre/pago/sabor×seis paráfrasis de precio alto, incomprensión y pregunta omitida. Baseline funcional definitivo54/54 falló: rechazo de nombre, repetición de pago o selección inválida. Ahora el manejador de comentarios reconoce frases completas, responde al comentario y conserva recordatorio/estado/datos. No promete correcciones no realizadas ni inventa descuentos. Mensajes con instrucciones o consultas adicionales no son absorbidos por estas expresiones ancladas.
+
+Foco162/162,34,12s; TypeScript general/build OK; Node92/92. Global17.815/17.815,238suites,536hashes,774,28s; inventario exacto/fuente congelada. /tmp/ppp-169-{baseline4,focus-final,tsc,node}.log y global-summary.json. Los intentos anteriores del fixture tuvieron errores de tipo/preparación, documentados; no contarlos como baseline funcional. Cero API/Meta/órdenes externas. Todos los108 recorridos completan DTO simulado con productos/opciones/notas/nombre/dirección conservados. Main intacta. Despliegue agrupado166–169 pendiente de verificación.
+
+Próximo: comentarios durante teléfono/dirección, comentarios con corrección o pregunta concreta en el mismo mensaje, recuperación de pregunta histórica identificable y desacuerdo con tarifa + nueva dirección.169 acredita reconocimiento de comentarios aislados y retoma, no reparación automática de un carrito equivocado ni cualquier lenguaje libre. Checkout sembrado, modelo/mapa simulados; contraste real pendiente. Ver whatsapp-customer-comments-recovery-validation-2410.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda168: consultas y cantidades con compras en cola (24/10)
 
 Base a353bdf4, solo staging. 54 casos nuevos: tres menús × agente simulado on/off × nueve escenarios. Baseline 18/30 pasó y 12 falló: consulta de contenido omitía recordar sabor; cantidad + precio respondía sin cambiar unidades. Ahora descripción añade recordatorio; corrección declarativa + precio actualiza cantidad pendiente y responde ambas intenciones. Exige nombre completo normalizado del producto activo; ambigüedad con otra línea o cantidad inválida informa precio y conserva cantidades. No hardcodes de restaurantes/productos.

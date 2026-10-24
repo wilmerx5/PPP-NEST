@@ -16940,6 +16940,23 @@ export class WhatsappOrchestratorService {
     const cartReply = () => this.formatCartOnly(session, this.deliveryFeeFor(session, cfg));
     const same = session.cart.length ? `\n\nEl pedido sigue igual.\n${cartReply()}` : '';
 
+    // A standalone objection is feedback, not the answer to a checkout field
+    // or an attribute. Anchor the whole utterance so explicit corrections and
+    // questions in longer messages still reach their own handlers.
+    const feedback = this.normalizeForMatch(text).replace(/^(?:oye|veci|vecino) /, '');
+    if (/^(?:(?:eso|esto|el pedido) (?:esta|sale|es) |esta |sale )(?:muy |demasiado |tan )?caro$/.test(feedback)) {
+      await respond('Entiendo que el precio te parece alto. Podemos revisar los precios o buscar una opción más económica en la carta. Dime qué prefieres revisar; no cambié tu pedido.');
+      return true;
+    }
+    if (/^(?:no me (?:entendiste|entiendes|has entendido)|(?:eso )?no (?:fue|es) lo que (?:te )?pedi)$/.test(feedback)) {
+      await respond('Disculpa la confusión. Dime qué parte del pedido quedó mal y cómo la quieres para corregirla. Por ahora no cambié productos ni cantidades.');
+      return true;
+    }
+    if (/^(?:no (?:me )?(?:respondiste|contestaste|has respondido|has contestado)(?: (?:mi pregunta|lo que te pregunte))?|(?:esa|eso) no (?:responde|contesta) (?:a )?mi pregunta)$/.test(feedback)) {
+      await respond('Disculpa, quedó una pregunta sin resolver. Escríbeme cuál es para revisarla antes de continuar. Tu pedido sigue igual.');
+      return true;
+    }
+
     if (this.looksLikeCartRecapQuestion(text)) {
       await respond(session.cart.length
           ? `Esto es lo que llevas:\n\n${cartReply()}`
