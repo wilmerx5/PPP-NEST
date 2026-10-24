@@ -1,3 +1,11 @@
+## VIGENTE — tanda156: preguntas durante checkout y caducidad de sabor (23/10)
+
+Baseaa160493, solo staging.36 casos nuevos:30 matriz de consultas de contenido/tiempo en nombre,dirección,teléfono,pago,confirmación (tres menús×agente simulado on/off);6 recorridos de sabor+apartamento con ejecución real de runSessionExpiry y clearPendingChoices, repositorio/envío simulados. Preguntas no cambian carrito/contacto/destino ni estado; luego datos corregidos y DTO. Caduca sabor, conserva plato y conflicto de apartamento, responde consulta, admite «2» como apartamento y cierra sin bebida caducada.
+
+Sin cambios runtime. Foco90/90,10,639s; TypeScript general/build OK, Node92/92. /tmp/ppp-156-{baseline,focus,tsc,node}.log. No global redundante por tests/docs: última global154=17.317/222suites; no sumar focos a global. Cero API/Meta/órdenes externas. Publicación solo staging. Runtime154 sigue pendiente de deploy agrupado; servidor82b77757(152–153), Main intacta.
+
+Énfasis solicitado por usuario: responder consultas a lo largo del flujo y luego retomar pendiente. Próximo: preguntas de ingredientes no documentados («de qué es la ensalada de hoy»), cambio de categoría durante sabor, pregunta+acción en un mismo turno, consulta tras confirmación y referentes tras caducidad. Plan detallado en whatsapp-checkout-inquiry-expiry-validation-2310.md. Modelo/mapa simulados; no declarar cobertura total ni vendible.
+
 ## VIGENTE — tanda155: sabor pendiente con aclaración de apartamento (23/10)
 
 Baseb0d82553, solo staging.18 conversaciones nuevas: tres cartas con jugo/malteada/smoothie, agente simulado on/off, dirección primero/sabor primero/cancelar bebida. La guarda154 ya cubre pendingAttribute: «1» ambiguo conserva sesión y no cotiza; etiqueta de apartamento o sabor explícito resuelve su pendiente. Cancelar bebida mantiene el plato y la dirección pendiente; luego «2» resuelve apartamento sin compra accidental. DTO final exacto con una o dos líneas según cancelación, sabor y destino verificados.
