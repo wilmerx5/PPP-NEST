@@ -1163,9 +1163,14 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    // Feedback may introduce an explicit correction/question. Keep the raw
+    // inbound message for history, but route the actionable clause rather than
+    // interpreting the whole complaint as a name or another product purchase.
+    text = text.replace(/^(?:no me (?:entendiste|entiendes|has entendido)|(?:eso )?no (?:fue|es) lo que (?:te )?ped[ií]|no (?:me )?(?:respondiste|contestaste|has respondido|has contestado)(?: (?:mi pregunta|lo que te pregunt[eé]))?)\s*[,;:\n]\s*(?=(?:deja|pon|cambia|quita|agrega|a[nñ]ade|quiero|dame|mi nombre es|me llamo|a nombre de|mi tel[eé]fono es|la direcci[oó]n es)\b|[¿]|(?:qu[eé]|cu[aá]nto|con qu[eé])\b)/i, '');
+
     // A delimited factual question does not consume an independent contact edit.
     // Keep mutations in the existing checkout handlers, not in this splitter.
-    if (['awaiting_payment', 'awaiting_final_confirm'].includes(conv.state)) {
+    if (['building_cart', 'awaiting_attribute', 'awaiting_name', 'awaiting_phone', 'awaiting_address', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state)) {
       const current = this.conversationService.getSession(conv);
       const questions = [...text.matchAll(/¿?[^¿?]*\?/g)];
       const questionFirst = text.match(/^(¿[^?]+\?|[^?]+\?)\s+(.+)$/s);
@@ -1174,18 +1179,20 @@ export class WhatsappOrchestratorService {
         questionFirst ? { question: questionFirst[1], change: questionFirst[2] } : undefined;
       if (current.cart.length && questions.length === 1 && pair) {
         const change = pair.change.replace(/[.;]$/, '').trim();
-        const name = change.match(/^a nombre(?: de)?\s+([\p{L} .'-]+)$/iu);
+        const name = change.match(/^(?:a nombre(?: de)?|mi nombre es|me llamo)\s+([\p{L} .'-]+)$/iu);
         const phone = change.match(/^mi tel[eé]fono es\s+([+\d ()-]+)$/i);
-        const address = /^cambia la direcci[oó]n a\s+(?:calle|carrera|cra|cll?|diagonal|dg|transversal|avenida)\b.*\d/i.test(change) &&
+        const address = /^(?:cambia la direcci[oó]n a|la direcci[oó]n es)\s+(?:calle|carrera|cra|cll?|diagonal|dg|transversal|avenida)\b.*\d/i.test(change) &&
           !/\b(?:si|pero|adem[aá]s|agrega|quita|confirma)\b|[?¿;\n]/i.test(change);
         if ((name && isUsableWhatsappCustomerName(name[1])) || (phone && this.looksLikePhoneNumber(phone[1])) || address) {
           let answer: string | undefined;
           if (current.orderType === 'delivery' && isDeliveryEtaInquiry(pair.question) && !isSpecificOrderProgressInquiry(pair.question)) {
             answer = this.formatDeliveryEtaSentence(cfg);
-          } else if (this.catalogService.isProductDescriptionInquiry(pair.question)) {
+          } else if (this.catalogService.isPriceInquiryIntent(pair.question) || this.catalogService.isProductDescriptionInquiry(pair.question)) {
             const menu = await this.catalogService.getMenuProducts();
             const named = menu.filter(product => this.catalogService.productFullyNamedIn(pair.question, [product]));
-            if (named.length === 1) answer = this.buildProductCompositionReply(pair.question, named[0], cfg, current, { offerAdd: false });
+            if (named.length === 1) answer = this.catalogService.isPriceInquiryIntent(pair.question)
+              ? this.catalogService.formatProductPriceReply(named[0], {offerAdd: false})
+              : this.buildProductCompositionReply(pair.question, named[0], cfg, current, { offerAdd: false });
           }
           if (answer) {
             turn.independentInquiryAnswer = answer;
@@ -1325,10 +1332,6 @@ export class WhatsappOrchestratorService {
     if (!/[¿?]/.test(text) && this.conversationService.getSession(conv).cart.length) {
       text = text.replace(/^mejor\s+(?=cambia\s)/i, '');
     }
-    // Feedback may introduce an explicit correction/question. Keep the raw
-    // inbound message for history, but route the actionable clause rather than
-    // interpreting the whole complaint as a name or another product purchase.
-    text = text.replace(/^(?:no me (?:entendiste|entiendes|has entendido)|(?:eso )?no (?:fue|es) lo que (?:te )?ped[ií]|no (?:me )?(?:respondiste|contestaste|has respondido|has contestado)(?: (?:mi pregunta|lo que te pregunt[eé]))?)\s*[,;:\n]\s*(?=(?:deja|pon|cambia|quita|agrega|a[nñ]ade|quiero|dame)\b|[¿]|(?:qu[eé]|cu[aá]nto|con qu[eé])\b)/i, '');
     let originalText = text;
     if (await this.tryHandleBinaryUnitSubset(conv,msg.waId,this.conversationService.getSession(conv),originalText,cfg)) return;
     // Resolve explicit one/other family plans before generic quantity/option

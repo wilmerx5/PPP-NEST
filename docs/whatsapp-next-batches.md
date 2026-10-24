@@ -1,3 +1,11 @@
+## VIGENTE — tanda171: reclamo + contacto + consulta (24/10)
+
+Base8b1617da, solo staging.162 recorridos nuevos: tres menús×agente simulado on/off×nombre/pago/sabor pendiente×nombre/teléfono/dirección×precio después/contenido después/precio antes. Baseline54/54 falló: respondía precio pero perdía el contacto. Se adelanta normalización del preámbulo y se amplía separador existente de consulta/contacto a estos pasos, etiquetas explícitas y precio. Reutiliza manejadores existentes de datos; no hardcodes de restaurantes.
+
+Foco342/342 en29,145s; TypeScript general/build OK; Node92/92. Global18.049/18.049,240suites,538hashes,734,75s; inventario completo/fuente congelada. /tmp/ppp-171-{baseline,focus-final,tsc,node}.log y global-summary.json. Cada recorrido comprueba respuesta, carrito, pendiente y DTO simulado completo con nombre/teléfono/dirección y cantidades/notas/opciones exactos. Cero API/Meta/órdenes externas. Publicación staging; sin deploy.170–171 pendientes de despliegue agrupado, servidor último acreditado098250c8(hasta169). Main intacta.
+
+Próximo: contacto con varias preguntas o sin separadores; reclamo de tarifa + dirección corregida, preservando interiores; referencias cortas entre líneas del mismo SKU; recuperación de pregunta histórica identificable.171 cubre una consulta explícita con puntuación/producto identificado, no cualquier lenguaje libre. Checkout sembrado, modelo/mapa simulados; no acredita reconocimiento real ni geocodificación. Ver whatsapp-feedback-contact-validation-2410.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda170: comentario con corrección o pregunta explícita (24/10)
 
 Basea36352a7, solo staging.72 recorridos nuevos: tres menús×agente simulado on/off×nombre/pago/sabor×dos correcciones precedidas por queja y dos consultas. Baseline36 fallaron/36 pasaron: preguntas ya se respondían, pero correcciones se rechazaban como nombre o añadían otra línea conservando las dos unidades originales. Ahora se separa un preámbulo de incomprensión/pregunta omitida si le sigue un separador y una instrucción/consulta explícita. Se reutilizan manejadores existentes; mensaje original permanece en historial. Sin excepciones por productos/restaurantes.
