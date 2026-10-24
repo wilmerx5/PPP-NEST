@@ -24,7 +24,7 @@ No se sembró un carrito incorrecto: esta tanda acredita reconocimiento y contin
 
 Foco final162/162 (108 nuevos +54 de168), dos suites,34,12s. TypeScript general/build OK; Node92/92. Evidencia /tmp/ppp-169-{baseline4,focus-final,tsc,node}.log. Cero llamadas pagadas, WhatsApp externo u órdenes reales.
 
-Global17.815/17.815,238suites,536hashes,774,28s. Inventario exacto y fuente congelada. Evidencia /tmp/ppp-169-global-summary.json y reportes burst/rest. Publicación solo staging; despliegue agrupado166–169 pendiente de verificación. Main intacta.
+Global17.815/17.815,238suites,536hashes,774,28s. Inventario exacto y fuente congelada. Evidencia /tmp/ppp-169-global-summary.json y reportes burst/rest. Publicación solo staging; Deploy agrupado166–169 verificado2026-10-24T15:36:39Z: HEAD098250c8467897152367df9eb2c111d0045d4eb3, imagen sha256:cebba760f2939f15c9ced590b7432bb1408771e75c6d5da1a393597b9f1e2961, running/healthy,0reinicios. Health públicoOK,DBconnected,circuitCLOSED. PPP_STAGING=true,publicChat=true,orderEvents=false. Producción conserva ef426c93966a809c007cfb0eb9bf0b83a3e2ef4b137498b23a632e8f61b7d613 y0reinicios. Rollback ppp-nest-staging:rollback-before-098250c8. Se preservan bin/ no versionado, bases, volúmenes y privados; no se usa --remove-orphans. Evidencia /tmp/ppp-169-{before-deploy,deploy,verified}.log. Commit posterior solo documental no requiere reconstrucción. Main intacta.
 
 ## Siguiente
 
