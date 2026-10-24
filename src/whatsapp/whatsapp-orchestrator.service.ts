@@ -4473,90 +4473,79 @@ export class WhatsappOrchestratorService {
           session = added.session;
           session.pendingAttribute = undefined;
           session = this.popCompletedNeedsAttribute(session, product.id);
-          const nextNeeds = session.pendingMultiOrder?.needsAttributes?.[0];
-          const nextProduct = nextNeeds
-            ? products.find((p) => p.id === nextNeeds.productId)
-            : null;
-          if (nextProduct?.hasAttributes && nextProduct.attributes?.length) {
-            const fromSeg = this.catalogService.resolveAttributesFromMessage(
-              nextProduct,
-              nextNeeds?.segment || '',
-              [],
-            );
-            const ready = this.catalogService.applyDefaultAttributeStep(
-              nextProduct,
-              fromSeg.status === 'invalid' ? { status: 'invalid' } : fromSeg,
-            );
-            if (ready.status === 'complete') {
-              const nextAdd = this.tryAddProductToCart(
-                session,
+          const addedLabels = [`${product.name} (${step.attributes.map((a) => a.attributeValue).join(', ')})`];
+          // Drain already-specified choices, stopping at the first option still missing.
+          while (true) {
+            const nextNeeds = session.pendingMultiOrder?.needsAttributes?.[0];
+            const nextProduct = nextNeeds
+              ? products.find((p) => p.id === nextNeeds.productId)
+              : null;
+            if (nextProduct?.hasAttributes && nextProduct.attributes?.length) {
+              const fromSeg = this.catalogService.resolveAttributesFromMessage(
                 nextProduct,
-                this.resolveAddQuantity(session, nextProduct, {
-                  sourceText: nextNeeds?.segment,
-                }),
-                cfg,
-                undefined,
-                ready.attributes,
+                nextNeeds?.segment || '',
+                [],
               );
-              if (!nextAdd.missingAttributes && !nextAdd.blocked) {
-                session = this.popCompletedNeedsAttribute(nextAdd.session, nextProduct.id);
-                await this.conversationService.saveSession(conv, session, 'building_cart');
-                const firstChosen = step.attributes.map((a) => a.attributeValue).join(', ');
-                const nextChosen = ready.attributes.map((a) => a.attributeValue).join(', ');
-                await this.reply(
-                  conv,
-                  msg.waId,
-                  this.buildCartAddReply(
-                    session,
-                    this.deliveryFeeFor(session, cfg),
-                    [
-                      `${product.name} (${firstChosen})`,
-                      `${nextProduct.name} (${nextChosen})`,
-                    ],
-                  ),
-                );
-                return;
-              }
-            }
-            session = {
-              ...session,
-              pendingAttribute: {
-                ...this.toPendingAttribute(nextProduct, {
-                  // Solo el segmento del plato — NO pegar "2" (elección de arepas)
-                  // o se interpreta como cantidad ×2.
-                  sourceText: nextNeeds?.segment || undefined,
-                }),
-                selected: ready.status === 'partial' ? ready.attributes : [],
-              },
-            };
-            await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
-            const chosen = step.attributes.map((a) => a.attributeValue).join(', ');
-            await this.reply(
-              conv,
-              msg.waId,
-              `${this.buildCartAddReply(
-                session,
-                this.deliveryFeeFor(session, cfg),
-                `${product.name} (${chosen})`,
-                { suffix: '' },
-              )}\n\n` +
-                `Ahora elige opciones para *${nextProduct.name}*:\n\n` +
-                this.catalogService.formatProductOptionsPrompt(
+              const ready = this.catalogService.applyDefaultAttributeStep(
+                nextProduct,
+                fromSeg.status === 'invalid' ? { status: 'invalid' } : fromSeg,
+              );
+              if (ready.status === 'complete') {
+                const nextAdd = this.tryAddProductToCart(
+                  session,
                   nextProduct,
-                  ready.status === 'partial' ? ready.attributes : [],
-                ),
-            );
-            return;
+                  this.resolveAddQuantity(session, nextProduct, {
+                    sourceText: nextNeeds?.segment,
+                  }),
+                  cfg,
+                  this.catalogService.orderKitchenNote(nextNeeds?.segment || '', nextProduct),
+                  ready.attributes,
+                );
+                if (!nextAdd.missingAttributes && !nextAdd.blocked) {
+                  session = this.popCompletedNeedsAttribute(nextAdd.session, nextProduct.id);
+                  addedLabels.push(`${nextProduct.name} (${ready.attributes.map((a) => a.attributeValue).join(', ')})`);
+                  continue;
+                }
+              }
+              session = {
+                ...session,
+                pendingAttribute: {
+                  ...this.toPendingAttribute(nextProduct, {
+                    // Solo el segmento del plato — NO pegar "2" (elección de arepas)
+                    // o se interpreta como cantidad ×2.
+                    sourceText: nextNeeds?.segment || undefined,
+                  }),
+                  selected: ready.status === 'partial' ? ready.attributes : [],
+                },
+              };
+              await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+              await this.reply(
+                conv,
+                msg.waId,
+                `${this.buildCartAddReply(
+                  session,
+                  this.deliveryFeeFor(session, cfg),
+                  addedLabels,
+                  { suffix: '' },
+                )}\n\n` +
+                  `Ahora elige opciones para *${nextProduct.name}*:\n\n` +
+                  this.catalogService.formatProductOptionsPrompt(
+                    nextProduct,
+                    ready.status === 'partial' ? ready.attributes : [],
+                  ),
+              );
+              return;
+            }
+            break;
           }
           await this.conversationService.saveSession(conv, session, 'building_cart');
-          const chosen = step.attributes.map((a) => a.attributeValue).join(', ');
           await this.reply(
             conv,
             msg.waId,
             this.buildCartAddReply(
               session,
               this.deliveryFeeFor(session, cfg),
-              `${product.name} (${chosen})`,
+              addedLabels,
             ),
           );
           return;

@@ -1,3 +1,11 @@
+## VIGENTE — tanda163: opciones explícitas al avanzar la cola (23/10)
+
+Base4d6973c4, solo staging.12 recorridos nuevos: tres menús×agente simulado on/off×segunda compra con sabor explícito/segunda y tercera con sabor explícito. Baseline12/12 falló: la segunda compra perdía sin azúcar. La rama de avance añadía una sola fila completa sin nota y retornaba; ahora drena filas completas conservando orderKitchenNote y cantidades, acumula sus confirmaciones y se detiene ante la siguiente opción faltante. No nombres/IDs de PPP en runtime.
+
+Foco60/60,33,394s; TypeScript general/build OK; Node92/92. Global17.569/17.569,232suites,530hashes,747,35s; inventario exacto y fuente congelada. Evidencia /tmp/ppp-163-{baseline,focus,tsc,node}.log y global-summary.json. Cero API/Meta/órdenes externas. Publicación solo staging;163 y runtime161 pendientes de deploy agrupado. Último servidor acreditadoe8cf6ffa(158–160). Main intacta.
+
+Próximo: mismo SKU en varias filas con sabores/notas diferentes; cancelación de primera con siguientes ya completas; agotamiento/cambio de cantidad posterior al encolado. No acreditar esos caminos con163. Inicio de checkout sembrado, proveedor y mapa simulados; contraste real pendiente. Ver whatsapp-explicit-queue-validation-2310.md. No declarar piloto/vendible por conteos.
+
 ## VIGENTE — tanda162: tres selecciones con consultas y cancelación (23/10)
 
 Base0e4bc78b, solo staging.24 recorridos nuevos: tres menús×agente simulado on/off×completar todo/cancelar primera/cancelar segunda/cancelar tercera. Compra pendiente de dos bebidas, otra compra de dos y tercera de tres; preguntas de contenido antes de cada elección. Verifica cola, carrito previo, respuesta de catálogo, cantidades, sabores, notas y DTO final exacto. Baseline inicial12/12 pasó; ampliación final24/24 pasó sin cambio runtime.
