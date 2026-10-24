@@ -1,3 +1,11 @@
+## VIGENTE — tanda170: comentario con corrección o pregunta explícita (24/10)
+
+Basea36352a7, solo staging.72 recorridos nuevos: tres menús×agente simulado on/off×nombre/pago/sabor×dos correcciones precedidas por queja y dos consultas. Baseline36 fallaron/36 pasaron: preguntas ya se respondían, pero correcciones se rechazaban como nombre o añadían otra línea conservando las dos unidades originales. Ahora se separa un preámbulo de incomprensión/pregunta omitida si le sigue un separador y una instrucción/consulta explícita. Se reutilizan manejadores existentes; mensaje original permanece en historial. Sin excepciones por productos/restaurantes.
+
+Foco180/180,28,587s; TypeScript general/build OK; Node92/92. Global17.887/17.887,239suites,537hashes,766,52s; inventario exacto/fuente congelada. /tmp/ppp-170-{baseline,focus,tsc,node}.log y global-summary.json.72 recorridos verifican respuesta, carrito, estado, pendiente, nombre/dirección y DTO exacto con notas/opciones conservadas. Cero API/Meta/órdenes externas. Publicación solo staging;170 pendiente de despliegue agrupado. Último servidor acreditado098250c8 (hasta169), healthy; Main intacta.
+
+Próximo: comentarios con nombre/teléfono/dirección explícitos, referencias cortas «solo uno» con varias líneas y recuperación de pregunta histórica identificable.170 acredita instrucciones/consultas específicas en el mismo mensaje, con producto nombrado; no lenguaje libre arbitrario ni ambigüedad entre líneas del mismo SKU. Checkout sembrado, modelo/mapa simulados. Ver whatsapp-feedback-action-validation-2410.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda169: comentarios sin interrogación y continuidad (24/10)
 
 Base4092e1c6, solo staging.108 recorridos nuevos: tres menús×agente simulado on/off×nombre/pago/sabor×seis paráfrasis de precio alto, incomprensión y pregunta omitida. Baseline funcional definitivo54/54 falló: rechazo de nombre, repetición de pago o selección inválida. Ahora el manejador de comentarios reconoce frases completas, responde al comentario y conserva recordatorio/estado/datos. No promete correcciones no realizadas ni inventa descuentos. Mensajes con instrucciones o consultas adicionales no son absorbidos por estas expresiones ancladas.

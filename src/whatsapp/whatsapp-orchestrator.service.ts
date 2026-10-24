@@ -1325,6 +1325,10 @@ export class WhatsappOrchestratorService {
     if (!/[¿?]/.test(text) && this.conversationService.getSession(conv).cart.length) {
       text = text.replace(/^mejor\s+(?=cambia\s)/i, '');
     }
+    // Feedback may introduce an explicit correction/question. Keep the raw
+    // inbound message for history, but route the actionable clause rather than
+    // interpreting the whole complaint as a name or another product purchase.
+    text = text.replace(/^(?:no me (?:entendiste|entiendes|has entendido)|(?:eso )?no (?:fue|es) lo que (?:te )?ped[ií]|no (?:me )?(?:respondiste|contestaste|has respondido|has contestado)(?: (?:mi pregunta|lo que te pregunt[eé]))?)\s*[,;:\n]\s*(?=(?:deja|pon|cambia|quita|agrega|a[nñ]ade|quiero|dame)\b|[¿]|(?:qu[eé]|cu[aá]nto|con qu[eé])\b)/i, '');
     let originalText = text;
     if (await this.tryHandleBinaryUnitSubset(conv,msg.waId,this.conversationService.getSession(conv),originalText,cfg)) return;
     // Resolve explicit one/other family plans before generic quantity/option
