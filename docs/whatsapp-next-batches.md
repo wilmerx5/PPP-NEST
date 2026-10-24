@@ -1,3 +1,11 @@
+## VIGENTE — tanda155: sabor pendiente con aclaración de apartamento (23/10)
+
+Baseb0d82553, solo staging.18 conversaciones nuevas: tres cartas con jugo/malteada/smoothie, agente simulado on/off, dirección primero/sabor primero/cancelar bebida. La guarda154 ya cubre pendingAttribute: «1» ambiguo conserva sesión y no cotiza; etiqueta de apartamento o sabor explícito resuelve su pendiente. Cancelar bebida mantiene el plato y la dirección pendiente; luego «2» resuelve apartamento sin compra accidental. DTO final exacto con una o dos líneas según cancelación, sabor y destino verificados.
+
+Sin cambios de runtime. Foco60/60,13,036s; TypeScript general/build OK, Node92/92. No repetir global por tests/documentación: última global154=17.317/222suites, no afirmar que se ejecutó una global nueva. Evidencia /tmp/ppp-155-{corrected-baseline,focus,tsc,node}.log. Cero API/Meta/órdenes externas. Publicación solo staging; no deploy de155 (solo tests/docs). Runtime154 sigue pendiente de despliegue agrupado; último servidor82b77757 (152–153), Main intacta.
+
+Próximo: caducidad real de una elección con otra pendiente, código explícito, GPS+respuesta corta conservando coordenadas, primera compra+dirección contradictoria. Estos casos no se acreditan con155. Contraste real acotado sigue pendiente según whatsapp-api-validation-next-2310.md; no declarar vendible por conteos. Ver whatsapp-address-flavor-collision-validation-2310.md.
+
 ## VIGENTE — tanda154: número ambiguo entre producto y apartamento (23/10)
 
 Base0ed2d7ca, solo staging.24 recorridos nuevos en tres menús (Bowl/Hamburguesa/Sandwich), agente simulado on/off, respuesta1/2 y resolución producto primero/dirección primero. Baseline12/12 falló: número elegía apartamento y cotizaba aunque también podía elegir producto. Con ambos pendientes, respuesta corta sin etiqueta pide indicar apartamento o nombre del producto/opción y no muta sesión. Se verifica consulta intermedia de precio, conservación de pendientes/carrito, selección explícita en ambos órdenes y DTO final con dos líneas, opciones/notas y apartamento2.
