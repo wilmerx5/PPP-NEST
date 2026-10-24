@@ -1,3 +1,9 @@
+## VIGENTE — promoción Main/producción hasta171 (24/10)
+
+Solicitud explícita: «despliega main». Main local/remoto actualizado por fast-forward a8d7aee28, misma fuente validada por18.049 pruebas/240suites, TypeScript general/build y Node92. Producción /var/www/ppp-nest reconstruida y verificada: imagen43a0d14f…, running,0reinicios; API públicaOK,DBconnected,circuitCLOSED; código compilado de171 comprobado. Compose privado y.env conservados por hash; bases/volúmenes intactos. Rollback ppp-nest-api:rollback-before-8d7aee28 conserva ef426c93…. Modelos prod/staging iguales: Sol6.1/Luna/Luna/Transcribe.
+
+Staging permanece activa e intacta en servidor098250c8 (hasta169), imagencebba760…,healthy,0reinicios; su rama contiene171.170–171 ya están en producción, pero aún pendientes del próximo despliegue agrupado de staging. Main local conserva artefactos generados ajenos; no ejecutar restore/clean sobre ellos. Commit posterior solo documental no requiere reconstrucción. Registro: whatsapp-main-promotion-2410.json; /tmp/ppp-main-{deploy-2410.log,verified-2410.json}. Primera aserción de verificación buscaba comentario eliminado por compilador; reemplazada por patrones de código ejecutable, reensayo aprobado. Cero API pagada/WhatsApp/órdenes externas. No declarar vendible por conteos; continuar próximo bloque de171 solo en staging.
+
 ## VIGENTE — tanda171: reclamo + contacto + consulta (24/10)
 
 Base8b1617da, solo staging.162 recorridos nuevos: tres menús×agente simulado on/off×nombre/pago/sabor pendiente×nombre/teléfono/dirección×precio después/contenido después/precio antes. Baseline54/54 falló: respondía precio pero perdía el contacto. Se adelanta normalización del preámbulo y se amplía separador existente de consulta/contacto a estos pasos, etiquetas explícitas y precio. Reutiliza manejadores existentes de datos; no hardcodes de restaurantes.

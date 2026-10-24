@@ -1,0 +1,59 @@
+{
+  "verifiedAt": "2026-10-24T16:59:42.584479+00:00",
+  "head": "8d7aee28aa42003e79e405f6124bc20b3cc8ae0f",
+  "containers": {
+    "ppp_nest_api": {
+      "image": "sha256:43a0d14fbecf2bd0e477911426cc249e798ec8d2afa62f57125b8e0702a3392b",
+      "status": "running",
+      "health": null,
+      "restarts": 0,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna"
+      }
+    },
+    "ppp-staging-api-1": {
+      "image": "sha256:cebba760f2939f15c9ced590b7432bb1408771e75c6d5da1a393597b9f1e2961",
+      "status": "running",
+      "health": "healthy",
+      "restarts": 0,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna"
+      }
+    }
+  },
+  "productionHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED"
+  },
+  "stagingHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED"
+  },
+  "composeSHA256": "d973f08a9a1708b7309e801c07738350ce8e4f61b17af295bf52b6828bdf3b84",
+  "compiledContactFixPresent": true,
+  "userAuthorized": true,
+  "promotedThroughBatch": 171,
+  "validation": "18.049 tests, 240 suites; 538 source hashes identical to validated staging; TypeScript general/build and Node92 passed. No runtime changes for promotion.",
+  "rollbackTag": "ppp-nest-api:rollback-before-8d7aee28",
+  "previousImage": "sha256:ef426c93966a809c007cfb0eb9bf0b83a3e2ef4b137498b23a632e8f61b7d613",
+  "preserved": [
+    "production private compose and .env verified by hash",
+    "databases and volumes",
+    "staging branch and container",
+    "local Main generated dist and tsbuildinfo changes"
+  ],
+  "limits": [
+    "No paid inference, WhatsApp messages or external orders",
+    "Production has no Docker healthcheck; public API health verified",
+    "First verification asserted a source comment present in compiled JS; compiler strips comments. Corrected assertion checks executable code patterns, rerun passed.",
+    "Same models/code do not guarantee identical catalog data or model responses"
+  ]
+}
