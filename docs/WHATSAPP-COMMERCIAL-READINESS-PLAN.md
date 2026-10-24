@@ -1,3 +1,11 @@
+## VIGENTE — tanda167: sabor activo retirado y salida de la selección (24/10)
+
+Base59dfc826, solo staging.24 recorridos nuevos: tres menús×agente simulado on/off×nombre/número de sabor retirado×elegir alternativa/cancelar bebida. Baseline12/12 pasó y ampliación24/24 pasó sin cambio runtime. Se cambia el catálogo después de ofrecer sabores: opción anterior ya no existe; bot avisa, muestra Naranja, conserva carrito y cola; consulta de contenido no consume pendiente. Alternativa o cancelación termina sucesoras completas conservando cantidades/notas y DTO exacto.
+
+Foco60/60,24,568s; TypeScript general/build OK; Node92/92. /tmp/ppp-167-{baseline,focus,tsc,node}.log. No global redundante por tests/docs; última global166=17.629/235suites, no sumar focos a global. Cero API/Meta/órdenes externas. Publicación solo staging; no deploy. Runtime166 sigue pendiente de deploy agrupado; servidorb8a6567a(161–165). Main intacta.
+
+Próximo: cambio de cantidad mientras elige sabor, opción retirada de una compra posterior ya encolada, reordenamiento de números, mismo SKU activo y referencias «otras dos de esas».167 acredita retiro de opción de selección activa, no estos pendientes. Modelo/mapa simulados, inicio de checkout sembrado; contraste real pendiente. Ver whatsapp-withdrawn-flavor-queue-validation-2410.md. No declarar vendible por conteos.
+
 ## VIGENTE — tanda166: disponibilidad cambia en la cola (24/10)
 
 Base90444258, solo staging.24 recorridos nuevos: tres menús×agente simulado on/off×producto agotado/retirado después de encolar×resolver/cancelar selección activa. Baseline corregido24/24 falló. Ahora cada avance verifica catálogo actual, informa y retira solo la fila no disponible, conserva posteriores y continúa. Al volver al pago se conserva aviso mediante contexto efímero del turno: antes el resumen sobrescribía la explicación aunque el carrito ya fuera correcto.
