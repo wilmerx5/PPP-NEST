@@ -1,7 +1,7 @@
 import {splitAccompanimentPurchase, includesAccompaniment} from './whatsapp-accompaniment-offer';
 import { drinkInclusion, sodaBrandIn } from './whatsapp-drink-inclusion';
 import {variantUnitScope} from './whatsapp-variant-unit-scope';
-import {canonicalStreetAddress, splitDeliveryAddressParts, splitAddressKitchenNote, mergeDeliveryUnitDetails} from './whatsapp-address-parts';
+import {canonicalStreetAddress, splitDeliveryAddressParts, splitAddressKitchenNote, mergeDeliveryUnitDetails, deliveryUnitConflict} from './whatsapp-address-parts';
 import {checkoutEnvelope} from './whatsapp-checkout-envelope';
 import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
 import { customerLocationLabel, googleMapsPin, validDeliveryCoordinates } from './whatsapp-location-label';
@@ -1756,6 +1756,11 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    const addressConflict = canonicalStreetAddress(originalText) ? deliveryUnitConflict(originalText) : null;
+    if (addressConflict && session.cart.length && !['completed','closed','human_takeover'].includes(conv.state)) {
+      await this.reply(conv, msg.waId, `Veo dos datos distintos para ${addressConflict.label}: ${addressConflict.values.join(' y ')}. ¿Cuál es el correcto? Envíame la dirección con ese dato para continuar. Tu pedido sigue igual.`);
+      return;
+    }
     // A bare street supplied after an unresolved named complex completes that
     // destination. An explicit change remains a replacement, handled normally.
     if (session.address && session.deliveryFeeCalculated === null && !session.deliveryOutOfCoverage &&

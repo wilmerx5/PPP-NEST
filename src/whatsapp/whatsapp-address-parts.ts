@@ -127,3 +127,17 @@ export function mergeDeliveryUnitDetails(previous: string, incoming: string): st
   rest = rest.replace(/^[\s,;]+|[\s,;]+$/g, '').trim();
   return [kept, ...additions, rest].filter(Boolean).join(', ');
 }
+
+/** Conflicting labels need clarification before any routing or address mutation. */
+export function deliveryUnitConflict(source: string): { label: string; values: string[] } | null {
+  const groups: Array<[string,string]> = [
+    ['apartamento','apartamento|apto|apt|ap'], ['interior','interior|int'],
+    ...['torre','bloque','casa','piso','local','oficina','entrada'].map(label=>[label,label] as [string,string]),
+  ];
+  for(const [label,aliases] of groups) {
+    const pattern=new RegExp(`\\b(?:${aliases})\\.?\\s*(?:#\\s*)?([a-z]\\d{0,3}|\\d{1,4}[a-z]?)\\b`,'gi');
+    const values=[...new Set([...source.matchAll(pattern)].map(match=>match[1].toUpperCase()))];
+    if(values.length>1) return {label,values};
+  }
+  return null;
+}

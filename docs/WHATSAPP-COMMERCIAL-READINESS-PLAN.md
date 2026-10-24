@@ -1,3 +1,11 @@
+## VIGENTE — tanda151: disponibilidad al elegir y conflicto de interiores (23/10)
+
+Baseb420c1cb, staging.42 casos nuevos:24 productos no disponibles/retirados durante elección desde compra/pago,12 direcciones repetidas/contradictorias,6 contratos. Stock ya estaba protegido: primer fallo se debía a ignoreBusinessHours=true del harness, corregido a false con negocio simulado abierto. No acreditar ese baseline como bug. Runtime ahora aclara dos componentes de dirección contradictorios antes de guardar/geocodificar; conserva sesión y continúa al recibir dirección corregida. Ver whatsapp-stock-address-conflict-validation-2310.md.
+
+Foco66/66, TypeScript general/build OK, Node92/92. Global17.255/17.255,218suites,516hashes,642,89s; inventario exacto/fuente congelada. /tmp/ppp-151-global-summary.json. Cero API pagada/Meta/órdenes externas. Publicación solo staging; despliegue150–151 en preparación, aún no verificado. Main/producción intactas.
+
+Límites: modelos/mapa simulados; conflicto en calle numerada con carrito existente, se pide dirección completa corregida. Próximo: aclaración corta («708») conservando calle/conjunto, primer mensaje con compra+dirección contradictoria, opción disponible solo en una candidata. Contraste real acotado sigue pendiente según whatsapp-api-validation-next-2310.md; no declarar vendible por conteos.
+
 ## VIGENTE — tanda150: interior parcial y compra ambigua con consulta (23/10)
 
 Base6ac84a03, solo staging.31 casos nuevos:12 direcciones,12 recorridos de compra ambigua desde compra/pago con pregunta de precio,7 contratos de detalles. Completar calle con apartamento nuevo conserva torre y demás componentes; reemplazo explícito no hereda destino. Compra adicional por cabeza compartida abre alternativas reales sin editar unidad anterior, conserva opción/nota y retoma checkout. Ver whatsapp-partial-interior-ambiguous-addition-validation-2310.md.
