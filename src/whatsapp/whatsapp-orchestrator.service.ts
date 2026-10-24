@@ -11658,7 +11658,8 @@ export class WhatsappOrchestratorService {
     text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     const question = text.trim().match(/^(?:(agr[eé]galo al pedido(?: por favor)?),?\s+pero\s+)?[¿]?de qu[eé] es (?:la|el) ([\p{L} ]+?)(?: el d[ií]a de hoy| hoy)?[?.!]*$/iu);
-    if (!question || !['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) || session.pendingMultiOrder || session.pendingAttribute || session.pendingMatch) return false;
+    if (!question || !['building_cart', 'awaiting_name', 'awaiting_address', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) || session.pendingMultiOrder || session.pendingAttribute || session.pendingMatch) return false;
+    if (question[1] && !['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state)) return false;
     const menu = await this.catalogService.getMenuProducts();
     const focusId = session.pendingAddOffer?.productId || session.productFocus?.productId;
     const product = menu.find(p => p.id === focusId) || await this.discussedProductFromRecent(conv.id, menu);
@@ -11671,7 +11672,8 @@ export class WhatsappOrchestratorService {
     const answer = detail ? `La carta de *${product.name}* indica: ${product.description}` :
       `No tengo los ingredientes de ${question[2]} confirmados. La carta de *${product.name}* solo indica: ${product.description}`;
     if (!question[1]) {
-      await this.reply(conv, waId, answer);
+      const reminder = this.formatInterruptedStepReminder(conv, session);
+      await this.reply(conv, waId, answer + (reminder ? `\n\n${reminder}` : ''));
       return true;
     }
     if (!(cfg.ignoreBusinessHours || (await this.businessService.getStatus()).isOpen)) return false;

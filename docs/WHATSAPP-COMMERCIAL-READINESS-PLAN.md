@@ -1,3 +1,11 @@
+## VIGENTE — tanda157: ingredientes consultados durante datos del checkout (23/10)
+
+Base9e76e0b1, staging.60 recorridos nuevos: tres platos/acompañamientos×detalle conocido/desconocido×agente simulado on/off×nombre,dirección,teléfono,pago,confirmación. Baseline36 fallos/24 aprobados: tryHandleReferencedSideDetail excluía nombre/dirección/teléfono; pregunta se rechazaba o iba al fallback. Consulta de solo lectura ahora permitida en esos estados, responde carta o reconoce ingredientes no confirmados y añade recordatorio del paso pendiente. No amplía compra+pregunta a esos estados. Conserva sesión, carrito y contacto; cierre con DTO verificado.
+
+Foco114/114,15,302s; TypeScript general/build OK, Node92/92. Global17.431/17.431,226suites,524hashes,596,08s; inventario exacto/fuente congelada. /tmp/ppp-157-global-summary.json. Cero API/Meta/órdenes externas. Deploy agrupado154–157 pendiente de verificar; Main intacta. Ver whatsapp-checkout-side-ingredients-validation-2310.md.
+
+Próximo: «qué lleva esa salsa», «la ensalada de qué es», cambio de categoría mientras espera sabor, consulta+acción durante datos, después de confirmar. Esta tanda acredita «de qué es la/el … hoy» con referente existente y sin selección pendiente; no generalizar a todas las preguntas. Sigue pendiente contraste real acotado según whatsapp-api-validation-next-2310.md; no declarar vendible por conteos.
+
 ## VIGENTE — tanda156: preguntas durante checkout y caducidad de sabor (23/10)
 
 Baseaa160493, solo staging.36 casos nuevos:30 matriz de consultas de contenido/tiempo en nombre,dirección,teléfono,pago,confirmación (tres menús×agente simulado on/off);6 recorridos de sabor+apartamento con ejecución real de runSessionExpiry y clearPendingChoices, repositorio/envío simulados. Preguntas no cambian carrito/contacto/destino ni estado; luego datos corregidos y DTO. Caduca sabor, conserva plato y conflicto de apartamento, responde consulta, admite «2» como apartamento y cierra sin bebida caducada.
