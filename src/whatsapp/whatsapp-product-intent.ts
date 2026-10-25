@@ -91,10 +91,15 @@ export function interpretProductNote(source: string, products: NamedProduct[]):
     if (new RegExp(`^(?:(?:bien|muy)\\s+)?${descriptor}(?:\\s+(?:y\\s+)?(?:(?:bien|muy)\\s+)?${descriptor})*$`).test(tail)) {
       return {productId:product.id,productText:prepared.slice(0,match.index+match[0].length).trim(),note:tail};
     }
-    if (!/^(?:con\s+(?:h?art[oa]|much[oa]|bastante|extra|poc[oa])\s+\p{L}|con\s+aji\b)/u.test(tail)) continue;
+    if (!/^(?:con\s+(?:h?art[oa]s?|much[oa]s?|bastantes?|extra|poc[oa]s?)\s+\p{L}|con\s+aji\b)/u.test(tail)) continue;
     if (tail.length>180 || /[?¿;,]|\b(?:y|agrega|quiero|dame|si|cambia|por)\b/.test(tail)) continue;
     const note = tail.replace(/\bart([oa])\b/g,'hart$1').replace(/\bahi\b/g,'ají').replace(/\baji\b/g,'ají');
     return {productId:product.id,productText:prepared.slice(0,match.index+match[0].length).trim(),note};
   }
   return null;
+}
+
+/** An uncounted request for condiment packets modifies food, not the delivery address. */
+export function isCondimentPacketNote(text: string): boolean {
+  return /^(?:con\s+)?(?:h?art[oa]s?|much[oa]s?|bastantes?)\s+sobres?\s+de\s+(?:salsa(?:\s+de\s+\p{L}+)?|mostaza|mayonesa|aj[ií]|ketchup)(?:\s+por favor)?[.!]*$/iu.test(text.trim());
 }

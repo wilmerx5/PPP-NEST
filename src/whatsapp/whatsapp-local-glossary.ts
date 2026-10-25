@@ -13,6 +13,10 @@ const PHRASE_REWRITES: Array<{
   re: RegExp;
   to: string | ((match: string, ...groups: string[]) => string);
 }> = [
+  // Numbered road shorthand, independent of restaurant or place names.
+  { re: /^cr\.?\s*(?=\d)/i, to: 'Carrera ' },
+  // A quantity adjective about condiment packets is a kitchen note.
+  { re: /^(?=(?:h?art[oa]s?|much[oa]s?|bastantes?)\s+sobres?\s+de\s+)/i, to: 'con ' },
   // Street aliases only when followed by a numbered street and #, not SKU codes.
   { re: /\b(?:tv|trv|transv)\.?[ \t]*(?=\d+[a-z]?[ \t]*#[ \t]*\d+[a-z]?[ \t]*[- ][ \t]*\d+)/gi, to: 'Transversal ' },
   { re: /\bkr\.?[ \t]*(?=\d+[a-z]?[ \t]*#[ \t]*\d+[a-z]?[ \t]*[- ][ \t]*\d+)/gi, to: 'Carrera ' },

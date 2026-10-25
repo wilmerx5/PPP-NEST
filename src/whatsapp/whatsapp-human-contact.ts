@@ -8,7 +8,7 @@ export const WHATSAPP_HUMAN_CONTACT_MESSAGE =
   `Si prefieres, llámanos al *${WHATSAPP_HUMAN_CONTACT_PHONE}*.`;
 
 export const WHATSAPP_AI_DISCLAIMER_SAFE =
-  `Con gusto te atiendo. Aún estoy aprendiendo y a veces cometo errores. ` +
+  `Con gusto te atiendo. ` +
   `Si quieres, también puedes llamarnos al *${WHATSAPP_HUMAN_CONTACT_PHONE}*.`;
 
 /**
@@ -34,7 +34,7 @@ export function scrubAsesorHandoffCopy(
 
 /** Disclaimer de bienvenida: nunca mencionar ASESOR ni handoff por chat. */
 export function scrubAiDisclaimerCopy(text: string): string {
-  const t = (text || '').trim();
+  const t = (text || '').replace(/(?:A[uú]n\s+)?estoy aprendiendo(?:\s+y\s+a veces cometo errores)?[.\s]*/gi, '').trim();
   if (!t) return WHATSAPP_AI_DISCLAIMER_SAFE;
   if (
     /\basesor\b/i.test(t) ||

@@ -14,7 +14,7 @@ import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-req
 import {followUpExtraNote, followUpHandlingNote, splitKitchenPreference, splitOptionIndexAnswer, trailingServingNote} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
-import { condimentIntensityNote, dedupeKitchenNoteParts, interpretProductNote, joinKitchenNotes } from './whatsapp-product-intent';
+import { isCondimentPacketNote, condimentIntensityNote, dedupeKitchenNoteParts, interpretProductNote, joinKitchenNotes } from './whatsapp-product-intent';
 import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
 import { parsePartialNote } from './whatsapp-partial-note';
 import { parseCartNoteRevision, reviseLineNote, type CartNoteRevision } from './whatsapp-note-revision';
@@ -1834,7 +1834,8 @@ export class WhatsappOrchestratorService {
         session.deliveryLat == null && session.deliveryLng == null &&
         !canonicalStreetAddress(session.address) && canonicalStreetAddress(originalText) &&
         /^(?:calle|carrera|cra\.?|cll|diagonal|diag\.?|dg\.?|transversal|tv\.?|avenida)\s/i.test(originalText.trim()) &&
-        /\b(?:conjunto|condominio|residencial|urbanizaci[oó]n|edificio)\b/i.test(session.address) &&
+        (/\b(?:conjunto|condominio|residencial|urbanizaci[oó]n|edificio)\b/i.test(session.address) ||
+          !!splitDeliveryAddressParts(session.address).details) &&
         !/\b(?:conjunto|condominio|residencial|urbanizaci[oó]n|edificio)\b/i.test(originalText)) {
       const incoming = splitDeliveryAddressParts(originalText);
       const previous = splitDeliveryAddressParts(session.address);
@@ -20125,6 +20126,7 @@ export class WhatsappOrchestratorService {
 
   /** Evita tomar "a la broaster / frito / plancha" / platos como dirección. */
   private looksLikeFoodNotAddress(text: string): boolean {
+    if (isCondimentPacketNote(text)) return true;
     const t = text.trim().toLowerCase();
     if (!t) return false;
 
@@ -20732,6 +20734,7 @@ export class WhatsappOrchestratorService {
 
   /** Mensaje suelto que parece nota de cocina/domicilio, no un producto nuevo. */
   private looksLikeStandaloneOrderNote(text: string): boolean {
+    if (isCondimentPacketNote(text)) return true;
     const t = text.trim();
     const lower = t.toLowerCase();
     if ((t.length < 4 || t.length > 280) && !/^aj[ií][\s!.]*$/i.test(t)) return false;
@@ -22620,6 +22623,15 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
+    // Address capture expresses checkout intent; recording it is not geocoding it.
+    // Let checkout quote/validate it and ask for the actual next missing field.
+    if (guarded.actions?.setAddress && session.cart.length &&
+        !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.tryConfirmOrder(conv, msg.waId, session);
+      return true;
+    }
+
     // Nombre del cliente vía agente → Nest guarda y sigue checkout (no cortar en “nombre registrado”)
     {
       const nameFromAction =
@@ -22808,6 +22820,10 @@ export class WhatsappOrchestratorService {
           pendingAddOffer:{productId:product.id,name:product.name,code:product.code,price:product.price,
             quantity:this.catalogService.extractQuantityFromMessage(text),sourceText:text.slice(0,400)}};
       }
+    }
+    if (session.cart.length && !/[¿?]/.test(reply) &&
+        (guarded.actions?.updateCartLines?.length || guarded.actions?.setCustomerNotes)) {
+      reply += '\n\n' + (this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session));
     }
     reply = withFirstContactDisclaimer(reply);
     await this.conversationService.saveSession(conv, session, 'building_cart');
