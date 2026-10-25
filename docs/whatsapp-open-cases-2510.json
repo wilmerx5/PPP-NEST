@@ -35,6 +35,20 @@
           "No external order or real map calls",
           "Ambiguous accompaniment, total, merchant details and cancellation still need full-flow tests"
         ]
+      },
+      "followup186": {
+        "status": "partially fixed; original long conversation still fails",
+        "regression": "src/whatsapp/whatsapp-purchase-transfer-inquiry.spec.ts",
+        "newPassingCases": 28,
+        "diagnosticPassed": 4,
+        "diagnosticFailed": 4,
+        "fixed": "Explicit purchase followed by total/transfer question reaches purchase routing; configured merchant details answered without selecting payment or confirming order. Canonical soup + executive with payment now passes.",
+        "remaining": [
+          "Original long wording still loses standalone soup / assigns default executive soup",
+          "Address and ambiguous accompaniment need separate validation",
+          "No paid inference or real map validation"
+        ],
+        "evidence": "/tmp/ppp-186-final-recheck.json"
       }
     },
     {

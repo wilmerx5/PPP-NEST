@@ -186,6 +186,7 @@ type InboundTurnContext = {
   initialCartEditSelections?: Record<string, string | undefined>;
   initialPendingMatch?: NonNullable<WhatsappSessionData['droppedPick']>;
   purchasePriceQuestion?: boolean;
+  purchaseTransferAnswer?: string;
   independentInquiryAnswer?: string;
   queuedPurchaseNotices?: string[];
   subsetNoteHandled?: boolean;
@@ -663,6 +664,9 @@ export class WhatsappOrchestratorService {
       failed = true;
       throw error;
     } finally {
+      if (!failed && turn.conv && turn.purchaseTransferAnswer) {
+        await this.reply(turn.conv, msg.waId, turn.purchaseTransferAnswer);
+      }
       if (turn.conv) this.turnStartOrderReview?.delete(String(turn.conv.id));
       if (turn.conv) this.declinedListTurns?.delete(String(turn.conv.id));
       try {
@@ -1478,6 +1482,16 @@ export class WhatsappOrchestratorService {
         }
       }
 
+    }
+    // A trailing total/payment question does not turn an explicit purchase into
+    // a quotation. Keep the order text intact and answer from the resulting cart.
+    const transferTail = originalText.match(/^([\s\S]+?)[;\n]+\s*[¿?]*cu[aá]nto\s+(?:ser[ií]a|sale|es|cuesta)\s+(?:en total\s+)?para\s+pagar\s+(?:por|con)\s+(?:nequi|daviplata|transferencia)[?!.\s]*(?:me\s+(?:env[ií]a[s]?|pasa[s]?|comparte[s]?)\s+(?:el\s+)?(?:n[uú]mero|datos|cuenta|llave)(?:\s+gracias)?[?!.\s]*)?$/i);
+    if (transferTail && /\b(?:quiero|dame|me\s+(?:das|regala[s]?|vende[s]?)|agrega|a[nñ]ade|(?:una?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\s+\p{L}+)\b/iu.test(transferTail[1]) &&
+        !/[¿?]/.test(transferTail[1]) && !/\b(?:si pidiera|si pido|cotiza|cotizaci[oó]n)\b/i.test(transferTail[1])) {
+      turn.purchasePriceQuestion = true;
+      turn.purchaseTransferAnswer = this.formatMerchantTransferDetails(cfg);
+      text = transferTail[1].trim();
+      originalText = text;
     }
     // Merchant payment details are information, never customer identity or a
     // payment selection. Handle them before checkout field extraction.
@@ -21263,15 +21277,18 @@ export class WhatsappOrchestratorService {
     if (!paymentSubject || !asksDetails ||
         /\b(?:mi (?:nombre|telefono|celular)|me llamo|agrega|anade|quita|cambia|quiero|regalas|vendes|dame|me das|pago por|pagare|a nombre de (?!quien\b))\b/.test(t)) return false;
     const session = this.conversationService.getSession(conv);
-    const methods = getEnabledPaymentMethods(cfg.paymentMethods);
-    const transfer = methods.find(method => method.enabled && method.id === 'transfer');
-    const details = (cfg.localContext?.transferInfoNote || '').trim();
-    const answer = !transfer ? 'La transferencia no está habilitada para este pedido.' : details
-      ? `Estos son los datos de transferencia configurados por el comercio:\n${details}`
-      : 'No tengo los datos de cuenta ni el titular confirmados. El restaurante debe proporcionarlos antes de transferir.';
+    const answer = this.formatMerchantTransferDetails(cfg);
     const reminder = session.cart.length ? this.formatInterruptedStepReminder(conv, session) : '';
     await this.reply(conv, waId, answer + (reminder ? `\n\n${reminder}` : ''));
     return true;
+  }
+
+  private formatMerchantTransferDetails(cfg: EffectiveWhatsappConfig): string {
+    const transfer = getEnabledPaymentMethods(cfg.paymentMethods).find(method => method.enabled && method.id === 'transfer');
+    const details = (cfg.localContext?.transferInfoNote || '').trim();
+    return !transfer ? 'La transferencia no está habilitada para este pedido.' : details
+      ? `Estos son los datos de transferencia configurados por el comercio:\n${details}`
+      : 'No tengo los datos de cuenta ni el titular confirmados. El restaurante debe proporcionarlos antes de transferir.';
   }
 
   private buildPaymentConfirmReply(
