@@ -1828,6 +1828,21 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, `Veo dos datos distintos para ${addressConflict.label}: ${addressConflict.values.join(' y ')}. ¿Cuál es el correcto? Puedes responder con el dato correcto o enviar la dirección completa. Tu pedido sigue igual.`);
       return;
     }
+    // Repeating the same unresolved street is a retry, not a request to erase
+    // the apartment/reference. A different street or explicit replacement is not merged.
+    if (session.address && session.deliveryFeeCalculated === null &&
+        !['completed','closed','human_takeover'].includes(conv.state)) {
+      const street = canonicalStreetAddress(originalText);
+      const previousStreet = canonicalStreetAddress(session.address);
+      if (street && street === previousStreet &&
+          /^(?:calle|carrera|cra\.?|cll?|diagonal|diag\.?|dg\.?|transversal|tv\.?|avenida)\s/i.test(originalText.trim()) &&
+          !splitDeliveryAddressParts(originalText).details &&
+          splitDeliveryAddressParts(session.address).details) {
+        originalText = session.address;
+        text = originalText;
+      }
+
+    }
     // A bare street supplied after an unresolved named complex completes that
     // destination. An explicit change remains a replacement, handled normally.
     if (session.address && session.deliveryFeeCalculated === null && !session.deliveryOutOfCoverage &&
