@@ -1,0 +1,59 @@
+{
+  "verifiedAt": "2026-10-25T16:52:00.140323+00:00",
+  "head": "0f8c98da5dff2b949d83c56430c26634a764c1ce",
+  "containers": {
+    "ppp_nest_api": {
+      "image": "sha256:e7c463008c5a6854decc0e3635d0a18ffbaaca415661064453d85cf5105d2f28",
+      "status": "running",
+      "health": null,
+      "restarts": 0,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna"
+      }
+    },
+    "ppp-staging-api-1": {
+      "image": "sha256:c0c234f8b355a58e7273b5cfe9387359cd4d1257dd6476eced36a5caba2b0cfb",
+      "status": "running",
+      "health": "healthy",
+      "restarts": 0,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna"
+      }
+    }
+  },
+  "productionHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED"
+  },
+  "stagingHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED"
+  },
+  "composeSHA256": "d973f08a9a1708b7309e801c07738350ce8e4f61b17af295bf52b6828bdf3b84",
+  "compiledContactFixPresent": true,
+  "userAuthorized": true,
+  "promotedThroughBatch": 180,
+  "validation": "18.289 tests / 249 suites; 547 validated source hashes unchanged; TypeScript general/build and Node92 passed.",
+  "rollbackTag": "ppp-nest-api:rollback-before-0f8c98da",
+  "previousImage": "sha256:43a0d14fbecf2bd0e477911426cc249e798ec8d2afa62f57125b8e0702a3392b",
+  "preserved": [
+    "production private compose and .env verified by hash",
+    "databases and volumes",
+    "staging branch and container",
+    "184 existing local Main generated files verified by hash"
+  ],
+  "limits": [
+    "No paid inference, WhatsApp messages or external orders",
+    "Production has no Docker healthcheck; public API health verified",
+    "Staging server remains through177; branch includes180",
+    "Same models do not guarantee identical catalog data or model responses"
+  ]
+}

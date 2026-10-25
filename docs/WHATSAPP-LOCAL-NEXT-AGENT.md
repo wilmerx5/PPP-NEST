@@ -1,3 +1,9 @@
+## VIGENTE — producción desplegada hasta180 (25/10)
+
+Solicitud explícita «despliega en prod». Main local/remota integrada por fast-forward a0f8c98da; servidor /var/www/ppp-nest ejecuta ese commit. Verificado25/10 16:52UTC: imagene7c46300…,running/0reinicios; API públicaOK,DBconnected,circuitCLOSED; código compilado de respuesta parcial/contacto presente. Validación previa18.289/249suites,547hashes idénticos, TypeScript general/build y Node92. Compose privado y.env preservados por hash; bases/volúmenes intactos. Rollbackppp-nest-api:rollback-before-0f8c98da. Artefactos locales Main conservados(184archivos por hash).
+
+Staging sigue activa: servidor hasta177, imagenc0c234f8…,healthy,0reinicios,API/DBOK; rama contiene180.178–180 aún pendientes del próximo despliegue agrupado de staging. Modelos efectivos iguales(Sol6.1/Luna/Luna/Transcribe). Registro docs/whatsapp-main-promotion-2510.json; /tmp/ppp-main-{deploy-2510.log,verified-2510.json}. Cero API pagada/WhatsApp/órdenes externas. Commit posterior solo documental no exige reconstrucción. Continuar próximo bloque180 en staging, preservando Main.
+
 ## VIGENTE — tanda180: respuesta parcial + contacto (25/10)
 
 Base474f66bb. 24 casos nuevos, tres menús × agente simulado on/off × nombre/teléfono × orden de cláusulas durante pago. Baseline final24/24falló; foco corregido24/24,11,027s. Se guarda contacto explícito con servicios existentes, responde consulta conocida y confirma dato; única consulta sin resolver se devuelve al router habitual. Selección posterior consulta precio sin comprar ni elegir pago; cierre verifica DTO con tres unidades/notas/contacto. TypeScript general/build y Node92/92OK. Global18.289/18.289,249suites,547hashes,739,36s; inventario exacto y fuente congelada. /tmp/ppp-180-global-summary.json.
