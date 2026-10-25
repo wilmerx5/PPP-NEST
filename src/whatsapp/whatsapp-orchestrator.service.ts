@@ -1106,6 +1106,15 @@ export class WhatsappOrchestratorService {
       sessionLoc = feeResult.session;
       if (pendingUnit) sessionLoc = { ...sessionLoc,
         address: `${sessionLoc.address || addr} — ${pendingUnit}`.slice(0, 240), pendingDeliveryUnit: undefined, pendingDeliveryPlace: undefined };
+      if (validDeliveryCoordinates(msg.latitude, msg.longitude)) {
+        // Directions gives a nearby road label, not a replacement delivery pin.
+        // Keep customer place/access details and the exact link for the courier.
+        const suppliedLabel = [msg.locationName, msg.locationAddress].filter(Boolean).join(' — ');
+        const routeLabel = customerLocationLabel(feeResult.session.address || addr);
+        const readable = suppliedLabel || (routeLabel === 'Ubicación compartida' ? routeLabel : `Referencia de mapa: ${routeLabel}`);
+        const access = pendingUnit ? ` — ${pendingUnit}` : '';
+        sessionLoc.address = `${(readable + access).slice(0, 240)} — https://maps.google.com/?q=${msg.latitude},${msg.longitude}`;
+      }
       await this.conversationService.saveSession(conv, sessionLoc, 'building_cart');
       const feeLine = feeResult.notice ? `\n${feeResult.notice}` : '';
       await this.reply(
@@ -7710,7 +7719,9 @@ export class WhatsappOrchestratorService {
         deliveryOutOfCoverage: false,
         deliveryLat: quote.customer.lat || lat,
         deliveryLng: quote.customer.lng || lng,
-        address: this.mergeGeocodedAddressWithCustomerHint(
+        address: validDeliveryCoordinates(coords?.lat, coords?.lng) && quote.geocodedAddress
+          ? quote.geocodedAddress
+          : this.mergeGeocodedAddressWithCustomerHint(
           quote.geocodedAddress || geocodeQuery,
           customerHint,
         ),
@@ -16947,7 +16958,11 @@ export class WhatsappOrchestratorService {
 
   private isPinnedDeliveryAddress(session: WhatsappSessionData): boolean {
     return !!session.addressConfirmed && session.deliveryLat != null && session.deliveryLng != null &&
-      /^📍/.test((session.address || '').trim());
+      (/^📍/.test((session.address || '').trim()) ||
+        (session.address || '').split(' — ').some(part => {
+          const pin = googleMapsPin(part.trim());
+          return !!pin && pin.lat === session.deliveryLat && pin.lng === session.deliveryLng;
+        }));
   }
 
   private async replyDeliveryFeeExplanation(
@@ -20772,7 +20787,7 @@ export class WhatsappOrchestratorService {
     if (msg.locationName) parts.push(msg.locationName);
     if (msg.locationAddress) parts.push(msg.locationAddress);
     if (msg.latitude != null && msg.longitude != null) {
-      parts.push(`📍 ${msg.latitude}, ${msg.longitude}`);
+      if (!parts.length) parts.push('Ubicación compartida');
       parts.push(`https://maps.google.com/?q=${msg.latitude},${msg.longitude}`);
     }
     const out = parts.filter(Boolean).join(' — ');

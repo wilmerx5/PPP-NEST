@@ -171,7 +171,7 @@ export class WhatsappDeliveryRoutingService {
       durationMinutes: route.durationMinutes,
       fee: priced.fee,
       source: 'google_directions',
-      geocodedAddress: formatted,
+      geocodedAddress: formatted || (params.customerCoords ? route.destinationAddress : undefined),
       customer,
     };
   }
@@ -386,7 +386,7 @@ export class WhatsappDeliveryRoutingService {
   private async directionsDistance(
     origin: LatLng,
     destination: LatLng,
-  ): Promise<{ distanceKm: number; durationMinutes: number | null } | null> {
+  ): Promise<{ distanceKm: number; durationMinutes: number | null; destinationAddress?: string } | null> {
     const key = this.apiKey();
     if (!key) return null;
 
@@ -417,6 +417,7 @@ export class WhatsappDeliveryRoutingService {
       const seconds = Number(leg.duration?.value);
       if (!Number.isFinite(meters) || meters < 0) return null;
       return {
+        destinationAddress: typeof leg.end_address === 'string' ? leg.end_address.trim() || undefined : undefined,
         distanceKm: Math.round((meters / 1000) * 100) / 100,
         durationMinutes: Number.isFinite(seconds) ? Math.max(1, Math.round(seconds / 60)) : null,
       };

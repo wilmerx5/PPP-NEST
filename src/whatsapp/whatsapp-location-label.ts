@@ -16,10 +16,11 @@ export function googleMapsPin(text: string): {lat:number;lng:number}|null {
 export function customerLocationLabel(address: string): string {
   const parts=address.split(' — ');
   const coordinate=(part:string)=>/^📍\s*-?\d+(?:\.\d+)?,\s*-?\d+(?:\.\d+)?$/.test(part.trim());
-  if(!parts.some(coordinate)){
+  const mapLink=(part:string)=>/^https:\/\/maps\.google\.com\/\?q=/.test(part.trim());
+  if(!parts.some(part=>coordinate(part)||mapLink(part))){
     const written=splitAddressReference(address);
     return written.reference ? `${written.address} · Referencia: ${written.reference}` : address;
   }
-  const labels=parts.filter(part=>!coordinate(part) && !/^https:\/\/maps\.google\.com\/\?q=/.test(part));
+  const labels=parts.filter(part=>!coordinate(part) && !mapLink(part));
   return labels.join(' — ').trim()||'Ubicación compartida';
 }

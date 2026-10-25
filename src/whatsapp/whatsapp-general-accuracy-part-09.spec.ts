@@ -1871,7 +1871,7 @@ describe('Delivery unit before street stays pending until a complete destination
    expect(h.service.ordersService.create).not.toHaveBeenCalled();
   }
   const input=destination==='pin'?'https://maps.google.com/?q=4.62,-74.15':destination==='explicit'?'Calle 10 #81A-20 torre C apartamento 205':'Calle 10 #81A-20';
-  const expected=destination==='explicit'?/81A-20.*torre C.*205/i:destination==='pin'?/4\.62.*-74\.15.*Torre B.*304B/i:/81A-20.*Torre B.*304B/i;
+  const expected=destination==='explicit'?/81A-20.*torre C.*205/i:destination==='pin'?/Referencia de mapa:.*81A-20.*Torre B.*304B.*4\.62.*-74\.15/i:/81A-20.*Torre B.*304B/i;
   const reply=await h.sendQueued(input);expect(reply).toMatch(destination==='explicit'?/205/:/304B/);
   if(destination==='pin'){expect(reply).not.toMatch(/4\.62|-74\.15/);expect(h.service.deliveryRouting.quoteDeliveryFee).toHaveBeenCalledWith(expect.objectContaining({customerCoords:{lat:4.62,lng:-74.15}}));}
   expect(h.service.deliveryRouting.quoteDeliveryFee).toHaveBeenCalled();
