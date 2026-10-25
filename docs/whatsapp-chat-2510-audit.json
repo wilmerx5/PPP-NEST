@@ -1,0 +1,276 @@
+{
+  "source": {
+    "localPath": "/home/levi/Downloads/chat.txt",
+    "sha256": "e85e4beaab6a26ef4fdf8e8ec5977ea2bcbe0d5417b017de616ff87a0b7b64b3",
+    "lines": 2875,
+    "messages": 445,
+    "customerMessages": 226,
+    "botMessages": 219,
+    "receipts": 26
+  },
+  "scope": "28 recorridos manuales: 26 comprobantes + cancelación Nequi + reinicio por porción. No tasa de éxito; comprobante no demuestra pedido correcto.",
+  "base": "49cf15d4",
+  "episodes": [
+    {
+      "id": "CHAT2510-01",
+      "time": "12:41–12:42",
+      "receipt": "21",
+      "topic": "Pollo frito y dirección en dos mensajes",
+      "worked": "Aclaró preparación, actualizó teléfono y cerró.",
+      "remaining": "Cotizó el conjunto antes de incorporar la calle enviada tres segundos después; referencia inicial distinta. Revisar ráfagas y precisión, no afirmar distancia real desde el chat.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-02",
+      "time": "12:43–12:44",
+      "receipt": "23",
+      "topic": "Churrasco, mojarra, bebida y destino",
+      "worked": "Tres productos correctos y nota bien asociada al churrasco.",
+      "remaining": "La bebida quedó dentro de la dirección y llegó al comprobante; notas no visibles en recibo.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-03",
+      "time": "12:54–12:56",
+      "receipt": "33",
+      "topic": "Pedido por ráfaga con dirección primero",
+      "worked": "Cuatro productos, bebida, nota de sobrebarriga e interiores conservados.",
+      "remaining": "Resúmenes intermedios y pregunta de pago mientras llegan productos; comprobar coalescencia sin perder añadidos. Recibo omite notas.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-04",
+      "time": "13:00–13:02",
+      "receipt": "38",
+      "topic": "Pollo brostter y datos intercalados",
+      "worked": "Finalmente conservó calle, apartamento, torre y teléfono.",
+      "remaining": "Aclaración innecesaria del producto, perdió prioridad del pendiente y pidió teléfono con carrito vacío; obligó a repetir compra.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-05",
+      "time": "13:03–13:08",
+      "receipt": "39",
+      "topic": "Dos ejecutivos con opciones repartidas",
+      "worked": "Añadió limonada extra y recuperó dos ejecutivos tras corrección; confirmó con typo.",
+      "remaining": "Aplicó pechuga a ambos, perdió limonadas incluidas, añadió tercer ejecutivo al corregir. No asumir equivalencia de colombina sin catálogo.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-06",
+      "time": "13:08–13:10",
+      "receipt": "41",
+      "topic": "Pollo frito sencillo",
+      "worked": "Compra, dirección multilínea, teléfono, pago y cierre coherentes.",
+      "remaining": "Control positivo; reducir repetición del carrito sin ocultar correcciones.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-07",
+      "time": "13:10–13:11",
+      "receipt": "42",
+      "topic": "Medio pollo y nuevo destino",
+      "worked": "Reconoce fracción, destino nuevo y teléfono después de seleccionar pago.",
+      "remaining": "Control positivo; mantener estos caminos al cambiar el router.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-08",
+      "time": "13:12–13:16",
+      "receipt": "45",
+      "topic": "Combo Pepsi, contenido y sustitución",
+      "worked": "Ráfaga pollo/en combo, cambio inicial a Pepsi, notas posteriores y teléfono funcionan.",
+      "remaining": "Pregunta de contenido abre reemplazo; pierde Pepsi y primera sustitución. Recibo no muestra notas. Solo contenido corregido en staging182, resto pendiente.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-09",
+      "time": "13:16–13:19",
+      "receipt": "49",
+      "topic": "Medio broaster y plátano",
+      "worked": "Lista de productos, cambio de dirección e interiores y cierre coherentes.",
+      "remaining": "Plátano maduro se convierte en producto con queso/bocadillo: mostrar composición, aclarar si hay varias variantes en catálogo.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-10",
+      "time": "13:20–13:21",
+      "receipt": null,
+      "topic": "Compra completa más pregunta Nequi",
+      "worked": "Cancelación del borrador explícita funciona.",
+      "remaining": "Cotiza seis productos en vez de sopa más ejecutivo; ingredientes y sustituciones se cobran aparte. Repro183 abierto.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-11",
+      "time": "13:32–13:34",
+      "receipt": "55",
+      "topic": "Sopita para portería",
+      "worked": "Diminutivo reconocido, nota de entrega y cierre.",
+      "remaining": "Tres turnos para validar destino incluido desde el inicio; mapa no validable con este archivo. Recibo no muestra nota de portería.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-12",
+      "time": "13:40–13:41",
+      "receipt": "61",
+      "topic": "Arroz con costillas y transferencia",
+      "worked": "Producto compuesto correcto, interiores, teléfono, instrucciones de pago y sí final.",
+      "remaining": "Nota con costillas redundante; no confundir confirmar pedido con verificar transferencia.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-13",
+      "time": "13:44–13:49",
+      "receipt": "63",
+      "topic": "Audios y Altavista con interiores",
+      "worked": "Recupera dirección con calle y conserva apartamento al final.",
+      "remaining": "Torre/apartamento aislados se geocodifican como destino y dan fuera de cobertura. Audios omitidos: no evaluar transcripción ni contenido no visible.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-14",
+      "time": "13:52–13:54",
+      "receipt": "65",
+      "topic": "Arroz si es tan amable",
+      "worked": "Destino mientras hay pendiente, teléfono y cierre funcionan después de elegir.",
+      "remaining": "Cortesía obliga a confirmar único producto; confirmación innecesaria.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-15",
+      "time": "13:55–13:56",
+      "receipt": "67",
+      "topic": "Combo Ginger",
+      "worked": "Pedido con bebida, conjunto/casa, teléfono y cierre coherentes.",
+      "remaining": "Control positivo; limpieza del prefijo A en dirección es secundaria.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-16",
+      "time": "13:58–14:01",
+      "receipt": "71",
+      "topic": "Dos arroces y dirección numérica",
+      "worked": "Corrección son dos funciona; eliminación explícita final recupera carrito.",
+      "remaining": "Pierde cantidad al elegir1; repetir destino agrega cuatro bandejas; no quieor conserva producto rechazado. Fallos críticos de intención, no cosméticos.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-17",
+      "time": "14:06–14:11",
+      "receipt": "80",
+      "topic": "Sustitución de ensalada",
+      "worked": "Tras aclaración aplica nota al arroz, conserva ajiaco y cierra.",
+      "remaining": "Algo no hace parte es respuesta literal incorrecta; pierde referente y mantiene pendiente viejo: no se interpreta como rechazo de sustitución tras resolver nota.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-18",
+      "time": "14:17–14:18",
+      "receipt": null,
+      "topic": "Ajiaco y porción adicional de arroz",
+      "worked": "Añade ajiaco correcto y reinicio limpia.",
+      "remaining": "Ofrece arroces/combos en vez de porción; ignora arroz blanco y código10 válido fuera de lista. Bloquea hasta reiniciar.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-19",
+      "time": "14:22–14:29",
+      "receipt": "94",
+      "topic": "Combo con Manzana y referencia de destino",
+      "worked": "Preparación y bebida correctas; separa calle y referencia frente a local, cierra.",
+      "remaining": "Control positivo de referencias; no acreditar distancia real con texto exportado.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-20",
+      "time": "14:31–14:36",
+      "receipt": "98",
+      "topic": "Tres platos y cambiar ejecutivo",
+      "worked": "Conserva Ginger del combo y elimina línea elegida sin quitar otras.",
+      "remaining": "Cambio de preparación añade ejecutivo adicional; costillas ambiguas ofrecen compuesto. Usuario debe reparar antes de cerrar.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-21",
+      "time": "14:39–14:42",
+      "receipt": "101",
+      "topic": "Arroz chino con costillas",
+      "worked": "Finalmente queda compuesto más sopa; total y cierre correctos.",
+      "remaining": "Lo quiero con costillas se compra aparte; primera corrección no resuelve, requiere segunda reformulación.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-22",
+      "time": "14:45–14:48",
+      "receipt": "105",
+      "topic": "Rosaleda 8 303",
+      "worked": "Producto y contacto correctos.",
+      "remaining": "Toma referencia de calle genérica como destino preciso. Necesita desambiguar números interiores y exigir evidencia geográfica suficiente; no inferir tarifa correcta.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-23",
+      "time": "14:54–14:55",
+      "receipt": "108",
+      "topic": "Medio pollo y ubicación compartida",
+      "worked": "Pin aceptado y cierre sin exponer coordenadas en texto.",
+      "remaining": "Exportación incluye miniatura base64: no tratarla como instrucción ni prueba de OCR; verificar que orden conserva coordenadas en pruebas DTO.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-24",
+      "time": "15:07–15:09",
+      "receipt": "112",
+      "topic": "Ejecutivo detallado y dirección en un mensaje",
+      "worked": "Menudencias/pierna/bebida y sin ensalada se mantienen; pasa a pago sin algo más.",
+      "remaining": "Papa francesa explícita no aparece en nota: contrastar descripción antes de calificar omisión. Recibo no muestra sin ensalada.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-25",
+      "time": "15:10–15:21",
+      "receipt": "121",
+      "topic": "Combo mixto Pepsi y repetir conjunto",
+      "worked": "Recupera cambio Pepsi y calle más interiores tras reformular.",
+      "remaining": "Tres errores técnicos; repetir conjunto después de calle válida borra calle/tarifa y reabre geocodificación. Necesita logs para causa técnica; no culpar modelo desde chat.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-26",
+      "time": "15:21–15:25",
+      "receipt": "123",
+      "topic": "Bandeja de arroz con pollo",
+      "worked": "Reformulación final compra arroz con nota y dirección.",
+      "remaining": "Envase bandeja lleva a otra familia de producto; error técnico al corregir. No perder referente por nombre de recipiente.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-27",
+      "time": "15:29–15:32",
+      "receipt": "128",
+      "topic": "Pechuga y conjunto más calle",
+      "worked": "Nota papa salada y calle posterior conservan conjunto/interiores.",
+      "remaining": "Pide calle para conjunto ambiguo razonablemente; falta validar alias de geocodificador. Recibo omite nota.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    },
+    {
+      "id": "CHAT2510-28",
+      "time": "15:34–15:37",
+      "receipt": "131",
+      "topic": "Pollo y medio en combo",
+      "worked": "Elección de bebida por línea y eliminación final dejan combo más medio.",
+      "remaining": "Inventó combo de arroz, corrección añadió en vez de reemplazar y eliminación múltiple solo quitó uno. Total inicial100mil, luego178mil, final80mil tras reparaciones.",
+      "status": "transcript reviewed; see audit for reproduction coverage"
+    }
+  ],
+  "execution": {
+    "newDiagnosticFailures": 18,
+    "newPassingControls": 6,
+    "focusedPassedIncludingExisting": 48,
+    "runtimeChanged": false,
+    "paidCalls": 0,
+    "externalOrders": 0,
+    "deployed": false
+  }
+}
