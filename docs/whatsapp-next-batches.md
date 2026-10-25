@@ -1,3 +1,9 @@
+## VIGENTE — tanda181: dos consultas + cambio de dirección (25/10)
+
+Basee2356390, solo staging.24 casos nuevos:3menús sintéticos×agente simulado on/off×posición de consultas×mapa localizado/ambiguo. Baseline24/24aprobado, sin cambios runtime. Precio/contenido respondidos; nueva calle+torre/apto conservados; dirección anterior descartada; tarifa nueva5000 o null si mapa ambiguo. Los12ambiguos piden ubicación y recuperan con pin. Todos cierran DTO simulado con2unidades/notas/nombre/interior/tarifa correcta, sin creación prematura. Foco72/72,3suites,13,294s; TypeScript general/build y Node92/92OK.547hashes anteriores iguales; última global ejecutada180:18.289/249, no sumar24 como global nueva.
+
+Publicado rama staging; sin despliegue. Producción sigue180 verificada y staging servidor177. Cero API/Meta/órdenes externas. No acredita precisión real del mapa ni consultas ambiguas mezcladas con dirección. Ver whatsapp-address-multiple-inquiry-validation-2510.md. Próximo: interrupciones/cambio de opinión durante aclaración de precio, varias dudas pendientes; después dirección+pregunta no resuelta. No declarar vendible por conteos.
+
 ## VIGENTE — producción desplegada hasta180 (25/10)
 
 Solicitud explícita «despliega en prod». Main local/remota integrada por fast-forward a0f8c98da; servidor /var/www/ppp-nest ejecuta ese commit. Verificado25/10 16:52UTC: imagene7c46300…,running/0reinicios; API públicaOK,DBconnected,circuitCLOSED; código compilado de respuesta parcial/contacto presente. Validación previa18.289/249suites,547hashes idénticos, TypeScript general/build y Node92. Compose privado y.env preservados por hash; bases/volúmenes intactos. Rollbackppp-nest-api:rollback-before-0f8c98da. Artefactos locales Main conservados(184archivos por hash).
