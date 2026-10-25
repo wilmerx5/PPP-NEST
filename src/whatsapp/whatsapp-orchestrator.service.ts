@@ -1178,26 +1178,38 @@ export class WhatsappOrchestratorService {
       const questions = [...text.matchAll(/¿?[^¿?]*\?/g)];
       const questionFirst = text.match(/^(¿[^?]+\?|[^?]+\?)\s+(.+)$/s);
       const changeFirst = text.match(/^(.+?[.;])\s+(¿[^?]+\?|(?:cu[aá]nto|qu[eé])[^?]+\?)$/is);
-      const pair = changeFirst ? { question: changeFirst[2], change: changeFirst[1] } :
+      const multipleAfter = text.match(/^(.+?[.;])\s+((?:¿[^¿?]+\?\s*){2,3})$/s);
+      const multipleBefore = text.match(/^((?:¿[^¿?]+\?\s*){2,3})([^¿?]+)$/s);
+      const pair = multipleAfter ? {question: multipleAfter[2], change: multipleAfter[1]} :
+        multipleBefore ? {question: multipleBefore[1], change: multipleBefore[2]} :
+        changeFirst ? { question: changeFirst[2], change: changeFirst[1] } :
         questionFirst ? { question: questionFirst[1], change: questionFirst[2] } : undefined;
-      if (current.cart.length && questions.length === 1 && pair) {
+      if (current.cart.length && pair && (questions.length === 1 || multipleAfter || multipleBefore)) {
         const change = pair.change.replace(/[.;]$/, '').trim();
         const name = change.match(/^(?:a nombre(?: de)?|mi nombre es|me llamo)\s+([\p{L} .'-]+)$/iu);
         const phone = change.match(/^mi tel[eé]fono es\s+([+\d ()-]+)$/i);
         const address = /^(?:cambia la direcci[oó]n a|la direcci[oó]n es)\s+(?:calle|carrera|cra|cll?|diagonal|dg|transversal|avenida)\b.*\d/i.test(change) &&
           !/\b(?:si|pero|adem[aá]s|agrega|quita|confirma)\b|[?¿;\n]/i.test(change);
         if ((name && isUsableWhatsappCustomerName(name[1])) || (phone && this.looksLikePhoneNumber(phone[1])) || address) {
-          let answer: string | undefined;
-          if (current.orderType === 'delivery' && isDeliveryEtaInquiry(pair.question) && !isSpecificOrderProgressInquiry(pair.question)) {
-            answer = this.formatDeliveryEtaSentence(cfg);
-          } else if (this.catalogService.isPriceInquiryIntent(pair.question) || this.catalogService.isProductDescriptionInquiry(pair.question)) {
-            const menu = await this.catalogService.getMenuProducts();
-            const named = menu.filter(product => this.catalogService.productFullyNamedIn(pair.question, [product]));
-            if (named.length === 1) answer = this.catalogService.isPriceInquiryIntent(pair.question)
-              ? this.catalogService.formatProductPriceReply(named[0], {offerAdd: false})
-              : this.buildProductCompositionReply(pair.question, named[0], cfg, current, { offerAdd: false });
+          const inquiries = (multipleAfter || multipleBefore)
+            ? [...pair.question.matchAll(/¿[^¿?]+\?/g)].map(match => match[0]) : [pair.question];
+          const answers: string[] = [];
+          for (const inquiry of inquiries) {
+            let answer: string | undefined;
+            if (current.orderType === 'delivery' && isDeliveryEtaInquiry(inquiry) && !isSpecificOrderProgressInquiry(inquiry)) {
+              answer = this.formatDeliveryEtaSentence(cfg);
+            } else if (this.catalogService.isPriceInquiryIntent(inquiry) || this.catalogService.isProductDescriptionInquiry(inquiry)) {
+              const menu = await this.catalogService.getMenuProducts();
+              const named = menu.filter(product => this.catalogService.productFullyNamedIn(inquiry, [product]));
+              if (named.length === 1) answer = this.catalogService.isPriceInquiryIntent(inquiry)
+                ? this.catalogService.formatProductPriceReply(named[0], {offerAdd: false})
+                : this.buildProductCompositionReply(inquiry, named[0], cfg, current, { offerAdd: false });
+            }
+            if (answer) answers.push(answer);
           }
-          if (answer) {
+          // Never strip an unanswered question or route it as part of the contact.
+          if (answers.length === inquiries.length) {
+            const answer = answers.join('\n\n');
             turn.independentInquiryAnswer = answer;
             await this.reply(conv, msg.waId, answer);
             text = change;

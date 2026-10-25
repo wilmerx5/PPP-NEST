@@ -1,3 +1,9 @@
+## VIGENTE — tanda178: varias consultas + contacto (25/10)
+
+Base2b2af519;24casos nuevos,3menús×agente mock on/off×nombre/teléfono×consultas antes/después durante pago. Baseline24/24falló. Se amplía separador existente a2–3 preguntas explícitas delimitadas, solo si todas tienen respuesta determinista. Reutiliza handlers de consulta/contacto. Foco210/210,3suites,29,318s; TypeScript general/build y Node92/92OK. Global18.241/18.241,247suites,545hashes,683,86s; inventario exacto y fuente congelada. /tmp/ppp-178-global-summary.json. Publicado solo rama staging; sin desplegar, servidor hasta177. Main/producción intactas.
+
+Pruebas verifican dos respuestas, dato, recordatorio, carrito y DTO simulado con2unidades/notas. No acredita tres preguntas ni consultas desconocidas ni pronombres. Cero API/Meta/órdenes externas. Ver whatsapp-multiple-inquiry-validation-2510.md. Próximo: tres preguntas y respuesta parcial sin pérdida de contacto, luego dirección+consultas. No declarar vendible por conteos.
+
 ## VIGENTE — tanda177: cancelación/reinicio/recogida sin bloqueo (25/10)
 
 Base5a7f5c92;36 casos nuevos,3menús×agente mock on/off×3salidas×ambigüedad/fuera cobertura. Baseline36/36 ya pasa: no cambios runtime. Foco114/114,4suites,26,41s; TypeScript general/build y Node92/92 OK. Recogida conserva2unidades/notas, cancelación/reinicio vacían y permiten compra nueva de1unidad. Todos cierran DTO simulado sin domicilio ni interior viejo y sin creación prematura. No hay orden previa enviada en fixtures.543hashes de global176 idénticos; global vigente18.181/245, no sumar36 como global ejecutada. Despliegue agrupado175–177 verificado25/10 15:47UTC enbcedadcb; imagenc0c234f8…,healthy/0reinicios, API OK/DBconnected/circuitCLOSED. Flags staging/public-chat/order-events=true/true/false; .env preservado por hash. Rollback ppp-nest-staging:rollback-before-bcedadcb. Producción43a0d14f… intacta. Logs /tmp/ppp-177-{deploy,verified}.log.

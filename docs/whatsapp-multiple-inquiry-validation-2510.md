@@ -1,0 +1,9 @@
+# Tanda 178 — varias preguntas y contacto en un mensaje
+
+Base2b2af519, solo staging.24 casos nuevos:3menús×agente mock on/off×nombre/teléfono×preguntas antes/después. Dos consultas explícitas de precio y contenido, con SKU nombrado y corrección de contacto, durante pago pendiente. Baseline24/24 falla; faltaba responder ambas consultas. Se amplía el separador existente de una consulta para grupos de2–3 preguntas delimitadas por ¿...?, antes/después de un contacto explícito. Cada consulta usa los handlers deterministas existentes; solo se recorta el contacto si todas obtuvieron respuesta. Si una no se puede resolver, el mensaje completo conserva su ruta previa (no acredita resolver ese caso).
+
+Foco210/210,3suites,29,318s; TypeScript general/build y Node92/92 OK. Global18.241/18.241,247suites,545hashes,683,86s; inventario exacto y fuente congelada. /tmp/ppp-178-global-summary.json. Publicado solo rama staging; sin desplegar, servidor hasta177. Main/producción intactas. Logs /tmp/ppp-178-{baseline,focus,tsc,node}.log. Tests verifican ambos contenidos, recordatorio de pago, dato correcto, carrito intacto, ninguna orden prematura y DTO simulado con2unidades/notas/destinatario/teléfono. Las cláusulas de atributo/dirección de la plantilla heredada no se recorren en esta matriz: aquí solo awaiting_payment y nombre/teléfono.
+
+Límites: dos preguntas, datos explícitos, puntuación, catálogo conocido. No prueba tres preguntas, pronombres, consulta desconocida, contacto mezclado entre preguntas ni geocodificación real. Modelos/mapas simulados, cero API/Meta/órdenes externas. Main/producción intactas. No declarar vendible por conteos.
+
+Siguiente: tres preguntas (precio/contenido/tiempo), preguntas parcialmente desconocidas sin perder contacto; dirección corregida con preguntas y variaciones sin puntuación, mediante fallos reproducidos.
