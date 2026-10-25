@@ -11,3 +11,5 @@ Mapas y modelos simulados, sin API/Meta/órdenes externas. No verifica geocodifi
 Foco113/113,4suites,20,301s; TypeScript general/build OK; Node92/92. Logs /tmp/ppp-174-{baseline,focus,tsc,node}.log. No repetir global solo por pruebas/documentación: runtime permanece exactamente igual al validado en173 (18.109/242suites); estos36 casos son evidencia adicional, no un nuevo conteo global ejecutado.
 
 Siguiente: preguntas múltiples al resolver dirección y nombre antes/después del pin; pins rotulados con el mismo conjunto sin perder interiores, diferenciando destino nuevo.
+
+Comparación contra /tmp/ppp-173-hashes.json:540 archivos conservan exactamente el hash de la global anterior; la única fuente adicional es la suite174. Despliegue agrupado173–174 verificado25/10 14:02UTC enbeb31e35; imagen5e20680b…, healthy/0reinicios, API OK/DBconnected/circuitCLOSED. Flags staging/public-chat/order-events=true/true/false; .env preservado por hash. Rollback ppp-nest-staging:rollback-before-beb31e35. Producción43a0d14f… intacta. Logs /tmp/ppp-174-{deploy,verified}.log.
