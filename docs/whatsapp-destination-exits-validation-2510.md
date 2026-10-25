@@ -7,3 +7,5 @@ Carrito sembrado con2unidades y nota. Se envía conjunto+interiores y se simula 
 Foco114/114,4suites,26,41s; TypeScript general/build y Node92/92 OK. Logs /tmp/ppp-177-{baseline,focus,tsc,node}.log. Comparados543hashes de /tmp/ppp-176-hashes.json sin diferencias; global vigente18.181/245suites, no repetir global ni sumar36 como global ejecutada. Fuente adicional solo nueva suite177. Modelos/mapas simulados, sin API/Meta/órdenes externas.
 
 Próximos: preguntas múltiples con correcciones de contacto; direcciones con referencias y pin rotulado calle+nombre; separar cancelación de carrito pendiente de consulta sobre orden ya enviada sin confundir ambos estados. No declarar vendible por conteos.
+
+Despliegue agrupado175–177 verificado25/10 15:47UTC enbcedadcb; imagenc0c234f8…,healthy/0reinicios, API OK/DBconnected/circuitCLOSED. Flags staging/public-chat/order-events=true/true/false; .env preservado por hash. Rollback ppp-nest-staging:rollback-before-bcedadcb. Producción43a0d14f… intacta. Logs /tmp/ppp-177-{deploy,verified}.log.
