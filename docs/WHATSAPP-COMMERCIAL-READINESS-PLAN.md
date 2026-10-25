@@ -1,3 +1,9 @@
+## VIGENTE — tanda177: cancelación/reinicio/recogida sin bloqueo (25/10)
+
+Base5a7f5c92;36 casos nuevos,3menús×agente mock on/off×3salidas×ambigüedad/fuera cobertura. Baseline36/36 ya pasa: no cambios runtime. Foco114/114,4suites,26,41s; TypeScript general/build y Node92/92 OK. Recogida conserva2unidades/notas, cancelación/reinicio vacían y permiten compra nueva de1unidad. Todos cierran DTO simulado sin domicilio ni interior viejo y sin creación prematura. No hay orden previa enviada en fixtures.543hashes de global176 idénticos; global vigente18.181/245, no sumar36 como global ejecutada. Preparado despliegue agrupado175–177 solo staging; Main/producción intactas.
+
+Ver whatsapp-destination-exits-validation-2510.md. Modelo/mapa simulados, cero API/Meta/órdenes externas. Próximo: varias preguntas con contacto; pin con nombre+calle; carrito pendiente frente a orden ya enviada. No declarar vendible por conteos.
+
 ## VIGENTE — tanda176: contacto+precio con dirección ambigua (25/10)
 
 Base38798737,24 casos nuevos:3menús×agente mock on/off×antes/después del pin×nombre/teléfono. Primer baseline de datos/DTO24/24pasó; al verificar próximo paso se reprodujeron6fallos: nombre+precio antes del pin cerraba con ¿Algo más? en vez de solicitar ubicación pendiente. Regla compartida de recordatorio reconoce destino delivery sin tarifa ni coordenadas; preserva prioridades de opciones/nombre/teléfono y no cambia cobertura. Foco corregido234/234,4suites,30,27s; TypeScript general/build y Node92/92 OK. Global18.181/18.181,245suites,543hashes,678,96s; inventario exacto y fuente congelada. /tmp/ppp-176-global-summary.json. Publicado solo en rama staging; sin despliegue, servidor hasta174 (175–176 pendientes de despliegue agrupado). Main/producción intactas.
