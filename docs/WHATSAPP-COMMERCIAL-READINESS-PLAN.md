@@ -1,3 +1,9 @@
+## VIGENTE — tanda174: recuperación con pin (25/10)
+
+Basec4ffc6f9;36 casos nuevos gratuitos con3menús, agente mock on/off, pin nativo/enlace/pin de destino nuevo y cobertura positiva/negativa. Baseline36/36 ya pasa: sin cambio runtime. Foco113/113,4suites,20,301s; TypeScript general/build y Node92/92 OK. Positivos cierran DTO con2unidades/notas/destinatario/interiores; negativos impiden creación fuera de cobertura. Destinatario sembrado y mapa/modelo simulado, no acredita extracción de nombre ni geocodificación real. Global vigente de173:18.109/242; no sumar36 como nueva global ejecutada. Preparado despliegue agrupado173–174 solo staging. Main/producción intactas.
+
+Ver whatsapp-pin-recovery-validation-2510.md. Próximo: pin rotulado con mismo conjunto frente a destino nuevo; nombre antes/después de ubicación y consultas múltiples durante cierre. Sin API/Meta/órdenes externas; no declarar vendible por conteos.
+
 ## VIGENTE — tanda173: recuperación de dirección ambigua (25/10)
 
 Base00e7ec3d, solo staging.24 regresiones nuevas:18 recorridos completos (3menús×agente mock on/off×3formas de pago) y6 controles de cambio de calle/interiores. Baseline18/18 falló al borrar apartamento en repetición de la misma calle. Regla conserva interiores solo al repetir calle canónica sin nuevos detalles; cambios explícitos u otra calle no heredan interiores. Foco95/95; TypeScript general/build y Node92/92 OK. Global18.109/18.109,242suites,540hashes,790,01s; inventario exacto y fuente congelada. Evidencia /tmp/ppp-173-global-summary.json. Publicado solo en rama staging; no desplegado, agrupar próximo despliegue (servidor sigue13261a98 hasta172). Main/producción intactas.
