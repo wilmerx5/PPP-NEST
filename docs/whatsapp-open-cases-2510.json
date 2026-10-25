@@ -18,7 +18,24 @@
       ],
       "reproduced": true,
       "evidence": "/tmp/ppp-182-baseline.log; 2/2 failed with agent mock off/on",
-      "reproducerSource": "import {harness} from './whatsapp-accuracy.test-support';\n\nconst message=`Buenas tardes para un domicilio\nUna sopa de menudencias\nY me regala un ejecutivo con sopa de menundecias con pollo broster pierna pernil\nEn ves de ensalada más papa o yuca con gaseosa colombiana\nPara villa galante\nApto 150\nEntrada 25\nCuánto sería para pagar por Nequi\nMe envía el número gracias`;\nfor(const enabled of [false,true]) it(`purchase with total/transfer question, agent=${enabled}`,async()=>{\n const h=harness(undefined,enabled);\n await h.sendQueued(message);\n expect(h.replies.join('\\n')).not.toMatch(/Cotizaci[oó]n|Te los agrego/i);\n expect(h.conv.sessionData.cart.map(x=>x.name)).toEqual(expect.arrayContaining(['Sopa De Menudencias','Ejecutivo Con Pollo Broaster']));\n});\n"
+      "reproducerSource": "import {harness} from './whatsapp-accuracy.test-support';\n\nconst message=`Buenas tardes para un domicilio\nUna sopa de menudencias\nY me regala un ejecutivo con sopa de menundecias con pollo broster pierna pernil\nEn ves de ensalada más papa o yuca con gaseosa colombiana\nPara villa galante\nApto 150\nEntrada 25\nCuánto sería para pagar por Nequi\nMe envía el número gracias`;\nfor(const enabled of [false,true]) it(`purchase with total/transfer question, agent=${enabled}`,async()=>{\n const h=harness(undefined,enabled);\n await h.sendQueued(message);\n expect(h.replies.join('\\n')).not.toMatch(/Cotizaci[oó]n|Te los agrego/i);\n expect(h.conv.sessionData.cart.map(x=>x.name)).toEqual(expect.arrayContaining(['Sopa De Menudencias','Ejecutivo Con Pollo Broaster']));\n});\n",
+      "diagnostic183": {
+        "cases": 8,
+        "failed": 6,
+        "passed": 2,
+        "reproduction": "src/whatsapp/whatsapp-order-transfer-diagnostic.repro.ts",
+        "runtimeFix": false,
+        "additionalFailures": [
+          "Without payment question, real phrasing loses standalone soup and selects default Ajiaco",
+          "Villa Galante reduced to galante in isolated mock address",
+          "Explicit wording without payment passes; adding payment question fails"
+        ],
+        "limits": [
+          "Model mocked; diagnostic warns classifyMessage unavailable in one fallback",
+          "No external order or real map calls",
+          "Ambiguous accompaniment, total, merchant details and cancellation still need full-flow tests"
+        ]
+      }
     },
     {
       "id": "two-executives-distributed-options",
