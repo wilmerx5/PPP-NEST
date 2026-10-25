@@ -1,3 +1,9 @@
+## VIGENTE — auditoría188: portería y referencia posterior al pin (25/10)
+
+Base e3590984. Leído completo el nuevo chat15:54–16:17 y analizado junto al de portería. Informe y plan: docs/whatsapp-new-chats-2510-followup.md. Ocho diagnósticos opt-in en whatsapp-new-chats-2510.repro.ts: seis rojos (dirección mientras pide nombre, solicitud de referencia durante confirmación, referencia comercial directa tras pin; agente simulado off/on) y dos verdes (total contextual tras cerrar compras). No corrección runtime ni despliegue en esta auditoría. No sumar diagnósticos al inventario de regresiones aprobado.
+
+Próximo: corregir flujo de referencia posterior al pin conservando coordenadas/tarifa/checkout, con interrupciones y DTO; después dirección/nombre fuera de orden. Siguen pendientes reproducción completa de reformulación «o sea1y1», acompañamientos distribuidos, nota residual y origen del nombre «Es» (no atribuido). Consulta de total focal ya pasa, no acredita todo el chat. Última global187:18.409/255; sin cambios runtime no se repite. Cero llamadas pagadas/Meta/órdenes externas; Main/producción intactas. Conservar pendientes183/184/186; no declarar todos los chats corregidos.
+
 ## VIGENTE — tanda187: pin legible para domiciliario y logs técnicos (25/10)
 
 Base a0d19040. Directions.end_address se aprovecha como «Referencia de mapa» sin llamada extra; conserva nombre/dirección aportados, interiores y enlace al pin original. Elimina coordenadas sueltas, oculta URL técnica al cliente pero la mantiene en DTO para navegación. Sin dirección del proveedor usa «Ubicación compartida», no inventa calle. Se reconoce pin por enlace coincidente con coordenadas guardadas o formato legado, evitando recotizar al añadir conjunto/nombre. Ocho recorridos nuevos hasta DTO, HTTP/mapa/órdenes simulados; cero llamadas pagadas/Meta/órdenes externas.
