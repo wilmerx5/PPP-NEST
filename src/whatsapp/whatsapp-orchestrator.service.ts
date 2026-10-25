@@ -1070,11 +1070,14 @@ export class WhatsappOrchestratorService {
       // A bare pin answering a failed address lookup locates the existing destination.
       // Preserve its written access instructions, but never reuse an old confirmed
       // destination or override the address supplied by a newly named pin.
+      const pinNamesExistingPlace = !!msg.locationName && !msg.locationAddress &&
+        !!sessionLoc.address && this.normalizeForMatch(msg.locationName) ===
+          this.normalizeForMatch(splitDeliveryAddressParts(sessionLoc.address).base);
       const unresolvedAddress = sessionLoc.orderType === 'delivery' &&
         sessionLoc.deliveryFeeCalculated === null && !sessionLoc.deliveryOutOfCoverage &&
         sessionLoc.deliveryLat == null && sessionLoc.deliveryLng == null &&
         !sessionLoc.freshDeliveryAddressRequested &&
-        !msg.locationAddress && !msg.locationName &&
+        ((!msg.locationAddress && !msg.locationName) || pinNamesExistingPlace) &&
         !['completed', 'closed'].includes(conv.state)
           ? sessionLoc.address?.trim() : undefined;
       const pendingUnit = [unresolvedAddress, sessionLoc.pendingDeliveryUnit, sessionLoc.pendingDeliveryPlace]
