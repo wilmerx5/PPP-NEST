@@ -1194,6 +1194,7 @@ export class WhatsappOrchestratorService {
           const inquiries = (multipleAfter || multipleBefore)
             ? [...pair.question.matchAll(/¿[^¿?]+\?/g)].map(match => match[0]) : [pair.question];
           const answers: string[] = [];
+          const unresolved: string[] = [];
           for (const inquiry of inquiries) {
             let answer: string | undefined;
             if (current.orderType === 'delivery' && isDeliveryEtaInquiry(inquiry) && !isSpecificOrderProgressInquiry(inquiry)) {
@@ -1206,6 +1207,7 @@ export class WhatsappOrchestratorService {
                 : this.buildProductCompositionReply(inquiry, named[0], cfg, current, { offerAdd: false });
             }
             if (answer) answers.push(answer);
+            else unresolved.push(inquiry);
           }
           // Never strip an unanswered question or route it as part of the contact.
           if (answers.length === inquiries.length) {
@@ -1213,6 +1215,20 @@ export class WhatsappOrchestratorService {
             turn.independentInquiryAnswer = answer;
             await this.reply(conv, msg.waId, answer);
             text = change;
+          } else if (answers.length && unresolved.length === 1 && (name || phone)) {
+            // Preserve explicit contact independently, then let the existing router
+            // clarify the one unanswered question. Do not turn it into a field value.
+            if (name) await this.conversationService.updateCustomerName(conv, name[1].trim());
+            if (phone) await this.conversationService.saveSession(conv, {
+              ...this.conversationService.getSession(conv),
+              contactPhone: this.normalizeContactPhone(phone[1], conv.phoneE164),
+              phoneConfirmed: true,
+            });
+            const contactAck = name ? `Nombre actualizado: ${name[1].trim()}.` : 'Teléfono de contacto actualizado.';
+            const answer = `${answers.join('\n\n')}\n\n${contactAck}`;
+            turn.independentInquiryAnswer = answer;
+            await this.reply(conv, msg.waId, answer);
+            text = unresolved[0];
           }
         }
       }

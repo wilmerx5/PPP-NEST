@@ -1,3 +1,9 @@
+## VIGENTE — tanda180: respuesta parcial + contacto (25/10)
+
+Base474f66bb. 24 casos nuevos, tres menús × agente simulado on/off × nombre/teléfono × orden de cláusulas durante pago. Baseline final24/24falló; foco corregido24/24,11,027s. Se guarda contacto explícito con servicios existentes, responde consulta conocida y confirma dato; única consulta sin resolver se devuelve al router habitual. Selección posterior consulta precio sin comprar ni elegir pago; cierre verifica DTO con tres unidades/notas/contacto. TypeScript general/build y Node92/92OK. Global18.289/18.289,249suites,547hashes,739,36s; inventario exacto y fuente congelada. /tmp/ppp-180-global-summary.json.
+
+Publicado solo rama staging, sin despliegue; servidor hasta177, agrupar178–180. Main/producción intactas. Cero API/Meta/órdenes externas. No acredita dirección mezclada, múltiples dudas pendientes, preguntas sin delimitadores ni inferencia real. Ver whatsapp-partial-inquiry-validation-2510.md. Próximo: consultas+dirección conservando precisión de mapa y cambio de opinión durante aclaración. No declarar vendible por conteos.
+
 ## VIGENTE — tanda179: tres consultas + contacto (25/10)
 
 Base e88b88a1. 24 casos nuevos: tres menús sintéticos × agente simulado on/off × nombre/teléfono × preguntas antes/después. Precio, contenido y tiempo estimado durante pago; verifican las tres respuestas, siguiente paso, contacto, carrito sin cambios y DTO simulado con dos unidades/notas. Baseline aprobado: sin cambios runtime. Foco 48/48 en dos suites, 12,002 s; TypeScript general/build y Node 92/92. Los 545 hashes previos de global178 permanecen iguales; no se repitió global ni se suman estos casos a una global ficticia. Última global ejecutada: 18.241/247 suites.
