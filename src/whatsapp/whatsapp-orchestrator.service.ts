@@ -16946,6 +16946,11 @@ export class WhatsappOrchestratorService {
     if (conv.state === 'awaiting_name') return 'Para seguir, ¿a nombre de quién dejamos el pedido?';
     if (conv.state === 'awaiting_phone') return 'Para seguir, confirma el teléfono o escribe otro número de contacto.';
     if (conv.state === 'awaiting_address') return 'Para seguir, escribe la dirección del domicilio.';
+    if (conv.state === 'building_cart' && session.cart.length && session.orderType === 'delivery' &&
+        session.address && session.deliveryFeeCalculated === null && !session.deliveryOutOfCoverage &&
+        session.deliveryLat == null && session.deliveryLng == null) {
+      return 'Aún no pude ubicar la dirección. Para seguir, comparte la ubicación de WhatsApp o completa la calle y el número.';
+    }
     if (conv.state === 'awaiting_payment') return 'Para seguir, ¿con qué método de pago pagas?';
     if (conv.state === 'awaiting_final_confirm') return 'Cuando el pedido esté listo, escribe confirmar para enviarlo.';
     return '';

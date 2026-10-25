@@ -1,3 +1,9 @@
+## VIGENTE — tanda176: contacto+precio con dirección ambigua (25/10)
+
+Base38798737,24 casos nuevos:3menús×agente mock on/off×antes/después del pin×nombre/teléfono. Primer baseline de datos/DTO24/24pasó; al verificar próximo paso se reprodujeron6fallos: nombre+precio antes del pin cerraba con ¿Algo más? en vez de solicitar ubicación pendiente. Regla compartida de recordatorio reconoce destino delivery sin tarifa ni coordenadas; preserva prioridades de opciones/nombre/teléfono y no cambia cobertura. Foco corregido234/234,4suites,30,27s; TypeScript general/build y Node92/92 OK. Global18.181/18.181,245suites,543hashes,678,96s; inventario exacto y fuente congelada. /tmp/ppp-176-global-summary.json. Publicado solo en rama staging; sin despliegue, servidor hasta174 (175–176 pendientes de despliegue agrupado). Main/producción intactas.
+
+Cada recorrido verifica precio, recordatorio, carrito/notas/interiores, contacto corregido y DTO simulado de2unidades. Una pregunta explícita y puntuación, no múltiples consultas. Cero API/Meta/órdenes externas. Ver whatsapp-pin-contact-validation-2510.md. Próximo: varias preguntas con contacto, pin con nombre+calle del mismo destino, sin fusionar destinos dudosos. No declarar vendible por conteos.
+
 ## VIGENTE — tanda175: pin con mismo nombre de conjunto (25/10)
 
 Base36617ddc;12 casos nuevos (3menús×agente mock on/off×cobertura). Baseline12/12 falla por pérdida de interiores con pin rotulado igual al conjunto previo. Regla permite conservar datos si locationName coincide normalizado con base previa y no hay locationAddress nueva; se mantienen guardas de destino no resuelto. Controles de174 conservan sustitución de destino nuevo. Foco107/107,4suites,25,802s; TypeScript general/build y Node92/92 OK. Global18.157/18.157,244suites,542hashes,683,33s; inventario exacto/fuente congelada. /tmp/ppp-175-global-summary.json. Publicado en rama staging, sin desplegar; servidor continúa hasta174. Main/producción intactas.
