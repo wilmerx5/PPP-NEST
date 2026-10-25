@@ -193,3 +193,7 @@ npx jest --runTestsByPath src/whatsapp/whatsapp-address-number-preservation.spec
 Logs locales: `/tmp/ppp-184-diagnostic-final.{log,json}` (12), `/tmp/ppp-184-address-final.{log,json}` (6), `/tmp/ppp-184-focus.{log,json}` (48). Los fallos se conservan como contrato esperado para corregir, no con expectativas relajadas que acepten el bug.
 
 **Siguiente trabajo concreto:** corregir primero destino numérico sin contaminar compras legítimas ni consultas de estado; ejecutar estos6 rojos y controles de nombre/calle/estado. Después resolver la compra+Nequi de183, variantes/cantidades y bloqueo de porción. No gastar otra tanda en inventariar estos mismos fallos sin avanzar en su corrección. La auditoría termina aquí; los defectos permanecen abiertos.
+
+## Seguimiento185
+
+Se corrige la familia de destino numérico de CHAT2510-16: seis diagnósticos promovidos/ampliados a36regresiones de `whatsapp-explicit-destination.spec.ts`. Los12diagnósticos de `whatsapp-chat-2510-audit.repro.ts` permanecen abiertos. Las cifras18fallos anteriores son el baseline histórico, no el resultado después de esta corrección. Los errores de cantidad/negación del mismo CHAT16 aún no están corregidos. Evidencia y límites: `whatsapp-explicit-destination-validation-2510.md`.

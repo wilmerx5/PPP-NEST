@@ -272,5 +272,19 @@
     "paidCalls": 0,
     "externalOrders": 0,
     "deployed": false
+  },
+  "followUp185": {
+    "status": "corrected and globally validated; staging branch only, not deployed",
+    "resolvedFamily": "explicit numeric destination; CHAT2510-16 partial",
+    "promotedDiagnosticCases": 6,
+    "expandedRegressionCases": 36,
+    "remainingAuditDiagnosticFailures": 12,
+    "limits": "No fix yet for quantity and negation also present in CHAT2510-16; no real geocoding validation.",
+    "global": {
+      "passed": 18373,
+      "suites": 253,
+      "sourceHashes": 553,
+      "sourceUnchanged": true
+    }
   }
 }

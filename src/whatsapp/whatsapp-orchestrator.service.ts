@@ -1137,6 +1137,24 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Explicit delivery framing is not a reference to an already placed order.
+    // Normalize only a standalone address; mixed purchases, times and questions
+    // must retain their full text for the normal intent handlers.
+    const deliveryStatement = text.match(/^(?:el|mi|este)\s+(?:pedido|domicilio)\s+(?:es|ser[ií]a|va)\s+(?:para|a|en)\s+(.+)$/is);
+    if (deliveryStatement && !/[?¿]/.test(text)) {
+      const destination = deliveryStatement[1].trim();
+      const standaloneDestination = !FOOD_ORDER_SIGNAL_RE.test(destination) &&
+        !looksLikeNonAddressCommand(destination) &&
+        !/^(?:\d+|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/i.test(destination) &&
+        !/\b(?:quiero|dame|agrega|a[nñ]ade|ponme|reg[aá]lame|v[eé]ndeme)\b/i.test(destination) &&
+        !/\b(?:y|adem[aá]s|tambi[eé]n)\s+(?:\d+|un[oa]?|dos|tres|cuatro|cinco)\b/i.test(destination);
+      const namedUnit = /^[\p{L}]/u.test(destination) &&
+        /\b(?:casa|local|torre|apartamento|apto|interior)\s+\d+[a-z]?\b/i.test(destination);
+      if (standaloneDestination && (looksLikeAddressOnlyMessage(`Para ${destination}`) || namedUnit)) {
+        text = `La dirección es ${destination}`;
+      }
+    }
+
     // A copied bot response is context, not another purchase, when its source matches history.
     if (text.includes('\n')) {
       const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
