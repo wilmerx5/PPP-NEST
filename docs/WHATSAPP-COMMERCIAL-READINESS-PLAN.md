@@ -1,3 +1,9 @@
+## VIGENTE — tanda179: tres consultas + contacto (25/10)
+
+Base e88b88a1. 24 casos nuevos: tres menús sintéticos × agente simulado on/off × nombre/teléfono × preguntas antes/después. Precio, contenido y tiempo estimado durante pago; verifican las tres respuestas, siguiente paso, contacto, carrito sin cambios y DTO simulado con dos unidades/notas. Baseline aprobado: sin cambios runtime. Foco 48/48 en dos suites, 12,002 s; TypeScript general/build y Node 92/92. Los 545 hashes previos de global178 permanecen iguales; no se repitió global ni se suman estos casos a una global ficticia. Última global ejecutada: 18.241/247 suites.
+
+Publicado en rama staging; servidor sigue hasta177, tanda178 pendiente de despliegue agrupado. Main/producción intactas; cero API, Meta u órdenes externas. Siguiente prioridad: consulta resoluble + consulta ambigua + contacto; reproducir antes de modificar. No afirmar cubiertas preguntas sin delimitadores, pronombres o respuesta parcial. Ver whatsapp-three-inquiry-validation-2510.md.
+
 ## VIGENTE — tanda178: varias consultas + contacto (25/10)
 
 Base2b2af519;24casos nuevos,3menús×agente mock on/off×nombre/teléfono×consultas antes/después durante pago. Baseline24/24falló. Se amplía separador existente a2–3 preguntas explícitas delimitadas, solo si todas tienen respuesta determinista. Reutiliza handlers de consulta/contacto. Foco210/210,3suites,29,318s; TypeScript general/build y Node92/92OK. Global18.241/18.241,247suites,545hashes,683,86s; inventario exacto y fuente congelada. /tmp/ppp-178-global-summary.json. Publicado solo rama staging; sin desplegar, servidor hasta177. Main/producción intactas.
