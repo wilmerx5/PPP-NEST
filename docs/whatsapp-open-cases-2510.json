@@ -1,0 +1,57 @@
+{
+  "status": "pending; do not count as passing regressions",
+  "cases": [
+    {
+      "id": "order-transfer-total",
+      "messages": [
+        "Buenas tardes para un domicilio\nUna sopa de menudencias\nY me regala un ejecutivo con sopa de menundecias con pollo broster pierna pernil\nEn ves de ensalada más papa o yuca con gaseosa colombiana\nPara villa galante\nApto 150\nEntrada 25\nCuánto sería para pagar por Nequi\nMe envía el número gracias",
+        "CANCELAR"
+      ],
+      "expected": [
+        "one standalone soup and one executive",
+        "executive soup/piece/drink are options, not separate purchases",
+        "ask papa or yuca without charging both",
+        "preserve apt150/entrance25",
+        "quote validated order total including delivery before requesting transfer",
+        "respond using configured payment instructions; never invent Nequi number",
+        "cancel pending cart"
+      ],
+      "reproduced": true,
+      "evidence": "/tmp/ppp-182-baseline.log; 2/2 failed with agent mock off/on",
+      "reproducerSource": "import {harness} from './whatsapp-accuracy.test-support';\n\nconst message=`Buenas tardes para un domicilio\nUna sopa de menudencias\nY me regala un ejecutivo con sopa de menundecias con pollo broster pierna pernil\nEn ves de ensalada más papa o yuca con gaseosa colombiana\nPara villa galante\nApto 150\nEntrada 25\nCuánto sería para pagar por Nequi\nMe envía el número gracias`;\nfor(const enabled of [false,true]) it(`purchase with total/transfer question, agent=${enabled}`,async()=>{\n const h=harness(undefined,enabled);\n await h.sendQueued(message);\n expect(h.replies.join('\\n')).not.toMatch(/Cotizaci[oó]n|Te los agrego/i);\n expect(h.conv.sessionData.cart.map(x=>x.name)).toEqual(expect.arrayContaining(['Sopa De Menudencias','Ejecutivo Con Pollo Broaster']));\n});\n"
+    },
+    {
+      "id": "two-executives-distributed-options",
+      "messages": [
+        "Me puedes dar dos bandejas ejecutivos",
+        "De sopa sería los dos ajiacos pollo que la frito los dos y un pollo que sea pechuga y el otro colombina",
+        "Y de tomar limonada por f",
+        "Y me das un adicional de limonada",
+        "un ejecutvo va conpierna pernil y con limonada",
+        "no queria uno mas, uno de los dos que ya habia"
+      ],
+      "expected": [
+        "exactly two executive units and one additional lemonade",
+        "both included drinks lemonade",
+        "one breast and clarify unsupported colombina",
+        "correction modifies one existing unit, never creates third executive"
+      ],
+      "reproduced": false
+    },
+    {
+      "id": "combo-replacement-after-composition",
+      "messages": [
+        "Con que viene el\nCombo\n?",
+        "no, el combo que ya te pedi, lo quiero con en vez de papá salda me regalas yuca",
+        "Y dos ajíes me puedes enviar porfi"
+      ],
+      "expected": [
+        "answer composition without replacement picker",
+        "retain Pepsi",
+        "substitution attaches to combo and persists",
+        "retain two ajies note through simulated DTO; verify receipt note display separately"
+      ],
+      "reproduced": "composition reproduced; full replacement/receipt still pending"
+    }
+  ]
+}

@@ -2870,7 +2870,7 @@ export class WhatsappOrchestratorService {
         return;
       }
     }
-    const referentialComposition = shortDetailReference || /^(?:y )?(?:que trae|que incluye|que lleva|con que viene|con que va)(?: (?:ese|esa|este|esta|eso|esto)(?: plato|producto|combo|opcion)?)?$/.test(referenceText);
+    const referentialComposition = shortDetailReference || /^(?:y )?(?:que trae|que incluye|que lleva|con que viene(?: acompanado)?|con que va)(?: (?:(?:ese|esa|este|esta|eso|esto)(?: plato|producto|combo|opcion)?|el (?:plato|producto|combo)|la opcion))?$/.test(referenceText);
     if (referentialComposition) {
       const menu = await this.catalogService.getMenuProducts();
       let references = dialogueProductReferences(session);
