@@ -1991,6 +1991,8 @@ export class WhatsappOrchestratorService {
     if (conv.state === 'building_cart' && session.pendingMatch?.priceAcceptanceProductId &&
       !session.pendingAttribute && !session.pendingMultiOrder &&
       this.isPriceQuoteAcceptance(originalText)) {
+      if (session.pendingMatch.offeredChoices?.productId === session.pendingMatch.priceAcceptanceProductId &&
+          await this.tryAnswerComboSwapOffer(conv, msg.waId, session, 'sí, el combo', cfg) === true) return;
       const menu = await this.catalogService.getMenuProducts();
       if (await this.tryResolvePendingMatchPick(conv, msg.waId, session, originalText, menu, cfg)) return;
     }
@@ -2603,6 +2605,7 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, 'Anoté la fecha y el horario solicitados. La disponibilidad para una entrega programada debe confirmarla el local; todavía no está reservada.');
       return;
     }
+    if (await this.tryAnswerPendingComboQuestion(conv, msg.waId, session, originalText)) return;
     if (await this.tryStagePendingAttributeDistribution(conv, msg.waId, session, originalText, cfg)) return;
     const unitSplit = this.rememberIncomingUnitSplit(session, originalText);
     if (unitSplit.handled) {
@@ -13472,6 +13475,30 @@ export class WhatsappOrchestratorService {
       `También tenemos *${combo.name}* · #${combo.code} · ${this.catalogService.formatMoney(combo.price)} por unidad.\n` +
       `${combo.description || 'Incluye bebida.'}${choices.length ? `\nOpciones solicitadas: ${choices.map(choice => choice.attributeValue).join(' · ')}.` : ''}\n\n` +
       '¿Quieres cambiarlo al combo? Responde *sí* o *no*. Conservo la cantidad y las notas; todavía no agregué una bebida aparte.');
+    return true;
+  }
+
+  /** Questions about the offered combo refer to that candidate, not the base cart line. */
+  private async tryAnswerPendingComboQuestion(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+  ): Promise<boolean> {
+    const pending = session.pendingMatch;
+    if (!pending?.replacement || pending.intent !== 'order' || pending.candidates.length !== 1) return false;
+    const q = this.normalizeForMatch(text).replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '');
+    const price = /^(?:(?:y|oye)\s+)?(?:cuanto (?:cuesta|vale|sale) el combo|(?:me dices |cual es )?el precio del combo)$/.test(q);
+    const flavors = /^(?:(?:y|oye)\s+)?(?:que (?:sabores(?: de bebida)?|bebidas) tiene el combo|cuales sabores hay para el combo)$/.test(q);
+    if (!price && !flavors) return false;
+    const menu = await this.catalogService.getMenuProducts();
+    const combo = menu.find(product => product.id === pending.candidates[0].id);
+    if (!combo || combo.availableNow === false) {
+      await this.reply(conv, waId, 'El combo que te ofrecí ya no está disponible. Conservo tu plato original. ¿Quieres otra opción?');
+      return true;
+    }
+    if (!this.catalogService.productImpliesCombo(combo)) return false;
+    const detail = price
+      ? `*${combo.name}* · #${combo.code}: *${this.catalogService.formatMoney(combo.price)} por unidad*.`
+      : `Para *${combo.name}* · #${combo.code}:${this.drinkChoicesLine(combo) || ' no tengo sabores confirmados en la carta.'}`;
+    await this.reply(conv, waId, detail + '\n\nTu pedido sigue igual. ¿Quieres cambiarlo al combo? Responde *sí* o *no*.');
     return true;
   }
 

@@ -1,3 +1,13 @@
+## VIGENTE — tanda 211: consultas sobre combo pendiente (26/10)
+
+Base `a71730d7`, staging. Preguntas explícitas de precio/sabores sobre una propuesta con candidato único ahora consultan ese combo vigente, sin comprar ni alterar el carrito. Se mantiene el paso siguiente. La ampliación descubrió pérdida de bebida al aceptar nueva cotización: esa aceptación reutiliza la ruta que conserva y revalida las opciones solicitadas.
+
+54 regresiones nuevas en tres menús×agente mock off/on:36 consultas,6 precios cambiados,6 sabores cambiados y6 agotados;48 cierres DTO simulados. Baseline36/36 rojos→36verdes; ampliación42/48→48/48; foco final198/198. TS general/build, Node92 yFalafel1 aprobados. Global19.016/276 suites,583 hashes,709,91s, inventario exacto/fuente congelada. Informe: `docs/whatsapp-combo-offer-questions-validation-2610.md`.
+
+Diagnóstico210 ahora30/36: quedan únicamente6 rojos de presentaciones ambiguas, conservados opt-in. Siguiente: ofertas de combos con mismo título y distinta presentación, lista diferenciada por descripción/volumen, preservación de cantidad/opciones/notas y aceptación explícita. Después ampliar referencias abreviadas y preguntas combinadas con cambios. No afirmar cobertura universal por estas formulaciones ni modificar oráculos para ocultar fallos.
+
+Sin API pagada, Meta ni órdenes externas; sin cambio de modelos ni nueva medición de ahorro. Publicación solo staging, sin despliegue de esta tanda; Main/producción siguen en código209. Agrupar despliegues. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 210: rechazo de combo con bebida aparte (26/10)
 
 Base `3644d578`. Corregido el caso que aceptaba un combo al decir «no, mejor una gaseosa aparte»: sabor/volumen compatibles ya no prevalecen sobre esa negativa. «Sin combo, ...» continúa sin reinterpretar el prefijo como compra. Regla por catálogo; preserva plato base, cantidad, opciones y notas.
