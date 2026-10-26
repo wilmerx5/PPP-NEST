@@ -32,3 +32,21 @@ describe('Lettered internal access and ambiguous building names',()=>{
  ])('splits explicit access in %s',(source,base,details)=>expect(splitDeliveryAddressParts(source)).toEqual({base,details}));
  it.each(['Casa Blanca','Edificio Torre del Sol','Conjunto Torre B','torre B apartamento 304B','Conjunto Los Pinos 2','Calle 10 #81A-20','Conjunto Los Pinos torre B, Calle 10 #81A-20'])('does not invent an external destination from %s',source=>expect(splitDeliveryAddressParts(source)).toEqual({base:source,details:''}));
 });
+
+// A surname or longer word must not become a single-letter delivery unit.
+import {deliveryUnitConflict, resolveDeliveryUnitConflict, mergeDeliveryUnitDetails} from './whatsapp-address-parts';
+describe('Delivery unit label boundaries',()=>{
+ it.each(['Ana Torres','Luis Casas','Pedro Pison','Elena Locales'])('does not split the name %s',name=>{
+  expect(deliveryUnitConflict(`a nombre de ${name}\nCalle 10 #20-30 torre 4 casa 5 piso 2 local 8`)).toBeNull();
+ });
+ it.each(['torre4 torre5','torre A torre B','torre#4 torre#5','torre.4 torre.5'])('still detects conflicts in %s',units=>{
+  expect(deliveryUnitConflict(`Ana Torres, Calle 10 #20-30 ${units}`)?.label).toBe('torre');
+ });
+ it('resolves the units without rewriting the surname',()=>{
+  expect(resolveDeliveryUnitConflict('Ana Torres Calle 10 #20-30 torre4 torre5','torre','5')).toBe('Ana Torres Calle 10 #20-30 torre 5');
+ });
+});
+
+it('updates a real tower without replacing a surname suffix',()=>{
+ expect(mergeDeliveryUnitDetails('Ana Torres Calle 10 #20-30 torre 4','torre 5')).toBe('Ana Torres Calle 10 #20-30 torre 5');
+});

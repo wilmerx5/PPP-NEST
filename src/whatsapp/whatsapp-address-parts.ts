@@ -117,7 +117,7 @@ export function mergeDeliveryUnitDetails(previous: string, incoming: string): st
   let rest = incoming.trim();
   const additions: string[] = [];
   for (const aliases of groups) {
-    const pattern = new RegExp(`\\b(?:${aliases})\\.?\\s*(?:#\\s*)?(${identifier})\\b`, 'i');
+    const pattern = new RegExp(`\\b(?:${aliases})(?=\\b|\\d)\\.?\\s*(?:#\\s*)?(${identifier})\\b`, 'i');
     const found = rest.match(pattern);
     if (!found) continue;
     if (pattern.test(kept)) kept = kept.replace(pattern, found[0]);
@@ -135,7 +135,7 @@ export function deliveryUnitConflict(source: string): { label: string; values: s
     ...['torre','bloque','casa','piso','local','oficina','entrada'].map(label=>[label,label] as [string,string]),
   ];
   for(const [label,aliases] of groups) {
-    const pattern=new RegExp(`\\b(?:${aliases})\\.?\\s*(?:#\\s*)?([a-z]\\d{0,3}|\\d{1,4}[a-z]?)\\b`,'gi');
+    const pattern=new RegExp(`\\b(?:${aliases})(?=\\b|\\d)\\.?\\s*(?:#\\s*)?([a-z]\\d{0,3}|\\d{1,4}[a-z]?)\\b`,'gi');
     const values=[...new Set([...source.matchAll(pattern)].map(match=>match[1].toUpperCase()))];
     if(values.length>1) return {label,values};
   }
@@ -146,7 +146,7 @@ export function deliveryUnitConflict(source: string): { label: string; values: s
 export function resolveDeliveryUnitConflict(source: string, label: string, value: string): string {
   const aliases = label === 'apartamento' ? 'apartamento|apto|apt|ap' : label === 'interior' ? 'interior|int' : label;
   if (!['apartamento','interior','torre','bloque','casa','piso','local','oficina','entrada'].includes(label)) return source;
-  const pattern = new RegExp(`\\b(?:${aliases})\\.?\\s*(?:#\\s*)?([a-z]\\d{0,3}|\\d{1,4}[a-z]?)\\b`, 'gi');
+  const pattern = new RegExp(`\\b(?:${aliases})(?=\\b|\\d)\\.?\\s*(?:#\\s*)?([a-z]\\d{0,3}|\\d{1,4}[a-z]?)\\b`, 'gi');
   let replaced = false;
   return source.replace(pattern, () => {
     if (replaced) return '';

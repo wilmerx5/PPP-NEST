@@ -1,3 +1,13 @@
+## VIGENTE — tanda 214: rechazo y datos durante lista de combos (26/10)
+
+Base `aaaa57af`, staging. Corregido rechazo compuesto con bebida aparte antes de seleccionar cualquier candidato: una coincidencia de sabor/volumen ya no acepta combo contra «no/sin combo». Conserva base/opciones/notas y añade solo la bebida explícita. Contactos juntos descubrieron otro fallo: «Ana Torres» se leía «torre S». Etiquetas de unidades exigen límite de palabra o dígito; conserva abreviaciones numéricas, detección/resolución de conflictos y apellidos al actualizar.
+
+46 pruebas nuevas:36 conversaciones completas en tres menús×agente mock off/on y10 controles de límites de unidades. Baseline rechazo18/18 rojos; contacto12/18 verdes,6 rojos por apellido. Final foco285/285; TS general/build, Node92 yFalafel1 aprobados. Global19.188/280 suites,587 hashes,743,23s, inventario exacto y fuente congelada. Informe `docs/whatsapp-multiple-combo-interruptions-validation-2610.md`.36cierres DTO simulados, contactos comparan nombre/teléfono/dirección. No acredita geocodificación real ni inferencia real.
+
+Siguiente: preguntas por código/contenido y candidatos con opciones distintas; mantener bebida solicitada o pedir alternativa válida sin sustitución silenciosa. Ampliar contactos sin etiqueta/incompletos y mensajes mixtos; no dar por cubiertas todas las formulaciones. Foco primero; global solo tras cerrar cambios compartidos, sin editar durante ella.
+
+Sin llamadas pagadas, Meta ni órdenes externas; modelos/Main intactos. Publicación solo staging, sin despliegue214; tandas210–214 pendientes de despliegue agrupado. Main/producción mantienen código209 `a935f555`. Sin medición nueva de ahorro ni declaración de vendibilidad por conteos.
+
 ## VIGENTE — tanda 213: referencias y consultas de presentaciones (26/10)
 
 Base `199ad1ec`, staging. Selección explícita por código ofrecido o volumen único vigente («400ml», «1,5 litros», «litro y medio») se resuelve como fila, nunca como cantidad. Conserva unidades/opciones/notas. Código agotado o referencia ambigua/ajena mantiene alternativas y explica la aclaración. Consultas de precio/sabores por volumen responden desde catálogo sin comprar y guían a seguir eligiendo.

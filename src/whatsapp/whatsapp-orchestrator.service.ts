@@ -13539,6 +13539,16 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean | WhatsappSessionData> {
     let pending = session.pendingMatch;
+    // Resolve an explicit refusal before a flavor/volume can select any candidate.
+    const separateRequest = this.normalizeForMatch(text);
+    if (pending?.replacement && pending.intent === 'order' &&
+        /^(?:no\b|nop\b|sin combo\b)/.test(separateRequest) &&
+        /\b(?:aparte|por separado)\b/.test(separateRequest) &&
+        /\b(?:bebida|gaseosa|refresco|jugo|soda|agua)\b/.test(separateRequest)) {
+      session = { ...session, pendingMatch: undefined };
+      await this.conversationService.saveSession(conv, session);
+      return session;
+    }
     if (pending?.offeredAlternatives?.length && pending.replacement && pending.candidates.length > 1 &&
         !(pending.priceAcceptanceProductId != null && pending.priceAcceptanceProductId === pending.replacement.preferredId && pending.offeredChoices?.productId === pending.priceAcceptanceProductId &&
           (this.isPriceQuoteAcceptance(text) || this.normalizeForMatch(text) === 'si el combo'))) {
@@ -13635,15 +13645,7 @@ export class WhatsappOrchestratorService {
         (this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session)));
       return true;
     }
-    // An explicit separate purchase rejects the proposed replacement, even when
-    // its flavor and volume also exist in the combo. Resume normal item parsing.
-    if (/^(?:no\b|nop\b|sin combo\b)/.test(q) &&
-        /\b(?:aparte|por separado)\b/.test(q) &&
-        /\b(?:bebida|gaseosa|refresco|jugo|soda|agua)\b/.test(q)) {
-      session = { ...session, pendingMatch: undefined };
-      await this.conversationService.saveSession(conv, session);
-      return session;
-    }
+
     const sizeOf = (value: string) => (value.toLowerCase().match(/\d+(?:[.,]\d+)?(?=\s*(?:ml|cc|l|lt|lts|litros?)\b)/g) || []).map(n => n.replace(',', '.'));
     const sizes = inlineRow != null ? [] : sizeOf(text);
     const comboSizes = sizeOf([combo.name, combo.description || '', ...(combo.attributes || []).flatMap(attr => attr.options)].join(' '));
