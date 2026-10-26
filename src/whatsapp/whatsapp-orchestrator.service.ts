@@ -1379,6 +1379,9 @@ export class WhatsappOrchestratorService {
       const paidWith = text.match(/^\s*(?:y\s+)?(?:el pedido|la orden|todo|eso)\s+(?:va|queda|lo pago|se paga|lo pagamos|lo pagan)\s+(?:con|en|por)\s+(.{2,40}?)[\s.!]*$/i);
       if (paidWith && findPaymentMethodByText(paidWith[1], cfg.paymentMethods)) text = `pago con ${paidWith[1]}`;
     }
+    if (/\b\d{1,2}\s+[a-z]{2,}\b/i.test(text)) {
+      text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
+    }
     if (await this.tryHandleMultipleCartNegation(conv, msg.waId, this.conversationService.getSession(conv), text, cfg)) return;
     if (['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) && !/[¿?]/.test(text)) {
       const another = this.rewriteAnotherOfVariant(text, this.conversationService.getSession(conv), await this.catalogService.getMenuProducts());

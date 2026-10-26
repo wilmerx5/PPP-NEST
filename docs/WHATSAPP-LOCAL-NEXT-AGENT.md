@@ -1,3 +1,13 @@
+## VIGENTE — tanda197: opciones numéricas, notas y auditoría de consumo (25/10)
+
+Base73e23ab2. Normalización basada en opciones del catálogo: «7 up» ya no aporta siete unidades; también cubierta con 3fresh/9cool sintéticos, cantidades reales, calles y volúmenes. Corrección PARCIAL: combo explícito singular correcto; mensaje sin combo y plural aún separan arroz/pollo. Diagnóstico12: antes2verdes/10rojos, después4verdes/8rojos. No esconder esos ocho pendientes del inventario verde.
+
+21 regresiones nuevas, ocho cierres DTO con atributos; foco21/21, TS general/build y Node92 OK. Global18.648/263,567hashes,891,04s, inventario exacto/fuente congelada. Después, sin cambios runtime, 20/20 pruebas opt-in de notas redundantes (16DTO sintéticos+4PPP). Arroz real requiere selección adicional antes de comprobar nota: fricción pendiente. Evidencia: docs/whatsapp-numeric-option-validation-2510.md.
+
+Auditoría productiva solo lectura solicitada: agotamiento de saldo25/10 15:11–15:22 Bogotá; después189entrantes en6conversaciones,19órdenesWhatsApp (no tres o cuatro), sin audio/imagen. Delta informado1,18USD/19≈0,062USD provisional; sin conciliación de factura ni distinción pruebas/clientes, no costo exacto. Logs45turnos no equivalen45HTTP. Próximo: instrumentar tokens/cache/modelo/llamadas y vincular conversación/orden para medir costo; continuar composición de combos y pendientes191/192/183/184/186. No cambiar modelo por estimaciones.
+
+Solo staging, sin deploy ni Main, cero inferencia pagada/Meta/órdenes externas. No declarar piloto por conteos.
+
 ## VIGENTE — tanda196: negación múltiple corregida (25/10)
 
 Basee9323d41. «No va/van A ni B» y «no quiero A ni B» resuelven nombres completos contra catálogo/carrito antes de la reformulación de compra; eliminación en una actualización, extras ausentes no se compran, atributos del combo no identifican productos independientes. Ambigüedad conserva carrito y pide nombre completo. Selección/pago pendiente bloquea la mutación con explicación; no acreditar recuperación completa de esos pendientes ni nombres abreviados/sustituciones mixtas.

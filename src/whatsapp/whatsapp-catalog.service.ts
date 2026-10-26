@@ -1845,6 +1845,18 @@ export class WhatsappCatalogService {
   }
 
   /** Resolve a culinary synonym only when the configured catalog has one owner. */
+  /** Recover spacing inside catalogue option tokens without consuming order quantities. */
+  normalizeNumericOptionTokens(text: string, products: WhatsappCatalogProduct[]): string {
+    const tokens = new Set(products.flatMap(product => (product.attributes || []).flatMap(attribute =>
+      attribute.options.flatMap(option => normalizeText(option).split(/\s+/)))));
+    for (const token of tokens) {
+      const match = token.match(/^(\d{1,2})([a-z]{2,})$/);
+      if (!match || /^(?:ml|cl|litros?|oz|gr|kg|gramos?)$/.test(match[2])) continue;
+      text = text.replace(new RegExp(`\\b${match[1]}\\s+${escapeRegExp(match[2])}\\b`, 'gi'), token);
+    }
+    return text;
+  }
+
   resolveCatalogAliasText(text: string, products: WhatsappCatalogProduct[]): string {
     const q = normalizeText(text);
     if (!/\b(?:maduro con|platano maduro)\b/.test(q)) return text;
