@@ -57,16 +57,19 @@ it('malformed provider body is returned unchanged with unknown usage',async()=>{
  expect(await response.text()).toBe('invalid json');expect(events[0].usage).toBeNull();
 });
 for(const model of ['gpt-4o-mini','gpt-6.1-sol']) {
- it(`agent correlates summary rounds without customer content ${model}`,async()=>{
+ it(`agent correlates tool rounds without customer content ${model}`,async()=>{
   const raw=(text:string)=>model.startsWith('gpt-6')?{status:'completed',output:[{type:'message',role:'assistant',content:[{type:'output_text',text}]}],usage:responsesUsage}:{choices:[{message:{content:text}}],usage:chatUsage};
-  const fetcher=jest.spyOn(global,'fetch').mockResolvedValueOnce(new Response(JSON.stringify(raw('Almuerzos disponibles. '.repeat(30))))).mockResolvedValueOnce(new Response(JSON.stringify(raw('Tenemos opciones. ¿Cuál prefieres?'))));
+  const tool = model.startsWith('gpt-6')
+   ? {status:'completed',output:[{type:'function_call',call_id:'lookup',name:'search_menu',arguments:'{"query":"almuerzo"}'}],usage:responsesUsage}
+   : {choices:[{message:{content:null,tool_calls:[{id:'lookup',type:'function',function:{name:'search_menu',arguments:'{"query":"almuerzo"}'}}]}}],usage:chatUsage};
+  const fetcher=jest.spyOn(global,'fetch').mockResolvedValueOnce(new Response(JSON.stringify(tool))).mockResolvedValueOnce(new Response(JSON.stringify(raw('Tenemos opciones. ¿Cuál prefieres?'))));
   const service=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'secret',openaiModel:model,localContext:{}})} as never,new WhatsappCatalogService({} as never));
   const log=jest.spyOn((service as any).logger,'log').mockImplementation(()=>{});
   try {
    const result=await service.runTurn({conversationId:123,userMessage:'Qué tienes para almorzar?',sessionSummary:'private customer',recentMessages:[],businessRulesBlock:'reglas',brandName:'Ficticio',products:[]});
    expect(result.reply).toBe('Tenemos opciones. ¿Cuál prefieres?');expect(result.actions).toEqual({});
    const events=log.mock.calls.map(c=>JSON.parse(c[0] as string));
-   expect(events).toHaveLength(2);expect(events.map(e=>e.reason)).toEqual(['initial','summarize']);
+   expect(events).toHaveLength(2);expect(events.map(e=>e.reason)).toEqual(['initial','tool_results']);
    expect(new Set(events.map(e=>e.inferenceTurnId)).size).toBe(1);
    expect(new Set(events.map(e=>e.requestId)).size).toBe(2);
    expect(events.every(e=>e.conversationId===123&&e.model===model&&e.usage.inputTokens===100)).toBe(true);

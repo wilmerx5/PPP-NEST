@@ -186,17 +186,15 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(result.actions).toEqual({});
   });
 
-  it('summarizes an overlong menu answer without executing more tools or losing actions',async()=>{
+  it('keeps a completed menu answer without a cosmetic inference',async()=>{
     const fetchMock=jest.spyOn(global,'fetch').mockImplementationOnce(async()=>({ok:true,json:async()=>({choices:[{message:{content:'Opciones de almuerzo. '.repeat(50)}}]})}) as Response)
       .mockImplementationOnce(async()=>({ok:true,json:async()=>({choices:[{message:{content:'Tenemos bandeja y ejecutivo. ¿Cuál prefieres?'}}]})}) as Response);
     try {
       const service=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'test-key',openaiModel:'gpt-4o-mini',localContext:{}})} as never,new WhatsappCatalogService({} as never));
       const result=await service.runTurn({userMessage:'Qué tienes de almuerzo?',sessionSummary:'carrito vacío',recentMessages:[],businessRulesBlock:'reglas',brandName:'PPP',products});
-      expect(result.reply).toBe('Tenemos bandeja y ejecutivo. ¿Cuál prefieres?');
+      expect(result.reply).toBe('Opciones de almuerzo. '.repeat(50).trim());
       expect(result.actions).toEqual({});
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-      const secondBody=JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
-      expect(secondBody.tool_choice).toBe('none');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     } finally {fetchMock.mockRestore();}
   });
 

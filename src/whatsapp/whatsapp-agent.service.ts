@@ -556,7 +556,6 @@ export class WhatsappAgentService {
     const purchaseAttempts: NonNullable<AgentV1TurnResult['purchaseAttempts']> = [];
     let retriedUnappliedOrder = false;
     let retriedIncompleteOrder = false;
-    let retriedConciseReply = false;
     let needsAttributeProductId: number | undefined;
     let lookupPlacedOrder: { orderNumber?: number } | undefined;
     let lookupDeliveryTime = false;
@@ -670,7 +669,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             model,
             messages,
             tools: AGENT_TOOLS,
-            tool_choice: retriedConciseReply ? 'none' : i===0 && (
+            tool_choice: i===0 && (
               this.catalogService.isAvailabilityInquiry(input.userMessage) ||
               this.catalogService.isPriceInquiryIntent?.(input.userMessage) ||
               this.catalogService.isProductDescriptionInquiry(input.userMessage)
@@ -772,12 +771,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             messages.push({role:'system',content:'Tu respuesta dice que agregaste productos pero no ejecutaste add_item. Una búsqueda no modifica el carrito. Ejecuta add_item para los productos solicitados y resueltos por las tools antes de responder. Si queda una ambigüedad real, pregunta solo por ella y no afirmes cambios que no ejecutaste.'});
             continue;
           }
-          if (reply.length > 420 && !retriedConciseReply && i < this.maxIterations - 1) {
-            retriedConciseReply = true;
-            inferenceReason = 'summarize';
-            messages.push({role:'system',content:'Resume tu respuesta anterior en máximo 360 caracteres, con tono cordial. Conserva lo esencial de lo preguntado: nombres y precios o cantidades/opciones efectivamente agregadas. Para una consulta general ofrece 2–3 opciones, sin enumerar atributos ni añadir acompañamientos no preguntados. Si preguntaron qué incluye, conserva las diferencias de cada description: no conviertas acompañamientos distintos en una afirmación sobre todos. No cambies el pedido ni ejecutes más herramientas.'});
-            continue;
-          }
+          // Preserve the completed answer. Length alone must not trigger another
+          // paid inference; incomplete purchases are recovered above.
           // Sin tools ni texto → el orquestador puede caer a reglas (multi-pedido)
           return {
             reply,

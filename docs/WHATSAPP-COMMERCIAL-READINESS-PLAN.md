@@ -1,3 +1,11 @@
+## VIGENTE — tanda 203: eliminar reintento cosmético (26/10)
+
+Base `845e90de`. El agente ya no pide otra inferencia solo porque una respuesta completa supera 420 caracteres. Conserva texto hasta el límite existente de 3500; permanecen recuperaciones de compras incompletas/sin acción, reintentos HTTP, modelos y herramientas. No cambia reglas de catálogo.
+
+16 casos de costo en spec: 12 promovidos del diagnóstico198 + 4 controles de respuesta larga/acción/recuperación en Chat y Responses. Foco74/74, TS general/build y Node92 aprobados. Inventario completo18.776/269: primera global18.775 verdes/1 fallo por contrato antiguo que exigía resumen; actualizado solo ese spec y repetida su suite48/48. Auditoría575hashes confirma runtime intacto desde la global, único cambio posterior `whatsapp-agent.spec.ts`; inventario combinado exacto. No llamarlo segunda global congelada. Evidencia `docs/whatsapp-cosmetic-retry-validation-2610.md` y `/tmp/ppp-203-global-summary.json`.
+
+Una llamada menos en los turnos afectados, no ahorro porcentual/dólares medido. Telemetría199 y cambio203 sin despliegue; faltan otras modalidades y asociación a orden. Siguiente: ocho diagnósticos de composición197 y medición integral. Mantener pendientes anteriores. Solo staging, Main intacta, sin deploy; cero API/Meta/órdenes externas. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 202: notas de ají y deduplicación (26/10)
 
 Base `356738c0`. Corregidos4diagnósticos201: preferencia final de ají tras coma se conserva como nota; ruta namedMeal extrae modificaciones con contexto del producto para no repetir ingredientes del título. Enmascarado compartido, sin nombres/IDsPPP. Alcance del ajuste de coma: intensidad de ají reconocida, no cualquier «con X».
