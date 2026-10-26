@@ -7133,12 +7133,13 @@ export class WhatsappOrchestratorService {
           ? nameScored
           : this.catalogService.searchByNameScored(productQuery, products, 8);
       if (qtyScored.length >= 1 && qtyScored[0].score >= 12) {
+        const namedCombo = this.catalogService.explicitlyNamedCombo(text, products);
         const family = this.catalogService.findProductVariantFamily(
           productQuery || text,
           products,
           qtyScored.map((x) => x.p),
         );
-        if (family && family.variants.length >= 2) {
+        if (!namedCombo && family && family.variants.length >= 2) {
           session = {
             ...session,
             pendingMatch: {
@@ -7157,7 +7158,9 @@ export class WhatsappOrchestratorService {
           );
           return;
         }
-        if (qtyScored.length === 1 || this.catalogService.isStrongProductMatch(qtyScored)) {
+        if (namedCombo) {
+          resolvedMatches = [namedCombo];
+        } else if (qtyScored.length === 1 || this.catalogService.isStrongProductMatch(qtyScored)) {
           resolvedMatches = [qtyScored[0].p];
         } else if (qtyScored.length >= 2) {
           session = {

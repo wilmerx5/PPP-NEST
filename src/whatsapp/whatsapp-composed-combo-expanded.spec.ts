@@ -1,7 +1,6 @@
 import { harness } from './whatsapp-accuracy.test-support';
-import { writeFileSync } from 'fs';
 
-// Opt-in diagnostic: exact named compound vs plural, with competing component SKUs.
+// Exact named compound vs plural, with competing component SKUs and final order DTO.
 for (const [menuIndex, [base, component, option]] of [
  ['Arroz Chino', 'Medio Pollo', '7up'],
  ['Bowl De Quinoa', 'Tofu', '3fresh'],
@@ -15,7 +14,6 @@ for (const [menuIndex, [base, component, option]] of [
   const h=harness(menu,agent);
   const flavor=spaced?option.replace(/(\d)([a-z])/,'$1 $2'):option;
   const reply=await h.sendQueued(`Quiero ${quantity===1?'un combo':'dos combos'} ${base} con ${component} y bebida ${flavor}`);
-  writeFileSync(`/tmp/ppp-198-combo-${menuIndex}-${agent}-${quantity}-${spaced}.json`,JSON.stringify({cart:h.cartRows(),reply,state:h.conv.state},null,2));
   expect(h.conv.sessionData.cart).toHaveLength(1);
   expect(h.conv.sessionData.cart[0]).toMatchObject({productId:99103,quantity});
   expect(h.conv.sessionData.cart[0].attributes).toContainEqual({attributeName:'Bebida',attributeValue:option});

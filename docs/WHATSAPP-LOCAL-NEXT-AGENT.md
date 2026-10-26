@@ -1,3 +1,11 @@
+## VIGENTE — tanda200 validada: combo explícito en plural (25/10)
+
+Base6294bffa. En ruta cantidad>=2, nombre completo de un único combo activo evita volver a preguntar familia. Selector conservador por frase del catálogo; duplicados, agotados, títulos incompletos o dos combos independientes no reciben override. Sin IDs/nombresPPP runtime.
+
+Matriz19824:20/4antes→24/24después; promovida a spec sin duplicación.13controles adicionales (9selector+4notas/DTO); foco37/37,28cierresDTO. Global18.714/266suites,574hashes,706,66s; inventario exacto y fuente congelada. Evidencia /tmp/ppp-200-global-summary.json. TS general/build yNode92OK. Evidencia docs/whatsapp-explicit-combo-quantity-validation-2510.md.
+
+NO cierre total: diagnóstico197PPP4verdes/8rojos sin cambio;2nuevos casos de arroz pierden«sin cebolla», reproducidos también contra orquestador anterior, conservados opt-in en whatsapp-combo-note-loss.repro.ts. Siguiente notas/composición en esos caminos; costos199aún sin deploy ni coberturaaudio/visión/legacy. Main intacta, cero API/Meta/órdenes externas. No declarar vendible por conteos.
+
 ## VIGENTE — tanda199 validada: medir inferencia por intento (25/10)
 
 Baseb4d2397a. Runtime añade observación por intento HTTP del agente textual: tokensentrada/salida/cache/razonamiento cuando el proveedor los devuelve, unknown ante timeout/ausencia, requestId+attempt, conversationId+inferenceTurnId, modelo y motivo de ronda. Sin contenido de cliente/credenciales. No modifica decisiones ni ahorra llamadas todavía; no cubre visión/audio/legacy ni asociación orderId. Cero inferencia pagada.

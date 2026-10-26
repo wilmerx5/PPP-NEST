@@ -3204,6 +3204,19 @@ export class WhatsappCatalogService {
     return nameTokens.every((tok) => words.some((w) => nearDishToken(w, tok)));
   }
 
+  /** Exact catalogue title beats a broad family only when it identifies one live combo. */
+  explicitlyNamedCombo(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null {
+    const clean = (value: string) => normalizeText(value).replace(/\bcombos\b/g, 'combo')
+      .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+    const query = ` ${clean(text)} `;
+    const hits = products.map(product => ({product, name:clean(product.name)}))
+      .filter(hit => /^combo\s+/.test(hit.name) && query.includes(` ${hit.name} `));
+    // Ignore a contained short title, but never choose between unrelated or duplicate titles.
+    const specific = hits.filter(hit => !hits.some(other => other.name !== hit.name &&
+      ` ${other.name} `.includes(` ${hit.name} `)));
+    return specific.length === 1 && specific[0].product.availableNow !== false ? specific[0].product : null;
+  }
+
   /** Todas las palabras del nombre aparecen en el mensaje, aunque la extracción recorte prefijos como “combo de”. */
   productFullyNamedIn(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null {
     const spoken = new Set(normalizeText(text || '').split(/[^a-z0-9]+/).filter(Boolean));
