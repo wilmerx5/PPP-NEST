@@ -1,3 +1,11 @@
+## VIGENTE — tanda 202: notas de ají y deduplicación (26/10)
+
+Base `356738c0`. Corregidos4diagnósticos201: preferencia final de ají tras coma se conserva como nota; ruta namedMeal extrae modificaciones con contexto del producto para no repetir ingredientes del título. Enmascarado compartido, sin nombres/IDsPPP. Alcance del ajuste de coma: intensidad de ají reconocida, no cualquier «con X».
+
+28casos promovidos/ampliados:18conversaciones en3menús×agente mock off/on×bastante/poco/mucho hasta DTO,10controles de límites. Primera global detectó6regresiones de notas repetidas en ráfagas; reparadas conservando el extractor anterior con contexto opcional de producto. Foco reparación123/123. TS general/build yNode92OK. Global FINAL18.760/268suites,575hashes,712,34s, fuente congelada/inventario exacto. Evidencia `/tmp/ppp-202-final-global-summary.json` y `docs/whatsapp-combo-intensity-validation-2610.md`. No usar la primera global fallida como aprobación.
+
+Los6diagnósticos201 ahora pasan y están en spec, sin duplicado repro. Siguen8composición197 y pendientes anteriores; próximo reducir llamada de resumen198 sin eliminar recuperaciones, además de composición. Costos199 aún sin deploy/otras modalidades/asociación a orden, sin ahorro medido. Solo staging; sin deploy, Main intacta; cero API/Meta/órdenes externas. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 201: notas en combos plurales (26/10)
 
 Base `27b49bf8`. Corregida pérdida de «sin cebolla/sin ensalada» al pedir combos plurales: el enmascarado del título del catálogo admite combo/combos. Traza confirma texto completo en handler y pérdida en extractor, no persistencia. Sin excepciones por restaurante.

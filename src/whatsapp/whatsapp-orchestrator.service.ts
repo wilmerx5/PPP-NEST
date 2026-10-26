@@ -3509,7 +3509,7 @@ export class WhatsappOrchestratorService {
       !/\b(?:aparte|a parte|adicional|extra|por separado)\b/i.test(text) &&
       !this.catalogService.isAvailabilityInquiry(text) && !this.catalogService.isPriceInquiryIntent(text) &&
       !this.catalogService.isProductDescriptionInquiry(text)) {
-      if (await this.handleProductWithVariants(conv, msg.waId, session, namedMeal, text, cfg, this.catalogService.extractProductModificationNote(text) || undefined)) return;
+      if (await this.handleProductWithVariants(conv, msg.waId, session, namedMeal, text, cfg, this.catalogService.extractProductModificationNote(text, namedMeal) || undefined)) return;
     }
 
     // An explicit purchase of "those ten boxes" may refer to one discussed product.

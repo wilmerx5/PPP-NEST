@@ -4340,10 +4340,8 @@ export class WhatsappCatalogService {
     );
   }
 
-  /** Cocción, ají y las demás preferencias del mismo plato, sin tapar una con otra. */
-  orderKitchenNote(text: string, product: { id: number; name: string; categoryName?: string }): string | undefined {
-    // The dish is already chosen: "dame un bagre con harto limón" is not an add-a-side request.
-    text = (text || '').replace(LEADING_ORDER_VERB, '');
+  /** Mask catalogue ingredients before extracting modifications. */
+  private productNoteSource(text: string, product: { name: string }): string {
     // "Plato Con Res Asada": the name's own "con" clause is not a modification.
     let modificationText = text;
     const nameTokens = normalizeText(product.name).split(/\s+/).filter(Boolean);
@@ -4353,6 +4351,14 @@ export class WhatsappCatalogService {
       // Match the spoken plural too, so a combo's components do not hide its real preferences.
       modificationText = text.replace(new RegExp(`(?<![\\p{L}])${nameTokens.map((token) => token === 'combo' ? 'combos?' : loose(token)).join('\\s+')}(?![\\p{L}])`, 'iu'), 'plato').trim();
     }
+    return modificationText;
+  }
+
+  /** Cocción, ají y las demás preferencias del mismo plato, sin tapar una con otra. */
+  orderKitchenNote(text: string, product: { id: number; name: string; categoryName?: string }): string | undefined {
+    // The dish is already chosen: "dame un bagre con harto limón" is not an add-a-side request.
+    text = (text || '').replace(LEADING_ORDER_VERB, '');
+    const modificationText = this.productNoteSource(text, product);
     const peeled = peelSupportedCookingTerm(text, product);
     const intensity=splitIntensityPreference(text);
     return joinKitchenNotes(
@@ -4368,7 +4374,8 @@ export class WhatsappCatalogService {
    * "sin yuca más papa", "con ensalada", "sin cebolla", "no quiero arepas quiero más papas":
    * preferencias del plato, no ítems nuevos.
    */
-  extractProductModificationNote(text: string): string | null {
+  extractProductModificationNote(text: string, product?: { name: string }): string | null {
+    if (product) text = this.productNoteSource(text, product);
     const ensureAji = (note: string) =>
       /\baj[ií]\b/i.test(note) || !/\bcon\s+aj[ií]\b/i.test(text || '') ? note : `${note}, con ají`;
     const preference = splitKitchenPreference(text);
@@ -9758,6 +9765,16 @@ export class WhatsappCatalogService {
   }
 
   private frameSpokenOrder(text: string, products: WhatsappCatalogProduct[]): { text: string; notes: Array<{ note: string; anchor: string }> } {
+    // A trailing, bounded condiment preference belongs to the preceding dish,
+    // not to a new unresolved product after the comma. Exact catalogue names win.
+    text = text.replace(/,\s*([^,;]+)$/u, (whole, tail: string) => {
+      if (/[¿?]/.test(tail)) return whole;
+      const clean = tail.replace(/\s+(?:por favor|porfa|gracias)[.!]*$/i, '').replace(/[.!]+$/, '').trim();
+      const note = condimentIntensityNote(normalizeText(clean));
+      if (!note || normalizeText(note).replace(/\bharto\b/g, 'arto') !== normalizeText(clean).replace(/\bharto\b/g, 'arto') ||
+        products.some(product => normalizeText(product.name) === normalizeText(clean))) return whole;
+      return ` ${tail}`;
+    });
     const optionNouns = [...new Set(products.flatMap((product) => product.attributes || [])
       .map((attr) => singularizeEsToken(normalizeText(attr.attributeName)))
       .filter((noun) => noun.length >= 3))];
