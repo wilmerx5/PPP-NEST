@@ -1,3 +1,9 @@
+## VIGENTE — diagnóstico198: combos plurales y costo (25/10)
+
+Basee3bd166e.36casos nuevos opt-in:24combos en3menús (20cierresDTO verdes,4pluralesbowl fallan por selección innecesaria) y12contratos de costo (8verdes,4rojos:421caracteres provoca segunda inferencia para resumir en Chat y Responses). Total28/36; fallos fuera del inventario global. HTTP/modelo simulados; ninguna medición de ahorro real. Primer intento tenía oráculo DTO incorrecto, corregido antes del resultado final.
+
+Sin runtime/config/deploy. TS generalOK; global19718.648/263 permanece vigente. Evidencia y plan: docs/whatsapp-combo-cost-diagnostic-2510.md. Próximo instrumentar solicitudes/tokens/cache/modelo por conversación, después eliminar resumen extra solo con respuesta completa y acciones verificadas; mantener recuperaciones de compras incompletas. Responses permite3000tokens aunque cuerpoChat indica900: límite no equivaleconsumo. Continuar plural de combo y pendientes197/191/192/183/184/186. Pilotar con métricas de cierres, errores críticos, costo y latencia; no declarar vendible por conteos. Solo staging, Main intacta, cero API/Meta/órdenes externas.
+
 ## VIGENTE — tanda197: opciones numéricas, notas y auditoría de consumo (25/10)
 
 Base73e23ab2. Normalización basada en opciones del catálogo: «7 up» ya no aporta siete unidades; también cubierta con 3fresh/9cool sintéticos, cantidades reales, calles y volúmenes. Corrección PARCIAL: combo explícito singular correcto; mensaje sin combo y plural aún separan arroz/pollo. Diagnóstico12: antes2verdes/10rojos, después4verdes/8rojos. No esconder esos ocho pendientes del inventario verde.
