@@ -1,3 +1,13 @@
+## VIGENTE — tanda 209: oferta inicial de combo validada; promoción autorizada (26/10)
+
+Base `bc36dde8`. Corregidos los doce pendientes205: nombre completo del plato + bebida, con carrito vacío y una única versión exacta compatible. Guarda el plato base explícitamente pedido y ofrece el combo sin comprarlo aún; al aceptar conserva cantidad, preparación, bebida y nota. Elección posterior de bebida prevalece. No fabrica originalLine; regla por catálogo, sin IDs/nombresPPP. Límites: nombres abreviados, varias variantes, títulos distintos, carrito existente y «no, bebida aparte» combinado siguen para ampliar; no declararlos resueltos.
+
+Promovido repro205 a `whatsapp-implicit-combo-offer.spec.ts`:54/54, tres menús×agente mock off/on. 36cierresDTO; 12controles de agotados iniciales/posteriores y6bebidas aparte. Primer ajuste24/30 perdió cantidad en6casos; extractor corregido sin suavizar oráculo. Foco837/837+Falafel1/1; TS general/build yNode92. Global18.944/274suites,580hashes,707,75s, inventario exacto y fuente congelada (`/tmp/ppp-209-final-global-summary.json`).
+
+El usuario solicitó integrar/desplegar en Main al terminar. Promoción en curso, no dar por desplegado hasta entrada de cierre. Prod inspeccionada en0f8c98da; compose privado/env y472artefactos locales Main se preservan. Sin API pagada/Meta/órdenes externas. Informe: `docs/whatsapp-implicit-combo-offer-validation-2610.md`.
+
+Siguiente: alternativas ambiguas/abreviadas, negativa con compra aparte y consultas durante propuesta; notas y opciones tras cambios de catálogo. Medir consumo real tras desplegar telemetría199/reintento203; no prometer ahorro porcentual ni vendibilidad por conteos.
+
 ## VIGENTE — tanda 208: aceptación verbal de combo y cambio de precio (26/10)
 
 Base `358e8c46`. Repetición del diagnóstico205:18/30, los doce fallos de oferta inicial siguen pendientes (`/tmp/ppp-208-baseline.json`). Se exploró la continuación por separado con compra real del plato base y consulta de bebida: 24casos iniciales,18verdes/6rojos. «Sí, el combo» avanzaba a atributos al precio nuevo sin advertir el cambio; la elección numérica ya tenía guarda.

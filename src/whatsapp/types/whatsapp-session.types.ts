@@ -109,6 +109,8 @@ export type WhatsappSessionData = {
     priceAcceptanceProductId?: number;
     /** The offered bundle fulfills the whole source request; do not add its components again. */
     includesRequestedAccompaniment?: boolean;
+    /** Explicit choices from the initial request, scoped to the proposed combo. */
+    offeredChoices?: { productId: number; attributes: { attributeName: string; attributeValue: string }[] };
     query: string;
     candidates: WhatsappProductCandidate[];
     /** info = eligió variante para ver detalle (no agregar al carrito) */

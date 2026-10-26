@@ -3488,6 +3488,8 @@ export class WhatsappOrchestratorService {
         await this.tryHandleMultiProductOrder(conv, msg.waId, session, swapped, cfg, originalText, products, originalText)) return;
     }
 
+    if (businessOpenForBot && await this.tryOfferExactDishCombo(conv, msg.waId, session, originalText, products, cfg)) return;
+
     // Catalog identity can omit a presentation only when one matching compound exists.
     const splitsSameSkuPair = /\b(?:uno|una)\s+con\s+.+\by\s+(?:el|la)\s+otr[oa]\s+con\s+/i.test(text);
     const compoundVocabulary = !splitsSameSkuPair && /\bcon\b/i.test(text) && !/\b(?:y|aparte|a parte|adicional)\s+(?:un|una|dos|tres|medio|media|cuarto|cuarta|\d+)\b/i.test(text)
@@ -13414,6 +13416,58 @@ export class WhatsappOrchestratorService {
     return ref[1].trim().split(' ').filter(Boolean).every(shared) ? Number(ref[2]) : null;
   }
 
+  /** A fully named dish plus a drink can have an exact combo version in the catalog. */
+  private async tryOfferExactDishCombo(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+    products: MenuProduct[], cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    // Keep corrections, multiple purchases, addresses and existing selections in their own routes.
+    if (session.cart.length || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
+      /[¿?\n]/.test(text) || /\b(?:combo|combos|aparte|adicional|extra|no|para|direccion|calle|cll|carrera|cra|diagonal|transversal|telefono|nombre|pago|efectivo|transferencia)\b/i.test(this.normalizeForMatch(text)) ||
+      /\by\s+(?:un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|medio|media|cuarto|cuarta|\d+)\b/i.test(text) ||
+      this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isAvailabilityInquiry(text) ||
+      this.catalogService.isProductDescriptionInquiry(text)) return false;
+    const q = this.normalizeForMatch(text);
+    if (!/\b(?:quiero|dame|deme|me das|me regalas|me envias)\b/.test(q) ||
+      !/\bcon\s+(?:una?\s+)?(?:bebida|gaseosa|refresco|jugo|soda)\b/.test(q)) return false;
+    const named = products.filter(product => product.availableNow !== false && !this.catalogService.productImpliesCombo(product) &&
+      !this.catalogService.isLikelyDrinkProduct(product) &&
+      (` ${q} `).includes(` ${this.normalizeForMatch(product.name)} `));
+    const longest = named.filter(product => !named.some(other => other.id !== product.id &&
+      this.normalizeForMatch(other.name).length > this.normalizeForMatch(product.name).length &&
+      (` ${this.normalizeForMatch(other.name)} `).includes(` ${this.normalizeForMatch(product.name)} `)));
+    if (longest.length !== 1) return false;
+    const dish = longest[0];
+    if (drinkInclusion(dish, 'bebida') === 'yes') return false;
+    const requestedVolume = this.catalogService.extractRequestedDrinkVolumeMl(text);
+    const combos = products.filter(product => product.availableNow !== false && this.catalogService.productImpliesCombo(product) &&
+      this.normalizeForMatch(product.name).replace(/^combo\s+(?:de\s+)?/, '') === this.normalizeForMatch(dish.name) &&
+      drinkInclusion(product, 'bebida') === 'yes' &&
+      (requestedVolume == null || requestedVolume === this.catalogService.extractRequestedDrinkVolumeMl(product.description || '')));
+    // An ambiguous presentation must not silently become a preferred replacement.
+    if (combos.length !== 1) return false;
+    const combo = combos[0];
+    const requested = this.catalogService.resolveAttributesFromMessage(combo, text, []);
+    const choices = requested.status === 'complete' || requested.status === 'partial' ? requested.attributes : [];
+    const quantityText = q.slice(0, q.indexOf(this.normalizeForMatch(dish.name)));
+    const quantity = this.catalogService.extractQuantityFromSegment(`${quantityText} platos`) || 1;
+    const note = this.catalogService.extractProductModificationNote(text, dish) || undefined;
+    const added = this.tryAddProductToCart(session, dish, quantity, cfg, note, undefined, { sourceText: text });
+    if (added.blocked || added.missingAttributes || added.session.cart.length !== 1) return false;
+    const originalLine = added.session.cart[0];
+    const next: WhatsappSessionData = { ...added.session, pendingMatch: {
+      query: text, intent: 'order', candidates: [combo], quantity,
+      replacement: { originalLine: structuredClone(originalLine), preferredId: combo.id },
+      offeredChoices: { productId: combo.id, attributes: choices },
+    } };
+    await this.conversationService.saveSession(conv, next, 'building_cart');
+    await this.reply(conv, waId, `Anoté *${dish.name}${quantity > 1 ? ` ×${quantity}` : ''}*.${note ? `\n📝 ${note}` : ''}\n\n` +
+      `También tenemos *${combo.name}* · #${combo.code} · ${this.catalogService.formatMoney(combo.price)} por unidad.\n` +
+      `${combo.description || 'Incluye bebida.'}${choices.length ? `\nOpciones solicitadas: ${choices.map(choice => choice.attributeValue).join(' · ')}.` : ''}\n\n` +
+      '¿Quieres cambiarlo al combo? Responde *sí* o *no*. Conservo la cantidad y las notas; todavía no agregué una bebida aparte.');
+    return true;
+  }
+
   /** Answers to a one-combo offer that would replace an existing cart line. */
   private async tryAnswerComboSwapOffer(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
@@ -13511,8 +13565,10 @@ export class WhatsappOrchestratorService {
       return this.tryResolvePendingMatchPick(conv, waId, session, String(quotedIndex + 1), products, cfg);
     }
     const selected = options.length === 1 && drinkAttribute ? [{ attributeName: drinkAttribute.attributeName, attributeValue: options[0] }] : [];
-    // The plain dish's own choices (pollo broaster, arepas fritas…) carry over when the combo offers them.
-    for (const kept of original.attributes || []) {
+    // Retain explicit initial choices only for this candidate; later choices take priority.
+    const offered = pending.offeredChoices?.productId === combo.id ? pending.offeredChoices.attributes : [];
+    // The plain dish's own choices carry over when the combo offers them.
+    for (const kept of [...offered, ...(original.attributes || [])]) {
       const attr = (combo.attributes || []).find(entry => this.normalizeForMatch(entry.attributeName) === this.normalizeForMatch(kept.attributeName));
       const value = attr?.options.find(option => this.normalizeForMatch(option) === this.normalizeForMatch(kept.attributeValue));
       if (attr && value && !selected.some(choice => choice.attributeName === attr.attributeName)) selected.push({ attributeName: attr.attributeName, attributeValue: value });
