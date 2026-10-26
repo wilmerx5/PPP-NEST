@@ -1,3 +1,13 @@
+## VIGENTE — tanda 216: etiquetas de presentación y consulta con elección (26/10)
+
+Base `49cca892`, staging. Referencias grande/pequeño/familiar/individual/mediano se resuelven solo con etiqueta explícita de nombre o presentación/tamaño/formato en descripción; no por precio/volumen. Ausente/ambigua conserva carrito. Consulta reconocida terminada en «?» seguida de «dame/quiero el/la ...» responde y procesa elección explícita, sin repetir pregunta ya resuelta. Dos respuestas del mismo turno: detalle y resultado. Revalida disponibilidad/precio.
+
+60 nuevas conversaciones en tres menús×agente mock off/on,60 cierres DTO con cantidades/notas/bebida. Baseline30/30 rojos; primera corrección18/30 (12 aserciones solo leían última respuesta; oráculo corregido para leer todas las salidas del turno, documentado). Foco246/246 en4 suites; TS general/build, Node92 yFalafel1 aprobados. Global19.308/282 suites,589 hashes,730,08s, inventario exacto/fuente congelada. Informe `docs/whatsapp-combo-descriptive-choice-validation-2610.md`.
+
+Siguiente: elección antes de consulta, conjunciones, abreviaciones y bebida junto a presentación; negativas y condiciones sin compra. No extrapolar el patrón explícito actual a todo lenguaje libre. Mantener respuesta/carrito/estado/DTO y foco antes de global, sin editar durante validación.
+
+Sin API pagada/Meta/órdenes externas; modelos/Main intactos. Publicación solo staging, sin despliegue216; tandas210–216 pendientes de despliegue agrupado. Main/producción mantienen código209 `a935f555`. Sin ahorro medido ni declaración de vendibilidad por conteos.
+
 ## VIGENTE — tanda 215: consultas por código/contenido y sabores (26/10)
 
 Base `a54b45f6`, staging. Consultas explícitas de precio/sabores/contenido por código ofrecido y contenido por volumen responden desde catálogo vigente sin comprar ni perder alternativas. Código ajeno pide aclarar; agotado avisa; descripción ausente no inventa acompañamientos. La revalidación de sabores ya funcionaba: si la bebida solicitada desapareció, mantiene base y pide opción válida; se amplía su evidencia hasta DTO.

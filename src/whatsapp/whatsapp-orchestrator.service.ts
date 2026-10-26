@@ -2605,6 +2605,13 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, 'Anoté la fecha y el horario solicitados. La disponibilidad para una entrega programada debe confirmarla el local; todavía no está reservada.');
       return;
     }
+    const mixedComboChoice = session.pendingMatch?.offeredAlternatives?.length
+      ? originalText.match(/^(.+?\?)\s*((?:dame|quiero)\s+(?:el|la)\s+[^?]+)$/i) : null;
+    if (mixedComboChoice && await this.tryAnswerPendingComboQuestion(conv, msg.waId, session, mixedComboChoice[1], true)) {
+      if (await this.tryAnswerComboSwapOffer(conv, msg.waId, session, mixedComboChoice[2], cfg) === true) return;
+      await this.reply(conv, msg.waId, 'Para elegir la presentación, indica su número en la lista. El pedido sigue igual.');
+      return;
+    }
     if (await this.tryAnswerPendingComboQuestion(conv, msg.waId, session, originalText)) return;
     if (await this.tryStagePendingAttributeDistribution(conv, msg.waId, session, originalText, cfg)) return;
     const unitSplit = this.rememberIncomingUnitSplit(session, originalText);
@@ -13490,7 +13497,7 @@ export class WhatsappOrchestratorService {
 
   /** Questions about the offered combo refer to that candidate, not the base cart line. */
   private async tryAnswerPendingComboQuestion(
-    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, continuingSelection = false,
   ): Promise<boolean> {
     const pending = session.pendingMatch;
     if (!pending?.replacement || pending.intent !== 'order') return false;
@@ -13534,6 +13541,10 @@ export class WhatsappOrchestratorService {
       : contents
         ? `*${combo.name}* · #${combo.code}: ${combo.description?.trim() || 'No tengo el detalle de acompañamientos confirmado en la carta.'}`
         : `Para *${combo.name}* · #${combo.code}:${this.drinkChoicesLine(combo) || ' no tengo sabores confirmados en la carta.'}`;
+    if (continuingSelection) {
+      await this.reply(conv, waId, detail);
+      return true;
+    }
     await this.reply(conv, waId, detail + '\n\nTu pedido sigue igual. ' + (multiple
       ? 'Para elegir una presentación, escribe su número; también puedes decir *no* para conservar el plato original.'
       : '¿Quieres cambiarlo al combo? Responde *sí* o *no*.'));
@@ -13569,13 +13580,20 @@ export class WhatsappOrchestratorService {
         .replace(/(?:\s+(?:por favor|porfa|gracias))+[.!]*$/, '').trim();
       const codeReference = reference.match(/^(?:(?:quiero|dame|el|la)\s+)*(?:#|codigo\s*#?)\s*(\d+)$/);
       const volumeReference = reference.match(/^(?:(?:quiero|dame)\s+)?(?:el|la)(?:\s+combo)?\s+de\s+(\d+(?:[.,]\d+)?\s*(?:ml|cc|l|lt|lts|litros?)|(?:un\s+)?litro\s+y\s+medio)$/);
-      if (choice == null && (codeReference || volumeReference)) {
+      const descriptiveReference = reference.match(/^(?:(?:quiero|dame)\s+)?(?:el|la)(?:\s+combo)?\s+(grande|pequen[oa]|median[oa]|familiar|individual)$/);
+      if (choice == null && (codeReference || volumeReference || descriptiveReference)) {
         const volume = volumeReference ? this.catalogService.extractRequestedDrinkVolumeMl(volumeReference[1]) : null;
         const live = await this.catalogService.getMenuProducts();
+        const canonicalSize = (value: string) => this.normalizeForMatch(value).replace(/\b(pequen|median)[oa]\b/g, '$1o');
+        const size = descriptiveReference ? canonicalSize(descriptiveReference[1]) : null;
         const matches = pending.candidates.map((candidate,index)=>({candidate,index})).filter(({candidate}) =>
-          codeReference ? candidate.code === Number(codeReference[1]) : volume != null && live.some(product =>
-            product.id === candidate.id && product.availableNow !== false &&
-            this.catalogService.extractRequestedDrinkVolumeMl(product.description || '') === volume));
+          codeReference ? candidate.code === Number(codeReference[1]) : live.some(product => {
+            if (product.id !== candidate.id) return false;
+            if (size) return canonicalSize(product.name).endsWith(` ${size}`) ||
+              new RegExp(`\\b(?:presentacion|tamano|formato)\\s+${size}\\b`).test(canonicalSize(product.description || ''));
+            return volume != null && product.availableNow !== false &&
+              this.catalogService.extractRequestedDrinkVolumeMl(product.description || '') === volume;
+          }));
         if (matches.length !== 1) {
           await this.reply(conv, waId, 'No puedo identificar una única presentación de esa lista con esa referencia. Elige su número; el pedido sigue igual.');
           return true;
