@@ -13501,21 +13501,25 @@ export class WhatsappOrchestratorService {
     let flavors = /^(?:(?:y|oye)\s+)?(?:que (?:sabores(?: de bebida)?|bebidas) tiene el combo|cuales sabores hay para el combo)$/.test(q);
     const raw = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[¿?]/g, '').trim()
       .replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '');
-    const reference = multiple ? raw.match(/^(cuanto (?:cuesta|vale|sale)|que sabores tiene) (?:el|la) de (\d+(?:[.,]\d+)?\s*(?:ml|cc|l|lt|lts|litros?)|(?:un\s+)?litro\s+y\s+medio)$/) : null;
+    const reference = multiple ? raw.match(/^(cuanto (?:cuesta|vale|sale)|que sabores tiene|con que viene|que incluye|que trae) (?:el|la) (?:de (\d+(?:[.,]\d+)?\s*(?:ml|cc|l|lt|lts|litros?)|(?:un\s+)?litro\s+y\s+medio)|(?:codigo\s*#?\s*|#)(\d+))$/) : null;
+    let contents = false;
     if (multiple) {
       if (!reference) return false;
       price = reference[1].startsWith('cuanto');
-      flavors = !price;
+      flavors = reference[1] === 'que sabores tiene';
+      contents = !price && !flavors;
     }
-    if (!price && !flavors) return false;
+    if (!price && !flavors && !contents) return false;
     const menu = await this.catalogService.getMenuProducts();
     let combo = menu.find(product => product.id === pending.candidates[0]?.id);
     if (reference) {
-      const volume = this.catalogService.extractRequestedDrinkVolumeMl(reference[2]);
-      const matches = menu.filter(product => pending.candidates.some(candidate=>candidate.id===product.id) && volume != null &&
-        this.catalogService.extractRequestedDrinkVolumeMl(product.description || '') === volume);
+      const volume = reference[2] ? this.catalogService.extractRequestedDrinkVolumeMl(reference[2]) : null;
+      const code = reference[3] ? Number(reference[3]) : null;
+      const matches = menu.filter(product => pending.candidates.some(candidate=>candidate.id===product.id) &&
+        (code != null ? product.code === code : volume != null &&
+          this.catalogService.extractRequestedDrinkVolumeMl(product.description || '') === volume));
       if (matches.length !== 1) {
-        await this.reply(conv, waId, '¿Sobre cuál opción de la lista quieres consultar? Indica su número o el volumen que aparece en ella. El pedido sigue igual.');
+        await this.reply(conv, waId, '¿Sobre cuál opción de la lista quieres consultar? Indica su número, código o el volumen que aparece en ella. El pedido sigue igual.');
         return true;
       }
       combo = matches[0];
@@ -13527,7 +13531,9 @@ export class WhatsappOrchestratorService {
     if (!this.catalogService.productImpliesCombo(combo)) return false;
     const detail = price
       ? `*${combo.name}* · #${combo.code}: *${this.catalogService.formatMoney(combo.price)} por unidad*.`
-      : `Para *${combo.name}* · #${combo.code}:${this.drinkChoicesLine(combo) || ' no tengo sabores confirmados en la carta.'}`;
+      : contents
+        ? `*${combo.name}* · #${combo.code}: ${combo.description?.trim() || 'No tengo el detalle de acompañamientos confirmado en la carta.'}`
+        : `Para *${combo.name}* · #${combo.code}:${this.drinkChoicesLine(combo) || ' no tengo sabores confirmados en la carta.'}`;
     await this.reply(conv, waId, detail + '\n\nTu pedido sigue igual. ' + (multiple
       ? 'Para elegir una presentación, escribe su número; también puedes decir *no* para conservar el plato original.'
       : '¿Quieres cambiarlo al combo? Responde *sí* o *no*.'));

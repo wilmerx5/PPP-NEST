@@ -1,3 +1,13 @@
+## VIGENTE — tanda 215: consultas por código/contenido y sabores (26/10)
+
+Base `a54b45f6`, staging. Consultas explícitas de precio/sabores/contenido por código ofrecido y contenido por volumen responden desde catálogo vigente sin comprar ni perder alternativas. Código ajeno pide aclarar; agotado avisa; descripción ausente no inventa acompañamientos. La revalidación de sabores ya funcionaba: si la bebida solicitada desapareció, mantiene base y pide opción válida; se amplía su evidencia hasta DTO.
+
+60 conversaciones nuevas en tres menús×agente mock off/on×10 caminos, con60 cierres DTO simulados que verifican dos unidades, nota y bebida. Baseline36:12verdes/24rojos; corrección36/36; ampliación/foco276/276 en6 suites. TS general/build, Node92 yFalafel1 aprobados. Global19.248/281 suites,588 hashes,722,89s, inventario exacto/fuente congelada. Informe `docs/whatsapp-combo-candidate-inquiries-validation-2610.md`.
+
+Siguiente: consultas con cambios en el mismo mensaje, referencias «grande/familiar» y nombres abreviados. No extrapolar las formulaciones explícitas actuales a todo lenguaje libre ni a inferencia real. Mantener respuesta/carrito/estado/DTO, foco antes de global y fuente congelada durante global.
+
+Sin API pagada, Meta ni órdenes externas; modelos/Main intactos. Publicación solo staging, sin despliegue215; tandas210–215 pendientes de despliegue agrupado. Main/producción mantienen código209 `a935f555`. Sin ahorro medido ni declaración de vendibilidad por conteos.
+
 ## VIGENTE — tanda 214: rechazo y datos durante lista de combos (26/10)
 
 Base `aaaa57af`, staging. Corregido rechazo compuesto con bebida aparte antes de seleccionar cualquier candidato: una coincidencia de sabor/volumen ya no acepta combo contra «no/sin combo». Conserva base/opciones/notas y añade solo la bebida explícita. Contactos juntos descubrieron otro fallo: «Ana Torres» se leía «torre S». Etiquetas de unidades exigen límite de palabra o dígito; conserva abreviaciones numéricas, detección/resolución de conflictos y apellidos al actualizar.
