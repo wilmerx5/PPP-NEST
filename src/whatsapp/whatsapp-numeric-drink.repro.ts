@@ -1,4 +1,6 @@
-// Remaining implicit-combo diagnostics; explicit plural covered by the composition spec.
+// Historical 197 oracle expects automatic combo purchase. For the current offer-first
+// contract use whatsapp-implicit-combo-offer.repro.ts (batch 205). Keep these traces
+// as historical reproduction, not acceptance criteria for a new automatic purchase.
 import { harness } from './whatsapp-accuracy.test-support';
 import { writeFileSync } from 'fs';
 for(const agent of [false,true]) for(const [i,text] of [

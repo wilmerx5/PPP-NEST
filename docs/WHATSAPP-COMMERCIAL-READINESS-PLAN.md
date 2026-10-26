@@ -1,3 +1,11 @@
+## VIGENTE — tanda 205: contratos de combo implícito (26/10)
+
+Base `88385bbc`. Diagnóstico gratuito de 30 casos en tres menús, sin cambios de runtime: **16 correctos / 14 fallidos**. Doce ofertas implícitas fallan (componente separado o bebida/oferta omitida); dos pedidos de arroz con bebida aparte pierden la identidad compuesta. Seis combos explícitos cierran DTO; cuatro bebidas aparte y seis controles de disponibilidad pasan. No acreditar aceptación/DTO de los casos que fallan en la oferta inicial.
+
+El supuesto fallo de agotados del primer run era un error del fixture: `ignoreBusinessHours=true` vuelve disponibles los productos; corregido a false y repetida la matriz. Un filtro experimental fue retirado. TS general final aprobado. Diagnósticos opt-in en `whatsapp-implicit-combo-offer.repro.ts`; los 14 rojos quedan fuera del inventario aprobado. El repro197 exige compra automática y se marca histórico, no contrato vigente para ofertas.
+
+Siguiente: primero resolver identidad compuesta en los dos casos de bebida aparte; después oferta genérica por catálogo, aceptación/negativa, cantidad/nota, alternativas ambiguas y stock/precio cambiado. No borrar simplemente exclusiones de medio/cuarto de la ruta específica de pollo. Plan y evidencia: `docs/whatsapp-implicit-combo-offer-diagnostic-2610.md`, `/tmp/ppp-205-final.json`. Incluir imagen/corrección de carrito en foco temprano. Global runtime vigente204:18.792/270. Solo staging, Main intacta, sin deploy ni API/Meta/órdenes externas. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 204: combos plurales compuestos (26/10)
 
 Base `2543a55d`. Con carrito vacío, título completo y único de «combos» se resuelve antes de separar componentes. Mantiene preparación y bebida del catálogo; los tamaños explícitos siguen por la ruta anterior. Alcance limitado a plural y carrito vacío, sin IDs/nombresPPP runtime. No acreditar compras posteriores ni combos implícitos.
