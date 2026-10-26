@@ -2717,7 +2717,14 @@ export class WhatsappOrchestratorService {
     if (session.pendingMatch?.replacement) {
       const swap = await this.tryAnswerComboSwapOffer(conv, msg.waId, session, originalText, cfg);
       if (swap === true) return;
-      if (swap) session = swap;
+      if (swap) {
+        session = swap;
+        // The declined combo is context, not a product in the separate request.
+        if (!session.pendingMatch && /^sin combo[,\s]+/i.test(originalText)) {
+          originalText = originalText.replace(/^sin combo[,\s]+/i, '');
+          text = originalText;
+        }
+      }
     }
     if (
       session.cart.length === 1 &&
@@ -13516,6 +13523,15 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, `Listo, dejo *${original.name}* como está. El pedido sigue igual.\n\n` +
         (this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session)));
       return true;
+    }
+    // An explicit separate purchase rejects the proposed replacement, even when
+    // its flavor and volume also exist in the combo. Resume normal item parsing.
+    if (/^(?:no\b|nop\b|sin combo\b)/.test(q) &&
+        /\b(?:aparte|por separado)\b/.test(q) &&
+        /\b(?:bebida|gaseosa|refresco|jugo|soda|agua)\b/.test(q)) {
+      session = { ...session, pendingMatch: undefined };
+      await this.conversationService.saveSession(conv, session);
+      return session;
     }
     const sizeOf = (value: string) => (value.toLowerCase().match(/\d+(?:[.,]\d+)?(?=\s*(?:ml|cc|l|lt|lts|litros?)\b)/g) || []).map(n => n.replace(',', '.'));
     const sizes = inlineRow != null ? [] : sizeOf(text);

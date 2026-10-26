@@ -1,3 +1,13 @@
+## VIGENTE — tanda 210: rechazo de combo con bebida aparte (26/10)
+
+Base `3644d578`. Corregido el caso que aceptaba un combo al decir «no, mejor una gaseosa aparte»: sabor/volumen compatibles ya no prevalecen sobre esa negativa. «Sin combo, ...» continúa sin reinterpretar el prefijo como compra. Regla por catálogo; preserva plato base, cantidad, opciones y notas.
+
+18 regresiones nuevas en tres menús×agente mock off/on×tres negativas, con18 cierres DTO; primera ampliación dejó6 rojos «sin combo», corregidos antes del cierre. Global final18.962/275 suites,582 hashes,715,19s, inventario exacto/fuente congelada. TS general/build, Node92 yFalafel1 aprobados. Evidencia: `docs/whatsapp-combo-offer-interruptions-validation-2610.md`.
+
+Diagnóstico opt-in36:18 pasan/18 fallan. Siguiente:6 preguntas de precio responden plato base,6 de sabores muestran variantes,6 ofertas con dos presentaciones compran sin aclarar. Conservar esos rojos en `whatsapp-combo-offer-interruptions.repro.ts`; no darlos por resueltos ni promoverlos sin corregir. Priorizar consultas sobre candidato pendiente, luego presentaciones ambiguas, con carrito/estado/respuesta/DTO.
+
+Sin API pagada/Meta/órdenes externas; sin cambios de modelos ni medición nueva de ahorro. Solo staging: Main/producción conservan el código209 `a935f555`. Esta tanda no se ha desplegado; agrupar con las próximas correcciones. No declarar vendible por conteos.
+
 ## DESPLIEGUE VERIFICADO — Main, tanda 209 (26/10)
 
 Solicitud del usuario completada. Código `a935f555` integrado/publicado en Main y desplegado en producción. Verificado16:40UTC: API local/públicaOK,DBconnected,circuitCLOSED; contenedor running/0reinicios, imagenactiva=latest8a712979…. Tres módulos compilados (orchestrator/agente/catálogo) idénticos a la compilación validada. Compose privado/.env y472artefactos locales preservados. Rollback `ppp-nest-api:rollback-before-a935f555`. Bases/volúmenes intactos; imagen staging sin cambios. Evidencia y límites: `docs/whatsapp-implicit-combo-offer-validation-2610.md`.
