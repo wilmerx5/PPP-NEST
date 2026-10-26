@@ -13493,13 +13493,33 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
   ): Promise<boolean> {
     const pending = session.pendingMatch;
-    if (!pending?.replacement || pending.intent !== 'order' || pending.candidates.length !== 1) return false;
+    if (!pending?.replacement || pending.intent !== 'order') return false;
+    const multiple = pending.candidates.length > 1;
+    if (multiple && !pending.offeredAlternatives?.length) return false;
     const q = this.normalizeForMatch(text).replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '');
-    const price = /^(?:(?:y|oye)\s+)?(?:cuanto (?:cuesta|vale|sale) el combo|(?:me dices |cual es )?el precio del combo)$/.test(q);
-    const flavors = /^(?:(?:y|oye)\s+)?(?:que (?:sabores(?: de bebida)?|bebidas) tiene el combo|cuales sabores hay para el combo)$/.test(q);
+    let price = /^(?:(?:y|oye)\s+)?(?:cuanto (?:cuesta|vale|sale) el combo|(?:me dices |cual es )?el precio del combo)$/.test(q);
+    let flavors = /^(?:(?:y|oye)\s+)?(?:que (?:sabores(?: de bebida)?|bebidas) tiene el combo|cuales sabores hay para el combo)$/.test(q);
+    const raw = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[¿?]/g, '').trim()
+      .replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '');
+    const reference = multiple ? raw.match(/^(cuanto (?:cuesta|vale|sale)|que sabores tiene) (?:el|la) de (\d+(?:[.,]\d+)?\s*(?:ml|cc|l|lt|lts|litros?)|(?:un\s+)?litro\s+y\s+medio)$/) : null;
+    if (multiple) {
+      if (!reference) return false;
+      price = reference[1].startsWith('cuanto');
+      flavors = !price;
+    }
     if (!price && !flavors) return false;
     const menu = await this.catalogService.getMenuProducts();
-    const combo = menu.find(product => product.id === pending.candidates[0].id);
+    let combo = menu.find(product => product.id === pending.candidates[0]?.id);
+    if (reference) {
+      const volume = this.catalogService.extractRequestedDrinkVolumeMl(reference[2]);
+      const matches = menu.filter(product => pending.candidates.some(candidate=>candidate.id===product.id) && volume != null &&
+        this.catalogService.extractRequestedDrinkVolumeMl(product.description || '') === volume);
+      if (matches.length !== 1) {
+        await this.reply(conv, waId, '¿Sobre cuál opción de la lista quieres consultar? Indica su número o el volumen que aparece en ella. El pedido sigue igual.');
+        return true;
+      }
+      combo = matches[0];
+    }
     if (!combo || combo.availableNow === false) {
       await this.reply(conv, waId, 'El combo que te ofrecí ya no está disponible. Conservo tu plato original. ¿Quieres otra opción?');
       return true;
@@ -13508,7 +13528,9 @@ export class WhatsappOrchestratorService {
     const detail = price
       ? `*${combo.name}* · #${combo.code}: *${this.catalogService.formatMoney(combo.price)} por unidad*.`
       : `Para *${combo.name}* · #${combo.code}:${this.drinkChoicesLine(combo) || ' no tengo sabores confirmados en la carta.'}`;
-    await this.reply(conv, waId, detail + '\n\nTu pedido sigue igual. ¿Quieres cambiarlo al combo? Responde *sí* o *no*.');
+    await this.reply(conv, waId, detail + '\n\nTu pedido sigue igual. ' + (multiple
+      ? 'Para elegir una presentación, escribe su número; también puedes decir *no* para conservar el plato original.'
+      : '¿Quieres cambiarlo al combo? Responde *sí* o *no*.'));
     return true;
   }
 
@@ -13526,7 +13548,31 @@ export class WhatsappOrchestratorService {
         await this.reply(conv, waId, `Conservo *${pending.replacement.originalLine.name}* como está.\n\n${this.formatContinueShoppingPrompt(session)}`);
         return true;
       }
-      const choice = this.pendingTextListRow(text, pending.candidates);
+      let choice = this.pendingTextListRow(text, pending.candidates);
+      const reference = text.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/(?:\s+(?:por favor|porfa|gracias))+[.!]*$/, '').trim();
+      const codeReference = reference.match(/^(?:(?:quiero|dame|el|la)\s+)*(?:#|codigo\s*#?)\s*(\d+)$/);
+      const volumeReference = reference.match(/^(?:(?:quiero|dame)\s+)?(?:el|la)(?:\s+combo)?\s+de\s+(\d+(?:[.,]\d+)?\s*(?:ml|cc|l|lt|lts|litros?)|(?:un\s+)?litro\s+y\s+medio)$/);
+      if (choice == null && (codeReference || volumeReference)) {
+        const volume = volumeReference ? this.catalogService.extractRequestedDrinkVolumeMl(volumeReference[1]) : null;
+        const live = await this.catalogService.getMenuProducts();
+        const matches = pending.candidates.map((candidate,index)=>({candidate,index})).filter(({candidate}) =>
+          codeReference ? candidate.code === Number(codeReference[1]) : volume != null && live.some(product =>
+            product.id === candidate.id && product.availableNow !== false &&
+            this.catalogService.extractRequestedDrinkVolumeMl(product.description || '') === volume));
+        if (matches.length !== 1) {
+          await this.reply(conv, waId, 'No puedo identificar una única presentación de esa lista con esa referencia. Elige su número; el pedido sigue igual.');
+          return true;
+        }
+        const chosen = live.find(product=>product.id===matches[0].candidate.id);
+        if (!chosen || chosen.availableNow === false) {
+          await this.reply(conv, waId, 'Esa presentación ya no está disponible. Elige otra opción de la lista; conservo tu pedido original.');
+          return true;
+        }
+        choice = matches[0].index + 1;
+        // The reference selects a row; its code or volume is never a quantity.
+        text = String(choice);
+      }
       if (choice == null) {
         if (/^(?:si|si el combo|dale|ok|listo)$/.test(answer)) {
           await this.reply(conv, waId, '¿Cuál presentación prefieres? Escribe el número de la lista. El pedido sigue igual.');

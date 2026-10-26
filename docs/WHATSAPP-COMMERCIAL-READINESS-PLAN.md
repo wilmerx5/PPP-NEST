@@ -1,3 +1,13 @@
+## VIGENTE — tanda 213: referencias y consultas de presentaciones (26/10)
+
+Base `199ad1ec`, staging. Selección explícita por código ofrecido o volumen único vigente («400ml», «1,5 litros», «litro y medio») se resuelve como fila, nunca como cantidad. Conserva unidades/opciones/notas. Código agotado o referencia ambigua/ajena mantiene alternativas y explica la aclaración. Consultas de precio/sabores por volumen responden desde catálogo sin comprar y guían a seguir eligiendo.
+
+78 regresiones nuevas en tres menús×agente mock off/on, con78 cierres DTO simulados. Baseline54:6verdes/48rojos; tras referencias42/54 y consultas54/54. Ampliación/foco318/324:6fallos por código agotado perdía lista; corregidos,78/78 finales. TS general/build, Node92 yFalafel1 aprobados. Global19.142/278 suites,585 hashes,708,90s, inventario exacto/fuente congelada. Informe `docs/whatsapp-combo-presentation-reference-validation-2610.md`. Bebida se verifica en carrito; no afirmar cobertura de todo importe del DTO.
+
+Siguiente: negativa con bebida aparte y datos de contacto durante lista múltiple; luego consultas por código/contenido y candidatos con opciones diferentes. «El grande/familiar», nombres duplicados y mensajes mixtos libres no están acreditados por esta tanda. Mantener foco antes de global, no editar fuente durante ella, no lanzar global por cada variante.
+
+Sin API pagada, Meta ni órdenes externas; modelos y Main intactos. Publicación solo staging, sin despliegue213; Main/producción conservan código209 `a935f555`. Tandas210–213 pendientes de despliegue agrupado. Sin nueva medición de ahorro ni declaración de vendibilidad por conteos.
+
 ## VIGENTE — tanda 212: elección entre presentaciones de combo (26/10)
 
 Base `0f5cf0f1`. Oferta inicial con varias presentaciones conserva el plato base y lista código/precio/descripción, sin candidato favorito. Opciones solicitadas se guardan por candidato en campo opcional JSON `offeredAlternatives`; elegir fila conserva cantidad/preparación/bebida/nota. «Sí» solo pide aclarar; rechazo conserva base. Disponibilidad/opciones/precio se revalidan, incluida elección de otra alternativa tras recotizar.
