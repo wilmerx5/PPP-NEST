@@ -808,6 +808,11 @@ export class WhatsappCatalogService {
    */
   extractCookingStyleBrowseIntent(text: string): string | null {
     const raw = (text || '').trim();
+    // An inventory condition inside an explicit purchase belongs to order interpretation,
+    // not a new catalogue browse. Keep the condition intact for the owning handler.
+    const purchase = normalizeText(raw);
+    if (/^(?:quiero|quisiera|dame|ponme|agrega|agregame|regalame|me\s+(?:das|regalas|vendes|envias))\s+(?:un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\b/.test(purchase) &&
+        /\bsi\s+(?:no\s+)?(?:hay|tienes|tienen|quedan?|ofrecen|manejan)\b/.test(purchase)) return null;
     if (!raw || raw.length < 4) return null;
     if (this.extractCodeFromMessage(raw) != null) return null;
     // Pedido concreto con plato+estilo ("quiero mojarra frita") → no browse

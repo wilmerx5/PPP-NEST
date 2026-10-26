@@ -1,3 +1,11 @@
+## VIGENTE — tanda193: compra condicional no explora preparaciones (25/10)
+
+Base5a7999eb. Corregida inconsistencia entre «me das/me regalas un plato si tienes...» y «quiero/dame»: prefijo explícito de compra con cantidad + condición de inventario no dispara browse por preparación. La condición se conserva completa para el manejador de pedidos. Sin IDs/restaurantes especiales.
+
+21casos nuevos en3preparaciones,4fórmulas de compra,3consultas reales y6recorridos router on/off. Baseline9rojos/12verdes; final21/21, foco179/179. TS general/build yNode92OK. Global18.545/260,562hashes,698,86s, inventario exacto/fuente congelada. Evidencia `docs/whatsapp-conditional-style-routing-validation-2510.md` y `/tmp/ppp-193-global-summary.json`.
+
+CORRECCIÓN PARCIAL: los20diagnósticos191/192 siguen14rojos/6verdes. ReplayPPP sin agente ya recupera ambos pollos tras aclaración (antes solo broaster), pero aún faltan plátanos y reparto. No atribuir éxito de pedido/DTO/modelo a esta tanda. Próximo: representación completa compra+condición+productos posteriores, conservación/recuperación sin duplicados y aclaración de asignación; acciones semánticas válidas/vacías/error por separado. Publicación solo staging, SIN deploy; Main intacta; ceroAPI/Meta/órdenes externas.
+
 ## VIGENTE — diagnóstico 192: condiciones y acompañamientos (25/10)
 
 Base63c15b5b. Nueva matriz18casos en3menús×agente simulado off/on×sin condición/condición simple/reparto. Seis controles pasan;12condicionados FALLAN. Junto a2replays191:14rojos/6verdes,37,664s. Repetición instrumentada confirma12/6; no sumar repetición como nuevos casos. `whatsapp-conditional-accompaniments.repro.ts` es opt-in, fuera del inventario verde.
