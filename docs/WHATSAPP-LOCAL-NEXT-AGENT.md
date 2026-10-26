@@ -1,3 +1,11 @@
+## VIGENTE — tanda 223: negativas y correcciones tras contactos (26/10)
+
+Base `d1246b17`, staging. Solo cobertura: no/no gracias/sin combo después de nombre/teléfono mantienen original y continúan pago; corregir nombre/teléfono mantiene cotización y Agua.30 conversaciones nuevas, tres menús×agente simulado off/on×5 caminos, DTO simulado con dos unidades/notas/datos finales.
+
+Primera ejecución12 verdes/18 fallos del oráculo que exigía una frase de conservación. La salida ya mostraba carrito original y pago; aserción corregida para exigir producto/ausencia de combo/importe/estado. Runtime intacto. Foco114/114 en4 suites,21,219s; TS general verde. Sin nueva global: última completa220,19.470/286 suites. Informe `docs/whatsapp-combo-quote-contact-correction-validation-2610.md`.
+
+Siguiente: consultas/elecciones sin puntuación, negativas complejas y referentes incompletos; conservar opciones y responder sin inventar elección. Sin API pagada/Meta/órdenes externas, modelos/Main intactos. Publicación staging sin despliegue. Runtime210–220 pendiente de despliegue agrupado;219/221–223 solo cobertura. Producción código209 `a935f555`. Sin ahorro real medido ni vendibilidad por conteos.
+
 ## VIGENTE — tanda 222: consulta + cambio de bebida (26/10)
 
 Base `7bea95fb`, staging. Solo cobertura: consulta de contenido/precio/sabores junto a elección explícita antes/después de la pregunta; condicional sin compra; bebida inexistente que conserva cotización.36 conversaciones nuevas, tres menús×agente simulado off/on×6 caminos, dos unidades/notas/bebida/precio/estados y DTO simulado.
