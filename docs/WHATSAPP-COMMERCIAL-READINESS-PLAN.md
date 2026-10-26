@@ -1,3 +1,13 @@
+## VIGENTE — tanda 208: aceptación verbal de combo y cambio de precio (26/10)
+
+Base `358e8c46`. Repetición del diagnóstico205:18/30, los doce fallos de oferta inicial siguen pendientes (`/tmp/ppp-208-baseline.json`). Se exploró la continuación por separado con compra real del plato base y consulta de bebida: 24casos iniciales,18verdes/6rojos. «Sí, el combo» avanzaba a atributos al precio nuevo sin advertir el cambio; la elección numérica ya tenía guarda.
+
+Corregido en `tryAnswerComboSwapOffer`: una aceptación verbal válida reutiliza la nueva cotización antes de modificar el plato/recoger opciones. Sin excepciones de restaurante. Nueva suite `whatsapp-combo-offer-continuation.spec.ts`:36/36, tres menús×agente mock off/on; aceptación, rechazo, agotado y cambio de precio aceptado con «sí», «sí, el combo» o bebida. Treinta cierres DTO conservan producto/unidades/preparación/notas y bebida de combos; seis agotados solo validan respuesta/carrito/estado. No acredita todo campo monetario del DTO ni oferta inicial.
+
+Guardas747/747 yFalafel1/1; TS general/build yNode92/92. Global18.890/273,580hashes,748,14s, inventario exacto/fuente congelada: `/tmp/ppp-208-final-global-summary.json`. Evidencia y plan: `docs/whatsapp-combo-offer-continuation-validation-2610.md`. Sin API/Meta/órdenes externas; sin deploy, Main intacta.
+
+Siguiente: doce ofertas implícitas205 por título completo, bebida compatible y conservación de identidad. Reutilizar propuesta/reemplazo sin fabricar originalLine; cubrir aceptación con bebida ya solicitada, negativa/aparte, alternativas ambiguas y volumen. Mantener guardas de precio/imágenes/Falafel y pendientes de medición de costo. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 207: componente adicional y fracciones (26/10)
 
 Base `ae7f6506`. Los2rojos206 de compuesto primero + componente aparte quedan corregidos. Causa: glosario convierte «un medio pollo» a «medio pollo»; deduplicación no reconocía «y medio» y descartaba el extra. Se conservan palabras de fracción al separar y se reconoce ese límite para asignar cantidades/opciones/notas a cada producto. Cambio general, sin nombres/IDsPPP en runtime.

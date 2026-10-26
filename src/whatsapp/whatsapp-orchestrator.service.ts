@@ -13504,6 +13504,12 @@ export class WhatsappOrchestratorService {
     }
     const affirmative = /^(?:si+|si si|dale|ok|okay|listo|de una|va|bueno|perfecto|hagale|claro|esta bien|cambialo|cambiamelo|pasalo|el combo|en combo|mejor (?:el )?combo|quiero el combo|ese|esa|si (?:cambialo|dale|el combo|ese|porfa|por favor))$/.test(q);
     if (!numberedOffer && !affirmative && options.length !== 1 && !comboDrinkSize) return false;
+    // A verbal acceptance approves the quoted price, just like a numbered choice.
+    // Reuse the re-quote path before collecting options or replacing the cart line.
+    const quotedIndex = pending.candidates.findIndex(candidate => candidate.id === combo.id);
+    if (quotedIndex >= 0 && Number(pending.candidates[quotedIndex].price) !== Number(combo.price)) {
+      return this.tryResolvePendingMatchPick(conv, waId, session, String(quotedIndex + 1), products, cfg);
+    }
     const selected = options.length === 1 && drinkAttribute ? [{ attributeName: drinkAttribute.attributeName, attributeValue: options[0] }] : [];
     // The plain dish's own choices (pollo broaster, arepas fritas…) carry over when the combo offers them.
     for (const kept of original.attributes || []) {
