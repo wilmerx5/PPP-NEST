@@ -1,3 +1,11 @@
+## VIGENTE — tanda 221: preguntas/contactos durante cotización (26/10)
+
+Base `7100b10b`, staging. Solo pruebas/docs: precio, contenido, nombre, teléfono y secuencia de esas interrupciones antes de aceptar.30 conversaciones nuevas, tres menús×agente simulado off/on×5 recorridos, cierres DTO con dos unidades, Agua, notas y datos actualizados.
+
+Baseline24/24 verdes; primera ampliación120 verdes/18 fallos del oráculo que esperaba volver al carrito tras contactos aunque el fixture de recogida permite pasar a pago. Corregido para exigir awaiting_payment + pregunta de pago en esos caminos. Foco final138/138 en4 suites,21,147s; TS general verde. No se cambió runtime ni se repitió global: última completa220,19.470/286 suites. Informe `docs/whatsapp-combo-quote-interruption-validation-2610.md`.
+
+Siguiente: preguntas + elección/cambio de bebida en un mensaje, negativas/correcciones después de contactos, referentes ambiguos. No extrapolar referentes explícitos actuales a toda consulta libre. Sin API pagada/Meta/órdenes externas; Main/modelos intactos, publicación staging sin despliegue. Runtime210–220 pendiente de despliegue agrupado;219/221 solo cobertura. Producción código209 `a935f555`. Sin ahorro real medido ni vendibilidad por conteos.
+
 ## VIGENTE — tanda 220: aceptar cotización por referencia (26/10)
 
 Base `50e1fefd`, staging. Reelección por fila/código/etiqueta de la misma presentación conserva opciones de su cotización; otra presentación usa sus propias opciones. Evita perder Agua o sustituirla por Pepsi silenciosamente si fue retirada. Corrección general sin excepciones de catálogo.
