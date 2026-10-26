@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { isFailedAdditionQuestion } from './whatsapp-session-intents';
 import {splitIntensityPreference} from './whatsapp-kitchen-description';
 import { hasExplicitUnitOptionSource } from './whatsapp-unit-option-source';
@@ -23,6 +24,8 @@ import { looksLikeAddressOnlyMessage } from './whatsapp-intent';
 import { looksLikeKitchenSendRequest, parseEachOfQuantity, parseQtyDishCorrection } from './whatsapp-session-intents';
 
 export type AgentV1TurnInput = {
+  /** Internal database identifier, never a phone or a customer name. */
+  conversationId?: number;
   userMessage: string;
   /** Internal router capability: source distribution was validated and will be
    * checked atomically after tools. Never accepted from model tool arguments. */
@@ -657,6 +660,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
     const model = resolveWhatsappAgentModel(cfg.openaiModel);
     const responsesBridge = /^gpt-6(?:[.-]|$)/i.test(model) ? new WhatsappResponsesBridge() : null;
     const turnDeadline = Date.now()+25000;
+    const inferenceTurnId = randomUUID();
+    let inferenceReason = 'initial';
 
     try {
       for (let i = 0; i < this.maxIterations; i++) {
@@ -680,7 +685,12 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
 
         const prepared = responsesBridge?.prepare(body);
         const res = await requestWhatsappInference(JSON.stringify(prepared?.body || body),cfg.openaiApiKey,
-          {api:prepared ? 'responses' : 'chat/completions',timeoutMs:Math.min(20000,turnDeadline-Date.now())});
+          {api:prepared ? 'responses' : 'chat/completions',timeoutMs:Math.min(20000,turnDeadline-Date.now()),
+            onAttempt: event => this.logger.log(JSON.stringify({event:'whatsapp_inference_attempt',
+              inferenceTurnId, conversationId: Number.isSafeInteger(input.conversationId) ? input.conversationId : null,
+              model: /^[a-zA-Z0-9._:-]{1,120}$/.test(model) ? model : 'invalid_model',
+              reason:inferenceReason, iteration:i+1, modality:'text', ...event})),
+          });
 
         if (!res.ok) {
           let code='unclassified';
@@ -743,6 +753,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           if (missing.length) {
             if (!retriedIncompleteOrder && i < this.maxIterations-2) {
               retriedIncompleteOrder = true;
+              inferenceReason = 'recover_incomplete_order';
               messages.push({role:'system',content:'El pedido múltiple sigue incompleto. Estos platos solicitados y resueltos NO se agregaron: '+
                 JSON.stringify(missing.map(item=>({segment:item.segment,...this.productCard(item.product)})))+
                 '. Conserva las acciones exitosas; ejecuta add_item solo para los faltantes. No repitas los ya agregados ni afirmes que están todos sin herramientas exitosas.'});
@@ -757,11 +768,13 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             !this.catalogService.isPriceInquiryIntent(input.userMessage) &&
             !this.catalogService.isProductDescriptionInquiry(input.userMessage)) {
             retriedUnappliedOrder = true;
+            inferenceReason = 'recover_unapplied_order';
             messages.push({role:'system',content:'Tu respuesta dice que agregaste productos pero no ejecutaste add_item. Una búsqueda no modifica el carrito. Ejecuta add_item para los productos solicitados y resueltos por las tools antes de responder. Si queda una ambigüedad real, pregunta solo por ella y no afirmes cambios que no ejecutaste.'});
             continue;
           }
           if (reply.length > 420 && !retriedConciseReply && i < this.maxIterations - 1) {
             retriedConciseReply = true;
+            inferenceReason = 'summarize';
             messages.push({role:'system',content:'Resume tu respuesta anterior en máximo 360 caracteres, con tono cordial. Conserva lo esencial de lo preguntado: nombres y precios o cantidades/opciones efectivamente agregadas. Para una consulta general ofrece 2–3 opciones, sin enumerar atributos ni añadir acompañamientos no preguntados. Si preguntaron qué incluye, conserva las diferencias de cada description: no conviertas acompañamientos distintos en una afirmación sobre todos. No cambies el pedido ni ejecutes más herramientas.'});
             continue;
           }
@@ -778,6 +791,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           };
         }
 
+        inferenceReason = 'tool_results';
         for (const call of calls) {
           const name = call.function?.name || '';
           toolCalls.push(name);

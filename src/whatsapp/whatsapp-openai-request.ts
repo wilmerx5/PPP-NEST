@@ -1,12 +1,21 @@
+import { randomUUID } from 'node:crypto';
+import { readWhatsappInferenceUsage, type WhatsappInferenceAttempt, type WhatsappInferenceUsage } from './whatsapp-inference-usage';
 /** Non-streaming inference only. No output is applied and no cart tool runs here. */
 export async function requestWhatsappInference(body: string, apiKey: string, options: {
   fetcher?: typeof fetch;
+  onAttempt?: (event: WhatsappInferenceAttempt) => void;
   api?: 'chat/completions' | 'responses';
   wait?: (ms: number) => Promise<void>;
   random?: () => number;
   timeoutMs?: number;
   attemptTimeoutMs?: number;
 } = {}): Promise<Response> {
+  const requestId = randomUUID();
+  const api = options.api || 'chat/completions';
+  // Observability cannot interrupt ordering, even when its sink fails.
+  const emit = (event: Omit<WhatsappInferenceAttempt, 'requestId' | 'api'>) => {
+    try { options.onAttempt?.({requestId, api, ...event}); } catch { /* diagnostic only */ }
+  };
   const fetcher = options.fetcher || globalThis.fetch;
   const wait = options.wait || ((ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)));
   const random = options.random || Math.random;
@@ -15,6 +24,8 @@ export async function requestWhatsappInference(body: string, apiKey: string, opt
     const remaining = deadline - Date.now();
     if (remaining <= 0) throw new Error('openai_request_deadline');
     let response:Response;
+    let usage: WhatsappInferenceUsage | null = null;
+    const started = Date.now();
     try {
       response = await fetcher(options.api === 'responses' ? 'https://api.openai.com/v1/responses' : 'https://api.openai.com/v1/chat/completions', {
         method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},
@@ -24,9 +35,13 @@ export async function requestWhatsappInference(body: string, apiKey: string, opt
       // JSON body must never reach cart tools, even after headers succeeded.
       if(response.ok && typeof response.clone==='function') {
         const bytes=await response.clone().arrayBuffer();
+        if (options.onAttempt) {
+          try { usage = readWhatsappInferenceUsage(JSON.parse(new TextDecoder().decode(bytes)), api); } catch { /* usage unknown */ }
+        }
         response=new Response(bytes,{status:response.status,statusText:response.statusText,headers:response.headers});
       }
     } catch(error) {
+      emit({attempt:attempt+1,status:null,outcome:(error as {name?:string})?.name==='TimeoutError'?'timeout':'transport_error',latencyMs:Date.now()-started,usage:null});
       const delay=250*2**attempt+Math.floor(random()*100);
       if((error as {name?:string})?.name!=='TimeoutError' || attempt>=2 || Date.now()+delay+1000>=deadline) throw error;
       // The provider may have billed the lost response. Retrying this pure
@@ -34,6 +49,7 @@ export async function requestWhatsappInference(body: string, apiKey: string, opt
       await wait(delay);
       continue;
     }
+    emit({attempt:attempt+1,status:response.status,outcome:'response',latencyMs:Date.now()-started,usage});
     if (attempt >= 2 || ![429,503].includes(response.status)) return response;
     let code: string | undefined;
     try { code = (await response.clone().json() as {error?:{code?:string}}).error?.code; } catch { return response; }

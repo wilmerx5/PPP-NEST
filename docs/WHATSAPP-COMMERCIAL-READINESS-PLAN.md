@@ -1,3 +1,11 @@
+## VIGENTE — tanda199 validada: medir inferencia por intento (25/10)
+
+Baseb4d2397a. Runtime añade observación por intento HTTP del agente textual: tokensentrada/salida/cache/razonamiento cuando el proveedor los devuelve, unknown ante timeout/ausencia, requestId+attempt, conversationId+inferenceTurnId, modelo y motivo de ronda. Sin contenido de cliente/credenciales. No modifica decisiones ni ahorra llamadas todavía; no cubre visión/audio/legacy ni asociación orderId. Cero inferencia pagada.
+
+29pruebas nuevas, foco90/90; TS general/build yNode92OK. Global18.677/264suites,572hashes,708,56s, inventario exacto y fuente congelada; /tmp/ppp-199-global-summary.json. Evidencia y límites en docs/whatsapp-inference-usage-validation-2510.md. Publicación solo staging. Main intacta, sin deploy.
+
+Siguiente: terminar observabilidad por sesión/pedido y otras rutas, luego optimizar resumen sin perder información; retomar4pluralesbowl198y8composición197. Rama orderQty>=2ofrece familia antes de respetar coincidencia fuerte: hipótesis localizada, no corrección validada. Mantener pendientes anteriores, no declarar vendible por conteos.
+
 ## VIGENTE — diagnóstico198: combos plurales y costo (25/10)
 
 Basee3bd166e.36casos nuevos opt-in:24combos en3menús (20cierresDTO verdes,4pluralesbowl fallan por selección innecesaria) y12contratos de costo (8verdes,4rojos:421caracteres provoca segunda inferencia para resumir en Chat y Responses). Total28/36; fallos fuera del inventario global. HTTP/modelo simulados; ninguna medición de ahorro real. Primer intento tenía oráculo DTO incorrecto, corregido antes del resultado final.

@@ -22197,6 +22197,7 @@ export class WhatsappOrchestratorService {
     });
 
     const agent = await this.agentService.runTurn({
+      conversationId: conv.id,
       userMessage: params.placedOrderOnly ? originalText || text : text,
       verifiedDistributedProductId: params.distributedPurchase?.productId,
       cart: session.cart.map((c) => ({
