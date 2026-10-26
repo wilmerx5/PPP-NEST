@@ -1,3 +1,13 @@
+## VIGENTE — tanda 217: elección antes de consulta y bebida explícita (26/10)
+
+Base `e5331c1b`, staging. «Dame/quiero el ... , ¿qué trae/cuánto cuesta/qué sabores tiene?» responde y aplica elección explícita; «si elijo ... , ¿...?» solo consulta y conserva carrito. Referencia de consulta comparte resolución de etiquetas con selección. Código/volumen/etiqueta con bebida inline conserva esa bebida al convertirse en fila; válida prevalece sobre inicial, inválida pide opciones sin cambiar carrito. No inferir tamaño por precio ni volumen.
+
+66 conversaciones nuevas en tres menús×agente mock off/on×11 caminos,66 cierres DTO simulados con dos unidades/notas/bebida. Baseline36/36 rojos→36/36; ampliación/foco312/312 en5 suites. TS general/build, Node92 yFalafel1 aprobados. Global19.374/283 suites,590 hashes,716,38s, inventario exacto/fuente congelada. Informe `docs/whatsapp-combo-reverse-choice-validation-2610.md`.
+
+Siguiente: precio cambiado con bebida explícita y aceptación de recotización, más negativas/condicionales, consulta sin puntuación y contactos junto a selección. El patrón «si elijo» no acredita toda condición; no extrapolar a lenguaje libre ni inferencia real. Mantener respuesta/carrito/estado/DTO, foco antes de global y fuente congelada.
+
+Sin API pagada/Meta/órdenes externas; modelos/Main intactos. Publicación solo staging, sin despliegue217; tandas210–217 pendientes de despliegue agrupado. Main/producción mantienen código209 `a935f555`. Sin ahorro medido ni declaración de vendibilidad por conteos.
+
 ## VIGENTE — tanda 216: etiquetas de presentación y consulta con elección (26/10)
 
 Base `49cca892`, staging. Referencias grande/pequeño/familiar/individual/mediano se resuelven solo con etiqueta explícita de nombre o presentación/tamaño/formato en descripción; no por precio/volumen. Ausente/ambigua conserva carrito. Consulta reconocida terminada en «?» seguida de «dame/quiero el/la ...» responde y procesa elección explícita, sin repetir pregunta ya resuelta. Dos respuestas del mismo turno: detalle y resultado. Revalida disponibilidad/precio.

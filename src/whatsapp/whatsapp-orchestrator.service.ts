@@ -2605,6 +2605,21 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, 'Anoté la fecha y el horario solicitados. La disponibilidad para una entrega programada debe confirmarla el local; todavía no está reservada.');
       return;
     }
+    const reversedComboTurn = session.pendingMatch?.offeredAlternatives?.length
+      ? originalText.match(/^((?:(?:dame|quiero)\s+|si\s+elijo\s+)(?:el|la)\s+[^,;?¿]+?)\s*[,;]\s*¿?(.+\?)$/i) : null;
+    if (reversedComboTurn) {
+      const conditional = /^si\s+elijo\s+/i.test(reversedComboTurn[1]);
+      const subject = reversedComboTurn[1].replace(/^(?:(?:dame|quiero)|si\s+elijo)\s+/i, '').replace(/\s+con\s+.+$/i, '');
+      const shortQuestion = this.normalizeForMatch(reversedComboTurn[2]);
+      const question = /^(?:con que viene|que trae|que incluye|cuanto (?:cuesta|vale|sale)|que sabores tiene)$/.test(shortQuestion)
+        ? `${shortQuestion} ${subject}` : reversedComboTurn[2];
+      if (await this.tryAnswerPendingComboQuestion(conv, msg.waId, session, question, !conditional)) {
+        if (conditional) return;
+        if (await this.tryAnswerComboSwapOffer(conv, msg.waId, session, reversedComboTurn[1], cfg) === true) return;
+        await this.reply(conv, msg.waId, 'Para elegir la presentación, indica su número en la lista. El pedido sigue igual.');
+        return;
+      }
+    }
     const mixedComboChoice = session.pendingMatch?.offeredAlternatives?.length
       ? originalText.match(/^(.+?\?)\s*((?:dame|quiero)\s+(?:el|la)\s+[^?]+)$/i) : null;
     if (mixedComboChoice && await this.tryAnswerPendingComboQuestion(conv, msg.waId, session, mixedComboChoice[1], true)) {
@@ -13495,6 +13510,13 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  private comboHasPresentationLabel(product: MenuProduct, label: string): boolean {
+    const canonical = (value: string) => this.normalizeForMatch(value).replace(/\b(pequen|median)[oa]\b/g, '$1o');
+    const size = canonical(label);
+    return canonical(product.name).endsWith(` ${size}`) ||
+      new RegExp(`\\b(?:presentacion|tamano|formato)\\s+${size}\\b`).test(canonical(product.description || ''));
+  }
+
   /** Questions about the offered combo refer to that candidate, not the base cart line. */
   private async tryAnswerPendingComboQuestion(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, continuingSelection = false,
@@ -13508,7 +13530,7 @@ export class WhatsappOrchestratorService {
     let flavors = /^(?:(?:y|oye)\s+)?(?:que (?:sabores(?: de bebida)?|bebidas) tiene el combo|cuales sabores hay para el combo)$/.test(q);
     const raw = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[¿?]/g, '').trim()
       .replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '');
-    const reference = multiple ? raw.match(/^(cuanto (?:cuesta|vale|sale)|que sabores tiene|con que viene|que incluye|que trae) (?:el|la) (?:de (\d+(?:[.,]\d+)?\s*(?:ml|cc|l|lt|lts|litros?)|(?:un\s+)?litro\s+y\s+medio)|(?:codigo\s*#?\s*|#)(\d+))$/) : null;
+    const reference = multiple ? raw.match(/^(cuanto (?:cuesta|vale|sale)|que sabores tiene|con que viene|que incluye|que trae) (?:el|la) (?:de (\d+(?:[.,]\d+)?\s*(?:ml|cc|l|lt|lts|litros?)|(?:un\s+)?litro\s+y\s+medio)|(?:codigo\s*#?\s*|#)(\d+)|(grande|pequen[oa]|median[oa]|familiar|individual))$/) : null;
     let contents = false;
     if (multiple) {
       if (!reference) return false;
@@ -13523,7 +13545,7 @@ export class WhatsappOrchestratorService {
       const volume = reference[2] ? this.catalogService.extractRequestedDrinkVolumeMl(reference[2]) : null;
       const code = reference[3] ? Number(reference[3]) : null;
       const matches = menu.filter(product => pending.candidates.some(candidate=>candidate.id===product.id) &&
-        (code != null ? product.code === code : volume != null &&
+        (reference[4] ? this.comboHasPresentationLabel(product, reference[4]) : code != null ? product.code === code : volume != null &&
           this.catalogService.extractRequestedDrinkVolumeMl(product.description || '') === volume));
       if (matches.length !== 1) {
         await this.reply(conv, waId, '¿Sobre cuál opción de la lista quieres consultar? Indica su número, código o el volumen que aparece en ella. El pedido sigue igual.');
@@ -13576,7 +13598,8 @@ export class WhatsappOrchestratorService {
         return true;
       }
       let choice = this.pendingTextListRow(text, pending.candidates);
-      const reference = text.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      const inlineBeverage = !/[¿?]/.test(text) ? text.trim().match(/^(.+?)\s+con\s+(.+)$/i) : null;
+      const reference = (inlineBeverage ? inlineBeverage[1] : text).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/(?:\s+(?:por favor|porfa|gracias))+[.!]*$/, '').trim();
       const codeReference = reference.match(/^(?:(?:quiero|dame|el|la)\s+)*(?:#|codigo\s*#?)\s*(\d+)$/);
       const volumeReference = reference.match(/^(?:(?:quiero|dame)\s+)?(?:el|la)(?:\s+combo)?\s+de\s+(\d+(?:[.,]\d+)?\s*(?:ml|cc|l|lt|lts|litros?)|(?:un\s+)?litro\s+y\s+medio)$/);
@@ -13584,13 +13607,11 @@ export class WhatsappOrchestratorService {
       if (choice == null && (codeReference || volumeReference || descriptiveReference)) {
         const volume = volumeReference ? this.catalogService.extractRequestedDrinkVolumeMl(volumeReference[1]) : null;
         const live = await this.catalogService.getMenuProducts();
-        const canonicalSize = (value: string) => this.normalizeForMatch(value).replace(/\b(pequen|median)[oa]\b/g, '$1o');
-        const size = descriptiveReference ? canonicalSize(descriptiveReference[1]) : null;
+        const size = descriptiveReference?.[1];
         const matches = pending.candidates.map((candidate,index)=>({candidate,index})).filter(({candidate}) =>
           codeReference ? candidate.code === Number(codeReference[1]) : live.some(product => {
             if (product.id !== candidate.id) return false;
-            if (size) return canonicalSize(product.name).endsWith(` ${size}`) ||
-              new RegExp(`\\b(?:presentacion|tamano|formato)\\s+${size}\\b`).test(canonicalSize(product.description || ''));
+            if (size) return this.comboHasPresentationLabel(product, size);
             return volume != null && product.availableNow !== false &&
               this.catalogService.extractRequestedDrinkVolumeMl(product.description || '') === volume;
           }));
@@ -13605,7 +13626,7 @@ export class WhatsappOrchestratorService {
         }
         choice = matches[0].index + 1;
         // The reference selects a row; its code or volume is never a quantity.
-        text = String(choice);
+        text = String(choice) + (inlineBeverage ? ` con ${inlineBeverage[2]}` : '');
       }
       if (choice == null) {
         if (/^(?:si|si el combo|dale|ok|listo)$/.test(answer)) {
