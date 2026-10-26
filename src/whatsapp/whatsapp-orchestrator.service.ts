@@ -2128,6 +2128,7 @@ export class WhatsappOrchestratorService {
         }
       }
     }
+    if (await this.tryHandlePinnedReference(conv, msg.waId, session, originalText, cfg)) return;
     if (await this.tryHandlePendingCheckoutInterruption(conv, msg.waId, session, originalText, cfg)) return;
     if (session.cart.length && session.orderType !== 'pickup' && !session.address?.trim() &&
         !/[¿?]/.test(originalText) && this.looksLikeUnitOrTowerDetailOnly(originalText)) {
@@ -4904,6 +4905,14 @@ export class WhatsappOrchestratorService {
         this.isDeliveryIntent(text) ||
         this.looksLikePhoneNumber(text)
       ) {
+        if (session.address?.trim() && this.looksLikeAddressRejectingPersonName(text)) {
+          if (!this.isStrongExplicitAddress(session.address)) {
+            session = {...session, pendingDeliveryPlace: this.bareDeliveryPlace(session.address)};
+            await this.conversationService.saveSession(conv, session);
+          }
+          await this.reply(conv, msg.waId, `Anoté la dirección: ${session.address}.\n¿A nombre de quién dejamos el pedido?`);
+          return;
+        }
         await this.reply(
           conv,
           msg.waId,
@@ -19694,6 +19703,41 @@ export class WhatsappOrchestratorService {
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 80);
+  }
+
+  private async tryHandlePinnedReference(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['awaiting_payment', 'awaiting_final_confirm', 'awaiting_name', 'awaiting_phone', 'building_cart'].includes(conv.state) ||
+        !this.isPinnedDeliveryAddress(session)) return false;
+    const raw = text.trim();
+    const n = this.normalizeForMatch(raw).replace(/[¿?!.]+/g, '').trim();
+    const request = /^(?:puedes? |me puedes? )?(?:poner|anotar|agregar|añadir) (?:en (?:la |las )?direcci(?:on|ones) |(?:la |una )?referencia )(?:esta|esto|porfa|por favor|del lugar|del sitio)(?: porfa| por favor)?$/.test(n);
+    if (request) {
+      await this.conversationService.saveSession(conv, {...session, pendingDeliveryReferenceAddress: session.address!});
+      await this.reply(conv, waId, 'Claro, ¿cuál es el nombre del lugar o la referencia para encontrar tu ubicación?');
+      return true;
+    }
+    const pending = session.pendingDeliveryReferenceAddress === session.address;
+    const namedPlace = /\b(?:rooftop|hotel|edificio|conjunto|residencial|salsamentaria|local|almacen|restaurante)\b/.test(n);
+    // Accept a nominal reference, never a purchase, inquiry, payment or new street.
+    if ((!pending && !namedPlace) || raw.length < 5 || raw.length > 100 || raw.split(/\s+/).length > 10 ||
+        /[¿?]/.test(raw) || this.isStrongExplicitAddress(raw) ||
+        /\b(?:quiero|dame|agrega|quita|cancela|reiniciar|confirmar|gracias|cuanto|cuesta|tiene|tienes|pago|efectivo|contraentrega|transferencia|nombre|llamo|telefono|mejor|prefiero|no)\b/.test(n) ||
+        looksLikeClearCartMessage(raw) || looksLikeNonAddressCommand(raw) ||
+        /^(?:un[oa]?s?|dos|tres|cuatro|cinco|\d+)\s/i.test(raw) ||
+        /\b(?:esta|estan|hay|es|son|abre|abren|cierra|cierran)\b/.test(n) ||
+        this.looksLikeFoodNotAddress(raw) || this.looksLikePhoneNumber(raw) || this.isPickupIntent(raw) ||
+        this.isConfirmKeyword(raw) || this.isGreetingKeyword(raw)) return false;
+    const address = session.address!;
+    const next = this.normalizeForMatch(address).includes(n) ? address : `${address} — ${raw}`;
+    // Never truncate the original navigation link to fit a reference.
+    if (next.length > 240) return false;
+    session = {...session, address: next, pendingDeliveryReferenceAddress: undefined};
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    await this.tryConfirmOrder(conv, waId, session, {preface: `📍 Anoté la referencia: ${raw}`});
+    return true;
   }
 
   /**

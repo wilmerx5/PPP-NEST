@@ -1,5 +1,7 @@
 # Auditoría 188 — dos recorridos nuevos del 25/10
 
+Actualización189: los6fallos focales de dirección/referencia se corrigieron y los8diagnósticos se promovieron a whatsapp-new-chats-2510.spec.ts. Ver whatsapp-pinned-reference-validation-2510.md. El resto del análisis conserva pendientes; los resultados siguientes describen la base188.
+
 Base: e3590984, staging. Análisis del archivo aportado (recorrido 15:54–16:17) y del chat anterior de portería. No son evidencia de que producción use esta base. No hay corrección runtime ni despliegue en esta auditoría.
 
 ## Qué funcionó en el recorrido de los pollos
