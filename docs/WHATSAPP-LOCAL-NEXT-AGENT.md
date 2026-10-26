@@ -1,3 +1,9 @@
+## VIGENTE — diagnóstico195: negación múltiple (25/10)
+
+Base73f84e26. Nueva matriz54casos:48negaciones (3menús×agente mock off/on×compra/pago×extras presentes/ausentes×no va/no quiero) y6compras positivas. Resultado46rojos/8verdes,28,193s; solo2negaciones con extras ausentes llegan al DTO, losotros6verdes son controles positivos. Snapshotprimerturno:29carritos incorrectos/19esperados; no confundir fallos de respuesta con duplicación. Repetición inmediata no acredita respuesta nueva por posible deduplicación.
+
+Sin cambios runtime ni despliegue. Archivo opt-in `whatsapp-multiple-negation.repro.ts`, fuera del inventario verde. Diagnóstico, evidencia y próxima implementación en `docs/whatsapp-multiple-negation-diagnostic-2510.md`. Parser de eliminación solo admite verbo explícito+un producto; aún falta instrumentar rutas alternativas, interceptar negación múltiple inequívoca y aplicar eliminación atómica sin tocar combo por sus atributos. TypeScript general aprobado; última global19418.569/261 sigue vigente, no se repite por diagnóstico. Publicación solo staging, Main intacta; cero API/Meta/órdenes externas. Siguen abiertos nuevos chats194 y casos191/192.
+
 ## VIGENTE — tanda194: compra con preferencia opcional y chats nuevos (25/10)
 
 Base4355f281. Compra inicial inequívoca con «si hay/tienes/tienen [acompañamiento] mejor» conserva platos posteriores y pregunta a cuáles aplica la nota; no cobra un adicional ni promete disponibilidad. Repetición exacta conserva carrito y pendiente; cancelación conserva productos. Alcance limitado a carrito vacío, al menos dos platos anteriores distintos, catálogo resoluble/defaults completos; condiciones obligatorias y reparto complejo siguen abiertos.
