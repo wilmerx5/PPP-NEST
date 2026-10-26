@@ -4,6 +4,8 @@ Actualización189: los6fallos focales de dirección/referencia se corrigieron y 
 
 Base: e3590984, staging. Análisis del archivo aportado (recorrido 15:54–16:17) y del chat anterior de portería. No son evidencia de que producción use esta base. No hay corrección runtime ni despliegue en esta auditoría.
 
+Actualización 190: reproducción local demuestra extracción de «Es» desde «Es un pollo…»; corregida validación y recuperación de nombre previo. Recapitulación focal evita «no manejamos Ósea1» y conserva carrito; no se reprodujo duplicación en esa semilla. Ver whatsapp-restatement-validation-2510.md. La compra inicial parcialmente fallida sigue pendiente.
+
 ## Qué funcionó en el recorrido de los pollos
 
 - Respondió disponibilidad de plátano y recordó que faltaba elegir los pollos.

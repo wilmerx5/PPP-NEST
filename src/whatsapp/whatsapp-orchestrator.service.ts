@@ -2128,6 +2128,7 @@ export class WhatsappOrchestratorService {
         }
       }
     }
+    if (await this.tryHandleCartRestatement(conv, msg.waId, session, originalText, cfg)) return;
     if (await this.tryHandlePinnedReference(conv, msg.waId, session, originalText, cfg)) return;
     if (await this.tryHandlePendingCheckoutInterruption(conv, msg.waId, session, originalText, cfg)) return;
     if (session.cart.length && session.orderType !== 'pickup' && !session.address?.trim() &&
@@ -16023,6 +16024,45 @@ export class WhatsappOrchestratorService {
     const reminder = resumeCheckout ? this.formatInterruptedStepReminder(conv,next) : '';
     await this.conversationService.saveSession(conv, next, keepPending ? 'awaiting_attribute' : resumeCheckout ? conv.state : 'building_cart');
     await this.reply(conv, waId, `Listo, ${removal?.target !== undefined && remaining > 0 ? `quedan ${remaining} de *${session.cart[indices[0]].name}*` : `quité ${removal?.quantity ? 'una unidad de ' : ''}${label}`}.\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${keepPending ? this.formatPendingPurchaseReminder(next) : reminder || this.formatContinueShoppingPrompt(next)}`);
+    return true;
+  }
+
+  private async tryHandleCartRestatement(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
+        !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const n = this.normalizeForMatch(text).replace(/[.!]+$/, '').trim();
+    const recap = n.match(/^(?:o\s*sea|es decir|me refiero a)\s+(.+)$/);
+    if (!recap || /[¿?]/.test(text)) return false;
+    const parts = recap[1].split(/\s+y\s+|\s*,\s*/);
+    if (parts.length < 2 || parts.length > 10) return false;
+    const entries = parts.map(part => part.match(/^(?:(?:los|las|el|la)\s+)?(\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)(?:\s+(.+))?$/));
+    if (entries.some(entry => !entry)) return false;
+    // A pure quantity recap never adds products or interprets numbers as menu codes.
+    if (entries.some(entry => entry![2] && /\b(?:mas|menos|otro|otra|con|sin|agrega|quita|cambia)\b/.test(entry![2]))) return false;
+    const remaining = new Set(session.cart.map((_, index) => index));
+    const unnamed: number[] = [];
+    let matches = true;
+    for (const entry of entries) {
+      const quantity = /^\d+$/.test(entry![1]) ? Number(entry![1]) : this.catalogService.extractQuantityFromSegment(`${entry![1]} unidades`);
+      if (quantity < 1 || quantity > 30) { matches = false; break; }
+      const query = entry![2];
+      if (!query) { unnamed.push(quantity); continue; }
+      const candidates = [...remaining].filter(index => correctionMatchesLine(session.cart[index], query));
+      if (candidates.length !== 1 || session.cart[candidates[0]].quantity !== quantity) { matches = false; break; }
+      remaining.delete(candidates[0]);
+    }
+    // Unnamed counts are safe only when every remaining line has the same quantity.
+    // Otherwise ask which product each count refers to instead of guessing an ordering.
+    const remainingQuantities = [...remaining].map(index => session.cart[index].quantity);
+    matches = matches && unnamed.length === remaining.size &&
+      (unnamed.length === 0 || (new Set(unnamed).size === 1 && remainingQuantities.every(quantity => quantity === unnamed[0])));
+    const lead = matches ? 'Sí, esas cantidades ya están en tu pedido. No añadí unidades.' :
+      'Para dejar las cantidades correctas, dime el nombre de cada producto y cuántos quieres. El pedido sigue igual.';
+    const reminder = this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session);
+    await this.reply(conv, waId, `${lead}\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${reminder}`);
     return true;
   }
 

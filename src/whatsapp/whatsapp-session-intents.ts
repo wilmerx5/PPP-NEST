@@ -302,6 +302,7 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
   }
 
   const blockedExact = new Set([
+    'es', // Declarative order prefix: «Es un pollo…», never a recipient.
     'pedido',
     'pedidos',
     'cliente',
