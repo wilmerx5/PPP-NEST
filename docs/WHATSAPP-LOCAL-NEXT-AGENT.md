@@ -1,3 +1,9 @@
+## DESPLIEGUE VERIFICADO — Main, tanda 209 (26/10)
+
+Solicitud del usuario completada. Código `a935f555` integrado/publicado en Main y desplegado en producción. Verificado16:40UTC: API local/públicaOK,DBconnected,circuitCLOSED; contenedor running/0reinicios, imagenactiva=latest8a712979…. Tres módulos compilados (orchestrator/agente/catálogo) idénticos a la compilación validada. Compose privado/.env y472artefactos locales preservados. Rollback `ppp-nest-api:rollback-before-a935f555`. Bases/volúmenes intactos; imagen staging sin cambios. Evidencia y límites: `docs/whatsapp-implicit-combo-offer-validation-2610.md`.
+
+Global vigente18.944/274. Sin API pagada, Meta ni órdenes externas de prueba. Staging se conserva para continuar; este cierre es solo documental, no otro despliegue. Siguiente: alternativas ambiguas/abreviadas, negativas con bebida aparte, preguntas durante propuesta y medición real del consumo ahora instrumentado. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 209: oferta inicial de combo validada; promoción autorizada (26/10)
 
 Base `bc36dde8`. Corregidos los doce pendientes205: nombre completo del plato + bebida, con carrito vacío y una única versión exacta compatible. Guarda el plato base explícitamente pedido y ofrece el combo sin comprarlo aún; al aceptar conserva cantidad, preparación, bebida y nota. Elección posterior de bebida prevalece. No fabrica originalLine; regla por catálogo, sin IDs/nombresPPP. Límites: nombres abreviados, varias variantes, títulos distintos, carrito existente y «no, bebida aparte» combinado siguen para ampliar; no declararlos resueltos.
