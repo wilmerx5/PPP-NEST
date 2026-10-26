@@ -110,6 +110,7 @@ export type WhatsappSessionData = {
     /** The offered bundle fulfills the whole source request; do not add its components again. */
     includesRequestedAccompaniment?: boolean;
     /** Explicit choices from the initial request, scoped to the proposed combo. */
+    offeredAlternatives?: { productId: number; attributes: { attributeName: string; attributeValue: string }[] }[];
     offeredChoices?: { productId: number; attributes: { attributeName: string; attributeValue: string }[] };
     query: string;
     candidates: WhatsappProductCandidate[];

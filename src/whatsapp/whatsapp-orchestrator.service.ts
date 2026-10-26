@@ -13455,7 +13455,7 @@ export class WhatsappOrchestratorService {
       drinkInclusion(product, 'bebida') === 'yes' &&
       (requestedVolume == null || requestedVolume === this.catalogService.extractRequestedDrinkVolumeMl(product.description || '')));
     // An ambiguous presentation must not silently become a preferred replacement.
-    if (combos.length !== 1) return false;
+    if (!combos.length) return false;
     const combo = combos[0];
     const requested = this.catalogService.resolveAttributesFromMessage(combo, text, []);
     const choices = requested.status === 'complete' || requested.status === 'partial' ? requested.attributes : [];
@@ -13466,11 +13466,21 @@ export class WhatsappOrchestratorService {
     if (added.blocked || added.missingAttributes || added.session.cart.length !== 1) return false;
     const originalLine = added.session.cart[0];
     const next: WhatsappSessionData = { ...added.session, pendingMatch: {
-      query: text, intent: 'order', candidates: [combo], quantity,
-      replacement: { originalLine: structuredClone(originalLine), preferredId: combo.id },
-      offeredChoices: { productId: combo.id, attributes: choices },
+      query: text, intent: 'order', candidates: combos, quantity,
+      replacement: { originalLine: structuredClone(originalLine), preferredId: combos.length === 1 ? combo.id : undefined },
+      offeredChoices: combos.length === 1 ? { productId: combo.id, attributes: choices } : undefined,
+      offeredAlternatives: combos.length > 1 ? combos.map(candidate => {
+        const resolved = this.catalogService.resolveAttributesFromMessage(candidate, text, []);
+        return { productId: candidate.id, attributes: resolved.status === 'complete' || resolved.status === 'partial' ? resolved.attributes : [] };
+      }) : undefined,
     } };
     await this.conversationService.saveSession(conv, next, 'building_cart');
+    if (combos.length > 1) {
+      await this.reply(conv, waId, `Anoté *${dish.name}${quantity > 1 ? ` ×${quantity}` : ''}*.${note ? `\n📝 ${note}` : ''}\n\n` +
+        combos.map((candidate,index) => `${index+1}. *${candidate.name}* · #${candidate.code} · ${this.catalogService.formatMoney(candidate.price)} por unidad\n${candidate.description || ''}`).join('\n\n') +
+        '\n\n¿Cuál presentación prefieres? Escribe el número, o *no* para conservar el plato original. Todavía no agregué bebida aparte.');
+      return true;
+    }
     await this.reply(conv, waId, `Anoté *${dish.name}${quantity > 1 ? ` ×${quantity}` : ''}*.${note ? `\n📝 ${note}` : ''}\n\n` +
       `También tenemos *${combo.name}* · #${combo.code} · ${this.catalogService.formatMoney(combo.price)} por unidad.\n` +
       `${combo.description || 'Incluye bebida.'}${choices.length ? `\nOpciones solicitadas: ${choices.map(choice => choice.attributeValue).join(' · ')}.` : ''}\n\n` +
@@ -13506,7 +13516,33 @@ export class WhatsappOrchestratorService {
   private async tryAnswerComboSwapOffer(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean | WhatsappSessionData> {
-    const pending = session.pendingMatch;
+    let pending = session.pendingMatch;
+    if (pending?.offeredAlternatives?.length && pending.replacement && pending.candidates.length > 1 &&
+        !(pending.priceAcceptanceProductId != null && pending.priceAcceptanceProductId === pending.replacement.preferredId && pending.offeredChoices?.productId === pending.priceAcceptanceProductId &&
+          (this.isPriceQuoteAcceptance(text) || this.normalizeForMatch(text) === 'si el combo'))) {
+      const answer = this.normalizeForMatch(text);
+      if (/^(?:no|no gracias|sin combo)$/.test(answer)) {
+        await this.conversationService.saveSession(conv, {...session,pendingMatch:undefined});
+        await this.reply(conv, waId, `Conservo *${pending.replacement.originalLine.name}* como está.\n\n${this.formatContinueShoppingPrompt(session)}`);
+        return true;
+      }
+      const choice = this.pendingTextListRow(text, pending.candidates);
+      if (choice == null) {
+        if (/^(?:si|si el combo|dale|ok|listo)$/.test(answer)) {
+          await this.reply(conv, waId, '¿Cuál presentación prefieres? Escribe el número de la lista. El pedido sigue igual.');
+          return true;
+        }
+        return false;
+      }
+      const candidate = pending.candidates[choice-1];
+      if (!candidate) {
+        await this.reply(conv, waId, `Elige una opción entre 1 y ${pending.candidates.length}. El pedido sigue igual.`);
+        return true;
+      }
+      pending = {...pending,replacement:{...pending.replacement,preferredId:candidate.id},
+        offeredChoices:pending.offeredAlternatives.find(entry=>entry.productId===candidate.id)};
+      session = {...session,pendingMatch:pending};
+    }
     const counted = !/[¿?]/.test(text) ? text.trim().match(/^(?:(?:quiero|dame|deme|me das)\s+)?(-?\d{1,3}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(?:del|de la|de el)\s+(.+)$/i) : null;
     const countWords: Record<string, number> = { un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
     const requestedQuantity = counted ? countWords[counted[1].toLowerCase()] ?? Number(counted[1]) : undefined;
@@ -13537,7 +13573,9 @@ export class WhatsappOrchestratorService {
       return this.tryResolvePendingMatchPick(conv, waId, quotedSession, String(row), products, cfg);
     }
     // Let the existing re-quote path ask for approval before taking a changed price.
-    if (numberedOffer && combo && Number(numberedOffer.price) !== Number(combo.price)) return false;
+    if (numberedOffer && combo && Number(numberedOffer.price) !== Number(combo.price)) {
+      return this.tryResolvePendingMatchPick(conv, waId, session, String(row), products, cfg);
+    }
     const original = pending.replacement.originalLine;
     const replacementQuantity = requestedQuantity ?? pending.quantity ?? original.quantity;
     if (!combo || combo.availableNow === false && !cfg.ignoreBusinessHours || !this.catalogService.productImpliesCombo(combo) ||

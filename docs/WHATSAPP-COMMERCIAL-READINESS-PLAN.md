@@ -1,3 +1,13 @@
+## VIGENTE — tanda 212: elección entre presentaciones de combo (26/10)
+
+Base `0f5cf0f1`. Oferta inicial con varias presentaciones conserva el plato base y lista código/precio/descripción, sin candidato favorito. Opciones solicitadas se guardan por candidato en campo opcional JSON `offeredAlternatives`; elegir fila conserva cantidad/preparación/bebida/nota. «Sí» solo pide aclarar; rechazo conserva base. Disponibilidad/opciones/precio se revalidan, incluida elección de otra alternativa tras recotizar.
+
+48 regresiones nuevas en tres menús×agente mock off/on, todas con cierre DTO simulado. Foco246/246; diagnóstico210 finalmente36/36; TS general/build, Node92 yFalafel1 aprobados. Global19.064/277 suites,584 hashes,714,09s, inventario exacto/fuente congelada. Informe: `docs/whatsapp-combo-offer-presentations-validation-2610.md`; incluye las iteraciones fallidas, sin usarlas como aprobación.
+
+Siguiente bloque: elegir por código o volumen/descripción, preguntar precio/contenido/sabores de cada alternativa, negativa con bebida aparte y datos de contacto mientras esta lista múltiple está pendiente. Probar opciones distintas entre presentaciones y mantener respuesta/carrito/estado/DTO. No extrapolar de la oferta única ni de la selección numérica actual. Nombres abreviados y combos con títulos diferentes siguen fuera de alcance de esta regla inicial.
+
+Sin llamadas pagadas, Meta ni órdenes externas; sin cambios de modelos ni ahorro medido. Publicación solo staging, sin despliegue de esta tanda. Main/producción conservan código209. Agrupar despliegues; no declarar vendible por conteos.
+
 ## VIGENTE — tanda 211: consultas sobre combo pendiente (26/10)
 
 Base `a71730d7`, staging. Preguntas explícitas de precio/sabores sobre una propuesta con candidato único ahora consultan ese combo vigente, sin comprar ni alterar el carrito. Se mantiene el paso siguiente. La ampliación descubrió pérdida de bebida al aceptar nueva cotización: esa aceptación reutiliza la ruta que conserva y revalida las opciones solicitadas.
