@@ -25764,10 +25764,11 @@ export class WhatsappOrchestratorService {
         continue;
       }
       const noteSource = lineSource;
+      // Resolve notes against the chosen product: its own ingredients are not kitchen instructions.
       const lineNote =
         item.note ||
         distinctNotes(peelSupportedCookingTerm(noteSource, product)?.note,
-          this.catalogService.extractProductModificationNote(peelSupportedCookingTerm(noteSource, product)?.productText || noteSource),
+          this.catalogService.orderKitchenNote(noteSource, product),
           interpretProductNote(noteSource, [product])?.note,
           condimentIntensityNote(noteSource),
           noteSource.match(/\b(?:con\s+)?(?:harto|arto|mucho|bastante)\s+[\p{L}]+(?:\s+[\p{L}]+){0,2}(?=(?:\s+(?:por favor|porfa|gracias))?(?:[,;.!]|$))/iu)?.[0]) ||

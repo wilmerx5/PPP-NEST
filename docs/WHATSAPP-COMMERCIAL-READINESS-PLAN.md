@@ -1,3 +1,11 @@
+## VIGENTE — tanda 191: notas frente a ingredientes del nombre (25/10)
+
+Base b9bf7639. Reproducida compra mixta con cantidades correctas pero nota espuria «con queso y bocadillo por» (2 rojos off/on). Se reutiliza `orderKitchenNote` al añadir varios platos para considerar el producto elegido. Las compras individuales ya pasaban: no atribuirles una mejora nueva. Sin excepciones por restaurante/ID.
+
+20 casos nuevos: tres catálogos, agente simulado off/on, compra individual/mixta, notas reales y 12 cierres DTO. Foco65/65; TS general/build y Node92 OK. Global18.524/259 suites,560 hashes,749,4s, inventario exacto y fuente congelada. Evidencia `docs/whatsapp-catalog-name-notes-validation-2510.md` y `/tmp/ppp-191-global-summary.json`.
+
+IMPORTANTE: `whatsapp-accompaniment-recovery.repro.ts` conserva DOS recorridos completos FALLIDOS fuera del inventario verde. Compra condicional con papas/yuca, consultas previas y correcciones no recupera todos los productos. No afirmar solucionado todo el chat ni diagnóstico del modelo real a partir del mock. Próximo: separar compra/condición, aclarar asignación de acompañamientos y recuperar parcial sin duplicar; siguen efectivo50 y pendientes183/184/186. Publicación solo staging, SIN despliegue; Main/producción intactas; ceroAPI/Meta/órdenes externas.
+
 ## VIGENTE — tanda 190: recapitulación y nombre «Es» (25/10)
 
 Base e82b792a. Reproducido el origen local de nombre «Es» desde «Es un pollo frito y uno a la broster»: parser de nombre inicial + validador permisivo. Se rechaza ese fragmento sin bloquear nombres cortos válidos; checkout recupera destinatarios antiguos inválidos antes de crear orden. «O sea / es decir» con varias cantidades se valida contra el carrito como resumen, no compra; coincidencia inequívoca confirma sin añadir, discrepancia pide producto+cantidad sin mutar. No asigna cantidades distintas por orden visual ni interfiere con selecciones pendientes.

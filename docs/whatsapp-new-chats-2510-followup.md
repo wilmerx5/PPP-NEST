@@ -50,3 +50,7 @@ Diagnósticos opt-in: src/whatsapp/whatsapp-new-chats-2510.repro.ts. Agente simu
 Resultado: 8 diagnósticos ejecutados, 6 fallidos y 2 aprobados. La consulta «Cuánto sería» tras cerrar compras pasa en ambas modalidades en esta semilla; no acredita todavía el recorrido completo del archivo. Fallan respuesta de portería, solicitud de referencia y referencia directa, en ambas modalidades. Evidencia local: /tmp/ppp-188-diagnostic.json y .log. No se repite global sin cambios compartidos. Última global runtime sigue siendo 187: 18.409 pruebas/255 suites. No afirmar que todos estos chats están resueltos ni que se alcanzó piloto por conteos.
 
 TypeScript general (`npx tsc --noEmit --incremental false`) aprobado. No cambios en código de ejecución; no se ejecutó otra global ni se desplegó.
+
+## Seguimiento 191 — reproducción larga y nota residual
+
+Las tandas189/190 ya cubren referencias tras pin, recepción de dirección antes del nombre, recapitulaciones y rechazo del nombre «Es»; consultar sus informes antes de tratar los diagnósticos188 como vigentes. En191 se reprodujo por separado la nota espuria «con queso y bocadillo por» en compra mixta y se corrigió usando el producto elegido al extraer notas. El replay completo sigue FALLANDO en dos recorridos simulados: consulta previa + compra condicional de acompañamientos + corrección no recuperan todos los platos. Evidencia y siguiente intervención: `whatsapp-catalog-name-notes-validation-2510.md`. No declarar todo este chat solucionado. Efectivo50 continúa pendiente.
