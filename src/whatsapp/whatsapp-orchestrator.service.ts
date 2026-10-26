@@ -3500,10 +3500,13 @@ export class WhatsappOrchestratorService {
     const hostedMeal = this.catalogService.hostedMenuDrink(text,products);
     const requestedDrinkVolume = this.catalogService.extractRequestedDrinkVolumeMl(text);
     const includedDrinkVolume = hostedMeal ? this.catalogService.extractRequestedDrinkVolumeMl(hostedMeal.product.description || '') : null;
-    const namedMeal = this.catalogService.resolveNamedMenuDishProduct(text, products) ||
+    // For a new cart, resolve a plural full combo title before the multi-item splitter.
+    // Explicit drink sizes still go through the existing volume-aware route.
+    const explicitComboMeal = !session.cart.length && /\bcombos\b/i.test(text) && requestedDrinkVolume == null ? this.catalogService.explicitlyNamedCombo(text, products) : null;
+    const namedMeal = explicitComboMeal || this.catalogService.resolveNamedMenuDishProduct(text, products) ||
       (hostedMeal && (requestedDrinkVolume == null || requestedDrinkVolume === includedDrinkVolume) ? hostedMeal.product : null);
     if (businessOpenForBot && !splitsSameSkuPair && namedMeal && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
-      (this.catalogService.orderNamesThisProduct(namedMeal.name, text) || this.catalogService.productWhoseHeadWasSpoken(text,products)?.id === namedMeal.id ||
+      (explicitComboMeal?.id === namedMeal.id || this.catalogService.orderNamesThisProduct(namedMeal.name, text) || this.catalogService.productWhoseHeadWasSpoken(text,products)?.id === namedMeal.id ||
         hostedMeal?.product.id === namedMeal.id && this.catalogService.findAllProductsEmbeddedInMessage(text,products).filter(product => !this.catalogService.isLikelyDrinkProduct(product)).length === 1) &&
       !/\by\s+(?:un|una|otro|otra|dos|tres|medio|media|cuarto|cuarta|\d+)\b/i.test(text) &&
       !/\b(?:aparte|a parte|adicional|extra|por separado)\b/i.test(text) &&

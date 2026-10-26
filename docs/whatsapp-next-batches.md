@@ -1,3 +1,11 @@
+## VIGENTE — tanda 204: combos plurales compuestos (26/10)
+
+Base `2543a55d`. Con carrito vacío, título completo y único de «combos» se resuelve antes de separar componentes. Mantiene preparación y bebida del catálogo; los tamaños explícitos siguen por la ruta anterior. Alcance limitado a plural y carrito vacío, sin IDs/nombresPPP runtime. No acreditar compras posteriores ni combos implícitos.
+
+Diagnóstico197:4/12→8/12; cuatro fallos plurales corregidos, cuatro implícitos siguen opt-in en `whatsapp-numeric-drink.repro.ts`. Suite nueva16:12recorridos/DTO en3menús×1/2unidades×agente mock off/on y4reproducciones PPP. Foco inicial705/705. La global encontró una regresión de corrección de cantidad (limitado a carrito vacío); la segunda encontró6contratos texto/foto de acompañamientos singulares (limitado a plural). Foco final61/61, TS general/build yNode92 aprobados. Global FINAL18.792/270suites,576hashes,694,86s, fuente congelada/inventario exacto: `/tmp/ppp-204-approved-global-summary.json`. No usar ejecuciones previas como aprobación. Evidencia `docs/whatsapp-explicit-combo-composition-validation-2610.md`.
+
+Siguiente: oferta contextual de combos implícitos con componentes/bebida, alternativas ambiguas, negativa, compras aparte y tamaños distintos; conservar cantidades/notas hasta DTO. Añadir imagen/corrección al foco temprano de cualquier cambio de prioridad para evitar repetir global por regresiones de ruta. Costos199/203 aún sin deploy/medición productiva. Solo staging, sin deploy, Main intacta; cero API/Meta/órdenes externas. Mantener pendientes históricos, no declarar vendible por conteos.
+
 ## VIGENTE — tanda 203: eliminar reintento cosmético (26/10)
 
 Base `845e90de`. El agente ya no pide otra inferencia solo porque una respuesta completa supera 420 caracteres. Conserva texto hasta el límite existente de 3500; permanecen recuperaciones de compras incompletas/sin acción, reintentos HTTP, modelos y herramientas. No cambia reglas de catálogo.
