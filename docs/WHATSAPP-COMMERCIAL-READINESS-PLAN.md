@@ -1,3 +1,11 @@
+## VIGENTE — tanda 225: «no ese, el otro» (26/10)
+
+Base `7a420e39`, staging. La referencia relativa a una oferta exige una presentación actual identificada y exactamente otra alternativa. Si falta antecedente o hay varias, pide aclaración sin modificar carrito. Revalida disponibilidad/precio y usa opciones propias de la alternativa; cantidades y notas se conservan. Las opciones agotadas o retiradas generan explicación, sin compra silenciosa.
+
+42 conversaciones nuevas en tres menús×agente simulado off/on×7 caminos, con respuesta/carrito/estado/opciones/precio/notas y DTO final. Baseline30/30 rojas; ampliación detectó12 fallos de respuesta ante stock/retirada, corregidos. Foco168/168 en5 suites; TS general/build, Node92, Falafel1 verdes. Global completa19.644/291 suites,598 hashes,735,81s, inventario exacto/fuente congelada. Informe `docs/whatsapp-combo-other-reference-validation-2610.md`.
+
+Siguiente: «el otro con ...», correcciones con ambos productos explícitos, consultas junto a negativas y disponibilidad cambiante de varias alternativas. No extrapolar esta referencia acotada a lenguaje libre. Sin API pagada/Meta/órdenes externas; modelos/Main intactos. Publicación staging sin despliegue; runtime210–225 pendiente de despliegue agrupado (219/221–223 solo cobertura). Producción código209 `a935f555`. Sin ahorro real medido ni declaración de vendibilidad.
+
 ## VIGENTE — tanda 224: preguntas mixtas sin puntuación (26/10)
 
 Base `697b5c09`, staging. Se separan preguntas acotadas de contenido/precio/sabores y órdenes explícitas dame/quiero sin depender de signos; funciona pregunta antes/después. «Si elijo» sigue siendo consulta sin compra. Conserva validaciones de catálogo/opciones/precio y no usa excepciones de restaurante.

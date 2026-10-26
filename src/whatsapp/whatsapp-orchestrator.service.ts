@@ -13604,6 +13604,20 @@ export class WhatsappOrchestratorService {
         return true;
       }
       let choice = this.pendingTextListRow(text, pending.candidates);
+      const otherReference = answer.replace(/[.,;!]/g, ' ').replace(/\s+/g, ' ').trim()
+        .replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '');
+      if (/^(?:no (?:ese|esa) )?(?:(?:dame|quiero) )?(?:el otro|la otra)$/.test(otherReference)) {
+        const currentId = pending.replacement.preferredId;
+        const others = pending.candidates.map((candidate, index) => ({candidate, index}))
+          .filter(({candidate}) => candidate.id !== currentId);
+        if (currentId == null || !pending.candidates.some(candidate => candidate.id === currentId) || others.length !== 1) {
+          await this.reply(conv, waId, '¿Cuál presentación quieres en su lugar? Indica el número de la lista; el pedido sigue igual.');
+          return true;
+        }
+        choice = others[0].index + 1;
+        // Preserve list ownership and let the normal path revalidate availability and price.
+        text = String(choice);
+      }
       const inlineBeverage = !/[¿?]/.test(text) ? text.trim().match(/^(.+?)\s+con\s+(.+)$/i) : null;
       const reference = (inlineBeverage ? inlineBeverage[1] : text).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/(?:\s+(?:por favor|porfa|gracias))+[.!]*$/, '').trim();
@@ -13679,7 +13693,7 @@ export class WhatsappOrchestratorService {
     const products = await this.catalogService.getMenuProducts();
     const combo = this.catalogService.getProductById(preferredId, products);
     // Reuse the list's availability/price check without letting the drink choose another row.
-    if (numberedOffer && (inlineRow != null || requestedQuantity != null) && (!combo || combo.availableNow === false)) {
+    if (numberedOffer && (!combo || combo.availableNow === false)) {
       const quotedSession = requestedQuantity != null ? { ...session, pendingMatch: { ...pending, quantity: requestedQuantity } } : session;
       return this.tryResolvePendingMatchPick(conv, waId, quotedSession, String(row), products, cfg);
     }
