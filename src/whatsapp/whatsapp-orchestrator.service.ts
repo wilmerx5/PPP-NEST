@@ -2605,6 +2605,18 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, 'Anoté la fecha y el horario solicitados. La disponibilidad para una entrega programada debe confirmarla el local; todavía no está reservada.');
       return;
     }
+    // A question does not undo an explicit refusal of the pending upgrade.
+    // Answer against the offer before clearing it, then preserve the original cart.
+    const questionThenRefusal = session.pendingMatch?.offeredAlternatives?.length
+      ? originalText.match(/^(.+?\?)\s*(no(?:\s+gracias)?|sin\s+combo)[.!]?$/i) : null;
+    const refusalThenQuestion = session.pendingMatch?.offeredAlternatives?.length
+      ? originalText.match(/^(no(?:\s+gracias)?|sin\s+combo)\s*[,;]\s*(¿?.+\?)$/i) : null;
+    const refusalQuestion = questionThenRefusal?.[1] ?? refusalThenQuestion?.[2];
+    const refusal = questionThenRefusal?.[2] ?? refusalThenQuestion?.[1];
+    if (refusalQuestion && refusal &&
+        await this.tryAnswerPendingComboQuestion(conv, msg.waId, session, refusalQuestion, true)) {
+      if (await this.tryAnswerComboSwapOffer(conv, msg.waId, session, refusal, cfg) === true) return;
+    }
     // Explicit purchase verbs and bounded question phrases also separate turns without punctuation.
     // Conditional 'si elijo' remains an inquiry, never permission to replace the cart.
     const reversedComboTurn = session.pendingMatch?.offeredAlternatives?.length

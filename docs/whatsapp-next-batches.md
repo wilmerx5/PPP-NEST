@@ -1,3 +1,11 @@
+## VIGENTE — tanda 227: consulta y negativa de combo (26/10)
+
+Base `c0b5e629`, staging. Consulta reconocida y negativa explícita se resuelven por separado: se responde sobre la oferta y luego se conserva el original y limpia la elección. «No gracias» no mantiene una oferta pendiente ni se transforma en compra. Los controles de pregunta + elección explícita de otra presentación siguen funcionando.
+
+36 conversaciones nuevas, tres menús×agente simulado off/on×6 caminos, con respuesta/continuación/carrito/opciones/cantidad/notas/precio/estado y DTO. Baseline12 verdes/24 rojas; foco150/150 en4 suites. TS general/build, Node92, Falafel1 verdes. Global completa19.728/293 suites,600 hashes,798,39s, inventario exacto/fuente congelada. Informe `docs/whatsapp-combo-question-refusal-validation-2610.md`.
+
+Siguiente: negativas con consulta sin signos y «no ese» junto a otra alternativa; no tratar rechazo de una presentación como rechazo de toda oferta. La cobertura227 exige pregunta delimitada y negativa explícita no/no gracias/sin combo; no acredita lenguaje libre ni inferencia real. Sin API pagada/Meta/órdenes externas; modelos/Main intactos. Publicación staging sin despliegue; runtime210–227 pendiente de despliegue agrupado (219/221–223 solo cobertura). Producción código209 `a935f555`. Sin ahorro real medido ni declaración de vendibilidad por conteos.
+
 ## VIGENTE — tanda 226: otra presentación con bebida (26/10)
 
 Base `67f93cef`, staging. «El otro con Agua» conserva la bebida explícita al resolver la referencia; «1 con Agua» resuelve la fila durante la recuperación. Se usan las validaciones existentes de opciones/precio/disponibilidad. Ambigüedad o ausencia de antecedente no permite compra automática; sabor inválido conserva carrito hasta elección válida.
