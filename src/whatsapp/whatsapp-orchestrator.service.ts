@@ -1379,6 +1379,7 @@ export class WhatsappOrchestratorService {
       const paidWith = text.match(/^\s*(?:y\s+)?(?:el pedido|la orden|todo|eso)\s+(?:va|queda|lo pago|se paga|lo pagamos|lo pagan)\s+(?:con|en|por)\s+(.{2,40}?)[\s.!]*$/i);
       if (paidWith && findPaymentMethodByText(paidWith[1], cfg.paymentMethods)) text = `pago con ${paidWith[1]}`;
     }
+    if (await this.tryHandleMultipleCartNegation(conv, msg.waId, this.conversationService.getSession(conv), text, cfg)) return;
     if (['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) && !/[¿?]/.test(text)) {
       const another = this.rewriteAnotherOfVariant(text, this.conversationService.getSession(conv), await this.catalogService.getMenuProducts());
       if (another) text = another;
@@ -15936,6 +15937,40 @@ export class WhatsappOrchestratorService {
     return !!pending && correctionMatchesLine({productId:pending.productId,code:pending.code,name:pending.name,
       quantity:pending.quantity || 1,unitPrice:pending.price,attributes:pending.selected,
       note:this.catalogService.extractProductModificationNote(pending.sourceText || '') || undefined},query);
+  }
+
+  /** Resolve a negative list as one cart edit, never as fresh purchases. */
+  private async tryHandleMultipleCartNegation(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state) || /[¿?]/.test(text)) return false;
+    const match = text.trim().replace(/[.!]+$/, '').match(/^no (?:va|van|quiero)\s+(.+?)(?:\s+por favor|\s+porfa)?$/i);
+    if (!match || !/\s+ni\s+/i.test(match[1])) return false;
+    const parts = match[1].split(/\s+ni\s+/i);
+    if (parts.length < 2 || parts.length > 5 || parts.some(part => /\b(?:que|quites|quitar|cambies|cambiar|sino|pero|agrega|pon|porque|si)\b/i.test(part))) return false;
+    const normalize = (value: string) => this.normalizeForMatch(value).replace(/(\d)\s+(ml|l)\b/g,'$1$2').split(/\s+/).filter(word => !['el','la','los','las','de'].includes(word)).join(' ');
+    const menu = await this.catalogService.getMenuProducts();
+    const ids: number[] = [];
+    for (const part of parts) {
+      const names = [...menu, ...session.cart].filter(item => normalize(item.name) === normalize(part));
+      const candidates = [...new Set(names.map(item => 'productId' in item ? item.productId : item.id))];
+      if (candidates.length !== 1) {
+        await this.reply(conv,waId,`No cambié el pedido. ¿Cuál producto quieres quitar con «${part.trim()}»? Dime su nombre completo.`);
+        return true;
+      }
+      ids.push(candidates[0]);
+    }
+    if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) {
+      await this.reply(conv,waId,'No cambié el pedido. Hay una selección o pago pendiente; aclaremos eso antes de quitar esos productos.');
+      return true;
+    }
+    const indices = session.cart.flatMap((line,index) => ids.includes(line.productId) ? [index] : []);
+    const next = indices.length ? this.removeCartLines(session,indices) : session;
+    const state = next.cart.length ? conv.state : 'building_cart';
+    await this.conversationService.saveSession(conv,next,state);
+    await this.reply(conv,waId,(indices.length ? 'Listo, retiré los productos indicados.' : 'Esos productos no están en el carrito; el pedido sigue igual.') + '\n\n' + this.formatCartOnly(next,this.deliveryFeeFor(next,cfg)) + '\n\n' + (next.cart.length ? this.formatInterruptedStepReminder(conv,next) || this.formatContinueShoppingPrompt(next) : '¿Qué te gustaría pedir?'));
+    return true;
   }
 
   private async tryHandleScopedCartRemoval(

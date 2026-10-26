@@ -1,3 +1,11 @@
+## VIGENTE — tanda196: negación múltiple corregida (25/10)
+
+Basee9323d41. «No va/van A ni B» y «no quiero A ni B» resuelven nombres completos contra catálogo/carrito antes de la reformulación de compra; eliminación en una actualización, extras ausentes no se compran, atributos del combo no identifican productos independientes. Ambigüedad conserva carrito y pide nombre completo. Selección/pago pendiente bloquea la mutación con explicación; no acreditar recuperación completa de esos pendientes ni nombres abreviados/sustituciones mixtas.
+
+Matriz19554/54verde (antes46rojos); promovida a whatsapp-multiple-negation.spec.ts, sin copia diagnóstica duplicada. Cuatro controles extra:58nuevos en inventario,48cierresDTO. Foco82/82; TS general/build yNode92OK. Global18.627/262,565hashes,685,71s, inventario exacto/fuente congelada. Evidencia docs/whatsapp-multiple-negation-validation-2510.md y /tmp/ppp-196-global-summary.json.
+
+Diagnósticos reales194:2verdes/6rojos, ambas negaciones corregidas; siguen7up→7medios pollos, dirección de cortesía y reparto de sopas. Próximo7up con cantidades, combo padre y corrección posterior; conservar pendientes191/192y183/184/186. Publicación solo staging; SIN deploy ni Main; ceroAPI/Meta/órdenes externas. No declarar piloto por conteos.
+
 ## VIGENTE — diagnóstico195: negación múltiple (25/10)
 
 Base73f84e26. Nueva matriz54casos:48negaciones (3menús×agente mock off/on×compra/pago×extras presentes/ausentes×no va/no quiero) y6compras positivas. Resultado46rojos/8verdes,28,193s; solo2negaciones con extras ausentes llegan al DTO, losotros6verdes son controles positivos. Snapshotprimerturno:29carritos incorrectos/19esperados; no confundir fallos de respuesta con duplicación. Repetición inmediata no acredita respuesta nueva por posible deduplicación.
