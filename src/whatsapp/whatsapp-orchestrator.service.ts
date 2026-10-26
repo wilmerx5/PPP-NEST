@@ -3365,10 +3365,12 @@ export class WhatsappOrchestratorService {
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
 
+
     if (businessOpenForBot && await this.tryHandleEachCategoryPurchase(conv,msg.waId,session,originalText,products,cfg)) return;
     if (businessOpenForBot && await this.tryHandleOfferedOptionPurchase(conv, msg.waId, session, originalText, products, cfg)) return;
 
     if (await this.tryApplyAllergyOrder(conv, msg.waId, session, originalText, products, cfg)) return;
+    if (businessOpenForBot && await this.tryHandleOptionalAccompanimentPurchase(conv, msg.waId, session, originalText, products, cfg)) return;
     const narratedDistribution = /\bsomos\s+(?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/i.test(originalText) &&
       /\b(?:van\s+a\s+comer|el\s+otro\s+quiere|para\s+cada\s+uno|para\s+todos|cada\s+quien|cada\s+un[oa]\s+quiere|por\s+persona|por\s+comensal)\b/i.test(originalText);
     if (businessOpenForBot && narratedDistribution &&
@@ -9992,7 +9994,7 @@ export class WhatsappOrchestratorService {
       waId,
       `${this.buildCartAddReply(next, fee, labels, { suffix: '' })}\n\n` +
         (cartRepeatsAdd ? '' : `${this.formatCartOnly(next, fee)}\n\n`) +
-        this.formatContinueShoppingPrompt(next),
+        (next.pendingSubsetKitchenNote ? this.formatSubsetKitchenNoteQuestion(next) : this.formatContinueShoppingPrompt(next)),
     );
     return true;
   }
@@ -16027,6 +16029,42 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** A soft preference is not an inventory prerequisite for the entire purchase.
+   * Keep later dishes and ask which of the preceding dishes owns the preference. */
+  private async tryHandleOptionalAccompanimentPurchase(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (conv.state !== 'building_cart' || session.cart.length || session.pendingMatch ||
+        session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote || /[¿?]/.test(text)) return false;
+    const normalized = this.normalizeForMatch(text);
+    if (!/^(?:me das|me regalas|quiero|dame|ponme|agrega)\s+(?:un[oa]?|dos|tres|cuatro|\d{1,2})\b/.test(normalized) ||
+        /\b(?:solo|unicamente|solamente|si no|siempre que|a condicion|no quiero)\b/.test(normalized)) return false;
+    const preference = /\bsi\s+(?:hay|tienes|tienen)\s+([\p{L}]+(?:\s+[\p{L}]+){0,3})\s+mejor(?=\s+y\s+(?:un[oa]?|dos|tres|cuatro|\d{1,2})\b|\s*[.!]?\s*$)/iu.exec(text);
+    if (!preference || /\b(?:y|o|si|no|con|sin|solo|para)\b/i.test(preference[1])) return false;
+    const preferenceWords = this.normalizeForMatch(preference[1]).split(/\s+/);
+    const knownSide = products.some(product => this.catalogService.isLikelySideOnlyProduct(product) &&
+      preferenceWords.every(word => this.normalizeForMatch(product.name).split(/\s+/).includes(word)));
+    if (!knownSide) return false;
+    const before = text.slice(0,preference.index).trim();
+    const purchase = (before + ' ' + text.slice(preference.index + preference[0].length)).trim();
+    const prefix = this.catalogService.resolveMultiProductOrder(before, products);
+    const parsed = this.catalogService.resolveMultiProductOrder(purchase, products);
+    if (!prefix || !parsed || prefix.unresolved.length || prefix.ambiguous.length ||
+        parsed.unresolved.length || parsed.ambiguous.length) return false;
+    const owners = [...prefix.confident, ...prefix.needsAttributes];
+    const items = [...parsed.confident, ...parsed.needsAttributes];
+    const ids = [...new Set(owners.map(item=>item.product.id))];
+    if (ids.length < 2 || items.length < owners.length ||
+        items.some(item=>item.product.availableNow === false ||
+          item.product.hasAttributes && !this.catalogService.isAttributeSelectionComplete(item.product,
+            this.catalogService.fillDefaultAttributes(item.product, [])))) return false;
+    const next = {...session, pendingSubsetKitchenNote: {
+      quantity: 0, note: `Preferir ${preference[1]} si hay disponible.`, productIds: ids, byUnits: true, sourceText: normalized,
+    }};
+    return this.addResolvedDishesToCart(conv, waId, next, items, cfg);
+  }
+
   private async tryHandleCartRestatement(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, cfg: EffectiveWhatsappConfig,
@@ -18941,6 +18979,10 @@ export class WhatsappOrchestratorService {
   private async tryHandleSubsetKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
     const pending = session.pendingSubsetKitchenNote;
     if (!pending || conv.state==='awaiting_mp_payment') return false;
+    if (pending.sourceText === this.normalizeForMatch(text)) {
+      await this.reply(conv,waId,this.formatSubsetKitchenNoteQuestion(session));
+      return true;
+    }
     if (/^(?:no apliques esa nota|olvida esa nota|cancela esa indicacion)$/.test(this.normalizeForMatch(text))) {
       const next={...session,pendingSubsetKitchenNote:undefined};await this.conversationService.saveSession(conv,next);
       await this.reply(conv,waId,'Retiré esa indicación pendiente. Los productos siguen igual.\n\n'+this.formatInterruptedStepReminder(conv,next));return true;

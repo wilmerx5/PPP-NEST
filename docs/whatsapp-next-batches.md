@@ -1,3 +1,11 @@
+## VIGENTE — tanda194: compra con preferencia opcional y chats nuevos (25/10)
+
+Base4355f281. Compra inicial inequívoca con «si hay/tienes/tienen [acompañamiento] mejor» conserva platos posteriores y pregunta a cuáles aplica la nota; no cobra un adicional ni promete disponibilidad. Repetición exacta conserva carrito y pendiente; cancelación conserva productos. Alcance limitado a carrito vacío, al menos dos platos anteriores distintos, catálogo resoluble/defaults completos; condiciones obligatorias y reparto complejo siguen abiertos.
+
+24 regresiones nuevas (18 recorridos hasta DTO en3menús×3formas×agente mock off/on,2cancelaciones,4límites del método). Foco final24/24; TS general/build y Node92OK. Global18.569/261,564hashes,696,38s, inventario exacto/fuente congelada. Diagnósticos191/192:12verdes/8rojos, mejora6; no afirmar todos resueltos. Evidencia `docs/whatsapp-optional-preference-validation-2510.md` y `/tmp/ppp-194-global-summary.json`.
+
+Leídos los dos adjuntos nuevos (tres chats): ocho diagnósticos adicionales TODOS ROJOS en `whatsapp-evening-chats-2510.repro.ts`, fuera del inventario verde. «7 up» produce7medios pollos; «no va A ni B» añade arepas; cortesía de domicilio se guarda como dirección; sopas pierden notas/reparto y añaden arroz. Auditoría/plan: `docs/whatsapp-evening-chats-2510-audit.md`. Priorizar negación múltiple y marca numérica, luego destino/cortesía y reparto; probar conversación completa y DTO, no solo respuesta. Inferencia/mapas simulados; cero API/Meta/órdenes externas. Publicación solo staging, SIN deploy; Main intacta. No declarar piloto por conteos. Siguen pendientes largos191 y183/184/186.
+
 ## VIGENTE — tanda193: compra condicional no explora preparaciones (25/10)
 
 Base5a7999eb. Corregida inconsistencia entre «me das/me regalas un plato si tienes...» y «quiero/dame»: prefijo explícito de compra con cantidad + condición de inventario no dispara browse por preparación. La condición se conserva completa para el manejador de pedidos. Sin IDs/restaurantes especiales.
