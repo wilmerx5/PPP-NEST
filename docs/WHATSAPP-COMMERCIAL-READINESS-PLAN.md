@@ -1,3 +1,11 @@
+## VIGENTE — tanda 201: notas en combos plurales (26/10)
+
+Base `27b49bf8`. Corregida pérdida de «sin cebolla/sin ensalada» al pedir combos plurales: el enmascarado del título del catálogo admite combo/combos. Traza confirma texto completo en handler y pérdida en extractor, no persistencia. Sin excepciones por restaurante.
+
+18 casos en spec (promoción de los 2 diagnósticos200 + ampliación): 12 cierres DTO en 3 menús/off-on simulado, 6 controles de nombre sin nota. Foco55/55, TypeScript general/build yNode92OK. Global18.732/267suites,575hashes,694,13s; inventario exacto/fuente congelada. Evidencia `docs/whatsapp-plural-combo-notes-validation-2510.md` y `/tmp/ppp-201-global-summary.json`.
+
+Ampliación «con bastante ají» todavía falla: 6 diagnósticos opt-in,2verdes/4rojos en `whatsapp-combo-intensity-note.repro.ts` (arroz pierde nota, pasta añade texto redundante). No incluidos en total aprobado. Siguiente trazar/corregir esos caminos; siguen8pendientes de composición197. Costos199 aún sin deploy, faltan otras rutas/asociación a orden; ahorro por resumen198 pendiente. Solo staging, Main intacta, sin deploy ni API/Meta/órdenes externas. No declarar vendible por conteos.
+
 ## VIGENTE — tanda200 validada: combo explícito en plural (25/10)
 
 Base6294bffa. En ruta cantidad>=2, nombre completo de un único combo activo evita volver a preguntar familia. Selector conservador por frase del catálogo; duplicados, agotados, títulos incompletos o dos combos independientes no reciben override. Sin IDs/nombresPPP runtime.

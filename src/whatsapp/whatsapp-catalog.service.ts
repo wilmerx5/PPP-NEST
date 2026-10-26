@@ -4350,7 +4350,8 @@ export class WhatsappCatalogService {
     if (nameTokens.some((token) => /^(?:con|sin|mas)$/.test(token))) {
       const loose = (token: string) => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         .replace(/a/g, '[aá]').replace(/e/g, '[eé]').replace(/i/g, '[ií]').replace(/o/g, '[oó]').replace(/u/g, '[uúü]').replace(/n/g, '[nñ]');
-      modificationText = text.replace(new RegExp(`(?<![\\p{L}])${nameTokens.map(loose).join('\\s+')}(?![\\p{L}])`, 'iu'), 'plato').trim();
+      // Match the spoken plural too, so a combo's components do not hide its real preferences.
+      modificationText = text.replace(new RegExp(`(?<![\\p{L}])${nameTokens.map((token) => token === 'combo' ? 'combos?' : loose(token)).join('\\s+')}(?![\\p{L}])`, 'iu'), 'plato').trim();
     }
     const peeled = peelSupportedCookingTerm(text, product);
     const intensity=splitIntensityPreference(text);
