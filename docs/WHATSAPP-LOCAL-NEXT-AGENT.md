@@ -1,3 +1,11 @@
+## VIGENTE — tanda 219: disponibilidad durante aceptación de precio (26/10)
+
+Base `17199282`, staging. Cobertura nueva sin cambios de runtime: retirar bebida, agotar combo o eliminarlo entre recotización y «sí». Se conserva original hasta elegir una opción vigente; no se cambia Agua por Pepsi silenciosamente. Tres menús×agente simulado off/on×3 caminos=18 conversaciones con cierre DTO de dos unidades, notas, opciones, precio y estados.
+
+Baseline18/18 verdes; foco162/162 en4 suites (24,699s), TypeScript general verde. Sin nueva global porque solo se añaden pruebas/docs; conservar evidencia combinada218 sin llamarla run219. Informe `docs/whatsapp-combo-quote-availability-validation-2610.md`.
+
+Siguiente: aceptación por número/código/nombre, tanto con bebida vigente como retirada; después consultas/contactos durante la cotización. Sin API pagada, Meta ni órdenes externas. Main/modelos intactos, publicación solo staging, sin despliegue. Runtime210–218 pendiente de despliegue agrupado;219 solo cobertura. Producción continúa con código209 `a935f555`. No declarar vendibilidad por conteos.
+
 ## VIGENTE — tanda 218: conservar bebida al recotizar (26/10)
 
 Base `28017854`, staging. Se validan y guardan opciones explícitas antes de recotizar: aceptar conserva la bebida; rechazar mantiene original y elegir otra presentación no hereda la bebida ajena. Catálogo general, sin IDs/nombres especiales.
