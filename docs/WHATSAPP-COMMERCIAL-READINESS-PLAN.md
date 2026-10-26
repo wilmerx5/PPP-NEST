@@ -1,3 +1,11 @@
+## VIGENTE — tanda 222: consulta + cambio de bebida (26/10)
+
+Base `7bea95fb`, staging. Solo cobertura: consulta de contenido/precio/sabores junto a elección explícita antes/después de la pregunta; condicional sin compra; bebida inexistente que conserva cotización.36 conversaciones nuevas, tres menús×agente simulado off/on×6 caminos, dos unidades/notas/bebida/precio/estados y DTO simulado.
+
+Baseline36/36 verdes sin corrección; foco168/168 en4 suites,25,151s; TS general verde. No nueva global por test/docs únicamente; última completa220,19.470/286 suites. Informe `docs/whatsapp-combo-quote-mixed-choice-validation-2610.md`.
+
+Siguiente: negativas/correcciones después de contactos, entradas sin puntuación y referentes ambiguos. La cobertura actual usa signos de interrogación y etiqueta explícita; no extrapolar a todo lenguaje libre. Sin API pagada/Meta/órdenes externas, modelos/Main intactos. Publicación staging sin despliegue. Runtime210–220 pendiente de despliegue agrupado;219/221/222 solo cobertura. Producción código209 `a935f555`. Sin ahorro real medido ni declaración de vendibilidad.
+
 ## VIGENTE — tanda 221: preguntas/contactos durante cotización (26/10)
 
 Base `7100b10b`, staging. Solo pruebas/docs: precio, contenido, nombre, teléfono y secuencia de esas interrupciones antes de aceptar.30 conversaciones nuevas, tres menús×agente simulado off/on×5 recorridos, cierres DTO con dos unidades, Agua, notas y datos actualizados.
