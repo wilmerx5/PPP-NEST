@@ -2413,8 +2413,18 @@ export class WhatsappCatalogService {
     // Preserve modifiers; the general matcher may strip them before splitting.
     const clauses = text.split(/;\s*|\.\s+|\r?\n+/).filter(Boolean)
       .flatMap(clause => clause.split(/\s+y\s+(?=para\s+(?:[\p{L}]+\s+){1,3}(?:un[oa]?|otr[oa]|dos|tres|\d+)\b)/iu));
-    const explicitSegments = clauses.flatMap(clause => clause.split(/(?:\s+y\s+|,\s*)(?=(?:(?:aparte|adem[aá]s)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)|\s+con\s+(?=(?:un[oa]?|\d+|dos|tres|cuatro|cinco)\s+porci[oó]n(?:es)?\b)/i));
+    const explicitSegments = clauses.flatMap(clause => clause.split(/(?:\s+y\s+|,\s*)(?=(?:(?:aparte|adem[aá]s)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)|(?<!\b(?:litros?|kilos?|kilogramos?|gramos?|libras?|onzas?|metros?|horas?|minutos?|kg|ml)\s*)\s+y\s+(?=(?:medio|media|cuarto|cuarta)\b)|\s+con\s+(?=(?:un[oa]?|\d+|dos|tres|cuatro|cinco)\s+porci[oó]n(?:es)?\b)/i));
     const segments = explicitSegments.length > 1 ? explicitSegments : this.splitMultiProductSegments(text);
+    // The fallback splitter can separate measurements too. Rejoin their
+    // fractional tail unless it explicitly names another catalog product.
+    for (let i = 1; i < segments.length; i++) {
+      if (/\b(?:litros?|kilos?|kilogramos?|gramos?|libras?|onzas?|metros?|horas?|minutos?|kg|ml)$/i.test(segments[i - 1].trim()) &&
+          /^(?:medio|media|cuarto|cuarta)\b/i.test(segments[i].trim()) &&
+          !this.productFullyNamedIn(segments[i], products)) {
+        segments.splice(i - 1, 2, `${segments[i - 1]} y ${segments[i]}`);
+        i--;
+      }
+    }
     if (segments.length < 2) return text;
     const swap = this.swapIntent(text);
     if (explicitSegments.length === 1 && swap && this.productCarriesMention(product, swap.removed) &&
@@ -2983,8 +2993,10 @@ export class WhatsappCatalogService {
         return true;
       }
       return this.dishSpecificTokens(row.product.name).some((token) => {
+        // Fraction words can be part of the SKU name. Keep them in the tail
+        // after "y" so a separate half/quarter is not mistaken for inclusion.
         const tails = utterance.split(
-          /\b(?:y\s+(?:un|una|uno|otro|otra|dos|tres)|aparte|adicional|extra|por separado)\b/,
+          /(?<!\b(?:litros?|kilos?|kilogramos?|gramos?|libras?|onzas?|metros?|horas?|minutos?|kg|ml)\s+)\by\s+(?=(?:medio|media|cuarto|cuarta)\b)|\b(?:y\s+(?:un|una|uno|otro|otra|dos|tres)|aparte|adicional|extra|por separado)\b/,
         ).slice(1);
         return tails.some((part) =>
           new RegExp(`\\b${token}\\b`).test(part.split(/\s+/).slice(0, 6).join(' ')),

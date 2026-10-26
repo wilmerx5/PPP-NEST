@@ -1,3 +1,11 @@
+## VIGENTE — tanda 207: componente adicional y fracciones (26/10)
+
+Base `ae7f6506`. Los2rojos206 de compuesto primero + componente aparte quedan corregidos. Causa: glosario convierte «un medio pollo» a «medio pollo»; deduplicación no reconocía «y medio» y descartaba el extra. Se conservan palabras de fracción al separar y se reconoce ese límite para asignar cantidades/opciones/notas a cada producto. Cambio general, sin nombres/IDsPPP en runtime.
+
+Se promueve el repro206 a `whatsapp-compound-extra-component.spec.ts`:38casos (24conversaciones/DTO en3menús×agente mock off/on×orden de mención×cantidades1/1 o2/3, más6controles de fracciones en otros menús y8controles de medidas/productos aparte). Controles20624/24, guardas685/685 yFalafel1/1; TS general/build yNode92 OK. Primera global interrumpida por regresión «litro y medio»; reparada sin eliminar test. Foco reparación121/121 más2guardas nuevas. Global FINAL18.854/272 aprobada,579hashes,719,42s, inventario exacto y fuente congelada: `/tmp/ppp-207-final-global-summary.json`.
+
+Siguiente: doce ofertas implícitas pendientes205; última medición20618/30, no acreditadas de nuevo aquí. Reutilizar propuestas/reemplazo sin fabricar `originalLine` ni cambiar componentes del plato base; aceptación/negativa, cantidades/notas, precio/stock, alternativas ambiguas y volumen. Evidencia, límites y siguiente bloque: `docs/whatsapp-compound-extra-component-validation-2610.md`. Sin API/Meta/órdenes externas, sin deploy, Main intacta. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 206: plato compuesto y bebida aparte (26/10)
 
 Base `f69eebb7`. Corrección por título completo del catálogo para bebida con volumen explícito pedida aparte/adicional/extra. Conserva plato compuesto frente a su componente vendido por separado. Sin nombres/IDsPPP en runtime. Alcance deliberado: no acredita títulos abreviados ni oferta implícita de combos.
