@@ -1,3 +1,11 @@
+## VIGENTE — tanda 220: aceptar cotización por referencia (26/10)
+
+Base `50e1fefd`, staging. Reelección por fila/código/etiqueta de la misma presentación conserva opciones de su cotización; otra presentación usa sus propias opciones. Evita perder Agua o sustituirla por Pepsi silenciosamente si fue retirada. Corrección general sin excepciones de catálogo.
+
+36 nuevas conversaciones, tres menús×agente simulado off/on×3 referencias×bebida vigente/retirada. Baseline36/36 rojas; foco198/198 en5 suites. TS general/build, Node92, Falafel1 verdes. Global completa19.470/286 suites,593 hashes,722,64s, inventario exacto/fuente congelada. Informe `docs/whatsapp-combo-quote-acceptance-validation-2610.md`.
+
+Siguiente: nueva bebida junto a aceptación, consultas/contactos intercalados y nombres duplicados. «El grande» acredita etiqueta explícita, no cualquier nombre libre. Sin API pagada/Meta/órdenes externas; modelos/Main intactos. Publicación staging sin despliegue; runtime210–220 pendiente de despliegue agrupado (219 solo pruebas). Producción código209 `a935f555`. No hay ahorro real medido ni declaración de vendibilidad por conteos.
+
 ## VIGENTE — tanda 219: disponibilidad durante aceptación de precio (26/10)
 
 Base `17199282`, staging. Cobertura nueva sin cambios de runtime: retirar bebida, agotar combo o eliminarlo entre recotización y «sí». Se conserva original hasta elegir una opción vigente; no se cambia Agua por Pepsi silenciosamente. Tres menús×agente simulado off/on×3 caminos=18 conversaciones con cierre DTO de dos unidades, notas, opciones, precio y estados.

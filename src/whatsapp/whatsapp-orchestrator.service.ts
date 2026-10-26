@@ -13640,8 +13640,12 @@ export class WhatsappOrchestratorService {
         await this.reply(conv, waId, `Elige una opción entre 1 y ${pending.candidates.length}. El pedido sigue igual.`);
         return true;
       }
+      // Re-selecting the quoted candidate accepts its price, not a reset of its options.
+      // A different candidate still owns the choices from its own original offer.
+      const quotedChoices = pending.priceAcceptanceProductId === candidate.id &&
+        pending.offeredChoices?.productId === candidate.id ? pending.offeredChoices : undefined;
       pending = {...pending,replacement:{...pending.replacement,preferredId:candidate.id},
-        offeredChoices:pending.offeredAlternatives.find(entry=>entry.productId===candidate.id)};
+        offeredChoices:quotedChoices ?? pending.offeredAlternatives.find(entry=>entry.productId===candidate.id)};
       session = {...session,pendingMatch:pending};
     }
     const counted = !/[¿?]/.test(text) ? text.trim().match(/^(?:(?:quiero|dame|deme|me das)\s+)?(-?\d{1,3}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(?:del|de la|de el)\s+(.+)$/i) : null;
