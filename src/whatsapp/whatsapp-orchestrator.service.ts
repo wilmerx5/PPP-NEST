@@ -13669,13 +13669,9 @@ export class WhatsappOrchestratorService {
     const products = await this.catalogService.getMenuProducts();
     const combo = this.catalogService.getProductById(preferredId, products);
     // Reuse the list's availability/price check without letting the drink choose another row.
-    if (numberedOffer && (inlineRow != null || requestedQuantity != null) && (!combo || combo.availableNow === false || Number(numberedOffer.price) !== Number(combo.price))) {
+    if (numberedOffer && (inlineRow != null || requestedQuantity != null) && (!combo || combo.availableNow === false)) {
       const quotedSession = requestedQuantity != null ? { ...session, pendingMatch: { ...pending, quantity: requestedQuantity } } : session;
       return this.tryResolvePendingMatchPick(conv, waId, quotedSession, String(row), products, cfg);
-    }
-    // Let the existing re-quote path ask for approval before taking a changed price.
-    if (numberedOffer && combo && Number(numberedOffer.price) !== Number(combo.price)) {
-      return this.tryResolvePendingMatchPick(conv, waId, session, String(row), products, cfg);
     }
     const original = pending.replacement.originalLine;
     const replacementQuantity = requestedQuantity ?? pending.quantity ?? original.quantity;
@@ -13732,12 +13728,6 @@ export class WhatsappOrchestratorService {
     }
     const affirmative = /^(?:si+|si si|dale|ok|okay|listo|de una|va|bueno|perfecto|hagale|claro|esta bien|cambialo|cambiamelo|pasalo|el combo|en combo|mejor (?:el )?combo|quiero el combo|ese|esa|si (?:cambialo|dale|el combo|ese|porfa|por favor))$/.test(q);
     if (!numberedOffer && !affirmative && options.length !== 1 && !comboDrinkSize) return false;
-    // A verbal acceptance approves the quoted price, just like a numbered choice.
-    // Reuse the re-quote path before collecting options or replacing the cart line.
-    const quotedIndex = pending.candidates.findIndex(candidate => candidate.id === combo.id);
-    if (quotedIndex >= 0 && Number(pending.candidates[quotedIndex].price) !== Number(combo.price)) {
-      return this.tryResolvePendingMatchPick(conv, waId, session, String(quotedIndex + 1), products, cfg);
-    }
     const selected = options.length === 1 && drinkAttribute ? [{ attributeName: drinkAttribute.attributeName, attributeValue: options[0] }] : [];
     // Retain explicit initial choices only for this candidate; later choices take priority.
     const offered = pending.offeredChoices?.productId === combo.id ? pending.offeredChoices.attributes : [];
@@ -13746,6 +13736,16 @@ export class WhatsappOrchestratorService {
       const attr = (combo.attributes || []).find(entry => this.normalizeForMatch(entry.attributeName) === this.normalizeForMatch(kept.attributeName));
       const value = attr?.options.find(option => this.normalizeForMatch(option) === this.normalizeForMatch(kept.attributeValue));
       if (attr && value && !selected.some(choice => choice.attributeName === attr.attributeName)) selected.push({ attributeName: attr.attributeName, attributeValue: value });
+    }
+    // Keep validated choices with the pending quote, without changing the cart.
+    // Acceptance must use the requested drink, not the original offer's default.
+    const quotedIndex = pending.candidates.findIndex(candidate => candidate.id === combo.id);
+    if (quotedIndex >= 0 && Number(pending.candidates[quotedIndex].price) !== Number(combo.price)) {
+      const quotedSession = { ...session, pendingMatch: { ...pending,
+        quantity: replacementQuantity,
+        offeredChoices: { productId: combo.id, attributes: selected },
+      } };
+      return this.tryResolvePendingMatchPick(conv, waId, quotedSession, String(quotedIndex + 1), products, cfg);
     }
     session = { ...session, pendingMatch: undefined, pendingAddOffer: undefined };
     const missing = (combo.attributes || []).filter(attr => !selected.some(choice => choice.attributeName === attr.attributeName));

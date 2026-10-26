@@ -52,9 +52,15 @@ for (const m of menus) for (const agent of [false, true]) {
         expect(reply).toMatch(/sigue igual|como est[aá]/i);
       } else {
         if (!priceChanged) expect(reply).toMatch(/Bebida/i);
-        expect(h.conv.sessionData.cart).toEqual(before);
-        expect(h.conv.sessionData.pendingAttribute?.productId).toBe(combo.id);
-        await h.sendQueued('Pepsi');
+        if (scenario === 'price_drink') {
+          // The drink was supplied before the re-quote; accepting its price must retain it.
+          expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+          expect(h.conv.sessionData.pendingMatch).toBeFalsy();
+        } else {
+          expect(h.conv.sessionData.cart).toEqual(before);
+          expect(h.conv.sessionData.pendingAttribute?.productId).toBe(combo.id);
+          await h.sendQueued('Pepsi');
+        }
         expect(h.conv.sessionData.cart).toHaveLength(1);
         expect(h.conv.sessionData.cart[0]).toMatchObject({ productId: combo.id, quantity: 2, note: before[0].note });
         expect(h.conv.sessionData.cart[0].unitPrice).toBe(priceChanged ? 28000 : combo.price);

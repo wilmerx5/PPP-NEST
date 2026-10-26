@@ -1,3 +1,11 @@
+## VIGENTE — tanda 218: conservar bebida al recotizar (26/10)
+
+Base `28017854`, staging. Se validan y guardan opciones explícitas antes de recotizar: aceptar conserva la bebida; rechazar mantiene original y elegir otra presentación no hereda la bebida ajena. Catálogo general, sin IDs/nombres especiales.
+
+42 conversaciones nuevas, tres menús×agente mock off/on×7 caminos, cierres DTO simulados. Baseline30:18 rojas/12 verdes. Foco168/168; TS general/build, Node92, Falafel1 verdes. Global inicial19.410 verdes/6 fallos del contrato antiguo que exigía repetir bebida; solo se actualizó esa expectativa y reejecutó78/78. Evidencia combinada19.416/284 suites, inventario exacto, runtime sin cambios. No presentar como una segunda global íntegra verde. Informe `docs/whatsapp-combo-reprice-drink-validation-2610.md`.
+
+Siguiente: opciones retiradas entre cotización y aceptación, disponibilidad cambiante y consultas/contactos en ese paso. Sin API pagada/Meta/órdenes externas, modelos/Main intactos. Publicación staging, sin despliegue;210–218 pendientes de despliegue agrupado. Main/producción código209 `a935f555`. Sin ahorro real medido ni declaración de vendibilidad.
+
 ## VIGENTE — tanda 217: elección antes de consulta y bebida explícita (26/10)
 
 Base `e5331c1b`, staging. «Dame/quiero el ... , ¿qué trae/cuánto cuesta/qué sabores tiene?» responde y aplica elección explícita; «si elijo ... , ¿...?» solo consulta y conserva carrito. Referencia de consulta comparte resolución de etiquetas con selección. Código/volumen/etiqueta con bebida inline conserva esa bebida al convertirse en fila; válida prevalece sobre inicial, inválida pide opciones sin cambiar carrito. No inferir tamaño por precio ni volumen.
