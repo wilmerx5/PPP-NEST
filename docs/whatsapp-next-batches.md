@@ -1,3 +1,11 @@
+## VIGENTE — tanda 226: otra presentación con bebida (26/10)
+
+Base `67f93cef`, staging. «El otro con Agua» conserva la bebida explícita al resolver la referencia; «1 con Agua» resuelve la fila durante la recuperación. Se usan las validaciones existentes de opciones/precio/disponibilidad. Ambigüedad o ausencia de antecedente no permite compra automática; sabor inválido conserva carrito hasta elección válida.
+
+48 conversaciones nuevas en tres menús×agente simulado off/on×8 caminos, con respuesta/carrito/estado/precio/notas/opciones y DTO. Baseline48/48 rojas; primera corrección30 verdes/18 rojas detectó el hueco de fila+opción, corregido. Foco168/168 en4 suites y comprobación adicional48/48 de respuesta. TS general/build, Node92, Falafel1 verdes. Global completa19.692/292 suites,599 hashes,758,54s, inventario exacto/fuente congelada. Informe `docs/whatsapp-combo-other-beverage-validation-2610.md`.
+
+Siguiente: consultas de contenido/precio junto a rechazo o cambio de alternativa, respondiendo sin compra implícita. No extrapolar el complemento de bebida a cualquier nota ni estas simulaciones a inferencia real. Sin API pagada/Meta/órdenes externas; modelos/Main intactos. Publicación staging sin despliegue; runtime210–226 pendiente de despliegue agrupado (219/221–223 solo cobertura). Producción código209 `a935f555`. Sin ahorro real medido ni declaración de vendibilidad por conteos.
+
 ## VIGENTE — tanda 225: «no ese, el otro» (26/10)
 
 Base `7a420e39`, staging. La referencia relativa a una oferta exige una presentación actual identificada y exactamente otra alternativa. Si falta antecedente o hay varias, pide aclaración sin modificar carrito. Revalida disponibilidad/precio y usa opciones propias de la alternativa; cantidades y notas se conservan. Las opciones agotadas o retiradas generan explicación, sin compra silenciosa.

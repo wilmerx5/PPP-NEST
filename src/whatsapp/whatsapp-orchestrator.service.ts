@@ -13606,7 +13606,8 @@ export class WhatsappOrchestratorService {
       let choice = this.pendingTextListRow(text, pending.candidates);
       const otherReference = answer.replace(/[.,;!]/g, ' ').replace(/\s+/g, ' ').trim()
         .replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '');
-      if (/^(?:no (?:ese|esa) )?(?:(?:dame|quiero) )?(?:el otro|la otra)$/.test(otherReference)) {
+      const otherChoice = otherReference.match(/^(?:no (?:ese|esa) )?(?:(?:dame|quiero) )?(?:el otro|la otra)(?: con (.+))?$/);
+      if (otherChoice && !/[¿?]/.test(text)) {
         const currentId = pending.replacement.preferredId;
         const others = pending.candidates.map((candidate, index) => ({candidate, index}))
           .filter(({candidate}) => candidate.id !== currentId);
@@ -13616,9 +13617,10 @@ export class WhatsappOrchestratorService {
         }
         choice = others[0].index + 1;
         // Preserve list ownership and let the normal path revalidate availability and price.
-        text = String(choice);
+        text = String(choice) + (otherChoice[1] ? ` con ${otherChoice[1]}` : '');
       }
       const inlineBeverage = !/[¿?]/.test(text) ? text.trim().match(/^(.+?)\s+con\s+(.+)$/i) : null;
+      choice ??= inlineBeverage ? this.pendingTextListRow(inlineBeverage[1], pending.candidates) : null;
       const reference = (inlineBeverage ? inlineBeverage[1] : text).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/(?:\s+(?:por favor|porfa|gracias))+[.!]*$/, '').trim();
       const codeReference = reference.match(/^(?:(?:quiero|dame|el|la)\s+)*(?:#|codigo\s*#?)\s*(\d+)$/);
