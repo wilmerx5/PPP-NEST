@@ -2605,8 +2605,12 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, 'Anoté la fecha y el horario solicitados. La disponibilidad para una entrega programada debe confirmarla el local; todavía no está reservada.');
       return;
     }
+    // Explicit purchase verbs and bounded question phrases also separate turns without punctuation.
+    // Conditional 'si elijo' remains an inquiry, never permission to replace the cart.
     const reversedComboTurn = session.pendingMatch?.offeredAlternatives?.length
-      ? originalText.match(/^((?:(?:dame|quiero)\s+|si\s+elijo\s+)(?:el|la)\s+[^,;?¿]+?)\s*[,;]\s*¿?(.+\?)$/i) : null;
+      ? originalText.match(/^((?:(?:dame|quiero)\s+|si\s+elijo\s+)(?:el|la)\s+[^,;?¿]+?)\s*[,;]\s*¿?(.+\?)$/i)
+        ?? originalText.match(/^((?:(?:dame|quiero)\s+|si\s+elijo\s+)(?:el|la)\s+[^,;?¿]+?)\s+((?:con qu[eé] viene|qu[eé] trae|qu[eé] incluye|cu[aá]nto (?:cuesta|vale|sale)|qu[eé] sabores tiene))[.!]?$/i)
+      : null;
     if (reversedComboTurn) {
       const conditional = /^si\s+elijo\s+/i.test(reversedComboTurn[1]);
       const subject = reversedComboTurn[1].replace(/^(?:(?:dame|quiero)|si\s+elijo)\s+/i, '').replace(/\s+con\s+.+$/i, '');
@@ -2621,7 +2625,9 @@ export class WhatsappOrchestratorService {
       }
     }
     const mixedComboChoice = session.pendingMatch?.offeredAlternatives?.length
-      ? originalText.match(/^(.+?\?)\s*((?:dame|quiero)\s+(?:el|la)\s+[^?]+)$/i) : null;
+      ? originalText.match(/^(.+?\?)\s*((?:dame|quiero)\s+(?:el|la)\s+[^?]+)$/i)
+        ?? originalText.match(/^((?:con qu[eé] viene|qu[eé] trae|qu[eé] incluye|cu[aá]nto (?:cuesta|vale|sale)|qu[eé] sabores tiene)\s+(?:el|la)\s+[^?¿]+?)\s+((?:dame|quiero)\s+(?:el|la)\s+[^?¿]+)$/i)
+      : null;
     if (mixedComboChoice && await this.tryAnswerPendingComboQuestion(conv, msg.waId, session, mixedComboChoice[1], true)) {
       if (await this.tryAnswerComboSwapOffer(conv, msg.waId, session, mixedComboChoice[2], cfg) === true) return;
       await this.reply(conv, msg.waId, 'Para elegir la presentación, indica su número en la lista. El pedido sigue igual.');

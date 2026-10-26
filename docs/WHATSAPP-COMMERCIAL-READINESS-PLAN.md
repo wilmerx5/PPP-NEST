@@ -1,3 +1,11 @@
+## VIGENTE — tanda 224: preguntas mixtas sin puntuación (26/10)
+
+Base `697b5c09`, staging. Se separan preguntas acotadas de contenido/precio/sabores y órdenes explícitas dame/quiero sin depender de signos; funciona pregunta antes/después. «Si elijo» sigue siendo consulta sin compra. Conserva validaciones de catálogo/opciones/precio y no usa excepciones de restaurante.
+
+36 conversaciones nuevas en tres menús×agente simulado off/on×6 caminos, con carrito/respuesta/estados/precio/cantidades/notas/bebida y DTO. Baseline36/36 rojas→foco138/138 en3 suites. TS general/build, Node92, Falafel1 verdes. Global completa19.602/290 suites,597 hashes,740,64s, inventario exacto/fuente congelada. Informe `docs/whatsapp-combo-unpunctuated-choice-validation-2610.md`.
+
+Siguiente: «no ese, el otro», candidatos indistinguibles y negativas complejas; no están acreditados por224. El patrón actual exige pregunta reconocible y orden explícita; no extrapolar a todo lenguaje libre. Sin API pagada/Meta/órdenes externas, modelos/Main intactos. Publicación staging sin despliegue; runtime210–224 pendiente de despliegue agrupado (219/221–223 solo cobertura). Producción código209 `a935f555`. Sin ahorro real medido ni declaración de vendibilidad.
+
 ## VIGENTE — tanda 223: negativas y correcciones tras contactos (26/10)
 
 Base `d1246b17`, staging. Solo cobertura: no/no gracias/sin combo después de nombre/teléfono mantienen original y continúan pago; corregir nombre/teléfono mantiene cotización y Agua.30 conversaciones nuevas, tres menús×agente simulado off/on×5 caminos, DTO simulado con dos unidades/notas/datos finales.
