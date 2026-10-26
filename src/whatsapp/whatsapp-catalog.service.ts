@@ -10085,6 +10085,7 @@ export class WhatsappCatalogService {
     const asksSeparateSizedDrink =
       /\b(?:aparte|adicional|extra)\b/.test(normalizeText(fixCommonOrderTypos(text))) &&
       this.extractRequestedDrinkVolumeMl(text) != null;
+    const fullyNamedSeparateHosts = new Map<string, WhatsappCatalogProduct>();
     if (asksSeparateSizedDrink) {
       const drinks = products.filter(
         (product) => product.availableNow !== false && this.isLikelyDrinkProduct(product),
@@ -10092,6 +10093,26 @@ export class WhatsappCatalogService {
       const bottle = this.pickBestDrinkProduct(drinks, text);
       if (bottle && !embeddedAll.some((product) => product.id === bottle.id)) {
         embeddedAll.push(bottle);
+      }
+      // A separately requested bottle must not turn a fully named compound
+      // dish into one of its components (which may also be sold on its own).
+      for (const segment of segments) {
+        const spoken = ` ${normalizeText(segment)} `;
+        const named = products.filter((product) =>
+          product.availableNow !== false && !this.isLikelyDrinkProduct(product) &&
+          spoken.includes(` ${normalizeText(product.name)} `),
+        ).sort((a, b) => b.name.length - a.name.length);
+        const host = named[0];
+        if (!host || named.some((product) => product.id !== host.id &&
+          !normalizeText(host.name).includes(` ${normalizeText(product.name)}`))) continue;
+        fullyNamedSeparateHosts.set(segment, host);
+        const hostName = ` ${normalizeText(host.name)} `;
+        embeddedAll = embeddedAll.filter((product) => product.id === host.id ||
+          !hostName.includes(` ${normalizeText(product.name)} `) ||
+          segments.some((other) => other !== segment &&
+            ` ${normalizeText(other)} `.includes(` ${normalizeText(product.name)} `) &&
+            !` ${normalizeText(other)} `.includes(hostName)));
+        if (!embeddedAll.some((product) => product.id === host.id)) embeddedAll.unshift(host);
       }
     }
 
@@ -10442,7 +10463,7 @@ export class WhatsappCatalogService {
         continue;
       }
       // Plato envoltorio (ejecutivo / menú especial / de la casa…) antes que nombre
-      const namedMenuHit = this.resolveNamedMenuDishProduct(segment, products);
+      const namedMenuHit = fullyNamedSeparateHosts.get(rawSegment) || this.resolveNamedMenuDishProduct(segment, products);
       if (namedMenuHit) {
         const styleOptions = /\bbandeja\b/i.test(segment)
           ? this.unstatedCookingStyleChoices(segment, products)

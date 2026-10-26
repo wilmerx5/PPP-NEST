@@ -1,3 +1,11 @@
+## VIGENTE — tanda 206: plato compuesto y bebida aparte (26/10)
+
+Base `f69eebb7`. Corrección por título completo del catálogo para bebida con volumen explícito pedida aparte/adicional/extra. Conserva plato compuesto frente a su componente vendido por separado. Sin nombres/IDsPPP en runtime. Alcance deliberado: no acredita títulos abreviados ni oferta implícita de combos.
+
+24 regresiones en tres menús con agente mock off/on, respuesta/carrito/estado y 24 cierres DTO simulados: baseline18/6 →24/0. Foco final64/64; TS general/build yNode92 aprobados. Global final18.816/271 aprobada,579hashes,753,90s, inventario exacto y fuente congelada: `/tmp/ppp-206-approved-global-summary.json`. Diagnóstico205 mejora16/14→18/12: dos bebidas aparte resueltas, doce ofertas implícitas pendientes.
+
+Nuevo diagnóstico `whatsapp-compound-extra-component.repro.ts`:10/12; dos fallos al pedir compuesto primero + componente independiente + bebida. Baseline anterior también falla (perdía compuesto); ahora falta el extra. No promover esos dos ni suavizar expectativas. Siguiente: resolver esa compra triple en ambos órdenes y conservar opciones/notas/unidades; luego oferta implícita genérica y aceptación/negativa/revalidación. Evidencia y comandos: `docs/whatsapp-compound-boundary-validation-2610.md`. Sin API/Meta/órdenes externas, sin deploy; Main intacta. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 205: contratos de combo implícito (26/10)
 
 Base `88385bbc`. Diagnóstico gratuito de 30 casos en tres menús, sin cambios de runtime: **16 correctos / 14 fallidos**. Doce ofertas implícitas fallan (componente separado o bebida/oferta omitida); dos pedidos de arroz con bebida aparte pierden la identidad compuesta. Seis combos explícitos cierran DTO; cuatro bebidas aparte y seis controles de disponibilidad pasan. No acreditar aceptación/DTO de los casos que fallan en la oferta inicial.
