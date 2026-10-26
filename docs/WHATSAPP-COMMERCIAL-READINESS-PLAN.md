@@ -1,3 +1,9 @@
+## VIGENTE — diagnóstico 192: condiciones y acompañamientos (25/10)
+
+Base63c15b5b. Nueva matriz18casos en3menús×agente simulado off/on×sin condición/condición simple/reparto. Seis controles pasan;12condicionados FALLAN. Junto a2replays191:14rojos/6verdes,37,664s. Repetición instrumentada confirma12/6; no sumar repetición como nuevos casos. `whatsapp-conditional-accompaniments.repro.ts` es opt-in, fuera del inventario verde.
+
+Hallazgo: en todos los sintéticos disponibilidad=false y browse preparación=null; por tanto no atribuir todos los fallos al browse broaster observado en PPP. Sin agente se pierde el segundo plato o se desvía a candidatos; con agente el mock recibe1llamada y devuelve0acciones, lo que NO mide al modelo real. No corrección runtime ni deploy. Última global19118.524/259 sigue vigente. Plan y límites: `docs/whatsapp-conditional-accompaniments-diagnostic-2510.md`. Próximo: segmentación de condición/alcance/productos posteriores, conservación de compras independientes y aclaración específica; probar acciones semánticas válidas, vacío y error por separado, luego DTO. Main intacta; ceroAPI/Meta/órdenes externas.
+
 ## VIGENTE — tanda 191: notas frente a ingredientes del nombre (25/10)
 
 Base b9bf7639. Reproducida compra mixta con cantidades correctas pero nota espuria «con queso y bocadillo por» (2 rojos off/on). Se reutiliza `orderKitchenNote` al añadir varios platos para considerar el producto elegido. Las compras individuales ya pasaban: no atribuirles una mejora nueva. Sin excepciones por restaurante/ID.
