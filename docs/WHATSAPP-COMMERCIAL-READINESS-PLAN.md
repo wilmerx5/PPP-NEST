@@ -1,3 +1,11 @@
+## VIGENTE — tanda 233: revisión final y pendientes reales reejecutados (26/10)
+
+Base `e4e231be`, staging. Corregido cierre prematuro al cambiar destinatario junto con pago durante confirmación: el manejador de contacto exige resumen nuevo antes de crear orden.18conversaciones nuevas en tres menús×agente simulado off/on×nombre/nombre+pago/nombre+consulta, carrito/datos/estado/DTO. Baseline6verdes/12rojas:6fallos reales de cierre y6aserciones demasiado estrictas del mensaje final, ajustadas para reconocer acuse anterior. Foco125/125; TypeScript general/build, Node92, Falafel1 aprobados. Global19.907/302suites,610hashes,766,09s; inventario exacto/fuente congelada.
+
+**NO todos los chats corregidos.** Reejecución posterior de3diagnósticos históricos:28casos,6verdes/22rojos (11formulaciones×off/on). Auditoría25/10:0/12; tarde:2/8; pedido+transferencia:4/8. Fuera del inventario verde. Persisten sopa independiente perdida, reparto2→3, adicional omitido, cortesía/destino, cantidades/negación con typo y reemplazo que añade. Siguiente prioridad cerrar esos pendientes antes de ampliar nuevas familias. Evidencia `docs/whatsapp-historical-recheck-2610.json` e informe `docs/whatsapp-profile-final-confirmation-validation-2610.md`.
+
+Sin API pagada/Meta/órdenes externas. Main/modelos intactos. Publicación staging sin despliegue:232–233 pendientes agrupados, último servidor verificado231 `1f0a2f8c`. PDF18/10 y28recorridos dechat.txt auditados no equivalen a replays completos verdes. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 232: nombre junto a dirección o consulta (26/10)
 
 Base `08d14825`, staging. Baseline24:12 verdes/12 rojas. Dirección+nombre guardaba solo dirección; consulta de domicilio+nombre respondía solo tarifa. Se conserva nombre explícito en dos cláusulas de nombre/dirección y en contacto+consulta no resuelta, manteniendo el resto en sus manejadores. La tarifa resuelta recuerda el paso pendiente. Sin compra ni confirmación por corregir contactos.

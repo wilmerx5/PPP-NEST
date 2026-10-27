@@ -1,3 +1,5 @@
+> Revisión de trazabilidad 26/10/2026 (tanda233): este documento conserva resultados históricos. Haber leído el set o corregido una familia no acredita todos sus recorridos completos. Consultar `whatsapp-profile-final-confirmation-validation-2610.md` y el inicio de `WHATSAPP-LOCAL-NEXT-AGENT.md` para estado actual. No interpretar diagnósticos rojos antiguos como resultados actuales sin reejecución, ni la global verde como cierre de los diagnósticos opt-in.
+
 # Chats reales de la tarde/noche del 25/10: auditoría y siguiente corrección
 
 Base: staging 4355f281; auditoría durante tanda194. Dos adjuntos del usuario, tres conversaciones. Datos personales omitidos. No se atribuye la versión del servidor a este SHA: los patrones se reprodujeron por separado en el router local.

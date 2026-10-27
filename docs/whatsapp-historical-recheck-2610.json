@@ -1,0 +1,137 @@
+{
+  "base": "e4e231be",
+  "runtimeChange": "233 requireFinalReview on recipient/contact update",
+  "externalCalls": 0,
+  "passed": 6,
+  "failed": 22,
+  "scope": "diagnostic patterns, not all complete source conversations",
+  "suites": [
+    {
+      "file": "whatsapp-chat-2510-audit.repro.ts",
+      "cases": [
+        {
+          "name": "courtesy does not require selecting a unique dish, agent=false",
+          "status": "failed"
+        },
+        {
+          "name": "explicit additional rice is not a rice combo, agent=false",
+          "status": "failed"
+        },
+        {
+          "name": "bandeja is a container for explicitly named rice, agent=false",
+          "status": "failed"
+        },
+        {
+          "name": "selecting option 1 retains requested two portions, agent=false",
+          "status": "failed"
+        },
+        {
+          "name": "no quiero removes four portions instead of keeping them, agent=false",
+          "status": "failed"
+        },
+        {
+          "name": "existing executive preparation changes without extra unit, agent=false",
+          "status": "failed"
+        },
+        {
+          "name": "courtesy does not require selecting a unique dish, agent=true",
+          "status": "failed"
+        },
+        {
+          "name": "explicit additional rice is not a rice combo, agent=true",
+          "status": "failed"
+        },
+        {
+          "name": "bandeja is a container for explicitly named rice, agent=true",
+          "status": "failed"
+        },
+        {
+          "name": "selecting option 1 retains requested two portions, agent=true",
+          "status": "failed"
+        },
+        {
+          "name": "no quiero removes four portions instead of keeping them, agent=true",
+          "status": "failed"
+        },
+        {
+          "name": "existing executive preparation changes without extra unit, agent=true",
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "file": "whatsapp-evening-chats-2510.repro.ts",
+      "cases": [
+        {
+          "name": "7 up is a flavor, not seven portions false",
+          "status": "failed"
+        },
+        {
+          "name": "no va A ni B removes standalone extras, preserves combo false",
+          "status": "passed"
+        },
+        {
+          "name": "greeting requesting delivery is not a destination false",
+          "status": "failed"
+        },
+        {
+          "name": "two soups retain shared heat and distinct sides false",
+          "status": "failed"
+        },
+        {
+          "name": "7 up is a flavor, not seven portions true",
+          "status": "failed"
+        },
+        {
+          "name": "no va A ni B removes standalone extras, preserves combo true",
+          "status": "passed"
+        },
+        {
+          "name": "greeting requesting delivery is not a destination true",
+          "status": "failed"
+        },
+        {
+          "name": "two soups retain shared heat and distinct sides true",
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "file": "whatsapp-order-transfer-diagnostic.repro.ts",
+      "cases": [
+        {
+          "name": "real, agent=false",
+          "status": "failed"
+        },
+        {
+          "name": "real-without-payment, agent=false",
+          "status": "failed"
+        },
+        {
+          "name": "explicit, agent=false",
+          "status": "passed"
+        },
+        {
+          "name": "explicit-with-payment, agent=false",
+          "status": "passed"
+        },
+        {
+          "name": "real, agent=true",
+          "status": "failed"
+        },
+        {
+          "name": "real-without-payment, agent=true",
+          "status": "failed"
+        },
+        {
+          "name": "explicit, agent=true",
+          "status": "passed"
+        },
+        {
+          "name": "explicit-with-payment, agent=true",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

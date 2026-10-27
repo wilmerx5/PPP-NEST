@@ -1,3 +1,5 @@
+> Revisión de trazabilidad 26/10/2026 (tanda233): este documento conserva resultados históricos. Haber leído el set o corregido una familia no acredita todos sus recorridos completos. Consultar `whatsapp-profile-final-confirmation-validation-2610.md` y el inicio de `WHATSAPP-LOCAL-NEXT-AGENT.md` para estado actual. No interpretar diagnósticos rojos antiguos como resultados actuales sin reejecución, ni la global verde como cierre de los diagnósticos opt-in.
+
 # Revisión completa de chat.txt — 25/10/2026
 
 Base staging `49cf15d4`. Archivo leído completo: 2.875 líneas, 445 mensajes (226 cliente/219 bot), 26 comprobantes y 28 recorridos delimitados manualmente. Fuente local y SHA256 en `whatsapp-chat-2510-audit.json`; no se copia el export con teléfonos, direcciones privadas ni miniatura base64 a Git. Las horas son las del archivo. No hay evidencia suficiente para calcular mejora porcentual respecto de otra versión ni tasa de pedidos correctos.

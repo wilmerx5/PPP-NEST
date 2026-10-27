@@ -10985,7 +10985,7 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation,
     waId: string,
     session: WhatsappSessionData,
-    opts?: { preface?: string; skipFinalConfirm?: boolean },
+    opts?: { preface?: string; skipFinalConfirm?: boolean; requireFinalReview?: boolean },
   ): Promise<void> {
     const cfg = await this.settingsService.getEffectiveConfig();
     const say = async (body: string) => {
@@ -11173,7 +11173,7 @@ export class WhatsappOrchestratorService {
       (remembered && !session.cart.some(line => remembered.candidates.some(candidate => candidate.id === line.productId))
         ? remembered : undefined);
     const recallPick = !!dropped;
-    if (conv.state !== 'awaiting_final_confirm' && (!canSkipFinal || recallPick)) {
+    if (opts?.requireFinalReview || (conv.state !== 'awaiting_final_confirm' && (!canSkipFinal || recallPick))) {
       if (
         session.pendingRedemptionCode &&
         !this.pointsHandler.cartHasHalfChicken(session.cart)
@@ -11633,6 +11633,7 @@ export class WhatsappOrchestratorService {
     if (phone || payment || conv.state === 'awaiting_name' || !session.paymentMethod) {
       await this.tryConfirmOrder(conv, waId, session, {
         preface: `Perfecto, *${name}* ✅`,
+        requireFinalReview: true,
       });
       return true;
     }
