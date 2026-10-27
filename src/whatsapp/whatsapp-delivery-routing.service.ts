@@ -188,6 +188,12 @@ export class WhatsappDeliveryRoutingService {
     if (q.length < 4) return null;
 
     const variants = this.geocodeQueryVariants(q);
+    // A prior successful fallback is reusable before retrying earlier misses.
+    // Only positive results are cached; failures remain retryable.
+    for (const variant of variants) {
+      const cached = this.cachedGeocode(this.geocodeCacheKey(variant, opts));
+      if (cached) return cached;
+    }
     let ambiguous = false;
     const alternatives = new Set<string>();
     for (const variant of variants) {
@@ -228,13 +234,31 @@ export class WhatsappDeliveryRoutingService {
     return [...new Set(out)];
   }
 
+  private geocodeCacheKey(
+    query: string,
+    opts: { region: string; near: LatLng; maxStraightKm: number },
+  ): string {
+    // Exact origin and acceptance radius prevent sharing a looser validation.
+    return JSON.stringify([opts.region, opts.near.lat, opts.near.lng, opts.maxStraightKm, query.toLowerCase()]);
+  }
+
+  private cachedGeocode(key: string): (LatLng & { formatted?: string }) | null {
+    const entry = this.geocodeCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.at >= this.CACHE_TTL_MS) {
+      this.geocodeCache.delete(key);
+      return null;
+    }
+    return entry.value;
+  }
+
   private async geocodeOnce(
     q: string,
     opts: { region: string; near: LatLng; maxStraightKm: number },
   ): Promise<(LatLng & { formatted?: string }) | null> {
-    const cacheKey = `${opts.region}::${opts.near.lat.toFixed(3)},${opts.near.lng.toFixed(3)}::${q.toLowerCase()}`;
-    const cached = this.geocodeCache.get(cacheKey);
-    if (cached && Date.now() - cached.at < this.CACHE_TTL_MS) return cached.value;
+    const cacheKey = this.geocodeCacheKey(q, opts);
+    const cached = this.cachedGeocode(cacheKey);
+    if (cached) return cached;
 
     const key = this.apiKey();
     if (!key) return null;

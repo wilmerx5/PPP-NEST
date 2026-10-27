@@ -1,3 +1,11 @@
+## VIGENTE — tanda 230: caché de direcciones recuperadas (26/10)
+
+Base `3ce34dca`, staging. Antes de repetir variantes fallidas se reutiliza cualquier acierto vigente del mismo destino y contexto. Clave con origen exacto, región y radio de aceptación; caducidad12h. No guarda fallos ni reutiliza ruta/tarifa. En tres escenarios simulados se eliminan2 consultas de geocodificación por repetición; sin ahorro real medido.
+
+18 regresiones nuevas: tres vías×repetición/origen/radio/puerta/caducidad/recuperación tras fallo. Baseline estricto9 rojas/9 verdes; foco80/80 en5 suites con recorridos de tres menús/DTO. TS general/build, Node92 y Falafel1 verdes. Global19.808/298 suites,605 hashes,751,14s; inventario exacto/fuente congelada. Informe `docs/whatsapp-address-cache-recovery-validation-2610.md`.
+
+Siguiente: nombre válido del perfil como destinatario editable; el informe detalla unión por wa_id, prioridad de destinatario explícito/cuenta y correcciones durante checkout. NO implementado aún. Sin llamadas externas pagadas/Meta/órdenes; Main/modelos intactos. Publicación staging sin despliegue. Runtime210–230 pendiente agrupado;219/221–223/229 solo cobertura. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 229: límites de búsqueda y nombre guardado (26/10)
 
 Base `68997eef`, staging; solo cobertura. 30 casos nuevos: seis direcciones de chats×cuatro respuestas simuladas del mapa y tres menús×agente simulado off/on para cierre con nombre guardado. Verifica salida temprana, tercer intento sin símbolos, rechazo de puerta distinta/parcial, límite10 consultas únicas y reutilización de acierto inicial. Router conserva nombre, pasa al pago y crea una única orden simulada solo tras confirmar.
