@@ -1,3 +1,11 @@
+## VIGENTE — tanda 229: límites de búsqueda y nombre guardado (26/10)
+
+Base `68997eef`, staging; solo cobertura. 30 casos nuevos: seis direcciones de chats×cuatro respuestas simuladas del mapa y tres menús×agente simulado off/on para cierre con nombre guardado. Verifica salida temprana, tercer intento sin símbolos, rechazo de puerta distinta/parcial, límite10 consultas únicas y reutilización de acierto inicial. Router conserva nombre, pasa al pago y crea una única orden simulada solo tras confirmar.
+
+Foco62/62 en4 suites,13,485s; TypeScript general aprobado. No nueva global por tests/docs únicamente; última228:19.760/295 suites. Informe `docs/whatsapp-address-retry-saved-name-validation-2610.md`. Sin API/Meta/órdenes externas. No acredita reconocimiento real de esos destinos ni ahorro medido.
+
+Siguiente: caché tras varios fallos antes del acierto, aislamiento de restaurante/destino; luego perfil WhatsApp editable, aún no implementado. Main/modelos intactos, publicación staging sin despliegue. Runtime210–228 pendiente agrupado;229 solo cobertura.
+
 ## VIGENTE — tanda 228: recuperación de direcciones y cierre (26/10)
 
 Base `fa3fb2b3`, staging. Normaliza separadores y ensaya formatos locales sin símbolos; acepta componentes exactos cuando el formato no es interpretable, sin aceptar calles contradictorias ni resultados parciales. Si el mapa devuelve otra calle, explica las alternativas y solicita precisión sin cambiar dirección/cobrar. Familia de combos ambigua conserva bebida/datos al elegir; no intercepta pedidos múltiples. Total sin domicilio resuelto marcado provisional.
