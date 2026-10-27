@@ -4,7 +4,7 @@ Base `b571a600`, staging. Parser vincula profile.name solo al wa_id remitente; n
 
 45 pruebas nuevas, baseline inicial15 rojas/17 verdes y ráfagas2 rojas/2 verdes. Foco64/64 en5 suites; TS general/build, Node92, Falafel1 verdes. Global19.853/300 suites,608 hashes,748,56s; inventario exacto/fuente congelada. Informe `docs/whatsapp-profile-recipient-validation-2610.md`. Sin API pagada/Meta/órdenes externas; modelos/Main intactos.
 
-Despliegue agrupado a staging preparado tras validación; no acreditado todavía. Siguiente: probar en canal controlado el perfil nuevo y destinatario distinto, luego correcciones de nombre combinadas con consultas/dirección/pago. Perfil no verifica identidad; alias o nombres de una palabra aún requieren captura explícita. No declarar vendible por conteos.
+Desplegado a staging código `1f0a2f8cc2b3736acbb8ccc19ab57ca50d053e50` el26/10/2026 (~20:18 Bogotá). Contenedor running/healthy, imagen activa=candidate `sha256:b68b22ddb9c49c3fba56f5607e18c6a6b8db08fe87713a06435f7540f578a575`; health local/público OK, DB connected, circuito CLOSED. Carpeta privada sin seguimiento bin/ conservada. Main intacto. Tandas acumuladas incluidas hasta231; no quedan210–231 pendientes de despliegue. Log `/tmp/ppp-231-staging-deploy.log`. Comprobación inicial starting no se contó como healthy; segunda comprobación confirmó healthy. Siguiente: probar en canal controlado el perfil nuevo y destinatario distinto, luego correcciones de nombre combinadas con consultas/dirección/pago. Perfil no verifica identidad; alias o nombres de una palabra aún requieren captura explícita. No declarar vendible por conteos.
 
 ## VIGENTE — tanda 230: caché de direcciones recuperadas (26/10)
 
