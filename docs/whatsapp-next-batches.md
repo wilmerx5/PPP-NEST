@@ -1,3 +1,11 @@
+## DESPLIEGUE VIGENTE — Main/producción hasta tanda235 (26/10,23:04 Bogotá)
+
+Solicitud explícita del usuario. Main local y origin/Main promovidos por fast-forward de `a935f555` a `4323399237be485633083325269e799202f5e7c4`. Producción `/var/www/ppp-nest` ejecuta ese código; imagen activa `sha256:bc59fd2608d760f7d4fb62071a181cfba15d010e051ce2a0d34afa0366f6a09c`, running,0reinicios. Health local/público OK, DBconnected, circuitoCLOSED; lógica de sustitución compilada comprobada. Modelos iguales a staging. Validación235:19.952/304 suites.
+
+Preservados compose/.env/backups privados, bases/volúmenes y472archivos generados locales. Rollback `ppp-nest-api:rollback-before-43233992`. Primer health durante arranque tuvo conexión reiniciada; segunda comprobación pasó. Evidencia `docs/whatsapp-main-promotion-2610.json` y /tmp/ppp-235-main-deploy.log.
+
+Staging rama conservada, contenedor sin cambios en231 `1f0a2f8c`, por tanto232–235 pendientes de deploy únicamente en staging. Continuar trabajo en staging. Main desplegado no significa todos los chats corregidos; pendientes históricos y límites235 siguen vigentes. Sin API pagada/WhatsApp/órdenes externas de prueba.
+
 ## VIGENTE — tanda 235: alternativas de acompañamiento (26/10)
 
 Base `0e2b4fc9`, staging. «En ves de ensalada más papa o yuca» queda como elección de preparación pendiente del ejecutivo. Pregunta alternativa, conserva compras/destino y anota solo en ese plato; no cobra extras ni promete disponibilidad de cocina. Retirar nota y cancelar pedido limpian pendientes. Confirmación prematura no crea orden.

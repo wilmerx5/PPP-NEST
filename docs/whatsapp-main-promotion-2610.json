@@ -1,0 +1,69 @@
+{
+  "verifiedAt": "2026-10-27T04:04:36.916148+00:00",
+  "head": "4323399237be485633083325269e799202f5e7c4",
+  "containers": {
+    "ppp_nest_api": {
+      "image": "sha256:bc59fd2608d760f7d4fb62071a181cfba15d010e051ce2a0d34afa0366f6a09c",
+      "id": "dc0a2598d2034ea2ee7218ab186a5c23938a68829cae03180b56c91a183c43d1",
+      "status": "running",
+      "restarts": 0,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "ppp-staging-api-1": {
+      "image": "sha256:b68b22ddb9c49c3fba56f5607e18c6a6b8db08fe87713a06435f7540f578a575",
+      "id": "43b074d5f321a622c3b2d5aaf799584be5854151c302c3cddb94aa2b6db60662",
+      "status": "running",
+      "restarts": 0,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    }
+  },
+  "health": {
+    "local": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 50.78,
+        "heapTotal": 55.33,
+        "rss": 115.63
+      },
+      "timestamp": "2026-10-27T04:04:36.487Z"
+    },
+    "public": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 50.92,
+        "heapTotal": 55.33,
+        "rss": 115.63
+      },
+      "timestamp": "2026-10-27T04:04:36.733Z"
+    }
+  },
+  "compiledSubstitutionCheck": "ok",
+  "privateFilesPreserved": true,
+  "rollbackTag": "ppp-nest-api:rollback-before-43233992",
+  "previousImage": "sha256:8a7129798482d5992a999428ef62c5470102e1266587ef265f6574cbcf4831cd",
+  "promotedThroughBatch": 235,
+  "validation": "19.952 tests / 304 suites; exact inventory and frozen source; TS general/build, Node92 and Falafel1 passed",
+  "localGeneratedFilesPreserved": 472,
+  "notes": [
+    "Initial health probe occurred during startup and reset; subsequent local/public probes passed.",
+    "No paid API, WhatsApp or external test orders.",
+    "Staging container unchanged at batch231; branch contains235.",
+    "Known historical diagnostics remain open; deployment does not imply sellable readiness."
+  ]
+}
