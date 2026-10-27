@@ -1,3 +1,4 @@
+import { whatsappProfileRecipient } from './whatsapp-profile-name';
 import {splitAccompanimentPurchase, includesAccompaniment} from './whatsapp-accompaniment-offer';
 import { drinkInclusion, sodaBrandIn } from './whatsapp-drink-inclusion';
 import {variantUnitScope} from './whatsapp-variant-unit-scope';
@@ -1000,6 +1001,12 @@ export class WhatsappOrchestratorService {
     }
     if (conv.humanTakeover) {
       return;
+    }
+    // Only fill a missing recipient after claiming the message and reloading state.
+    // Explicit names already stored always win over a profile suggestion.
+    const profileRecipient = whatsappProfileRecipient(msg.profileName);
+    if (!conv.customerName?.trim() && profileRecipient) {
+      await this.conversationService.updateCustomerName(conv, profileRecipient);
     }
     if (continuation?.approvalAfter) {
       const current = this.conversationService.getSession(conv);

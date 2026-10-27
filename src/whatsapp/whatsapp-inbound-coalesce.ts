@@ -104,8 +104,12 @@ export function mergeCoalescedInboundMessages(
 
   const first = uniqueMessages[0];
   const last = uniqueMessages[uniqueMessages.length - 1];
+  const profileNames = [...new Set(uniqueMessages
+    .filter(message => message.waId === first.waId && message.profileName)
+    .map(message => message.profileName))];
   return {
     ...first,
+    profileName: profileNames.length === 1 ? profileNames[0] : undefined,
     messageId: first.messageId || last.messageId,
     text: uniqueOrdered.join('\n'),
     timestamp: last.timestamp || first.timestamp,

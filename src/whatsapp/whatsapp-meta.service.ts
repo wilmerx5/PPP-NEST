@@ -1,3 +1,4 @@
+import { whatsappProfileRecipient } from './whatsapp-profile-name';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 
@@ -16,6 +17,8 @@ export type IncomingWhatsappMessageType =
 export type IncomingWhatsappMessage = {
   waId: string;
   phoneE164: string;
+  /** Editable recipient suggestion from the matching webhook contact, not verified identity. */
+  profileName?: string;
   messageId: string;
   messageType: IncomingWhatsappMessageType;
   /** Texto o caption; para media sin caption, etiqueta corta. */
@@ -69,7 +72,15 @@ export class WhatsappMetaService {
         const messages = Array.isArray(value.messages) ? value.messages : [];
         for (const msg of messages) {
           const parsed = this.parseOneMessage(msg);
-          if (parsed) out.push(parsed);
+          if (parsed) {
+            const contacts = Array.isArray(value.contacts) ? value.contacts : [];
+            const matching = contacts.filter((contact: any) => contact?.wa_id === parsed.waId);
+            const names = matching.map((contact: any) => whatsappProfileRecipient(contact?.profile?.name));
+            if (names.length && names.every((name: string | null) => name && name === names[0])) {
+              parsed.profileName = names[0];
+            }
+            out.push(parsed);
+          }
         }
       }
     }

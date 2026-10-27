@@ -1,3 +1,11 @@
+## VIGENTE — tanda 231: nombre del perfil para acortar checkout (26/10)
+
+Base `b571a600`, staging. Parser vincula profile.name solo al wa_id remitente; nombres contradictorios no se usan. Validación conservadora2–6 palabras, sin emojis/cifras/placeholders/comercios comunes. Completa únicamente destinatario vacío tras reclamar mensaje y recargar conversación, fuera de takeover. No toca cuentas web ni reemplaza nombres guardados. Corrección explícita en el mensaje inicial o durante pago prevalece. Ráfagas conservan perfil consistente aunque llegue después.
+
+45 pruebas nuevas, baseline inicial15 rojas/17 verdes y ráfagas2 rojas/2 verdes. Foco64/64 en5 suites; TS general/build, Node92, Falafel1 verdes. Global19.853/300 suites,608 hashes,748,56s; inventario exacto/fuente congelada. Informe `docs/whatsapp-profile-recipient-validation-2610.md`. Sin API pagada/Meta/órdenes externas; modelos/Main intactos.
+
+Despliegue agrupado a staging preparado tras validación; no acreditado todavía. Siguiente: probar en canal controlado el perfil nuevo y destinatario distinto, luego correcciones de nombre combinadas con consultas/dirección/pago. Perfil no verifica identidad; alias o nombres de una palabra aún requieren captura explícita. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 230: caché de direcciones recuperadas (26/10)
 
 Base `3ce34dca`, staging. Antes de repetir variantes fallidas se reutiliza cualquier acierto vigente del mismo destino y contexto. Clave con origen exacto, región y radio de aceptación; caducidad12h. No guarda fallos ni reutiliza ruta/tarifa. En tres escenarios simulados se eliminan2 consultas de geocodificación por repetición; sin ahorro real medido.
