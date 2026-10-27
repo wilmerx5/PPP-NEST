@@ -1,3 +1,13 @@
+## VIGENTE — tanda 235: alternativas de acompañamiento (26/10)
+
+Base `0e2b4fc9`, staging. «En ves de ensalada más papa o yuca» queda como elección de preparación pendiente del ejecutivo. Pregunta alternativa, conserva compras/destino y anota solo en ese plato; no cobra extras ni promete disponibilidad de cocina. Retirar nota y cancelar pedido limpian pendientes. Confirmación prematura no crea orden.
+
+28 casos nuevos:18 recorridos en tres menús×agente simulado off/on×primera/segunda alternativa/retirar nota,6 controles de parser y4 del mensaje original hasta cerrar/cancelar. Foco175/175; TS general/build, Node92, Falafel1 aprobados. Global19.952/304 suites,613hashes,775,93s; inventario exacto/fuente congelada. Informe `docs/whatsapp-substitution-choice-validation-2610.md`.
+
+Alcance: carrito nuevo y una sustitución delimitada con dos alternativas ligada a un plato identificado. No acredita varias sustituciones simultáneas, cambios sobre líneas divididas ni disponibilidad real/inferencia. El chat concreto queda cubierto en simulación; los otros diagnósticos históricos233 NO quedan cerrados. Próximo: cambios/quitar plato durante preparación pendiente y continuar con reparto2→3/adicionales/negaciones de los chats abiertos.
+
+Sin API pagada/Meta/órdenes externas. Main/modelos intactos. Publicación staging sin despliegue:232–235 pendientes agrupados; último servidor verificado231 `1f0a2f8c`. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 234: compras independientes multilínea (26/10)
 
 Base `e746eb69`, staging. Evita que el atajo de plato compuesto absorba una compra anterior; líneas explícitas conservan compras separadas, incluso en catálogos fuera del vocabulario fijo de comida. Conserva villa en destino y admite opción larga con dos errores solo tras etiqueta del atributo y candidato único. Sin excepciones por restaurante.

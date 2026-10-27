@@ -1,3 +1,4 @@
+import {parseSubstitutionChoice} from './whatsapp-substitution-choice';
 import { whatsappProfileRecipient } from './whatsapp-profile-name';
 import {splitAccompanimentPurchase, includesAccompaniment} from './whatsapp-accompaniment-offer';
 import { drinkInclusion, sodaBrandIn } from './whatsapp-drink-inclusion';
@@ -19329,6 +19330,7 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingSubsetKitchenNote;
     if (!pending) return '';
     const lines = session.cart.filter(line=>pending.productIds.includes(line.productId));
+    if (pending.substitution) return `Para *${lines.map(line=>line.name).join(', ')}*, ¿qué prefieres en vez de ${pending.substitution.removed}: ${pending.substitution.choices.join(' o ')}?\nLo anotaré como solicitud de preparación; no he añadido extras. Para retirarla, escribe «no apliques esa nota».`;
     if (pending.byUnits) return (pending.quantity === 1 ? `¿Cuál producto lleva la nota «${pending.note}»? (1 unidad)\n`
       : `¿Cuáles productos${pending.quantity ? ` (${pending.quantity} unidades)` : ''} deben llevar la nota «${pending.note}»?\n`) +
       lines.map((line,index)=>`${index+1}. ${line.name} ×${line.quantity}`).join('\n') +
@@ -19362,6 +19364,21 @@ export class WhatsappOrchestratorService {
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
     const eligible = session.cart.flatMap((line,index)=>pending.productIds.includes(line.productId)?[index]:[]);
     if (!pending.byUnits && eligible.length < pending.quantity) return false;
+    if (pending.substitution) {
+      const answer = this.normalizeForMatch(text).replace(/^(?:con|prefiero|mejor|dame)\s+/, '').replace(/\s+(?:por favor|porfa|gracias)[.!]*$/, '').replace(/[.!]+$/, '').trim();
+      const chosen = pending.substitution.choices.filter(choice=>this.normalizeForMatch(choice)===answer);
+      if (chosen.length === 1 && eligible.length === 1) {
+        const note = `Solicitud: cambiar ${pending.substitution.removed} por ${chosen[0]}.`;
+        const next = {...session, pendingSubsetKitchenNote: undefined, cart: session.cart.map((line,index)=>index===eligible[0]?{...line,note:distinctNotes(line.note,note)}:line)};
+        await this.conversationService.saveSession(conv,next);
+        await this.reply(conv,waId,`Anoté para *${next.cart[eligible[0]].name}*: ${note}\n\n${this.formatInterruptedStepReminder(conv,next)}`);
+        return true;
+      }
+      if (isNothingElseOrderIntent(text) || this.isConfirmKeyword(text)) {
+        await this.reply(conv,waId,this.formatSubsetKitchenNoteQuestion(session)); return true;
+      }
+      return false;
+    }
     const ask=async()=>{await this.reply(conv,waId,this.formatSubsetKitchenNoteQuestion(session));return true;};
     if (/\bde cada\b/i.test(text) || isNothingElseOrderIntent(text) || this.isConfirmKeyword(text)) return ask();
     if (/[¿?]/.test(text) || /^(?:no|si|agrega|quita|cambia)\b/.test(this.normalizeForMatch(text)) || pending.note&&/^(?:dame|quiero)\b/i.test(text)) return false;
@@ -26387,6 +26404,21 @@ export class WhatsappOrchestratorService {
     if (foodHits === 0) return false;
     if (session.cart.length && !/[¿?]/.test(text) &&
         (parseCartItemReplacement(text) || this.catalogNamedCartSwap(text, session, products))) return false;
+
+    // A two-way preparation request belongs to its explicit purchase line.
+    // Keep it pending instead of discarding it or charging both alternatives.
+    if (!session.cart.length && !session.pendingSubsetKitchenNote) {
+      const requests = this.catalogService.splitMultiProductSegments(text, products).flatMap(segment => {
+        const substitution = parseSubstitutionChoice(segment);
+        const product = substitution ? this.catalogService.productFullyNamedIn(segment, products) : null;
+        const matches = [...multi.confident, ...multi.needsAttributes].filter(item => item.product.id === product?.id);
+        return substitution && product && matches.length === 1 ? [{substitution, productId: product.id}] : [];
+      });
+      if (requests.length === 1) session = {...session, pendingSubsetKitchenNote: {
+        quantity: 1, note: '', productIds: [requests[0].productId], byProduct: true,
+        substitution: requests[0].substitution,
+      }};
+    }
 
     // Nombre detectado en el mismo mensaje que los platos (ej. "Natalia seria un arroz…")
     // No usar platos del menú como nombre (ajiaco, mondongo…)
