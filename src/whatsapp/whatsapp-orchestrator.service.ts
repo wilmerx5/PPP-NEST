@@ -1213,6 +1213,21 @@ export class WhatsappOrchestratorService {
     // Keep mutations in the existing checkout handlers, not in this splitter.
     if (['building_cart', 'awaiting_attribute', 'awaiting_name', 'awaiting_phone', 'awaiting_address', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state)) {
       const current = this.conversationService.getSession(conv);
+      const contactLines = text.split(/\n|;/).map(line => line.trim()).filter(Boolean);
+      if (current.cart.length && contactLines.length === 2) {
+        const namedIndex = contactLines.findIndex(line => /^(?:a nombre(?: de)?|mi nombre es|me llamo)\s+/i.test(line));
+        if (namedIndex >= 0) {
+          const recipient = contactLines[namedIndex].replace(/^(?:a nombre(?: de)?|mi nombre es|me llamo)\s+/i, '');
+          const addressLine = contactLines[1 - namedIndex];
+          const addressValue = addressLine.replace(/^la direcci[oó]n es\s+/i, '');
+          if (isUsableWhatsappCustomerName(recipient) && !this.looksLikeAddressRejectingPersonName(recipient) &&
+              this.isStrongExplicitAddress(addressValue) && !/[?¿]/.test(addressLine)) {
+            await this.conversationService.updateCustomerName(conv, recipient);
+            await this.reply(conv, msg.waId, `Nombre actualizado: ${recipient}.`);
+            text = addressLine;
+          }
+        }
+      }
       const questions = [...text.matchAll(/¿?[^¿?]*\?/g)];
       const questionFirst = text.match(/^(¿[^?]+\?|[^?]+\?)\s+(.+)$/s);
       const changeFirst = text.match(/^(.+?[.;])\s+(¿[^?]+\?|(?:cu[aá]nto|qu[eé])[^?]+\?)$/is);
@@ -1253,7 +1268,7 @@ export class WhatsappOrchestratorService {
             turn.independentInquiryAnswer = answer;
             await this.reply(conv, msg.waId, answer);
             text = change;
-          } else if (answers.length && unresolved.length === 1 && (name || phone)) {
+          } else if (unresolved.length === 1 && (name || phone)) {
             // Preserve explicit contact independently, then let the existing router
             // clarify the one unanswered question. Do not turn it into a field value.
             if (name) await this.conversationService.updateCustomerName(conv, name[1].trim());
@@ -1263,7 +1278,7 @@ export class WhatsappOrchestratorService {
               phoneConfirmed: true,
             });
             const contactAck = name ? `Nombre actualizado: ${name[1].trim()}.` : 'Teléfono de contacto actualizado.';
-            const answer = `${answers.join('\n\n')}\n\n${contactAck}`;
+            const answer = [...answers, contactAck].join('\n\n');
             turn.independentInquiryAnswer = answer;
             await this.reply(conv, msg.waId, answer);
             text = unresolved[0];
@@ -17612,7 +17627,8 @@ export class WhatsappOrchestratorService {
       const body = quoted.blocked
         ? `${quoted.blocked}\n\nEl pedido sigue igual.`
         : `El domicilio queda en *${this.catalogService.formatMoney(fee)}*. El pedido sigue igual.`;
-      await this.reply(conv, waId, `${body}\n\n${this.formatCartOnly(next, fee)}`);
+      await this.reply(conv, waId, `${body}\n\n${this.formatCartOnly(next, fee)}` +
+        (quoted.blocked ? '' : `\n\n${this.formatInterruptedStepReminder(conv, next)}`));
       return true;
     }
 

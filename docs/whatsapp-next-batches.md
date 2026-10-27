@@ -1,3 +1,11 @@
+## VIGENTE — tanda 232: nombre junto a dirección o consulta (26/10)
+
+Base `08d14825`, staging. Baseline24:12 verdes/12 rojas. Dirección+nombre guardaba solo dirección; consulta de domicilio+nombre respondía solo tarifa. Se conserva nombre explícito en dos cláusulas de nombre/dirección y en contacto+consulta no resuelta, manteniendo el resto en sus manejadores. La tarifa resuelta recuerda el paso pendiente. Sin compra ni confirmación por corregir contactos.
+
+36 conversaciones nuevas: tres menús×agente simulado off/on×pago/dirección/teléfono/consulta y órdenes inversos. Verifican respuesta/guía, carrito intacto, nombre, datos, tarifa, estado y DTO. Foco317/317 en6 suites; TS general/build, Node92, Falafel1 verdes. Global19.889/301 suites,609 hashes,1079,81s; inventario exacto/fuente congelada. Informe `docs/whatsapp-profile-mixed-correction-validation-2610.md`.
+
+Sin API pagada/Meta/órdenes externas; Main/modelos intactos. Publicación staging sin despliegue:232 pendiente agrupado, servidor aún231 `1f0a2f8c` healthy verificado26/10. Siguiente: negativas a usar perfil y correcciones antes de confirmar; condiciones no deben convertirse en cambios afirmados. No acreditar lenguaje libre universal ni vendibilidad por conteos.
+
 ## VIGENTE — tanda 231: nombre del perfil para acortar checkout (26/10)
 
 Base `b571a600`, staging. Parser vincula profile.name solo al wa_id remitente; nombres contradictorios no se usan. Validación conservadora2–6 palabras, sin emojis/cifras/placeholders/comercios comunes. Completa únicamente destinatario vacío tras reclamar mensaje y recargar conversación, fuera de takeover. No toca cuentas web ni reemplaza nombres guardados. Corrección explícita en el mensaje inicial o durante pago prevalece. Ráfagas conservan perfil consistente aunque llegue después.
