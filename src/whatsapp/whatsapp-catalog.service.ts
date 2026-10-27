@@ -9162,6 +9162,23 @@ export class WhatsappCatalogService {
    * También bullets/líneas WhatsApp: "* Medio pollo\n* Porción de papas".
    */
   splitMultiProductSegments(text: string, products?: WhatsappCatalogProduct[]): string[] {
+    // Explicit purchase lines stay independent even when a later line supplies
+    // modifiers for the last dish. Delivery/courtesy framing is not a dish.
+    if (/[;\n]/.test(text)) {
+      const lines = text.split(/[;\r\n]+/).map(line => line.trim()).filter(Boolean);
+      const purchases: string[] = [];
+      let complete = true;
+      for (const raw of lines) {
+        const line = raw.replace(/^y\s+/i, '');
+        if (isDeliverySetupWithoutFood(line) || this.isPolitenessOnlySegment(line)) continue;
+        const counted = /^(?:(?:me\s+(?:das|da|regala|regalas|envias)|quiero|dame|regalame)\s+)?(?:un|una|dos|tres|cuatro|\d+)\s+/i.test(normalizeText(line));
+        if (counted && this.countQuantityMentions(line) <= 1 && (!products?.length || this.findProductEmbeddedInMessage(line, products))) purchases.push(line);
+        else if (purchases.length && /^(?:con|sin|en\s+ve[sz]\s+de|a\s+cambio\s+de|bien|poco|poca|mas|menos)\b/i.test(normalizeText(line)))
+          purchases[purchases.length - 1] += ', ' + line;
+        else { complete = false; break; }
+      }
+      if (complete && purchases.length >= 2) return purchases;
+    }
     // A standalone exclusion on the following line modifies the preceding
     // request. Keep it attached before newline-based product segmentation.
     text = text.replace(/([^\r\n]+)\r?\n[ \t]*(sin[ \t]+[\p{L}][\p{L} \t]{0,60})(?=\r?\n|$)/giu,
@@ -9890,7 +9907,7 @@ export class WhatsappCatalogService {
     // "Cambia la dirección a…" no es pedido multi
     if (isAddressChangeIntent(text)) return null;
     // "Quiero un domicilio para Bosques…" no es multi-plato
-    if (isDeliverySetupWithoutFood(text)) return null;
+    if (isDeliverySetupWithoutFood(text) && !this.findProductEmbeddedInMessage(text, products)) return null;
     // "Quiero hacer un pedido" / sin comida → no multi con unresolved "pedido"
     {
       const q = normalizeText(this.extractProductSearchQuery(text) || text);
@@ -11791,6 +11808,17 @@ export class WhatsappCatalogService {
         );
       });
       if (fuzzyHits.length === 1) return fuzzyHits[0];
+      // A labelled long option can tolerate two edits without scanning every
+      // word in the order. Require a unique catalogue candidate.
+      const labelled = q.match(new RegExp(`(?:^|\\s)${escapeRegExp(attrName)}\\s+(?:de\\s+)?([a-z]{7,})(?:\\s|$)`));
+      if (labelled) {
+        const candidates = attr.options.filter(option => {
+          const value = normalizeText(option);
+          return /^[a-z]{7,}$/.test(value) && Math.abs(value.length - labelled[1].length) <= 1 &&
+            (boundedEditDistance(labelled[1], value, 2) ?? 99) <= 2;
+        });
+        if (candidates.length === 1) return candidates[0];
+      }
     }
 
     return null;

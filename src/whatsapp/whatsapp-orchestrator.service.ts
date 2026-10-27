@@ -3586,9 +3586,10 @@ export class WhatsappOrchestratorService {
     }
     if (businessOpenForBot && await this.tryOfferExactDishCombo(conv, msg.waId, session, originalText, products, cfg)) return;
 
+    const multiplePurchaseLines = /[;\n]/.test(text) && this.catalogService.splitMultiProductSegments(text, products).length > 1;
     // Catalog identity can omit a presentation only when one matching compound exists.
     const splitsSameSkuPair = /\b(?:uno|una)\s+con\s+.+\by\s+(?:el|la)\s+otr[oa]\s+con\s+/i.test(text);
-    const compoundVocabulary = !splitsSameSkuPair && /\bcon\b/i.test(text) && !/\b(?:y|aparte|a parte|adicional)\s+(?:un|una|dos|tres|medio|media|cuarto|cuarta|\d+)\b/i.test(text)
+    const compoundVocabulary = !multiplePurchaseLines && !splitsSameSkuPair && /\bcon\b/i.test(text) && !/\b(?:y|aparte|a parte|adicional)\s+(?:un|una|dos|tres|medio|media|cuarto|cuarta|\d+)\b/i.test(text)
       ? this.catalogService.uniqueProductBySpokenTokens(text,products.filter(product => /\bcombo\b/i.test(text) || !/\bcombo\b/i.test(product.name))) : null;
     if (businessOpenForBot && compoundVocabulary && compoundVocabulary.hasAttributes && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       !this.catalogService.isPriceInquiryIntent(text) && !this.catalogService.isAvailabilityInquiry(text) &&
@@ -3603,7 +3604,7 @@ export class WhatsappOrchestratorService {
     const explicitComboMeal = !session.cart.length && /\bcombos\b/i.test(text) && requestedDrinkVolume == null ? this.catalogService.explicitlyNamedCombo(text, products) : null;
     const namedMeal = explicitComboMeal || this.catalogService.resolveNamedMenuDishProduct(text, products) ||
       (hostedMeal && (requestedDrinkVolume == null || requestedDrinkVolume === includedDrinkVolume) ? hostedMeal.product : null);
-    if (businessOpenForBot && !splitsSameSkuPair && namedMeal && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+    if (businessOpenForBot && !multiplePurchaseLines && !splitsSameSkuPair && namedMeal && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       (explicitComboMeal?.id === namedMeal.id || this.catalogService.orderNamesThisProduct(namedMeal.name, text) || this.catalogService.productWhoseHeadWasSpoken(text,products)?.id === namedMeal.id ||
         hostedMeal?.product.id === namedMeal.id && this.catalogService.findAllProductsEmbeddedInMessage(text,products).filter(product => !this.catalogService.isLikelyDrinkProduct(product)).length === 1) &&
       !/\by\s+(?:un|una|otro|otra|dos|tres|medio|media|cuarto|cuarta|\d+)\b/i.test(text) &&
@@ -5582,7 +5583,7 @@ export class WhatsappOrchestratorService {
       !session.pendingAttribute &&
       !session.pendingMultiOrder &&
       !(session.cart.length && isCartItemReplacementIntent(originalText)) &&
-      (this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
+      (multiplePurchaseLines || this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
         this.catalogService.looksLikeMultiItemOrderMessage(text) ||
         this.catalogService.looksLikeClearlyMultiDishOrder(originalText) ||
         this.catalogService.looksLikeMultiItemOrderMessage(originalText))
@@ -20835,7 +20836,7 @@ export class WhatsappOrchestratorService {
 
     // A labelled destination can name the building before its street. Extract
     // the whole destination before the generic embedded-street matcher cuts it.
-    const namedDestination = raw.match(/\bpara\s+(?:la\s+|el\s+)?((?:conjunto|edificio|residencial|urbanizaci[oó]n|condominio|torres)\b[\s\S]+)$/i);
+    const namedDestination = raw.match(/\bpara\s+(?:la\s+|el\s+)?((?:conjunto|edificio|residencial|urbanizaci[oó]n|condominio|torres|villas?)\b[\s\S]+)$/i);
     if (namedDestination?.[1] && this.isPlausibleDeliveryAddress(namedDestination[1]) &&
         !this.looksLikeFoodNotAddress(namedDestination[1]) && !FOOD_ORDER_SIGNAL_RE.test(namedDestination[1])) {
       return this.normalizeDeliveryAddress(namedDestination[1]);

@@ -1,3 +1,13 @@
+## VIGENTE — tanda 234: compras independientes multilínea (26/10)
+
+Base `e746eb69`, staging. Evita que el atajo de plato compuesto absorba una compra anterior; líneas explícitas conservan compras separadas, incluso en catálogos fuera del vocabulario fijo de comida. Conserva villa en destino y admite opción larga con dos errores solo tras etiqueta del atributo y candidato único. Sin excepciones por restaurante.
+
+17 pruebas nuevas:12 conversaciones en tres menús×agente simulado off/on×consulta de pago presente/ausente y5 controles de aproximación. Respuesta/carrito/estado/destino/DTO. Foco81/81, TypeScript general/build, Node92 y Falafel1 aprobados. Global19.924/303 suites,611hashes,966,72s, inventario exacto/fuente congelada. Informe `docs/whatsapp-multiline-independent-validation-2610.md`.
+
+**Chat original aún parcialmente abierto:** conservar sopa+ejecutivo/opciones no acredita resolver «en vez de ensalada más papa o yuca», que todavía pierde la petición. Siguiente tanda: conservar esa sustitución y aclarar alternativa sin extras cobrados, luego cancelación/cierre completos. Otros diagnósticos históricos233 siguen pendientes; no extrapolar esta mejora a todos los chats/PDF.
+
+Sin API pagada/Meta/órdenes externas. Main/modelos intactos. Publicación staging sin despliegue:232–234 pendientes agrupados; último servidor verificado231 `1f0a2f8c`. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 233: revisión final y pendientes reales reejecutados (26/10)
 
 Base `e4e231be`, staging. Corregido cierre prematuro al cambiar destinatario junto con pago durante confirmación: el manejador de contacto exige resumen nuevo antes de crear orden.18conversaciones nuevas en tres menús×agente simulado off/on×nombre/nombre+pago/nombre+consulta, carrito/datos/estado/DTO. Baseline6verdes/12rojas:6fallos reales de cierre y6aserciones demasiado estrictas del mensaje final, ajustadas para reconocer acuse anterior. Foco125/125; TypeScript general/build, Node92, Falafel1 aprobados. Global19.907/302suites,610hashes,766,09s; inventario exacto/fuente congelada.
