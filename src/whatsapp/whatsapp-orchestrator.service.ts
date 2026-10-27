@@ -3538,6 +3538,30 @@ export class WhatsappOrchestratorService {
         await this.tryHandleMultiProductOrder(conv, msg.waId, session, swapped, cfg, originalText, products, originalText)) return;
     }
 
+    if (businessOpenForBot && !session.cart.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
+      const request = this.normalizeForMatch(originalText);
+      const familyRequest = /\b(?:quiero|dame|me da|me das|me regala|me regalas|me envia|me envias)\b/.test(request) && !/[¿?]/.test(originalText)
+        ? request.match(/\b(?:un|una|1) combo (?:de )?(.+?)(?= con (?:gaseosa|bebida)\b| para\b| gracias\b|$)/)
+          ?? request.match(/\b(?:un|una|1) (.+?) combo(?= con (?:gaseosa|bebida)\b| para\b| gracias\b|$)/) : null;
+      if (familyRequest && !/\by\b/.test(familyRequest[1]) &&
+          !/\b(?:aparte|adicional|extra)\b|(?:\by|[,;])\s+(?:un[oa]?|dos|tres|cuatro|cinco|seis|\d+)\b/.test(request)) {
+        const familyName = familyRequest[1].trim();
+        const candidates = products.filter(product => product.availableNow !== false && this.catalogService.productImpliesCombo(product) &&
+          (` ${this.normalizeForMatch(product.name)} `).includes(` ${familyName} `));
+        if (familyName.split(' ').length >= 2 && candidates.length > 1) {
+          session = {...session, pendingMatch: {query: originalText, intent: 'order', quantity: 1, candidates,
+            offeredAlternatives: candidates.map(product => {
+              const options = this.catalogService.resolveAttributesFromMessage(product, originalText, []);
+              return {productId: product.id, attributes: options.status === 'complete' || options.status === 'partial' ? options.attributes : []};
+            })}};
+          await this.conversationService.saveSession(conv, session);
+          await this.reply(conv, msg.waId, 'Tenemos estas presentaciones. ¿Cuál prefieres?\n\n' +
+            candidates.map((product,index) => `${index+1}. *${product.name}* · #${product.code} · ${this.catalogService.formatMoney(product.price)}`).join('\n') +
+            '\n\nEscribe el número; conservaré los datos que ya enviaste.');
+          return;
+        }
+      }
+    }
     if (businessOpenForBot && await this.tryOfferExactDishCombo(conv, msg.waId, session, originalText, products, cfg)) return;
 
     // Catalog identity can omit a presentation only when one matching compound exists.
@@ -9678,6 +9702,10 @@ export class WhatsappOrchestratorService {
       !!this.catalogService.extractExplicitAttributeChoice(pending.query || '', chosen)?.length
       ? `${pending.query}. ${followUp}`
       : followUp;
+    const requestedOptions = pending.offeredAlternatives?.find(option => option.productId === chosen.id)?.attributes;
+    if (!pending.replacement && requestedOptions?.length) {
+      attrSourceText += ', ' + requestedOptions.map(option => `${option.attributeName}: ${option.attributeValue}`).join(', ');
+    }
     if (pending.note && !attrSourceText.includes(pending.note)) attrSourceText += `, ${pending.note}`;
     session = this.rememberProductFocus(session, chosen, products);
 
@@ -10285,6 +10313,7 @@ export class WhatsappOrchestratorService {
       `Subtotal $${Math.round(subtotal).toLocaleString('es-CO')}${deliveryBit}\n` +
       (prizeDiscount ? `Premio −$${Math.round(prizeDiscount).toLocaleString('es-CO')}\n` : '') +
       `*Total $${Math.round(total).toLocaleString('es-CO')}*` +
+      (session.orderType === 'delivery' && !feeResolved ? ' _(provisional; domicilio pendiente)_' : '') +
       (includeAddress && session.orderType === 'delivery' && session.address?.trim()
         ? `\n📍 ${customerLocationLabel(session.address.trim())}${session.addressConfirmed && !session.deliveryOutOfCoverage && session.deliveryFeeCalculated != null ? ' ✅' : ''}`
         : '')

@@ -6,7 +6,9 @@ import {
   type DeliveryFeeTier,
 } from './whatsapp-delivery-fee';
 
-class AmbiguousDeliveryAddressError extends Error {}
+class AmbiguousDeliveryAddressError extends Error {
+  constructor(readonly alternatives: string[] = []) { super('Ambiguous delivery address'); }
+}
 
 export type LatLng = { lat: number; lng: number };
 
@@ -109,7 +111,9 @@ export class WhatsappDeliveryRoutingService {
         if (!(error instanceof AmbiguousDeliveryAddressError)) throw error;
         return { ok: false, reason: 'address_ambiguous', message:
           canonicalStreetAddress(params.customerAddress)
-            ? 'No pude identificar con seguridad esa dirección en el mapa. Ya tengo la calle y el número; ¿me compartes la ubicación de WhatsApp para precisar el punto?'
+            ? error.alternatives.length
+              ? `No pude identificar con seguridad esa dirección. El mapa devuelve direcciones diferentes de la que escribiste: ${error.alternatives.join(' / ')}. No cambié tu dirección ni calculé el domicilio. Escribe la dirección correcta completa o comparte la ubicación de WhatsApp.`
+              : 'No pude identificar con seguridad esa dirección en el mapa. Ya tengo la calle y el número; ¿me compartes la ubicación de WhatsApp para precisar el punto?'
             : 'No pude identificar con seguridad ese conjunto o lugar. ¿Me compartes la ubicación de WhatsApp o la dirección con calle y número?' };
       }
       if (!geo) {
@@ -185,6 +189,7 @@ export class WhatsappDeliveryRoutingService {
 
     const variants = this.geocodeQueryVariants(q);
     let ambiguous = false;
+    const alternatives = new Set<string>();
     for (const variant of variants) {
       try {
         const hit = await this.geocodeOnce(variant, opts);
@@ -192,9 +197,10 @@ export class WhatsappDeliveryRoutingService {
       } catch (error) {
         if (!(error instanceof AmbiguousDeliveryAddressError)) throw error;
         ambiguous = true;
+        error.alternatives.forEach(value => alternatives.add(value));
       }
     }
-    if (ambiguous) throw new AmbiguousDeliveryAddressError();
+    if (ambiguous) throw new AmbiguousDeliveryAddressError([...alternatives].slice(0, 3));
     return null;
   }
 
@@ -213,6 +219,11 @@ export class WhatsappDeliveryRoutingService {
         out.push(`${text}, Colombia`);
       }
       out.push(text);
+    }
+    if (street) {
+      // Same numbered destination, alternative separators; never strip letters or zones.
+      const plain = street.replace(/[#-]/g, ' ').replace(/\s+/g, ' ').trim();
+      out.splice(Math.min(2, out.length), 0, `${plain}, Kennedy, Bogotá, Colombia`, `${plain}, Bogotá, Colombia`);
     }
     return [...new Set(out)];
   }
@@ -257,8 +268,14 @@ export class WhatsappDeliveryRoutingService {
       }
 
       let uncertain = false;
+      const alternatives: string[] = [];
       for (const result of data.results) {
-        if (!this.resultMatchesNamedPlace(q, result)) { uncertain = true; continue; }
+        if (!this.resultMatchesNamedPlace(q, result)) {
+          uncertain = true;
+          const street = canonicalStreetAddress(result.formatted_address || '');
+          if (canonicalStreetAddress(q) && street && !result.partial_match && this.acceptGeocodeResult(result, opts.near, opts.maxStraightKm)) alternatives.push(street);
+          continue;
+        }
         const accepted = this.acceptGeocodeResult(result, opts.near, opts.maxStraightKm);
         if (accepted) {
           this.geocodeCache.set(cacheKey, { at: Date.now(), value: accepted });
@@ -266,7 +283,7 @@ export class WhatsappDeliveryRoutingService {
         }
       }
 
-      if (uncertain) throw new AmbiguousDeliveryAddressError();
+      if (uncertain) throw new AmbiguousDeliveryAddressError([...new Set(alternatives)].slice(0, 3));
 
       this.logQuote({
         source: 'app',
@@ -299,7 +316,16 @@ export class WhatsappDeliveryRoutingService {
       return `${street.replace(/\b(?:Sur|Este|Norte)\b/g,'').replace(/^Avenida (Carrera|Calle)/,'$1').replace(/\s+/g,' ').trim().toLowerCase()}|${zones.join(',')}`;
     };
     const numberedStreet=streetKey(query);
-    if(numberedStreet)return !result.partial_match && streetKey(result.formatted_address || '')===numberedStreet;
+    if (numberedStreet) {
+      if (result.partial_match) return false;
+      const formattedKey = streetKey(result.formatted_address || '');
+      // A contradictory formatted street cannot be rescued by component fallback.
+      if (formattedKey) return formattedKey === numberedStreet;
+      const components = Array.isArray(result.address_components) ? result.address_components : [];
+      const route = components.find((part: any) => part.types?.includes('route'));
+      const number = components.find((part: any) => part.types?.includes('street_number'));
+      return !!route && !!number && streetKey(`${route.long_name || route.short_name || ''} # ${number.long_name || number.short_name || ''}`) === numberedStreet;
+    }
     const raw = normalize(splitDeliveryAddressParts(query).base).replace(/^a\s+/,'').replace(/^condomino\b/, 'condominio').split(',')[0];
     if (!/\b(?:plazuelas?|condominio|conjunto|residencial|urbanizacion|hotel|almacen|edificio|villa)\b/.test(raw)) return true;
     const ignored = new Set(['plazuela','plazuelas','condominio','conjunto','residencial','urbanizacion','hotel','almacen','edificio','de','del','la','el','las','los','para','en']);

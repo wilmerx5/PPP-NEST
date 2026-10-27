@@ -1,3 +1,13 @@
+## VIGENTE — tanda 228: recuperación de direcciones y cierre (26/10)
+
+Base `fa3fb2b3`, staging. Normaliza separadores y ensaya formatos locales sin símbolos; acepta componentes exactos cuando el formato no es interpretable, sin aceptar calles contradictorias ni resultados parciales. Si el mapa devuelve otra calle, explica las alternativas y solicita precisión sin cambiar dirección/cobrar. Familia de combos ambigua conserva bebida/datos al elegir; no intercepta pedidos múltiples. Total sin domicilio resuelto marcado provisional.
+
+32 casos nuevos:25 de geocodificación y7 de router con tres menús, agente simulado off/on y control de adicional. Foco253/253; TS general/build, Node92, Falafel1 verdes. Global19.760/295 suites,602 hashes,740,58s, inventario exacto/fuente congelada. Informe `docs/whatsapp-address-recovery-checkout-validation-2610.md`.
+
+Dos consultas reales a Maps (potencialmente facturables) devolvieron79A BIS/79B para79A-61: no se acreditó resolución exacta. Sin OpenAI/Meta/órdenes externas. Siguiente: muestra de direcciones reales con costo/latencia de reintentos y captura de nombre de perfil válido, editable y sin sobrescribir destinatario explícito. Nombre de perfil todavía NO implementado; cuenta vinculada ya reutilizada. Caducidad sin cambios por hora final truncada.
+
+Main/modelos intactos. Publicación staging sin despliegue; runtime210–228 pendiente agrupado (219/221–223 solo cobertura). Producción código209 `a935f555`. Sin declarar vendibilidad por conteos.
+
 ## VIGENTE — tanda 227: consulta y negativa de combo (26/10)
 
 Base `c0b5e629`, staging. Consulta reconocida y negativa explícita se resuelven por separado: se responde sobre la oferta y luego se conserva el original y limpia la elección. «No gracias» no mantiene una oferta pendiente ni se transforma en compra. Los controles de pregunta + elección explícita de otra presentación siguen funcionando.
