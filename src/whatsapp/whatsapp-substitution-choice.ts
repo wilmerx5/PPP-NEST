@@ -23,3 +23,16 @@ export function parseSubstitutionChoice(
     return null;
   return { removed: parts[0], choices: [parts[1], parts[2]] };
 }
+
+/** Remove one bounded substitution so its alternatives are not purchased as dishes. */
+export function omitSubstitutionChoice(text: string): string {
+  if (!parseSubstitutionChoice(text)) return text;
+  const phrase = '[\\p{L}]+(?:\\s+[\\p{L}]+){0,2}?';
+  return text.replace(
+    new RegExp(
+      `\\ben\\s+ve[sz]\\s+de\\s+(?:la\\s+|el\\s+)?${phrase}\\s+(?:m[aá]s|por)\\s+${phrase}\\s+o\\s+${phrase}(?=\\s+(?:con|sin|para|y|por favor|gracias)\\b|[,;.\\n!?]|$)`,
+      'iu',
+    ),
+    ' ',
+  );
+}

@@ -1,4 +1,4 @@
-import {parseSubstitutionChoice} from './whatsapp-substitution-choice';
+import {omitSubstitutionChoice, parseSubstitutionChoice} from './whatsapp-substitution-choice';
 import { whatsappProfileRecipient } from './whatsapp-profile-name';
 import {splitAccompanimentPurchase, includesAccompaniment} from './whatsapp-accompaniment-offer';
 import { drinkInclusion, sodaBrandIn } from './whatsapp-drink-inclusion';
@@ -597,6 +597,11 @@ export class WhatsappOrchestratorService {
       if (msg.messageType === 'image' && msg.raw?.resolvedOrderImage && session.recentImageOrder?.length) {
         const ids = new Set(session.recentImageOrder.map(item => item.productId));
         session = { ...session, recentImageCartSignature: JSON.stringify(session.cart.filter(line => ids.has(line.productId))) };
+        await this.conversationService.saveSession(conv, session);
+      }
+      const reconciledSubstitution = this.reconcileSubstitutionPending(session);
+      if (reconciledSubstitution !== session) {
+        session = reconciledSubstitution;
         await this.conversationService.saveSession(conv, session);
       }
       if (session.pendingSubsetKitchenNote && !turn.subsetNoteHandled &&
@@ -2222,6 +2227,7 @@ export class WhatsappOrchestratorService {
         await this.tryHandlePartialUnitKitchenNote(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleUnscopedCartKitchenNote(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleNamedCartKitchenNote(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryHandleExistingCartSubstitution(conv,msg.waId,session,originalText) ||
         await this.tryHandleSubsetKitchenNote(conv,msg.waId,session,originalText,cfg)) {
       turn.subsetNoteHandled = true;
       return;
@@ -3588,6 +3594,9 @@ export class WhatsappOrchestratorService {
     if (businessOpenForBot && await this.tryOfferExactDishCombo(conv, msg.waId, session, originalText, products, cfg)) return;
 
     const multiplePurchaseLines = /[;\n]/.test(text) && this.catalogService.splitMultiProductSegments(text, products).length > 1;
+    // One explicit purchase plus a bounded two-way substitution is still a purchase, not a menu browse.
+    const substitutedPurchase = !/[¿?]/.test(text) && !!parseSubstitutionChoice(text) &&
+      /\b(?:un|una|uno|dos|tres|\d+)\s+\S/i.test(text) && !!this.catalogService.productFullyNamedIn(text, products);
     // Catalog identity can omit a presentation only when one matching compound exists.
     const splitsSameSkuPair = /\b(?:uno|una)\s+con\s+.+\by\s+(?:el|la)\s+otr[oa]\s+con\s+/i.test(text);
     const compoundVocabulary = !multiplePurchaseLines && !splitsSameSkuPair && /\bcon\b/i.test(text) && !/\b(?:y|aparte|a parte|adicional)\s+(?:un|una|dos|tres|medio|media|cuarto|cuarta|\d+)\b/i.test(text)
@@ -5584,12 +5593,13 @@ export class WhatsappOrchestratorService {
       !session.pendingAttribute &&
       !session.pendingMultiOrder &&
       !(session.cart.length && isCartItemReplacementIntent(originalText)) &&
-      (multiplePurchaseLines || this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
+      (multiplePurchaseLines || substitutedPurchase || this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
         this.catalogService.looksLikeMultiItemOrderMessage(text) ||
         this.catalogService.looksLikeClearlyMultiDishOrder(originalText) ||
         this.catalogService.looksLikeMultiItemOrderMessage(originalText))
     ) {
-      const multi = this.catalogService.resolveMultiProductOrder(text, products);
+      const multi = this.catalogService.resolveMultiProductOrder(text, products) ||
+        (substitutedPurchase ? this.singleSubstitutedPurchase(text, products) : null);
       const leftoverUnresolved = (multi?.unresolved || []).filter(
         (s) => !this.catalogService.isPolitenessOnlySegment(s),
       );
@@ -11018,6 +11028,11 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    const reconciledSubstitution = this.reconcileSubstitutionPending(session);
+    if (reconciledSubstitution !== session) {
+      session = reconciledSubstitution;
+      await this.conversationService.saveSession(conv, session);
+    }
     if (session.pendingSubsetKitchenNote) {
       await say(this.formatSubsetKitchenNoteQuestion(session));
       return;
@@ -16388,9 +16403,10 @@ export class WhatsappOrchestratorService {
     }
     const remaining = removal?.target ?? current - (removal?.quantity || current);
     const changed = remaining > 0 ? {...session,cart:session.cart.map((line,index) => index === indices[0] ? {...line,quantity:remaining} : line)} : this.removeCartLines(session,indices);
+    const reconciled = this.reconcileSubstitutionPending(changed);
     const keepPending = !!session.pendingAttribute;
     const resumeCheckout = changed.cart.length > 0 && !session.mpPreferenceId && ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state);
-    const next = { ...changed, pendingCartQuantity: undefined,
+    const next = { ...reconciled, pendingCartQuantity: undefined,
       pendingMatch: keepPending ? session.pendingMatch : undefined, pendingMultiOrder: keepPending ? session.pendingMultiOrder : undefined,
       pendingAttribute: keepPending ? session.pendingAttribute : undefined,
       pendingQuantityHint: keepPending ? session.pendingQuantityHint : undefined, mpPreferenceId: undefined,
@@ -19326,11 +19342,94 @@ export class WhatsappOrchestratorService {
 
   }
 
+  /** "Y me regala un X / en vez de A más B o C": one named dish; the alternatives are never purchases. */
+  private singleSubstitutedPurchase(text: string, products: MenuProduct[]): MultiProductResolveResult | null {
+    const purchase = omitSubstitutionChoice(text).trim();
+    const product = this.catalogService.productFullyNamedIn(purchase, products);
+    if (!product || product.availableNow === false) return null;
+    const segment = purchase.split(/\n+/).map(line => line.trim()).filter(Boolean)
+      .find(line => this.catalogService.productFullyNamedIn(line, products)?.id === product.id);
+    if (!segment) return null;
+    const line = {segment, product, score: 100};
+    return {segments: [segment], confident: product.attributes?.length ? [] : [line],
+      needsAttributes: product.attributes?.length ? [line] : [], ambiguous: [], unresolved: []};
+  }
+
+  /** Drop a substitution once its dish is gone, and forget a line note that no longer exists. */
+  private reconcileSubstitutionPending(session: WhatsappSessionData): WhatsappSessionData {
+    const pending = session.pendingSubsetKitchenNote;
+    if (!pending?.substitution) return session;
+    const productIds = pending.productIds.filter(id => session.cart.some(line => line.productId === id));
+    if (!productIds.length) return { ...session, pendingSubsetKitchenNote: undefined };
+    const host = pending.substitution.hostNote;
+    const hostAlive = !host || session.cart.some(line => productIds.includes(line.productId) && this.normalizeForMatch(line.note || '') === host);
+    const substitution = hostAlive ? pending.substitution : { removed: pending.substitution.removed, choices: pending.substitution.choices };
+    const sameProducts = productIds.length === pending.productIds.length && productIds.every((id, index) => id === pending.productIds[index]);
+    if (sameProducts && substitution === pending.substitution) return session;
+    return { ...session, pendingSubsetKitchenNote: { ...pending, productIds, substitution } };
+  }
+
+  private substitutionLineIndexes(session: WhatsappSessionData, pending: NonNullable<WhatsappSessionData['pendingSubsetKitchenNote']>): number[] {
+    return session.cart.flatMap((line, index) => {
+      if (!pending.productIds.includes(line.productId)) return [];
+      if (pending.substitution?.hostNote && this.normalizeForMatch(line.note || '') !== pending.substitution.hostNote) return [];
+      return [index];
+    });
+  }
+
+  /** A note, row number or single named dish. A bare alternative is not a line. */
+  private identifiedSubstitutionLine(session: WhatsappSessionData, pending: NonNullable<WhatsappSessionData['pendingSubsetKitchenNote']>, text: string): number | 'several' | { productId: number } | null {
+    const lines = this.substitutionLineIndexes(session, pending);
+    if (lines.length < 2) return null;
+    const normalized = this.normalizeForMatch(text);
+    if (/^\d{1,2}$/.test(normalized)) {
+      const pick = Number(normalized);
+      return pick >= 1 && pick <= lines.length ? lines[pick - 1] : 'several';
+    }
+    const byNote = lines.filter(index => {
+      const note = this.normalizeForMatch(session.cart[index].note || '');
+      return note.length > 2 && normalized.includes(note);
+    });
+    if (byNote.length === 1) return byNote[0];
+    if (byNote.length > 1) return 'several';
+    const byProduct = this.namedKitchenNoteRows(session, text).filter(index => lines.includes(index));
+    const ids = [...new Set(byProduct.map(index => session.cart[index].productId))];
+    if (ids.length !== 1) return null;
+    const rows = lines.filter(index => session.cart[index].productId === ids[0]);
+    return rows.length === 1 ? rows[0] : { productId: ids[0] };
+  }
+
+  /** A later message can attach one substitution to a dish already in the cart. */
+  private async tryHandleExistingCartSubstitution(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string): Promise<boolean> {
+    if (!session.cart.length || session.pendingSubsetKitchenNote || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || /[¿?]/.test(text)) return false;
+    if (CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || parseCartQuantityCorrection(text) || parseScopedCartRemoval(text)) return false;
+    const substitution = parseSubstitutionChoice(text);
+    if (!substitution) return false;
+    if (/\b(?:quiero|dame|regala|regalame|agrega|ponme|pido|anade)\b/.test(this.normalizeForMatch(text))) return false;
+    const products = await this.catalogService.getMenuProducts();
+    const reserved = new Set([substitution.removed, ...substitution.choices].map(part => this.normalizeForMatch(part)));
+    const named = products.filter(product => product.availableNow !== false && !reserved.has(this.normalizeForMatch(product.name)) && !!this.catalogService.productFullyNamedIn(text, [product]));
+    if (named.some(product => !session.cart.some(line => line.productId === product.id))) return false;
+    const namedIds = [...new Set(named.map(product => product.id))].filter(id => session.cart.some(line => line.productId === id));
+    const productIds = namedIds.length ? namedIds : [...new Set(session.cart.map(line => line.productId))];
+    if (!productIds.length) return false;
+    const next = { ...session, pendingSubsetKitchenNote: { quantity: 1, note: '', productIds, byProduct: true, substitution } };
+    await this.conversationService.saveSession(conv, next);
+    await this.reply(conv, waId, this.formatSubsetKitchenNoteQuestion(next));
+    return true;
+  }
+
   private formatSubsetKitchenNoteQuestion(session: WhatsappSessionData): string {
     const pending = session.pendingSubsetKitchenNote;
     if (!pending) return '';
     const lines = session.cart.filter(line=>pending.productIds.includes(line.productId));
-    if (pending.substitution) return `Para *${lines.map(line=>line.name).join(', ')}*, ¿qué prefieres en vez de ${pending.substitution.removed}: ${pending.substitution.choices.join(' o ')}?\nLo anotaré como solicitud de preparación; no he añadido extras. Para retirarla, escribe «no apliques esa nota».`;
+    if (pending.substitution) {
+      const hosted = pending.substitution.hostNote ? lines.filter(line => this.normalizeForMatch(line.note || '') === pending.substitution!.hostNote) : lines;
+      const ids = new Set(hosted.map(line => line.productId));
+      if (ids.size > 1) return `¿Para cuál plato anoto el cambio de ${pending.substitution.removed} por ${pending.substitution.choices.join(' o ')}?\n${hosted.map((line, index) => `${index + 1}. ${line.name}${line.note ? ` · ${line.note}` : ''}`).join('\n')}\nNo he añadido extras. Responde con el nombre del plato.`;
+      if (hosted.length > 1) return `¿En cuál *${hosted[0].name}* cambio ${pending.substitution.removed} por ${pending.substitution.choices.join(' o ')}?\n${hosted.map((line, index) => `${index + 1}. ${line.name} ×${line.quantity}${line.note ? ` · ${line.note}` : ''}`).join('\n')}\nNo he añadido extras. Responde con la nota de esa línea o su número.`;
+      return `Para *${hosted.map(line=>line.name).join(', ') || 'ese plato'}*, ¿qué prefieres en vez de ${pending.substitution.removed}: ${pending.substitution.choices.join(' o ')}?\nLo anotaré como solicitud de preparación; no he añadido extras. Para retirarla, escribe «no apliques esa nota».`;
+    }
     if (pending.byUnits) return (pending.quantity === 1 ? `¿Cuál producto lleva la nota «${pending.note}»? (1 unidad)\n`
       : `¿Cuáles productos${pending.quantity ? ` (${pending.quantity} unidades)` : ''} deben llevar la nota «${pending.note}»?\n`) +
       lines.map((line,index)=>`${index+1}. ${line.name} ×${line.quantity}`).join('\n') +
@@ -19365,17 +19464,46 @@ export class WhatsappOrchestratorService {
     const eligible = session.cart.flatMap((line,index)=>pending.productIds.includes(line.productId)?[index]:[]);
     if (!pending.byUnits && eligible.length < pending.quantity) return false;
     if (pending.substitution) {
-      const answer = this.normalizeForMatch(text).replace(/^(?:con|prefiero|mejor|dame)\s+/, '').replace(/\s+(?:por favor|porfa|gracias)[.!]*$/, '').replace(/[.!]+$/, '').trim();
-      const chosen = pending.substitution.choices.filter(choice=>this.normalizeForMatch(choice)===answer);
-      if (chosen.length === 1 && eligible.length === 1) {
+      if (/[¿?]/.test(text) || parseCartQuantityCorrection(text) || parseScopedCartRemoval(text)) return false;
+      const normalized = this.normalizeForMatch(text).replace(/[.!]+$/g, '').replace(/\s+(?:por favor|porfa|gracias)$/g, '').trim();
+      const chosen = pending.substitution.choices.filter(choice => {
+        const key = this.normalizeForMatch(choice).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`(?:^|\\s)${key}(?:\\s|$)`).test(normalized);
+      });
+      const lines = this.substitutionLineIndexes(session, pending);
+      const choiceWord = chosen.length === 1 ? this.normalizeForMatch(chosen[0]) : '';
+      const lineText = choiceWord
+        ? normalized.replace(new RegExp(`(?:^|\\s)${choiceWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`), ' ').replace(/\s+/g, ' ').trim()
+        : text;
+      const identified = this.identifiedSubstitutionLine(session, pending, lineText || text);
+      const ask = async () => { await this.reply(conv, waId, this.formatSubsetKitchenNoteQuestion(session)); return true; };
+      if (chosen.length > 1 || isNothingElseOrderIntent(text) || this.isConfirmKeyword(text)) return ask();
+      if (chosen.length === 1) {
+        const index = lines.length === 1 ? lines[0] : typeof identified === 'number' ? identified : null;
+        if (index === null) return ask();
         const note = `Solicitud: cambiar ${pending.substitution.removed} por ${chosen[0]}.`;
-        const next = {...session, pendingSubsetKitchenNote: undefined, cart: session.cart.map((line,index)=>index===eligible[0]?{...line,note:distinctNotes(line.note,note)}:line)};
-        await this.conversationService.saveSession(conv,next);
-        await this.reply(conv,waId,`Anoté para *${next.cart[eligible[0]].name}*: ${note}\n\n${this.formatInterruptedStepReminder(conv,next)}`);
+        const next = {...session, pendingSubsetKitchenNote: undefined, cart: session.cart.map((line, i) => i === index ? {...line, note: distinctNotes(line.note, note)} : line)};
+        await this.conversationService.saveSession(conv, next);
+        await this.reply(conv, waId, `Anoté para *${next.cart[index].name}*: ${note}\n\n${this.formatInterruptedStepReminder(conv, next)}`);
         return true;
       }
-      if (isNothingElseOrderIntent(text) || this.isConfirmKeyword(text)) {
-        await this.reply(conv,waId,this.formatSubsetKitchenNoteQuestion(session)); return true;
+      if (identified === 'several') return ask();
+      if (identified && typeof identified === 'object') {
+        const next = {...session, pendingSubsetKitchenNote: {...pending, productIds: [identified.productId], substitution: { removed: pending.substitution.removed, choices: pending.substitution.choices }}};
+        await this.conversationService.saveSession(conv, next);
+        await this.reply(conv, waId, this.formatSubsetKitchenNoteQuestion(next));
+        return true;
+      }
+      if (typeof identified === 'number') {
+        const line = session.cart[identified];
+        const same = session.cart.filter(item => item.productId === line.productId);
+        const substitution = same.length > 1 && line.note
+          ? {...pending.substitution, hostNote: this.normalizeForMatch(line.note)}
+          : { removed: pending.substitution.removed, choices: pending.substitution.choices };
+        const next = {...session, pendingSubsetKitchenNote: {...pending, productIds: [line.productId], substitution}};
+        await this.conversationService.saveSession(conv, next);
+        await this.reply(conv, waId, this.formatSubsetKitchenNoteQuestion(next));
+        return true;
       }
       return false;
     }
@@ -26407,16 +26535,32 @@ export class WhatsappOrchestratorService {
 
     // A two-way preparation request belongs to its explicit purchase line.
     // Keep it pending instead of discarding it or charging both alternatives.
-    if (!session.cart.length && !session.pendingSubsetKitchenNote) {
+    const substitutionInTurn = parseSubstitutionChoice(text);
+    if (substitutionInTurn) {
+      const reserved = new Set([substitutionInTurn.removed, ...substitutionInTurn.choices].map(part => this.normalizeForMatch(part)));
+      const pricedChoice = (item: { product: { name: string } }) => reserved.has(this.normalizeForMatch(item.product.name));
+      multi.confident = multi.confident.filter(item => !pricedChoice(item));
+      multi.needsAttributes = multi.needsAttributes.filter(item => !pricedChoice(item));
+      multi.ambiguous = multi.ambiguous.flatMap(item => {
+        const candidates = item.candidates.filter(candidate => !reserved.has(this.normalizeForMatch(candidate.name)));
+        return candidates.length ? [{ ...item, candidates }] : [];
+      });
+      multi.unresolved = multi.unresolved.filter(segment => !parseSubstitutionChoice(segment));
+    }
+    if (!session.pendingSubsetKitchenNote) {
       const requests = this.catalogService.splitMultiProductSegments(text, products).flatMap(segment => {
         const substitution = parseSubstitutionChoice(segment);
         const product = substitution ? this.catalogService.productFullyNamedIn(segment, products) : null;
         const matches = [...multi.confident, ...multi.needsAttributes].filter(item => item.product.id === product?.id);
-        return substitution && product && matches.length === 1 ? [{substitution, productId: product.id}] : [];
+        return substitution && product && matches.length === 1 && !substitutionInTurn?.choices.some(choice => this.normalizeForMatch(choice) === this.normalizeForMatch(product.name)) && this.normalizeForMatch(product.name) !== this.normalizeForMatch(substitution.removed) ? [{substitution, productId: product.id}] : [];
       });
-      if (requests.length === 1) session = {...session, pendingSubsetKitchenNote: {
-        quantity: 1, note: '', productIds: [requests[0].productId], byProduct: true,
-        substitution: requests[0].substitution,
+      const alreadyThere = requests.length === 1 && session.cart.some(line => line.productId === requests[0].productId);
+      const added = [...multi.confident, ...multi.needsAttributes].filter(item => !session.cart.some(line => line.productId === item.product.id));
+      const addedIds = [...new Set(added.map(item => item.product.id))];
+      const request = requests.length === 1 && !alreadyThere ? requests[0] : substitutionInTurn && addedIds.length === 1 ? { substitution: substitutionInTurn, productId: addedIds[0] } : null;
+      if (request) session = {...session, pendingSubsetKitchenNote: {
+        quantity: 1, note: '', productIds: [request.productId], byProduct: true,
+        substitution: request.substitution,
       }};
     }
 

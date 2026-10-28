@@ -6,6 +6,14 @@ Preservados compose/.env/backups privados, bases/volúmenes y472archivos generad
 
 Staging rama conservada, contenedor sin cambios en231 `1f0a2f8c`, por tanto232–235 pendientes de deploy únicamente en staging. Continuar trabajo en staging. Main desplegado no significa todos los chats corregidos; pendientes históricos y límites235 siguen vigentes. Sin API pagada/WhatsApp/órdenes externas de prueba.
 
+## VIGENTE — tanda 236: sustitución pendiente frente a cambios del carrito (27/10)
+
+Base `44bf3917`, staging. La elección pendiente de la tanda 235 sigue coherente si el carrito cambia antes de responder: quitar el plato dueño la descarta, quitar otro la conserva, cantidades y consultas no la consumen, un plato añadido con su sustitución a un carrito existente se compra sin comprar las alternativas, y con varias líneas del mismo plato pregunta en cuál y anota solo esa.
+
+42 conversaciones nuevas: tres menús sintéticos×agente simulado off/on×siete caminos, con respuesta/carrito/pendiente/nota/DTO. Baseline: camino «añadido» rojo en 6/6. Foco70/70; TS general/build, Node92 aprobados. Global19.994/305 suites,691s, sin fallos; fuente congelada. Informe `docs/whatsapp-substitution-pending-edit-validation-2710.md`.
+
+Alcance: una sustitución delimitada a la vez; no acredita paráfrasis fuera del patrón ni disponibilidad real/inferencia. Próximo: reparto2→3, adicionales omitidos, cantidades/negación con errores, reemplazos que agregan, cortesía/destino. Sin API pagada/Meta/órdenes externas. Publicación staging sin despliegue:232–236 pendientes agrupados; último servidor staging verificado231 `1f0a2f8c`. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 235: alternativas de acompañamiento (26/10)
 
 Base `0e2b4fc9`, staging. «En ves de ensalada más papa o yuca» queda como elección de preparación pendiente del ejecutivo. Pregunta alternativa, conserva compras/destino y anota solo en ese plato; no cobra extras ni promete disponibilidad de cocina. Retirar nota y cancelar pedido limpian pendientes. Confirmación prematura no crea orden.

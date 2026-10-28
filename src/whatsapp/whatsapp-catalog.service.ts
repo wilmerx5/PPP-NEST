@@ -1,3 +1,4 @@
+import { omitSubstitutionChoice } from './whatsapp-substitution-choice';
 import {splitIntensityPreference} from './whatsapp-kitchen-description';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import {splitKitchenPreference} from './whatsapp-kitchen-preference';
@@ -9177,7 +9178,8 @@ export class WhatsappCatalogService {
           purchases[purchases.length - 1] += ', ' + line;
         else { complete = false; break; }
       }
-      if (complete && purchases.length >= 2) return purchases;
+      const gluedSubstitution = purchases.some(line => /\ben\s+ve[sz]\s+de\b/i.test(line));
+      if (complete && (purchases.length >= 2 || (gluedSubstitution && purchases.length === 1))) return purchases;
     }
     // A standalone exclusion on the following line modifies the preceding
     // request. Keep it attached before newline-based product segmentation.
@@ -9709,7 +9711,7 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): MultiProductResolveResult | null {
-    text = this.sharedOrderModifier(text)?.body ?? text;
+    text = omitSubstitutionChoice(this.sharedOrderModifier(text)?.body ?? text);
     // Catalog-backed alternate word order: "burger especial en combo" names
     // the same SKU as "Combo Burger Especial". Preserve quantities and extras.
     const combos = products.filter(product => /^combo\s+(?:de\s+)?/i.test(product.name));
