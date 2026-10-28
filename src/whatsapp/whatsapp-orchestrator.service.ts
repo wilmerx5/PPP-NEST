@@ -1182,6 +1182,14 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    const checkoutSession = this.conversationService.getSession(conv);
+    if (/^awaiting_(?:name|address|phone|payment|final_confirm)$/.test(conv.state || '') && checkoutSession.cart.length &&
+        /^(?:(?:ya\s+)?voy|un moment(?:o|ico)|dame un momento|ya te digo|esperame)[.!]*$/.test(this.normalizeForMatch(text))) {
+      await this.reply(conv, msg.waId, 'Claro, te espero. Cuando estés listo seguimos con el pedido.');
+      return;
+    }
+    if (await this.tryResolveRecipientOrPlace(conv, msg.waId, checkoutSession, text, cfg)) return;
+
     // A bare label after closing a delivery cart can be either recipient or place.
     // Ask its role instead of silently assigning it to the next checkout field.
     const closingParts = text.split('\n').map(part => part.trim()).filter(Boolean);
@@ -1192,7 +1200,7 @@ export class WhatsappOrchestratorService {
         !closingSession.pendingAttribute && !closingSession.pendingMatch && !closingSession.pendingMultiOrder &&
         !CART_EDIT_SELECTION_KEYS.some(key => !!closingSession[key]) &&
         !this.repliesWithCatalogDishName(closingParts[1], await this.catalogService.getMenuProducts())) {
-      await this.conversationService.saveSession(conv, closingSession, 'awaiting_name');
+      await this.conversationService.saveSession(conv, {...closingSession, pendingRecipientOrPlace:closingParts[1]}, 'awaiting_name');
       await this.reply(conv, msg.waId, `¿*${closingParts[1]}* es el nombre para el pedido o el barrio/conjunto de entrega? Necesito el nombre y la dirección completa para continuar.`);
       return;
     }
@@ -1784,8 +1792,9 @@ export class WhatsappOrchestratorService {
         await this.reply(conv, msg.waId, 'No puedo confirmar un aviso automático de llegada. Para coordinar la entrega, ' + this.humanPhoneHint());
         return;
       }
-      if (/^(?:y\s+)?(?:me\s+)?(?:envias|mandas|incluyes|agregas|envia|manda|incluye|agrega)(?:me)?\s+con\s+/.test(postText)) {
-        await this.reply(conv, msg.waId, 'El pedido ya está registrado. Esta solicitud de cambio todavía no está aplicada; para confirmar si pueden incluirla, ' + this.humanPhoneHint());
+      const supplyRequest = /^(?:y\s+)?(?:con|me regalas?|me puedes enviar|me envias|incluyeme)\s+(?:(?:unos?|unas?|dos|tres)\s+)?(?:salsas?|servilletas|cubiertos|sobres de (?:salsa|mostaza|mayonesa))(?:\s+(?:tambien|porfa|por favor|gracias))*[.!]*$/.test(postText);
+      if (supplyRequest || /^(?:y\s+)?(?:me\s+)?(?:envias|mandas|incluyes|agregas|envia|manda|incluye|agrega)(?:me)?\s+con\s+/.test(postText)) {
+        await this.reply(conv, msg.waId, `Esta solicitud de cambio todavía no está aplicada. Para confirmar si pueden incluirla en un pedido ya confirmado, llámanos al *${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*.`);
         return;
       }
       // ETA / demora / faltante: no reabrir carrito ni buscar platos
@@ -11098,6 +11107,10 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, this.withPreface(preface, body));
       opts = { ...opts, preface: undefined };
     };
+
+    if (session.pendingRecipientOrPlace) {
+      await say(`Falta aclarar si *${session.pendingRecipientOrPlace}* es el nombre o el barrio/conjunto de entrega.`);return;
+    }
 
     if (session.pendingMatch?.unitAttributeGroups) {
       await say('Falta elegir la preparación del reparto de dos unidades antes de confirmar.');return;
@@ -22590,6 +22603,45 @@ export class WhatsappOrchestratorService {
       return enabled.find(m => m.id === 'cash' || m.id === 'contraentrega') || null;
     }
     return null;
+  }
+
+  /** Resolve the role of a bare label without guessing a name or geocoding a landmark. */
+  private async tryResolveRecipientOrPlace(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const label = session.pendingRecipientOrPlace;
+    if (!label || !session.cart.length || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const said = this.normalizeForMatch(text).replace(/[.!]+$/, '').trim();
+    const nameRole = /^(?:es |ese es |eso es )?(?:mi nombre|el nombre|el destinatario)$/.test(said);
+    const placeRole = /^(?:es |ese es |eso es )?(?:el barrio|el conjunto|la urbanizacion|el lugar de entrega)$/.test(said);
+    if ((nameRole || placeRole) && /[¿?]/.test(text)) {
+      await this.reply(conv, waId, `Necesito que aclares si *${label}* es tu nombre o el barrio/conjunto de entrega. El pedido sigue igual.`);
+      return true;
+    }
+    if (nameRole || placeRole) {
+      const next = {...session, pendingRecipientOrPlace:undefined};
+      if (placeRole) {
+        Object.assign(next, {pendingDeliveryPlace:label, address:undefined, addressConfirmed:false,
+          deliveryLat:undefined, deliveryLng:undefined, deliveryFeeCalculated:undefined, deliveryDistanceKm:undefined,
+          deliveryOutOfCoverage:false, freshDeliveryAddressRequested:true});
+        await this.conversationService.saveSession(conv, next, 'awaiting_name');
+        await this.reply(conv, waId, `Anoté *${label}* como barrio/conjunto. ¿A nombre de quién dejamos el pedido? Después necesito la dirección completa.`);
+      } else {
+        await this.conversationService.updateCustomerName(conv, label);
+        await this.conversationService.saveSession(conv, next);
+        await this.tryConfirmOrder(conv, waId, next, {requireFinalReview:true});
+      }
+      return true;
+    }
+    const explicitName = text.match(/^(?:mi nombre es|me llamo|a nombre de)\s+(.+)$/i)?.[1];
+    if (conv.state === 'awaiting_name' && !this.isConfirmKeyword(text) && !isFinalConfirmAffirmation(text) &&
+        isUsableWhatsappCustomerName(explicitName || text) && !this.looksLikeAddressRejectingPersonName(text) &&
+        !this.looksLikePayment(text, cfg.paymentMethods) &&
+        !this.repliesWithCatalogDishName(text, await this.catalogService.getMenuProducts())) {
+      // A fresh name answers checkout without assigning the earlier ambiguous label to a place.
+      await this.conversationService.saveSession(conv, {...session,pendingRecipientOrPlace:undefined});
+    }
+    return false;
   }
 
   private isMerchantPaymentDetailsQuestion(text: string): boolean {

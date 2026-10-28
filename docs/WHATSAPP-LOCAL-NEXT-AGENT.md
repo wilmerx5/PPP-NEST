@@ -1,4 +1,10 @@
-## VIGENTE — tandas266–267: cambio de ejecutivo por presa y retirada negada (28/10)
+## VIGENTE — tanda269: espera y recuperación de nombre/lugar (28/10)
+
+Base `61977986`. Continúa268: «Voy»/«ya te digo» en otro turno recibe espera sin modificar datos. «Es el barrio/conjunto» recupera el rótulo ambiguo y lo adjunta a la dirección posterior; «es mi nombre» resuelve destinatario. Consultas, afirmaciones vagas y preguntas sobre el rol no deciden por el cliente. Campo JSON opcional `pendingRecipientOrPlace`, sin SQL; guard central bloquea confirmación hasta resolverlo, incluso skipFinalConfirm. Reinicio/nombre nuevo explícito limpian la duda. Antes de rollback, resolver/cancelar normalmente los borradores afectados; no borrar datos.
+
+114 regresiones nuevas, tres cartas×agente simulado off/on, DTO en espera/lugar y controles de confirmación directa, reinicio, consulta de pago, recogida y nueva compra. Baseline66fallos (24de respuesta de espera, sin corrupción del carrito) y6guardas adicionales de pregunta. Foco372/5. Global21350/333 aprobada, inventario exacto y544fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-269-validation.json` e informe `whatsapp-checkout-context-recovery-validation-2810.md`.
+
+Variantes de salsas/servilletas después de confirmar no abren carrito ni simulan aplicación del cambio; el aviso no afirma que existe una orden solo por tener chat cerrado. Sin edición automática ni notificación de llegada. Modelos/servicios externos simulados; cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. Despliegue staging pendiente de verificación. Producción continúa265. Delta266–269 pendiente de portar a Kamppo; no se modifica ese repositorio. Continúan pendientes arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
 
 ## VIGENTE — tanda268: nombre, Nequi y seguimiento posterior (28/10)
 
@@ -8,6 +14,8 @@ Base `87e47432`. Chats reales: «Natalia»+«Voy», «Me indicas el Nequi», cie
 
 No implementa edición automática de pedidos confirmados ni notificación de llegada. Rótulos ambiguos necesitan aclaración. Continúan pendientes muestra reservada, medios/canal y arranque de dos ejecutivos; no declarar vendible solo por esta batería.
 
+
+## VIGENTE — tandas266–267: cambio de ejecutivo por presa y retirada negada (28/10)
 
 Base `5225ccb3`, después de promover265 a producción. Reporte del28/10: «Cambiame El De pechuga con Pollo broaster» añadía un pollo entero; «No no quiero Un Pollo quitalo» abría carta; la explicación con «sink» listaba broaster.266 identifica la línea por opción/nota y busca otra preparación de la misma familia del catálogo. Conserva opciones compatibles, notas, cantidad y resto del carrito; no añade proteína suelta.267 interpreta rechazo+quítalo como retirada. «Quiero cambiar un ejecutivo» pide dueño y preparación sin comprar.
 

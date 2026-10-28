@@ -264,6 +264,8 @@ export type WhatsappSessionData = {
   pendingAddressConflict?: { source: string; label: string; values: string[] };
   /** Neighborhood or landmark named before the street; joins the next complete street once. Never geocode alone. */
   pendingDeliveryPlace?: string;
+  /** Bare checkout label whose role (recipient or delivery place) is not confirmed yet. */
+  pendingRecipientOrPlace?: string;
   /** Do not reoffer a saved destination after the customer requested a new one. */
   freshDeliveryAddressRequested?: boolean;
   /**

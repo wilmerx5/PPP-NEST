@@ -1,0 +1,71 @@
+{
+  "baseCommit": "61977986a828977a933d5f35719aa90e57d4116c",
+  "batches": [
+    269
+  ],
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 157.47,
+      "sourceUnchanged": true,
+      "tests": 4206,
+      "failed": 0
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 162.84,
+      "sourceUnchanged": true,
+      "tests": 3405,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 263.06,
+      "sourceUnchanged": true,
+      "tests": 13723,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 5.93,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 544,
+  "tests": 21350,
+  "suites": 333,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 114,
+  "focusTests": 372,
+  "focusSuites": 5,
+  "runtimeChanged": true,
+  "persistenceChanged": true,
+  "newOptionalSessionField": "pendingRecipientOrPlace",
+  "sqlMigration": false,
+  "productionChanged": false,
+  "deploymentStatus": "Validated locally; staging deployment pending",
+  "baseline": {
+    "failed": 66,
+    "passed": 0,
+    "waitingReplyFailures": 24,
+    "additionalQuestionGuardFailures": 6
+  },
+  "limits": [
+    "External services and models mocked; no real Meta timing, inference, PDF or audio evaluation.",
+    "Post-order changes require human confirmation; no automatic kitchen mutation or arrival notification added.",
+    "Resolve or normally cancel pending recipient/place drafts before rolling back to an image that does not understand the optional field."
+  ]
+}
