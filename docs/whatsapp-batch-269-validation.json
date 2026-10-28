@@ -56,7 +56,7 @@
   "newOptionalSessionField": "pendingRecipientOrPlace",
   "sqlMigration": false,
   "productionChanged": false,
-  "deploymentStatus": "Validated locally; staging deployment pending",
+  "deploymentStatus": "Verified staging; see whatsapp-batch-269-staging-deployment.json",
   "baseline": {
     "failed": 66,
     "passed": 0,
@@ -67,5 +67,6 @@
     "External services and models mocked; no real Meta timing, inference, PDF or audio evaluation.",
     "Post-order changes require human confirmation; no automatic kitchen mutation or arrival notification added.",
     "Resolve or normally cancel pending recipient/place drafts before rolling back to an image that does not understand the optional field."
-  ]
+  ],
+  "runtimeCodeCommit": "c34abea0b55bc106d23463f784d8d158d6d5e06f"
 }
