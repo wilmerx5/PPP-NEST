@@ -79,5 +79,7 @@
     "tests": 20579,
     "suites": 322,
     "mode": "Final complete inventory in four disjoint sequential blocks; four workers except isolated timers; no retry or timeout increase within final validation"
-  }
+  },
+  "runtimeCodeCommit": "ac11574c5f4683e3a1efcf0acd9d8ac7e1eb7851",
+  "stagingDeployment": "docs/whatsapp-batch-249-251-staging-deployment.json"
 }
