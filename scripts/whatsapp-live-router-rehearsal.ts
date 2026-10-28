@@ -13,10 +13,10 @@ import { WhatsappPointsService } from '../src/whatsapp/whatsapp-points.service';
 import { WhatsappTurnTelemetryService } from '../src/whatsapp/whatsapp-turn-telemetry.service';
 import { DEFAULT_PAYMENT_METHODS } from '../src/whatsapp/whatsapp-payment-methods';
 import type { WhatsappSessionData } from '../src/whatsapp/types/whatsapp-session.types';
-import { BetaApiUsage } from './whatsapp-beta-api-usage';
-import { matchesExpectedCartLines, type ExpectedCartLine } from './whatsapp-beta-cart-assertions';
+import { BetaApiUsage, summarizeModelUsage } from './whatsapp-beta-api-usage';
+import { matchesExpectedCartLines, cartLinesFromOrderItems, type ExpectedCartLine } from './whatsapp-beta-cart-assertions';
 
-type Expectation = { replyAny?: string[]; replyAll?: string[]; replyForbid?: string[]; lines?: ExpectedCartLine[]; items?: Record<string, number>; state?: string; address?: string; payment?: string; orderCount?: number; cashContains?: string; attrs?: Array<{id:number;key:string;value:string}> };
+type Expectation = { replyAny?: string[]; replyAll?: string[]; replyForbid?: string[]; lines?: ExpectedCartLine[]; orderLines?: ExpectedCartLine[]; items?: Record<string, number>; state?: string; address?: string; payment?: string; orderCount?: number; cashContains?: string; attrs?: Array<{id:number;key:string;value:string}> };
 type Scenario = { id: string; unavailableProductIds?: number[]; initialCart?: Array<{id:number;quantity:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>}>; messages: Array<{text:string;expect:Expectation}> };
 if (process.env.WHATSAPP_BETA_LIVE !== '1' || !process.env.OPENAI_API_KEY) throw Error('Explicit live flag and private API key required');
 const maxRequests = Number(process.env.WHATSAPP_BETA_MAX_REQUESTS);
@@ -30,7 +30,12 @@ if (!Number.isSafeInteger(sharedBudget.remainingRequests) || maxRequests > share
 let budgetExhausted = false;
 Logger.overrideLogger(false);
 const model = process.env.WHATSAPP_BETA_MODEL || 'gpt-4o-mini';
+if (process.env.WHATSAPP_AGENT_MODEL) throw Error('Remove the agent override before comparing models');
 const usage = new BetaApiUsage();
+const usageByModel = new Map<string,BetaApiUsage>();
+function apiUsageReport() {
+  return summarizeModelUsage(usage,usageByModel,model);
+}
 const originalFetch = globalThis.fetch;
 const requestIntervalMs = Math.max(0,Math.min(5000,Number(process.env.WHATSAPP_BETA_REQUEST_INTERVAL_MS ?? 1500)));
 let lastRequestStart=0;
@@ -38,6 +43,8 @@ const responsesApi = /^gpt-6(?:[.-]|$)/i.test(model);
 const requestTimings:number[]=[];
 globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
   if (!['https://api.openai.com/v1/chat/completions','https://api.openai.com/v1/responses'].includes(String(args[0]))) throw Error('Only isolated OpenAI inference is permitted');
+  const requestedModel = JSON.parse(String(args[1]?.body || '{}')).model;
+  if (typeof requestedModel !== 'string' || !requestedModel.trim()) throw Error('An explicit request model is required');
   const delay=Math.max(0,requestIntervalMs-(Date.now()-lastRequestStart));
   if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
   if (usage.requests >= maxRequests) {
@@ -51,17 +58,23 @@ globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
   currentBudget.usedRequests++;
   currentBudget.remainingRequests--;
   currentBudget.lastAttemptAt = new Date().toISOString();
-  writeFileSync(budgetFile,JSON.stringify(currentBudget,null,2)+'\n');
+  const serializedBudget = JSON.stringify(currentBudget,null,2)+'\n';
+  writeFileSync(budgetFile,serializedBudget);
+  if (process.env.WHATSAPP_BUDGET_MIRROR) writeFileSync(process.env.WHATSAPP_BUDGET_MIRROR,serializedBudget);
   lastRequestStart=Date.now();
   usage.requests++;
+  const perModel = usageByModel.get(requestedModel) || new BetaApiUsage();
+  usageByModel.set(requestedModel,perModel);
+  perModel.requests++;
   try {
     const started=Date.now();
     const response = await originalFetch(...args);
     requestTimings.push(Date.now()-started);
     let body:unknown; try { body = await response.clone().json(); } catch { /* Account for missing usage. */ }
     usage.record(response.status, body);
+    perModel.record(response.status,body);
     return response;
-  } catch(error) { usage.recordTransportFailure(error); throw error; }
+  } catch(error) { usage.recordTransportFailure(error); perModel.recordTransportFailure(error); throw error; }
 };
 const products = JSON.parse(readFileSync(join(process.cwd(),process.env.WHATSAPP_BETA_MENU_FIXTURE || 'scripts/fixtures/whatsapp-beta-menu.json'),'utf8'));
 const scenarios:Scenario[] = JSON.parse(readFileSync(join(process.cwd(),process.env.WHATSAPP_BETA_SCENARIOS_FIXTURE || 'scripts/fixtures/whatsapp-live-router-cases.json'),'utf8'));
@@ -105,7 +118,7 @@ function harness(scenario:Scenario) {
   const run=agent.runTurn.bind(agent);agent.runTurn=async input=>{agentTurns++;const result=await run(input);agentResults.push({reply:result.reply,actions:result.actions,toolCalls:result.toolCalls,purchaseAttempts:result.purchaseAttempts});if(result.error)agentErrors.push(result.error);return result;};
   const service=new WhatsappOrchestratorService(settings,{sendText:async()=>{throw Error('Meta must stay isolated');}} as never,
     catalog,new WhatsappAiService(settings),conversations,{getStatus:async()=>({isOpen:true,message:'Abierto',openTime:'00:00',closeTime:'23:59'})} as never,
-    {create:async(dto:any)=>{orders.push(structuredClone(dto));return {id:orders.length,dailyOrderNumber:orders.length};}} as never,
+    {findTodayOrdersByPhone:async()=>[],create:async(dto:any)=>{orders.push(structuredClone(dto));return {id:orders.length,dailyOrderNumber:orders.length};}} as never,
     {createPreference:async()=>{throw Error('Payments must stay isolated');}} as never,new WhatsappActionGuardService(catalog),
     new WhatsappPointsService({} as never),{quoteDeliveryFee:async()=>({ok:false,reason:'no_api_key',message:'Synthetic fixed delivery fee'})} as never,
     agent,new WhatsappTurnTelemetryService()) as any;
@@ -140,6 +153,7 @@ async function main(){
         if(expected.attrs?.some(attr=>!actual.session.cart.some(line=>line.productId===attr.id && line.attributes?.some(a=>a.attributeName===attr.key && a.attributeValue===attr.value))))problems.push(`turn_${i}:attributes`);
         if(expected.cashContains && !(actual.session.cashChangeFor||'').includes(expected.cashContains))problems.push(`turn_${i}:cash`);
         if(expected.orderCount!==undefined && actual.orders.length!==expected.orderCount)problems.push(`turn_${i}:order_count`);
+        if(expected.orderLines){const lines=cartLinesFromOrderItems(actual.orders.at(-1)?.items);if(!lines || !matchesExpectedCartLines(expected.orderLines,lines))problems.push(`turn_${i}:order_contents`);}
         if(actual.agentErrors.length)problems.push(`turn_${i}:agent_error`);
         const normalizeReply = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
         const replyText = normalizeReply(actual.replies.join(' '));
@@ -154,11 +168,11 @@ async function main(){
     }
     results.push({id:scenario.id,repetition,accepted:!problems.length,problems,requests:usage.requests-requestsBefore,turns});
     console.log(JSON.stringify({id:scenario.id,repetition,accepted:!problems.length,problems,requests:usage.requests-requestsBefore}));
-    mkdirSync('tmp',{recursive:true});writeFileSync('tmp/whatsapp-live-router-report.json',JSON.stringify({model,endpoint:responsesApi?'responses':'chat/completions',requestTimings,maxRequests,budgetExhausted,planned:cases.length*repeats,results,apiUsage:usage.summary(model)},null,2));
+    mkdirSync('tmp',{recursive:true});writeFileSync('tmp/whatsapp-live-router-report.json',JSON.stringify({model,routingComplexModel:process.env.WHATSAPP_AGENT_COMPLEX_MODEL || null,endpoint:responsesApi?'responses':'chat/completions',requestTimings,maxRequests,budgetExhausted,planned:cases.length*repeats,results,...apiUsageReport()},null,2));
     if(stopOnFailure && problems.length)break outer;
   }
   const accepted=results.filter(r=>r.accepted).length;
-  console.log(JSON.stringify({accepted,executed:results.length,planned:cases.length*repeats,apiUsage:usage.summary(model)}));
+  console.log(JSON.stringify({accepted,executed:results.length,planned:cases.length*repeats,...apiUsageReport()}));
   if(results.length!==cases.length*repeats || accepted!==results.length || !usage.successfulResponses)process.exitCode=1;
 }
 main().catch(()=>{console.error('LIVE_ROUTER_REHEARSAL_FAILED');process.exitCode=1;}).finally(()=>{globalThis.fetch=originalFetch;});

@@ -125,7 +125,26 @@
       {
         "text": "confirmar",
         "expect": {
-          "orderCount": 1
+          "orderCount": 1,
+          "orderLines": [
+            {
+              "id": 71,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Pepsi"
+                }
+              ]
+            },
+            {
+              "id": 38,
+              "quantity": 2,
+              "note": [
+                "sin arroz"
+              ]
+            }
+          ]
         }
       }
     ]

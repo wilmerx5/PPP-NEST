@@ -1,0 +1,94 @@
+{
+  "batch": 244,
+  "baseCommit": "bfb62eb6",
+  "date": "2026-10-28",
+  "global": {
+    "tests": 20314,
+    "suites": 315,
+    "mode": "Consolidated validation, not a single green global run: first rest phase 18 failures in two outdated model selector mocks; only these test fixtures changed, both suites repeated in full. Isolated timer phase and type/build/Node checks then passed. No runtime change, timeout increase or hidden failure."
+  },
+  "initialRest": {
+    "numPassedTests": 20209,
+    "numFailedTests": 18,
+    "numPendingTests": 0,
+    "numPassedTestSuites": 311,
+    "numTotalTestSuites": 313
+  },
+  "mockRepair": {
+    "numPassedTests": 45,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numPassedTestSuites": 2,
+    "numTotalTestSuites": 2
+  },
+  "timers": {
+    "numPassedTests": 87,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numPassedTestSuites": 2,
+    "numTotalTestSuites": 2
+  },
+  "focused": {
+    "numPassedTests": 157,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numPassedTestSuites": 9,
+    "numTotalTestSuites": 9
+  },
+  "inventory": {
+    "expected": 315,
+    "observed": 315,
+    "missing": [],
+    "unexpected": [],
+    "duplicates": []
+  },
+  "source": {
+    "runtimeUnchangedBetweenPhases": true,
+    "testOnlyChangesBetweenPhases": [
+      "src/whatsapp/whatsapp-agent-cost-boundary.spec.ts",
+      "src/whatsapp/whatsapp-inference-usage.spec.ts"
+    ],
+    "finalSourceUnchanged": true,
+    "files": 629,
+    "snapshotSha256": "855fa5f854252972ffbb38247a5fd629f1b63b59647d2ed191dcf4122aee287e"
+  },
+  "runnerInterruption": {
+    "unchanged": true,
+    "files": 629,
+    "restRunnerExit": 143,
+    "note": "Rest JSON complete, parent ended before serial timer phase; remaining phases resumed separately."
+  },
+  "checks": [
+    {
+      "name": "mock-repair",
+      "status": 0,
+      "seconds": 5.994
+    },
+    {
+      "name": "timers",
+      "status": 0,
+      "seconds": 67.623
+    },
+    {
+      "name": "tsc",
+      "status": 0,
+      "seconds": 2.131
+    },
+    {
+      "name": "tsc-build",
+      "status": 0,
+      "seconds": 7.126
+    },
+    {
+      "name": "node",
+      "status": 0,
+      "seconds": 0.303
+    }
+  ],
+  "newTests": 41,
+  "realInferenceReport": "docs/whatsapp-text-economy-results-2810.json",
+  "limitations": [
+    "Development mocks do not establish real image/audio accuracy, all historical chats/PDF coverage or independent general accuracy.",
+    "Known-case real inference is isolated from external orders, Meta, maps and payments."
+  ]
+}

@@ -20,6 +20,15 @@ export function applyCartLineEdits(cart: WhatsappCartItem[], actions: AiOrderAct
     const attributes = edited[index].attributes || [];
     const old = attributes.findIndex(a => a.attributeName.toLowerCase() === update.attributeName.toLowerCase());
     const value = { attributeName: update.attributeName, attributeValue: update.attributeValue };
+    if (old >= 0 && /^(?:bebida|gaseosa|refresco)s?$/i.test(update.attributeName)) {
+      const fold = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+      const previous = attributes[old].attributeValue;
+      if (fold(previous) !== fold(value.attributeValue) && edited[index].note) {
+        const parts = edited[index].note!.split(/[;,]/).map(part=>part.trim()).filter(Boolean);
+        const kept = parts.filter(part=>fold(part) !== `con ${fold(previous)}`);
+        if (kept.length !== parts.length) edited[index].note = kept.join('; ') || undefined;
+      }
+    }
     if (old < 0) attributes.push(value);
     else attributes[old] = value;
     edited[index].attributes = attributes;

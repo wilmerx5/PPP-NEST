@@ -69,3 +69,13 @@ export class BetaApiUsage {
     };
   }
 }
+
+/** A fixed auxiliary model must not be priced as the agent candidate. */
+export function summarizeModelUsage(total: BetaApiUsage, models: Map<string,BetaApiUsage>, candidate: string) {
+  const apiUsageByModel = Object.fromEntries([...models].map(([name,value])=>[name,value.summary(name)]));
+  const apiUsage = total.summary(candidate);
+  const values = Object.values(apiUsageByModel);
+  apiUsage.estimatedReportedCostUsd = !apiUsage.usageComplete || values.some(value=>value.estimatedReportedCostUsd === null)
+    ? null : values.reduce((sum,value)=>sum+(value.estimatedReportedCostUsd || 0),0);
+  return {apiUsage,apiUsageByModel};
+}

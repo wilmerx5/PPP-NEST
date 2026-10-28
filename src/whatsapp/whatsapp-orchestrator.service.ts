@@ -23709,7 +23709,14 @@ export class WhatsappOrchestratorService {
         .split('\n')
         .map((line) => line.trim())
         .find((line) => /\bno (?:(?:lo|la|los|las) )?(?:te ofrecemos|tenemos|manejamos|hay|contamos|est[aá](?:n)? disponible(?:s)?)\b/i.test(line));
-      const misses = [missLine, ...intentMisses, ...unappliedToolLines].filter(Boolean);
+      // The acknowledgement is grounded in the customer's explicit policy and
+      // this catalog, not in the provider's choice of refusal wording.
+      const omission = (originalText || text).match(/\bsi\s+no\s+(?:venden|tienen|manejan|hay)\s+([\p{L} ]{3,60}?)\s*,?\s+no\s+(?:lo|la|los|las)\s+(?:reemplaces|reemplacen|cambies|cambien|sustituyas|sustituyan)\b/iu)?.[1]?.trim();
+      const unlistedOmission = omission && omission.split(/\s+/).length <= 5 && !/\b(?:y|o|pero|si)\b/i.test(omission) &&
+        !this.catalogService.productByDishMention(omission,products) &&
+        !this.catalogService.searchByNameScored(omission,products,3).some(hit=>hit.score>=70)
+        ? `No agregué ni reemplacé *${omission}*.` : null;
+      const misses = [missLine || unlistedOmission, ...intentMisses, ...unappliedToolLines].filter(Boolean);
       reply = misses.length ? `${misses.join('\n')}\n\n${cartReply}` : cartReply;
     } else if (guarded.actions?.updateAttributes?.length) {
       reply =

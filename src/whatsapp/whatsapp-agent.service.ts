@@ -3,7 +3,7 @@ import { isFailedAdditionQuestion } from './whatsapp-session-intents';
 import {splitIntensityPreference} from './whatsapp-kitchen-description';
 import { hasExplicitUnitOptionSource } from './whatsapp-unit-option-source';
 import { prepareUnitOptionActions, prepareUnitOptionPlan, type UnitOptionEdit } from './whatsapp-unit-option-plan';
-import { resolveWhatsappAgentModel } from './whatsapp-agent-model';
+import { resolveWhatsappAgentRoute } from './whatsapp-agent-model';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { Injectable, Logger } from '@nestjs/common';
@@ -656,7 +656,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       { role: 'user', content: input.userMessage },
     ];
 
-    const model = resolveWhatsappAgentModel(cfg.openaiModel);
+    const route = resolveWhatsappAgentRoute(cfg.openaiModel,input.userMessage);
+    const model = route.model;
     const responsesBridge = /^gpt-6(?:[.-]|$)/i.test(model) ? new WhatsappResponsesBridge() : null;
     const turnDeadline = Date.now()+25000;
     const inferenceTurnId = randomUUID();

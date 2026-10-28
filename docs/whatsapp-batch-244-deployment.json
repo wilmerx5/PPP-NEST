@@ -1,0 +1,23 @@
+{
+  "batch": 244,
+  "status": "awaiting_global_and_staging_gate",
+  "authorization": "User requested staging changes, validation, next batch and production deployment on 2026-10-28.",
+  "plannedModels": {
+    "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+    "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+    "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+    "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+    "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+  },
+  "backups": "/root/ppp-244-backups/20261028T152249Z/{staging,production}",
+  "rollback": {
+    "staging": "Restore private env backup, retag ppp-nest-staging:rollback-before-244 as ppp-nest-staging:candidate and recreate api with staging compose, --no-build --force-recreate.",
+    "production": "Restore private env backup, retag ppp-nest-api:rollback-before-244 as ppp-nest-api:latest and recreate api with existing private compose, --no-build --force-recreate."
+  },
+  "preserve": [
+    "All databases and volumes",
+    "Production private compose changes",
+    "Server private backups and staging bin/",
+    "Existing local generated dist and tsbuildinfo changes"
+  ]
+}

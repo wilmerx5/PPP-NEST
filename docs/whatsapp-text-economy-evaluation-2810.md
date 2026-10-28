@@ -1,39 +1,25 @@
-# Texto más económico — comparación preparada el 28/10/2026
+# Texto económico — tanda 244, 28/10/2026
 
-Objetivo autorizado por el usuario: comprobar si GPT-6 Luna puede sustituir a GPT-6.1 Sol para texto manteniendo exactitud del pedido y reduciendo el costo por conversación completada. No hay un ganador nuevo ni un cambio de producción.
+Decisión tras la comparación autorizada: Luna para texto habitual y Sol para condiciones/repartos explícitos. La selección se realiza una vez al inicio del turno, antes de ejecutar herramientas; no se repiten compras al cambiar de modelo. Activación opt-in con `WHATSAPP_AGENT_MODEL=gpt-6-luna` y `WHATSAPP_AGENT_COMPLEX_MODEL=gpt-6.1-sol`. Sin el segundo ajuste se conserva el modelo principal. Visión/apoyo continúan Luna; audio GPT-Transcribe.
 
-## Estrategia recomendada
+Luna sola completó PPP en un ensayo de desarrollo, pero otro agotó seis rondas con el pedido compuesto. Esto no justifica usarla sola para todas las entradas. La ruta nueva reconoce condiciones y reparto mediante patrones delimitados; no es un clasificador universal de complejidad ni una recuperación automática tras fallos.
 
-1. Mantener el router y las reglas existentes para resolver los turnos que ya pueden manejar sin inferencia.
-2. Evaluar Luna como modelo principal para los demás turnos de texto. Sol es la referencia de calidad actual, no una segunda llamada obligatoria en cada turno.
-3. Mantener clasificación/apoyo fijo en Luna durante la comparación y contabilizar esas solicitudes por separado. Fotos y transcripción no cambian en esta evaluación.
-4. Si Luna pasa la comparación inicial, ampliar a conversaciones reservadas y después a staging controlado. Un respaldo a Sol solo se implementa si hace falta y se prueba antes de aplicar acciones; no se debe repetir una compra ya aceptada al fallar la respuesta del proveedor.
+La tanda también corrige dos problemas generales encontrados con inferencia real: conservar un aviso de omisión explícita sustentado por catálogo aunque el proveedor lo redacte distinto, y retirar una cláusula positiva exacta «con bebida anterior» al cambiar ese atributo, manteniendo exclusiones, otras notas y otras líneas. Controles en tres cartas, sin excepciones por productos PPP.
 
-Las tarifas Standard publicadas por millón de tokens son: Luna entrada $0,10, entrada cacheada $0,01 y salida $0,50; Sol entrada $2, entrada cacheada $0,10 y salida $10. A igual número de tokens, entrada sin caché y salida de Luna cuestan 1/20. Eso no prueba un ahorro de 95 % por pedido: cambian rondas, longitud, caché, posibles reintentos y errores. Fuentes consultadas el 28/10: [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), [Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
+## Evidencia real acotada
 
-## Comparación concreta
+Manifiesto e inputs: `scripts/fixtures/whatsapp-text-economy-comparison-2810.json`. Resumen reproducible con hashes de capturas, modelos efectivos, tokens, latencias y DTO sintéticos: `docs/whatsapp-text-economy-results-2810.json`.
 
-Manifiesto: `scripts/fixtures/whatsapp-text-economy-comparison-2810.json`. Dos conversaciones, con dos menús y los mismos mensajes/código para ambos candidatos:
+- PPP, ocho turnos: mixto Luna/Sol aprobado, ocho solicitudes (tres Sol, cinco Luna), USD0.00922890 estimados. Control Sol aprobado, siete solicitudes, USD0.07779510.
+- Falafel, trece turnos: ruta mixta aprobada (todas sus quince solicitudes fueron Luna), USD0.00468682. Control Sol aprobado, diez solicitudes, USD0.09272100.
+- Ambos controles verifican respuesta/carrito por turno, ausencia de orden antes de confirmar y contenido del DTO final: productos, cantidades, bebidas y notas dirigidas. Meta, órdenes, persistencia, pagos y mapas simulados; solo OpenAI fue real.
 
-- PPP: compra mixta con ausencia de producto, consulta de precio, cambio de bebida sin duplicar, captura de contacto/dirección y cierre. Ocho turnos.
-- Falafel: combo con nota dirigida, consulta durante el pago, cambio de bebida, reducción absoluta de cantidad, dirección corregida, contacto y cierre. Trece turnos.
+Los costos observados difieren en caché y número de rondas. No son una predicción del ahorro en producción ni una superioridad estadística. Son casos conocidos de desarrollo, no holdouts. No se certifica todo chat.txt/PDF ni comprensión real de imágenes/audio.
 
-Son extensiones de casos de desarrollo ya conocidos; no son una evaluación independiente ni una muestra representativa de clientes. Se preservan cart/response expectations; las expectativas intermedias de estado se adaptan a la captura explícita de contactos del nuevo flujo, y antes de confirmar se exige awaiting_final_confirm. Las referencias de catálogo y los hashes de entradas se verificaron sin red. No se acredita por ello que las conversaciones hayan pasado con ningún modelo.
+Ocho runs, 69 intentos y USD0.19627041 estimados incluyendo fallos y desarrollo. Primer fallo: aviso omitido por renderizador; después se corrigió gratis. Un run de falafel quedó cortado por límite de diez solicitudes; no es un fallo de capacidad. Otro Luna llegó a max_iterations y motivó la selección previa. Sin reintentos ciegos: cada nuevo ensayo sigue diagnóstico/corrección o política explícita. Ledger acumulado267/256/11 (autorizadas/usadas/restantes), espejo privado sincronizado antes de cada solicitud. El tope numérico es operativo, elegido por el agente bajo autorización del usuario.
 
-Propuesta de tope operativo: 40 solicitudes totales, 20 por candidato y 10 por conversación/modelo, una repetición, detenerse al primer fallo. No es una cifra dictada por el usuario ni un límite monetario estricto. Si el tope corta una conversación, no cuenta como aprobada. El ledger actual sigue en 188 acumuladas / 187 usadas / 1 restante; no se modificó. Antes de la ejecución real, ampliar el tope operativo en 39 conservando el historial y sincronizar el espejo privado.
+El runner ahora separa costo por modelo realmente solicitado y comprueba el DTO final, además de cart/estado/respuesta. Usage faltante produce incertidumbre, nunca costo cero. Estimaciones de tokens Standard, excluyen otros cargos/impuestos/precios particulares; no son factura. Tarifas por millón input/cache/output: Luna0.10/0.01/0.50 y Sol2/0.10/10, verificadas28/10 en [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna) y [Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
 
-El runner existente es `scripts/whatsapp-live-router-rehearsal.ts`. El override WHATSAPP_AGENT_MODEL debe estar ausente para no imponer el modelo de producción al candidato; WHATSAPP_ASSIST_MODEL queda fijo en gpt-6-luna. No cargar ni imprimir credenciales en el comando o en informes versionados.
+## Validación y despliegue
 
-## Cómo decidir
-
-Comprobar carrito y respuesta en cada turno; producto, cantidad, opciones y notas en el DTO final; una sola orden simulada después de confirmar; continuidad, latencia y solicitudes. Los turnos con cero solicitudes son evidencia del router, no del modelo. Una sola compra omitida/duplicada o nota aplicada al plato equivocado impide recomendar el candidato a partir de esta muestra.
-
-Medir costo total y costo por conversación correctamente completada, separando entrada sin caché/cache, salida y modelos auxiliares. Contar intentos fallidos y respuestas sin usage como gasto incierto; no como costo cero. Comparar también un escenario sin caché con los mismos tokens, sin presentarlo como consumo observado.
-
-Dos límites del runner requieren atención antes de decidir el ganador: su resumen agregado actual valora todos los tokens al precio del candidato, lo que puede mezclar llamadas al agente Sol con apoyo Luna; atribuir cada solicitud a su modelo real antes de ordenar por costo. Además, orderCount=1 no valida el contenido de la orden: revisar el DTO capturado contra reviewFinalOrder del manifiesto. No publicar un resultado de precisión solo por el contador de órdenes.
-
-## Estado de ejecución
-
-Preparado, no ejecutado con inferencia. La clave OPENAI_API_KEY no está cargada en este entorno y una consulta de conectividad sin autenticación a OpenAI falló con EAI_AGAIN antes de cualquier inferencia. Cero solicitudes pagadas; contadores intactos. No buscar ni copiar claves al repositorio, ni gastar el único intento restante en un reintento ciego de conectividad.
-
-Producción, modelos de fotos/audio y configuración de servidores sin cambios. El ahorro por pedido y la capacidad de Luna siguen por medir. No activar ni afirmar implementado un respaldo Luna→Sol hasta contar con validación específica.
+Foco157/157 en9 suites y TypeScript aprobados. Validación consolidada20.314/315suites: primera pasada18fallos por dos mocks antiguos; solo esos mocks se actualizaron y sus45controles pasaron completos. Temporizadores87/87, TypeScript general/build y Node92/92 aprobados; inventario exacto y runtime intacto entre fases. No se declara una única global verde. Despliegue autorizado primero en staging y después producción: resultado definitivo en `docs/whatsapp-batch-244-validation.json` y `docs/whatsapp-batch-244-deployment.json` al cerrar la ejecución. No hay cambios de esquema ni pruebas con órdenes reales. Continúa pendiente evaluación integral de conversaciones históricas y una muestra independiente de tráfico.

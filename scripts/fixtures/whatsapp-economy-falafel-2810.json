@@ -189,7 +189,32 @@
       {
         "text": "confirmar",
         "expect": {
-          "orderCount": 1
+          "orderCount": 1,
+          "orderLines": [
+            {
+              "id": 8921,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Limonada"
+                }
+              ],
+              "note": [
+                "sin tomate"
+              ],
+              "forbidNote": [
+                "te frio"
+              ]
+            },
+            {
+              "id": 8922,
+              "quantity": 1,
+              "forbidNote": [
+                "sin tomate"
+              ]
+            }
+          ]
         }
       }
     ],

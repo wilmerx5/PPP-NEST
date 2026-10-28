@@ -1,4 +1,4 @@
-> 28/10/2026 — Comparación económica autorizada por el usuario: Luna frente a Sol para texto. Casos y criterios preparados en `whatsapp-text-economy-evaluation-2810.md` y manifiesto `scripts/fixtures/whatsapp-text-economy-comparison-2810.json`. No ejecutada: sin clave cargada y conectividad OpenAI fallida. No hay un ganador nuevo, llamadas pagadas ni cambio de producción. Los resultados del 15/10 que siguen son históricos.
+> Vigente28/10/2026 — Tanda244: Luna habitual + Sol en condiciones/repartos explícitos, elegidos antes de herramientas. Dos recorridos completos con DTO aprobados y controles Sol. Evidencia y límites en [evaluación actual](whatsapp-text-economy-evaluation-2810.md); despliegue en `whatsapp-batch-244-deployment.json`. Lo que sigue es historial del15/10 y no acredita la configuración vigente.
 
 # Reemplazo de modelo: selección y validación, 15/10/2026
 

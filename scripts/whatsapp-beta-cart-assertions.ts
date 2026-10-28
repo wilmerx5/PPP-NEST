@@ -13,6 +13,26 @@ type ActualCartLine = {
 };
 const normalize = (value: string) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
+/** Order DTOs may flatten quantities into individual items. Keep variant ownership. */
+export function cartLinesFromOrderItems(items: unknown): ActualCartLine[] | null {
+  if (!Array.isArray(items)) return null;
+  const groups = new Map<string,ActualCartLine>();
+  for (const item of items) {
+    const quantity = item?.quantity ?? 1;
+    if (!item || !Number.isInteger(item.productId) || !Number.isInteger(quantity) || quantity < 1 ||
+        (item.note !== undefined && typeof item.note !== 'string') ||
+        (item.attributes !== undefined && (!Array.isArray(item.attributes) || item.attributes.some((attr: any) =>
+          typeof attr?.attributeName !== 'string' || typeof attr?.attributeValue !== 'string')))) return null;
+    const attributes = [...(item.attributes || [])].sort((a,b)=>
+      `${a.attributeName}:${a.attributeValue}`.localeCompare(`${b.attributeName}:${b.attributeValue}`));
+    const key = JSON.stringify([item.productId,attributes,normalize(item.note || '')]);
+    const line = groups.get(key);
+    if (line) line.quantity += quantity;
+    else groups.set(key,{productId:item.productId,quantity,attributes,note:item.note});
+  }
+  return [...groups.values()];
+}
+
 // A single actual line must not satisfy two different expected lines. Match
 // one-to-one, including a generic line next to a specifically annotated line.
 export function matchesExpectedCartLines(expected: ExpectedCartLine[], actual: ActualCartLine[]): boolean {

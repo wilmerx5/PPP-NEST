@@ -1,24 +1,22 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 188,
-  "usedRequests": 187,
-  "remainingRequests": 1,
+  "authorizedRequests": 267,
+  "usedRequests": 256,
+  "remainingRequests": 11,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-18T05:36:12.000Z",
+  "lastAttemptAt": "2026-10-28T15:21:00.145Z",
   "latestEvaluation": {
-    "date": "2026-10-15",
-    "baseCommit": "4fc3c579",
-    "model": "gpt-6.1-sol",
-    "requests": 4,
-    "httpSuccessful": 4,
-    "acceptedConversations": 1,
-    "budgetExhausted": false,
-    "scope": "Development retest (not independent) of fresh-pizza-mixed-edits-1510, 6 turns; accepted, total 50.000, no invented notes. Not a holdout.",
-    "estimatedReportedCostUsd": 0.0416464,
-    "report": "tmp/whatsapp-live-router-report.json"
+    "date": "2026-10-28",
+    "baseCommit": "bfb62eb6",
+    "requests": 69,
+    "acceptedFinalConversations": 4,
+    "developmentOnly": true,
+    "estimatedReportedCostUsd": 0.19627041,
+    "report": "docs/whatsapp-text-economy-results-2810.json",
+    "scope": "Eight bounded development runs including failures; final tiered policy and Sol control complete both menus. Operational cumulative cap selected by agent under user authorization."
   },
   "authorizationExtensions": [
     {
@@ -73,6 +71,18 @@
       "additionalRequests": 3,
       "evidence": "Standing user authorization for moderate inference and continued batches; numeric cap chosen by agent, not dictated by user",
       "executionLimit": "One reserved joint subset conversation; maximum 4 HTTP requests; one repetition; stop on failure"
+    },
+    {
+      "date": "2026-10-28",
+      "additionalRequests": 39,
+      "evidence": "User authorized staging changes, real validation and production deployment. Operational numeric cap selected by agent, not dictated by user.",
+      "executionLimit": "40 available HTTP attempts total; Luna and Sol, two known conversations extended through DTO; 10 per job, one repetition, stop on failure, no Meta or external orders"
+    },
+    {
+      "date": "2026-10-28",
+      "additionalRequests": 40,
+      "evidence": "Standing authorization plus explicit staging validation and production deployment request; operational cap chosen by agent after a 10-request limit cut a 13-turn conversation, not a model failure.",
+      "executionLimit": "80 attempts maximum from start of batch (includes earlier failures); at most 20 per subsequent job, stop and diagnose on failure; no external effects."
     }
   ],
   "evaluationHistory": [

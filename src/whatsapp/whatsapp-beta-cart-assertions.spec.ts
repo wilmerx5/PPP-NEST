@@ -21,3 +21,22 @@ describe('Rehearsal cart evidence', () => {
     ])).toBe(false);
   });
 });
+
+import { cartLinesFromOrderItems } from '../../scripts/whatsapp-beta-cart-assertions';
+describe('Final order DTO evidence',()=>{
+ it('counts flattened units without mixing notes or variants',()=>{
+  const actual=cartLinesFromOrderItems([{productId:1,note:'sin arroz'},{productId:1,note:'sin arroz'},
+   {productId:1,attributes:[{attributeName:'Bebida',attributeValue:'Pepsi'}]}]);
+  expect(actual).not.toBeNull();expect(matchesExpectedCartLines([{id:1,quantity:2,note:['sin arroz']},
+   {id:1,quantity:1,attrs:[{key:'Bebida',value:'Pepsi'}],forbidNote:['sin arroz']}],actual!)).toBe(true);
+ });
+ it('does not hide an extra product behind a correct order count',()=>{
+  const actual=cartLinesFromOrderItems([{productId:1},{productId:2}]);
+  expect(matchesExpectedCartLines([{id:1,quantity:1}],actual!)).toBe(false);
+ });
+ it('rejects a malformed final order instead of ignoring its bad item',()=>{
+  expect(cartLinesFromOrderItems([{productId:1},{productId:'private'}])).toBeNull();
+  expect(cartLinesFromOrderItems([{productId:1,attributes:[{}]}])).toBeNull();
+  expect(cartLinesFromOrderItems(undefined)).toBeNull();
+ });
+});

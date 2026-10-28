@@ -2,7 +2,7 @@ import { WhatsappAgentService } from './whatsapp-agent.service';
 import { WhatsappCatalogService } from './whatsapp-catalog.service';
 import { requestWhatsappInference } from './whatsapp-openai-request';
 jest.mock('./whatsapp-openai-request',()=>({requestWhatsappInference:jest.fn()}));
-jest.mock('./whatsapp-agent-model',()=>({resolveWhatsappAgentModel:(configured:string)=>configured}));
+jest.mock('./whatsapp-agent-model',()=>({resolveWhatsappAgentRoute:(configured:string)=>({model:configured,reason:'primary'})}));
 // Desired budget contract, not a measurement of live model quality or invoice.
 for(const model of ['gpt-4o-mini','gpt-6.1-sol']) for(const [i,name] of ['Bowl De Tofu','Pizza Vegetariana'].entries()) for(const length of [419,420,421]) {
  it(`complete answer should not require a cosmetic retry ${model}/${i}/${length}`,async()=>{

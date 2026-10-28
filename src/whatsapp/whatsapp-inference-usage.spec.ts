@@ -2,7 +2,7 @@ import { readWhatsappInferenceUsage, type WhatsappInferenceAttempt } from './wha
 import { requestWhatsappInference } from './whatsapp-openai-request';
 import { WhatsappAgentService } from './whatsapp-agent.service';
 import { WhatsappCatalogService } from './whatsapp-catalog.service';
-jest.mock('./whatsapp-agent-model',()=>({resolveWhatsappAgentModel:(configured:string)=>configured}));
+jest.mock('./whatsapp-agent-model',()=>({resolveWhatsappAgentRoute:(configured:string)=>({model:configured,reason:'primary'})}));
 const responsesUsage={input_tokens:100,output_tokens:20,input_tokens_details:{cached_tokens:50,cache_write_tokens:25},output_tokens_details:{reasoning_tokens:5}};
 const chatUsage={prompt_tokens:100,completion_tokens:20,prompt_tokens_details:{cached_tokens:50,cache_write_tokens:25},completion_tokens_details:{reasoning_tokens:5}};
 for(const api of ['responses','chat/completions'] as const) {

@@ -1,3 +1,13 @@
+## VIGENTE — tanda244: texto económico y coherencia del pedido (28/10)
+
+Luna para texto habitual, Sol elegido antes de herramientas en condiciones/repartos explícitos, mediante WHATSAPP_AGENT_COMPLEX_MODEL opt-in. Luna sola tuvo max_iterations en un compuesto; no usarla como reemplazo universal ni repetir acciones aplicadas. Dos recorridos reales completos (8+13turnos), ambos con DTO, y controles Sol aprobados. Inferencia aislada, cero Meta/órdenes externas. Visión/apoyo Luna y audio GPT-Transcribe conservados.
+
+Corregidos aviso de omisión explícita por catálogo y nota positiva de bebida vieja tras cambiar atributo.41regresiones nuevas, tres cartas. Foco157/157. Validación consolidada20.314/315suites: primera pasada18fallos en dos mocks antiguos, corregidos solo esos mocks y repetidas completas45pruebas; temporizadores87/87, TS general/build y Node92/92 aprobados. No una única global verde; inventario exacto y runtime congelado. Evidencia `whatsapp-batch-244-validation.json`.
+
+Comparación conocida de desarrollo, no muestra independiente: mixto USD0.01391572 por dos recorridos frente a controles Sol USD0.17051610, cachés/rondas distintas; no ahorro de producción garantizado.69intentos totales incluidos fallos, USD0.19627041 estimados, ledger267/256/11 y espejo sincronizado. Ver `whatsapp-text-economy-evaluation-2810.md` y resultadosJSON. Sigue pendiente evaluación integral chat.txt/PDF y medios reales; no declarar todos corregidos ni vendible por conteos.
+
+Usuario autoriza staging y producción. Estado de despliegue actualizado en `whatsapp-batch-244-deployment.json`; el código se publica primero y la verificación final se registra después. Preservar compose/env/backups/bases/volúmenes y archivos generados locales. Continuar nuevas tandas en staging con foco y una global por grupo de3–5, evitando repetir global por cambios solo documentales.
+
 ## VIGENTE — tandas 241–243: tres pendientes históricos corregidos (28/10)
 
 Base '320c5785', staging. 241 distingue el arranque logístico «Para que porfa para 1 domicilio» de una dirección real; conserva destinos válidos. 242 un título completo con «el/la» cambia la preparación de la familia existente mediante el reemplazo atómico, conserva cantidades/opciones compatibles y no compra otra unidad; repetir es seguro y una pregunta no autoriza el cambio. 243 resuelve un único combo por su título completo de componentes más bebida configurada aunque no se diga «combo»; conserva preparación, cantidad y bebida numérica. Sin excepciones por productos/IDs/precios PPP.

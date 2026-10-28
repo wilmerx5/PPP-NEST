@@ -1,0 +1,644 @@
+{
+  "date": "2026-10-28",
+  "baseCommit": "bfb62eb6",
+  "runs": [
+    {
+      "id": "gpt-6-luna-ppp-first-failed",
+      "sha256": "801f156a81f2e51edccdf6fb9945cb5a8cbfe2b21193f95168590bf8c9e85ef1",
+      "candidate": "gpt-6-luna",
+      "complexModel": null,
+      "accepted": false,
+      "problems": [
+        "turn_0:reply_missing_fact"
+      ],
+      "completedTurns": 1,
+      "budgetExhausted": false,
+      "usage": {
+        "model": "gpt-6-luna",
+        "requests": 5,
+        "successfulResponses": 5,
+        "responsesWithUsage": 5,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 57527,
+        "cachedPromptTokens": 45580,
+        "completionTokens": 193,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.001747,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "usageByModel": {
+        "gpt-6-luna": {
+          "model": "gpt-6-luna",
+          "requests": 5,
+          "successfulResponses": 5,
+          "responsesWithUsage": 5,
+          "usageComplete": true,
+          "uncertainResponses": 0,
+          "transportErrors": {},
+          "promptTokens": 57527,
+          "cachedPromptTokens": 45580,
+          "completionTokens": 193,
+          "reasoningTokens": 0,
+          "httpErrors": {},
+          "providerErrorCodes": {},
+          "estimatedReportedCostUsd": 0.001747,
+          "priceDate": "2026-10-15",
+          "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+        }
+      },
+      "turnLatenciesMs": [
+        15190
+      ],
+      "finalOrder": null
+    },
+    {
+      "id": "gpt-6-luna-ppp-pre-note-fix",
+      "sha256": "50cdc303c2d0212cd137c8ff31ce13129a17d8fe932560dbbac2f05de0ea12cb",
+      "candidate": "gpt-6-luna",
+      "complexModel": null,
+      "accepted": true,
+      "problems": [],
+      "completedTurns": 8,
+      "budgetExhausted": false,
+      "usage": {
+        "model": "gpt-6-luna",
+        "requests": 8,
+        "successfulResponses": 8,
+        "responsesWithUsage": 8,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 91735,
+        "cachedPromptTokens": 67581,
+        "completionTokens": 323,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.0032527100000000002,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "usageByModel": {
+        "gpt-6-luna": {
+          "model": "gpt-6-luna",
+          "requests": 8,
+          "successfulResponses": 8,
+          "responsesWithUsage": 8,
+          "usageComplete": true,
+          "uncertainResponses": 0,
+          "transportErrors": {},
+          "promptTokens": 91735,
+          "cachedPromptTokens": 67581,
+          "completionTokens": 323,
+          "reasoningTokens": 0,
+          "httpErrors": {},
+          "providerErrorCodes": {},
+          "estimatedReportedCostUsd": 0.0032527100000000002,
+          "priceDate": "2026-10-15",
+          "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+        }
+      },
+      "turnLatenciesMs": [
+        11148,
+        25,
+        6478,
+        25,
+        6,
+        7,
+        3515,
+        36
+      ],
+      "finalOrder": {
+        "customerName": "Ana Torres",
+        "phone": "+573000000001",
+        "address": "Calle 10 # 20-30 / Contraentrega",
+        "orderType": "delivery",
+        "deliveryFee": 2000,
+        "orderSource": "whatsapp",
+        "items": [
+          {
+            "productId": 71,
+            "attributes": [
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Pepsi"
+              }
+            ]
+          },
+          {
+            "productId": 38,
+            "note": "sin arroz",
+            "attributes": []
+          },
+          {
+            "productId": 38,
+            "note": "sin arroz",
+            "attributes": []
+          }
+        ],
+        "clientRequestId": "wa-1-e49141b6-adce-41f3-8490-89ebf9e61163"
+      }
+    },
+    {
+      "id": "gpt-6-luna-falafel-budget-cut",
+      "sha256": "ff96e4e43e126b7007c04c64f4a057f156159a84415461611cfd023fdcb09306",
+      "candidate": "gpt-6-luna",
+      "complexModel": null,
+      "accepted": false,
+      "problems": [
+        "turn_7:agent_error"
+      ],
+      "completedTurns": 8,
+      "budgetExhausted": true,
+      "usage": {
+        "model": "gpt-6-luna",
+        "requests": 10,
+        "successfulResponses": 10,
+        "responsesWithUsage": 10,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 101676,
+        "cachedPromptTokens": 59477,
+        "completionTokens": 255,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.00494217,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "usageByModel": {
+        "gpt-6-luna": {
+          "model": "gpt-6-luna",
+          "requests": 10,
+          "successfulResponses": 10,
+          "responsesWithUsage": 10,
+          "usageComplete": true,
+          "uncertainResponses": 0,
+          "transportErrors": {},
+          "promptTokens": 101676,
+          "cachedPromptTokens": 59477,
+          "completionTokens": 255,
+          "reasoningTokens": 0,
+          "httpErrors": {},
+          "providerErrorCodes": {},
+          "estimatedReportedCostUsd": 0.00494217,
+          "priceDate": "2026-10-15",
+          "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+        }
+      },
+      "turnLatenciesMs": [
+        313,
+        47,
+        5735,
+        8846,
+        5086,
+        5,
+        5,
+        18
+      ],
+      "finalOrder": null
+    },
+    {
+      "id": "gpt-6-luna-ppp-max-iterations",
+      "sha256": "e9dad4163f8ae95d4fd5ecf88e496df602c8182e6d2a5454d8aee2eaeec09e52",
+      "candidate": "gpt-6-luna",
+      "complexModel": null,
+      "accepted": false,
+      "problems": [
+        "turn_0:agent_error",
+        "turn_0:reply_missing_fact"
+      ],
+      "completedTurns": 1,
+      "budgetExhausted": false,
+      "usage": {
+        "model": "gpt-6-luna",
+        "requests": 6,
+        "successfulResponses": 6,
+        "responsesWithUsage": 6,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 69606,
+        "cachedPromptTokens": 57421,
+        "completionTokens": 208,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.00189671,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "usageByModel": {
+        "gpt-6-luna": {
+          "model": "gpt-6-luna",
+          "requests": 6,
+          "successfulResponses": 6,
+          "responsesWithUsage": 6,
+          "usageComplete": true,
+          "uncertainResponses": 0,
+          "transportErrors": {},
+          "promptTokens": 69606,
+          "cachedPromptTokens": 57421,
+          "completionTokens": 208,
+          "reasoningTokens": 0,
+          "httpErrors": {},
+          "providerErrorCodes": {},
+          "estimatedReportedCostUsd": 0.00189671,
+          "priceDate": "2026-10-15",
+          "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+        }
+      },
+      "turnLatenciesMs": [
+        22717
+      ],
+      "finalOrder": null
+    },
+    {
+      "id": "gpt-6.1-sol-ppp",
+      "sha256": "f1831f5e15ec6d6ffe8c8a4d3949ddddc36951d838284e0e10c8e729bf070998",
+      "candidate": "gpt-6.1-sol",
+      "complexModel": null,
+      "accepted": true,
+      "problems": [],
+      "completedTurns": 8,
+      "budgetExhausted": false,
+      "usage": {
+        "model": "gpt-6.1-sol",
+        "requests": 7,
+        "successfulResponses": 7,
+        "responsesWithUsage": 7,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 80080,
+        "cachedPromptTokens": 45071,
+        "completionTokens": 327,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.0777951,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "usageByModel": {
+        "gpt-6.1-sol": {
+          "model": "gpt-6.1-sol",
+          "requests": 7,
+          "successfulResponses": 7,
+          "responsesWithUsage": 7,
+          "usageComplete": true,
+          "uncertainResponses": 0,
+          "transportErrors": {},
+          "promptTokens": 80080,
+          "cachedPromptTokens": 45071,
+          "completionTokens": 327,
+          "reasoningTokens": 0,
+          "httpErrors": {},
+          "providerErrorCodes": {},
+          "estimatedReportedCostUsd": 0.0777951,
+          "priceDate": "2026-10-15",
+          "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+        }
+      },
+      "turnLatenciesMs": [
+        9298,
+        25,
+        6323,
+        25,
+        5,
+        7,
+        2520,
+        35
+      ],
+      "finalOrder": {
+        "customerName": "Ana Torres",
+        "phone": "+573000000001",
+        "address": "Calle 10 # 20-30 / Contraentrega",
+        "orderType": "delivery",
+        "deliveryFee": 2000,
+        "orderSource": "whatsapp",
+        "items": [
+          {
+            "productId": 71,
+            "attributes": [
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Pepsi"
+              }
+            ]
+          },
+          {
+            "productId": 38,
+            "note": "Sin arroz",
+            "attributes": []
+          },
+          {
+            "productId": 38,
+            "note": "Sin arroz",
+            "attributes": []
+          }
+        ],
+        "clientRequestId": "wa-1-5394c791-ea77-4188-9373-3d9fb0bdb0ae"
+      }
+    },
+    {
+      "id": "gpt-6-luna-ppp-tiered",
+      "sha256": "eaa73aee707c3cafbf7dea101089c3045779731d9a123f9be9486ebc74f7b80a",
+      "candidate": "gpt-6-luna",
+      "complexModel": "gpt-6.1-sol",
+      "accepted": true,
+      "problems": [],
+      "completedTurns": 8,
+      "budgetExhausted": false,
+      "usage": {
+        "model": "gpt-6-luna",
+        "requests": 8,
+        "successfulResponses": 8,
+        "responsesWithUsage": 8,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 91787,
+        "cachedPromptTokens": 57072,
+        "completionTokens": 340,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.009228900000000002,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "usageByModel": {
+        "gpt-6.1-sol": {
+          "model": "gpt-6.1-sol",
+          "requests": 3,
+          "successfulResponses": 3,
+          "responsesWithUsage": 3,
+          "usageComplete": true,
+          "uncertainResponses": 0,
+          "transportErrors": {},
+          "promptTokens": 33921,
+          "cachedPromptTokens": 33912,
+          "completionTokens": 205,
+          "reasoningTokens": 0,
+          "httpErrors": {},
+          "providerErrorCodes": {},
+          "estimatedReportedCostUsd": 0.005459200000000001,
+          "priceDate": "2026-10-15",
+          "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+        },
+        "gpt-6-luna": {
+          "model": "gpt-6-luna",
+          "requests": 5,
+          "successfulResponses": 5,
+          "responsesWithUsage": 5,
+          "usageComplete": true,
+          "uncertainResponses": 0,
+          "transportErrors": {},
+          "promptTokens": 57866,
+          "cachedPromptTokens": 23160,
+          "completionTokens": 135,
+          "reasoningTokens": 0,
+          "httpErrors": {},
+          "providerErrorCodes": {},
+          "estimatedReportedCostUsd": 0.0037697000000000004,
+          "priceDate": "2026-10-15",
+          "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+        }
+      },
+      "turnLatenciesMs": [
+        8360,
+        25,
+        6069,
+        25,
+        5,
+        7,
+        3217,
+        35
+      ],
+      "finalOrder": {
+        "customerName": "Ana Torres",
+        "phone": "+573000000001",
+        "address": "Calle 10 # 20-30 / Contraentrega",
+        "orderType": "delivery",
+        "deliveryFee": 2000,
+        "orderSource": "whatsapp",
+        "items": [
+          {
+            "productId": 71,
+            "attributes": [
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Pepsi"
+              }
+            ]
+          },
+          {
+            "productId": 38,
+            "note": "Sin arroz",
+            "attributes": []
+          },
+          {
+            "productId": 38,
+            "note": "Sin arroz",
+            "attributes": []
+          }
+        ],
+        "clientRequestId": "wa-1-140ac5ea-85d8-40f8-937a-690873b00e9b"
+      }
+    },
+    {
+      "id": "gpt-6-luna-falafel-tiered",
+      "sha256": "9cd70ce94a49e2603c6137be6c302bdb2469cf1dc66e6db98ac26bcdc90dcdd5",
+      "candidate": "gpt-6-luna",
+      "complexModel": "gpt-6.1-sol",
+      "accepted": true,
+      "problems": [],
+      "completedTurns": 13,
+      "budgetExhausted": false,
+      "usage": {
+        "model": "gpt-6-luna",
+        "requests": 15,
+        "successfulResponses": 15,
+        "responsesWithUsage": 15,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 153678,
+        "cachedPromptTokens": 120822,
+        "completionTokens": 386,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.00468682,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "usageByModel": {
+        "gpt-6-luna": {
+          "model": "gpt-6-luna",
+          "requests": 15,
+          "successfulResponses": 15,
+          "responsesWithUsage": 15,
+          "usageComplete": true,
+          "uncertainResponses": 0,
+          "transportErrors": {},
+          "promptTokens": 153678,
+          "cachedPromptTokens": 120822,
+          "completionTokens": 386,
+          "reasoningTokens": 0,
+          "httpErrors": {},
+          "providerErrorCodes": {},
+          "estimatedReportedCostUsd": 0.00468682,
+          "priceDate": "2026-10-15",
+          "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+        }
+      },
+      "turnLatenciesMs": [
+        258,
+        40,
+        3170,
+        9110,
+        4606,
+        4,
+        6,
+        3163,
+        13,
+        5,
+        3,
+        5218,
+        45
+      ],
+      "finalOrder": {
+        "customerName": "Ana Torres",
+        "phone": "+573000000001",
+        "address": "Calle 10 # 20-30 / Contraentrega",
+        "orderType": "delivery",
+        "deliveryFee": 2000,
+        "orderSource": "whatsapp",
+        "items": [
+          {
+            "productId": 8921,
+            "note": "sin tomate",
+            "attributes": [
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Limonada"
+              }
+            ]
+          },
+          {
+            "productId": 8922,
+            "attributes": []
+          }
+        ],
+        "clientRequestId": "wa-1-4e468c2f-efa2-4f1c-8857-211eae71aff9"
+      }
+    },
+    {
+      "id": "gpt-6.1-sol-falafel",
+      "sha256": "ec9e0c5c6cbdacbf560159a5bd0694c13535f0379943b6b19c7f82c4fdcf59ce",
+      "candidate": "gpt-6.1-sol",
+      "complexModel": null,
+      "accepted": true,
+      "problems": [],
+      "completedTurns": 13,
+      "budgetExhausted": false,
+      "usage": {
+        "model": "gpt-6.1-sol",
+        "requests": 10,
+        "successfulResponses": 10,
+        "responsesWithUsage": 10,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 101631,
+        "cachedPromptTokens": 59890,
+        "completionTokens": 325,
+        "reasoningTokens": 36,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.092721,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "usageByModel": {
+        "gpt-6.1-sol": {
+          "model": "gpt-6.1-sol",
+          "requests": 10,
+          "successfulResponses": 10,
+          "responsesWithUsage": 10,
+          "usageComplete": true,
+          "uncertainResponses": 0,
+          "transportErrors": {},
+          "promptTokens": 101631,
+          "cachedPromptTokens": 59890,
+          "completionTokens": 325,
+          "reasoningTokens": 36,
+          "httpErrors": {},
+          "providerErrorCodes": {},
+          "estimatedReportedCostUsd": 0.092721,
+          "priceDate": "2026-10-15",
+          "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+        }
+      },
+      "turnLatenciesMs": [
+        297,
+        41,
+        4822,
+        7148,
+        4896,
+        4,
+        5,
+        2644,
+        7,
+        4,
+        3,
+        3597,
+        45
+      ],
+      "finalOrder": {
+        "customerName": "Ana Torres",
+        "phone": "+573000000001",
+        "address": "Calle 10 # 20-30 / Contraentrega",
+        "orderType": "delivery",
+        "deliveryFee": 2000,
+        "orderSource": "whatsapp",
+        "items": [
+          {
+            "productId": 8921,
+            "note": "sin tomate",
+            "attributes": [
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Limonada"
+              }
+            ]
+          },
+          {
+            "productId": 8922,
+            "attributes": []
+          }
+        ],
+        "clientRequestId": "wa-1-be6d2563-4019-400e-b559-2f4c57f67d01"
+      }
+    }
+  ],
+  "totalAttempts": 69,
+  "totalEstimatedReportedCostUsd": 0.19627041,
+  "limits": [
+    "Known development cases; not independent or representative accuracy.",
+    "Unequal warm caches and request counts; observed savings are not a production forecast.",
+    "Only OpenAI inference real; all persistence, orders, Meta, maps and payments simulated.",
+    "One run cut by job budget is incomplete, not a model accuracy failure.",
+    "A standalone Luna run hit max_iterations on the compound conditional; upfront route selects Sol before any tools.",
+    "Whole chat/PDF corpus and real image/audio understanding not certified."
+  ]
+}

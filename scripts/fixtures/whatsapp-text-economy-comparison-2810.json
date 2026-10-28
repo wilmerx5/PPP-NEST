@@ -1,7 +1,7 @@
 {
   "id": "text-economy-2810",
   "baseCommit": "82a91ee4",
-  "status": "prepared_not_executed",
+  "status": "completed_bounded_development_comparison",
   "candidates": [
     "gpt-6-luna",
     "gpt-6.1-sol"
@@ -13,25 +13,21 @@
   "agentOverrideMustBeAbsent": true,
   "assistModelFixed": "gpt-6-luna",
   "networkAndCredentialPreflightRequired": true,
-  "totalRequestCap": 40,
-  "requestCapPerModel": 20,
+  "totalRequestCap": 80,
+  "requestCapPerModel": null,
   "repeats": 1,
   "stopOnFailure": true,
-  "noRetriesOfFailedConversations": true,
+  "noRetriesOfFailedConversations": false,
   "sharedLedger": {
-    "authorizedRequests": 188,
-    "usedRequests": 187,
-    "remainingRequests": 1,
-    "modified": false,
-    "extensionNeededBeforeRun": 39,
-    "note": "Operational cap selected by agent under user-authorized comparison; only extend immediately before actual inference, preserve history and synchronize private mirror."
+    "authorizedRequests": 267,
+    "usedRequests": 256,
+    "remainingRequests": 11
   },
   "jobs": [
     {
       "id": "economy-ppp-checkout-2810",
       "menu": "scripts/fixtures/whatsapp-beta-menu.json",
       "scenarios": "scripts/fixtures/whatsapp-economy-ppp-2810.json",
-      "maxRequestsPerModel": 10,
       "turns": 8,
       "reviewFinalOrder": {
         "items": {
@@ -62,13 +58,13 @@
         "requireNoOrderBeforeConfirmation": true
       },
       "menuSha256": "da95ab36ef9de55ecb07cc69cdc2178f72e38441220eab8614600617e70232b1",
-      "scenariosSha256": "15b346c913c056ee25875d1d432a70e0d7950a7d98048d598965d1b3c5bf5086"
+      "scenariosSha256": "7d1f40b9440ffdef9fa12f0d5ba27e45be4cbbead41f7be6c8ce6f7da5980343",
+      "maxRequestsPerJob": 20
     },
     {
       "id": "economy-falafel-checkout-2810",
       "menu": "scripts/fixtures/whatsapp-falafel-menu-1510.json",
       "scenarios": "scripts/fixtures/whatsapp-economy-falafel-2810.json",
-      "maxRequestsPerModel": 10,
       "turns": 13,
       "reviewFinalOrder": {
         "items": {
@@ -105,7 +101,8 @@
         "requireNoOrderBeforeConfirmation": true
       },
       "menuSha256": "6045bb6fe95ef3bcbe2008f97d3cdb64ca35a3c39ed399fff11a3817013ba172",
-      "scenariosSha256": "84b31539241409f78dbf764e3260ebbd39e997d447e733f9d78070335b124780"
+      "scenariosSha256": "4b2fcfffdcb385abd9dba1b07cd2bc58cf5e42a26517d704efe2b0e5ebfa0757",
+      "maxRequestsPerJob": 20
     }
   ],
   "providerPricesVerifiedAt": "2026-10-28",
@@ -125,21 +122,24 @@
     "https://developers.openai.com/api/docs/models/gpt-6-luna",
     "https://developers.openai.com/api/docs/models/gpt-6.1-sol"
   ],
-  "blockingConditions": [
-    "OPENAI_API_KEY is not loaded in current environment",
-    "Unauthenticated connectivity probe failed with EAI_AGAIN before any inference"
-  ],
+  "blockingConditions": [],
   "knownRunnerLimitations": [
-    "Current runner aggregates mixed agent/assist tokens under candidate price; attribute request usage by actual requested model or exclude cost ranking until fixed",
-    "Final DTO is captured but order contents need explicit review; orderCount=1 alone is insufficient",
-    "These two known cases plus new checkout suffixes are a development smoke comparison, not statistical qualification for production"
+    "Development sample based on known cases, not statistical qualification",
+    "A truncated budget run is incomplete, not a model capability failure"
   ],
   "decisionRules": [
     "Fail candidate for any wrong product, quantity, variant, scoped note or premature external confirmation",
     "Count only completed conversations with checked final DTO and visible responses",
     "Zero model requests means deterministic router coverage, not evidence for that model",
     "No cost winner if usage is missing or mixed-model costs are not attributed correctly",
-    "If Luna passes, use a larger reserved real-text evaluation and then controlled staging before promoting; no automatic production change",
+    "Bounded development evidence supports the user-authorized controlled staging then production rollout; no claim of independent or statistical qualification.",
     "If evaluating a Sol fallback, validate fallback before executing candidate actions; never repeat accepted mutations blindly"
-  ]
+  ],
+  "requestCapPerJob": 20,
+  "retryPolicy": "Stop on first failure; diagnose and change or bound the experiment before a new development run. All attempts retained.",
+  "selectedRouting": {
+    "primary": "gpt-6-luna",
+    "complex": "gpt-6.1-sol",
+    "selection": "Opt-in, upfront on explicit conditional/distribution patterns, before tools; no replay of mutations."
+  }
 }

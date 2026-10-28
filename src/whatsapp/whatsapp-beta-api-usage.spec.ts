@@ -45,3 +45,20 @@ describe('Synthetic rehearsal token accounting',()=>{
     expect(JSON.stringify(result)).not.toContain('private');
   });
 });
+
+import { summarizeModelUsage } from '../../scripts/whatsapp-beta-api-usage';
+describe('Mixed agent and assistant cost',()=>{
+ it('prices each request at its actual model rate',()=>{
+  const total=new BetaApiUsage(),sol=new BetaApiUsage(),luna=new BetaApiUsage();
+  const payload={usage:{input_tokens:1000,output_tokens:100}};
+  total.requests=2;sol.requests=1;luna.requests=1;
+  total.record(200,payload);total.record(200,payload);sol.record(200,payload);luna.record(200,payload);
+  const r=summarizeModelUsage(total,new Map([['gpt-6.1-sol',sol],['gpt-6-luna',luna]]),'gpt-6.1-sol');
+  expect(r.apiUsage.estimatedReportedCostUsd).toBeCloseTo(0.00315,9);
+  expect(r.apiUsageByModel['gpt-6-luna'].requests).toBe(1);
+ });
+ it('does not report unknown usage as a free request',()=>{
+  const total=new BetaApiUsage(),luna=new BetaApiUsage();total.requests=luna.requests=1;total.record(200,{});luna.record(200,{});
+  expect(summarizeModelUsage(total,new Map([['gpt-6-luna',luna]]),'gpt-6-luna').apiUsage.estimatedReportedCostUsd).toBeNull();
+ });
+});
