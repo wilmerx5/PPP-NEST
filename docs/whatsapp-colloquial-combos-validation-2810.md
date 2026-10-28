@@ -9,3 +9,9 @@ Baseline sobre 36 combinaciones: 26 pasaron y 10 fallaron. «En combito» perdí
 Foco final: 180/180, tres suites, incluidas 60 nuevas: seis formas de compra × tres menús × agente simulado off/on; dos preguntas sin compra; una bebida previa conservada; y gaseosa adicional explícita conservada aparte. Se verifican carrito y respuesta. Persistencia, modelo, Meta y órdenes externas simulados; cero inferencia pagada. La global, TypeScript y auxiliares se registran en `whatsapp-batch-258-259-validation.json` al aprobarse.
 
 Límites: no demuestra comprensión universal de diminutivos, typos o instrucciones arbitrarias. La opción final necesita nombre y valor del catálogo; no se amplía el contrato de repartos entre ejecutivos ni se afirma haber evaluado acústicamente los audios. Continúan pendientes los recorridos08/28 y otros compuestos del corpus, muestra independiente/modelos/medios/canal y piloto supervisado. Presupuesto compartido267 autorizadas/256 usadas/11 restantes; modelos y producción244 sin cambios. Sin nueva persistencia ni cambio de esquema.
+
+## Cierre
+
+Global20.823/326suites, inventario exacto,537 archivos TypeScript de src sin cambios durante la ejecución; TypeScript general/build y Node92/92 aprobados.
+
+Código `90edb4ee` publicado y desplegado solo en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED; siete controles nuevos/previos compilados y guard central aprobados, servicios externos aislados. Env/compose/modelos intactos y producción244 sin cambios. Evidencia `whatsapp-batch-258-259-staging-deployment.json`; commit posterior documental, sin reconstruir.

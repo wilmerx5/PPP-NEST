@@ -24,5 +24,7 @@
   "globalStatus": "passed",
   "productionChanged": false,
   "globalTests": 20823,
-  "globalSuites": 326
+  "globalSuites": 326,
+  "runtimeCodeCommit": "90edb4ee62da0337ff7f8e96adfba1137fc9234d",
+  "stagingDeployment": "whatsapp-batch-258-259-staging-deployment.json"
 }

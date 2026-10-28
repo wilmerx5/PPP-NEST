@@ -42,5 +42,6 @@
   "inventoryExact": true,
   "paidRequests": 0,
   "newRegressions": 60,
-  "focusTests": 180
+  "focusTests": 180,
+  "nodeTests": 92
 }

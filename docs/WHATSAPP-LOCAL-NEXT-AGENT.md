@@ -4,7 +4,7 @@ Base `344ded5f`.258 normaliza «combito»/«de combo» dentro de compra explíci
 
 60 regresiones sintéticas nuevas derivadas de los reportes, tres menús × agente simulado off/on; foco180/180. Baseline36:26verdes/10rojas. Global20.823/326suites aprobada en cuatro bloques seriales disjuntos, inventario exacto y537fuentes de src congeladas; TypeScript general/build y pruebas Node aprobados. Evidencia `whatsapp-batch-258-259-validation.json`. Informe `whatsapp-colloquial-combos-validation-2810.md`, evidencia `whatsapp-colloquial-combos-2810.json`. No es muestra independiente ni nueva evaluación acústica/modelo. Ledger267/256/11 y espejo, modelos y producción244 intactos; cero inferencia pagada, Meta u órdenes reales. Sin nueva persistencia/esquema.
 
-Estado del plan: seguimos cerrando recorridos reales y lenguaje natural; pendientes08/28 y otros compuestos/repartos no cubiertos, después muestra independiente/modelos/medios/canal y piloto supervisado. Staging ejecuta257 hasta deploy verificado de esta tanda.
+Estado del plan: seguimos cerrando recorridos reales y lenguaje natural; pendientes08/28 y otros compuestos/repartos no cubiertos, después muestra independiente/modelos/medios/canal y piloto supervisado. Código `90edb4ee` publicado y desplegado solo en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED; siete controles nuevos/previos compilados y guard central aprobados, servicios externos aislados. Env/compose/modelos intactos y producción244 sin cambios. Evidencia `whatsapp-batch-258-259-staging-deployment.json`; commit posterior documental, sin reconstruir.
 
 ## VIGENTE — tandas256–257: tres audios reales y sus opciones (28/10)
 
