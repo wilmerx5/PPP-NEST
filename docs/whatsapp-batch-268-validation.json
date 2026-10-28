@@ -1,0 +1,68 @@
+{
+  "baseCommit": "87e474321540ac431bf4f927eb1f0e1b81f34e27",
+  "batches": [
+    268
+  ],
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 159.99,
+      "sourceUnchanged": true,
+      "tests": 4206,
+      "failed": 0
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 175.18,
+      "sourceUnchanged": true,
+      "tests": 3405,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 284.46,
+      "sourceUnchanged": true,
+      "tests": 13609,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 5.95,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 543,
+  "tests": 21236,
+  "suites": 332,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 78,
+  "focusTests": 258,
+  "focusSuites": 4,
+  "runtimeChanged": true,
+  "persistenceChanged": false,
+  "productionChanged": false,
+  "deploymentStatus": "Validated locally; staging deployment pending",
+  "baseline": {
+    "failed": 18,
+    "passed": 2,
+    "additionalPlaceFailures": 2
+  },
+  "limits": [
+    "External services and models mocked; no real Meta timing, inference, PDF or audio evaluation.",
+    "Post-order changes require human confirmation; no automatic kitchen mutation or arrival notification added.",
+    "Ambiguous recipient/place requires clarification; no inferred geocoding."
+  ]
+}

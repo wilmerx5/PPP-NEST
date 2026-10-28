@@ -695,6 +695,12 @@ export class WhatsappOrchestratorService {
   ): { first: string; rest?: BurstContinuation } | null {
     if (['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state || '')) return null;
     const session = this.conversationService.getSession(conv);
+    if (conv.state === 'awaiting_name' && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+        !CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) && parts.length === 2 &&
+        isUsableWhatsappCustomerName(parts[0]) && !this.looksLikeAddressRejectingPersonName(parts[0]) &&
+        this.isMerchantPaymentDetailsQuestion(parts[1])) {
+      return {first: parts[0], rest: {text: parts[1]}};
+    }
     const approves = (part: string) => !/[¿?]/.test(part) && (this.isConfirmKeyword(part) || isFinalConfirmAffirmation(part));
     const doubt = session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
       CART_EDIT_SELECTION_KEYS.some(selection => !!session[selection]);
@@ -981,7 +987,8 @@ export class WhatsappOrchestratorService {
       });
       if (logged && msg.messageId) newlyClaimedIds.push(msg.messageId);
       const lines = (msg.text || '').split('\n').map(line => line.trim()).filter(Boolean);
-      const split = logged && lines.length > 1 ? this.splitPendingOptionFromAddress(conv, lines) : null;
+      const split = logged && lines.length > 1 ?
+        (conv.state === 'awaiting_name' ? this.splitBurstAtPendingAnswer(conv, lines) : null) || this.splitPendingOptionFromAddress(conv, lines) : null;
       if (split) {
         msg = { ...msg, text: split.first };
         turn.burstContinuation = split.rest;
@@ -996,6 +1003,9 @@ export class WhatsappOrchestratorService {
     const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
     // Nunca cambiar el estado de IDs duplicados reclamados por otro worker.
     if (!continuation) this.claimedInboundIdsByWaId.set(key, newlyClaimedIds);
+
+    // Reactions acknowledge an existing message; they are not an unsupported order input.
+    if (msg.messageType === 'other' && msg.raw?.type === 'reaction') return;
 
     if (!cfg.enabled) {
       await this.reply(conv, msg.waId, 'Por ahora WhatsApp no está activo. Puedes pedir por la web o llamar al local.');
@@ -1043,6 +1053,13 @@ export class WhatsappOrchestratorService {
 
     // Audio / imagen → texto (Whisper / Vision); resto: avisar
     let text = (msg.text || '').trim();
+    // Preserve bubble boundaries: a waiting acknowledgement is not a surname.
+    // Only remove a separate trailing bubble, never words inside a name.
+    if (conv.state === 'awaiting_name' && msg.messageType === 'text' && text.includes('\n')) {
+      const parts = text.split('\n').map(part => part.trim()).filter(Boolean);
+      while (parts.length > 1 && /^(?:ya\s+)?voy[.!]*$/i.test(parts.at(-1)!)) parts.pop();
+      if (parts.length && isUsableWhatsappCustomerName(parts.join(' '))) text = parts.join(' ');
+    }
     if (msg.messageType === 'audio' && msg.mediaId) {
       const resolved = await this.resolveAudioToText(msg, logged!.id, conv);
       if (!resolved) {
@@ -1162,6 +1179,21 @@ export class WhatsappOrchestratorService {
 
     if (!text) {
       await this.reply(conv, msg.waId, '¿Qué se te antoja? Escribe el *plato* o el *código*.');
+      return;
+    }
+
+    // A bare label after closing a delivery cart can be either recipient or place.
+    // Ask its role instead of silently assigning it to the next checkout field.
+    const closingParts = text.split('\n').map(part => part.trim()).filter(Boolean);
+    const closingSession = this.conversationService.getSession(conv);
+    if (conv.state === 'building_cart' && closingSession.orderType === 'delivery' &&
+        closingSession.cart.length && !conv.customerName && closingParts.length === 2 &&
+        isNothingElseOrderIntent(closingParts[0]) && isUsableWhatsappCustomerName(closingParts[1]) &&
+        !closingSession.pendingAttribute && !closingSession.pendingMatch && !closingSession.pendingMultiOrder &&
+        !CART_EDIT_SELECTION_KEYS.some(key => !!closingSession[key]) &&
+        !this.repliesWithCatalogDishName(closingParts[1], await this.catalogService.getMenuProducts())) {
+      await this.conversationService.saveSession(conv, closingSession, 'awaiting_name');
+      await this.reply(conv, msg.waId, `¿*${closingParts[1]}* es el nombre para el pedido o el barrio/conjunto de entrega? Necesito el nombre y la dirección completa para continuar.`);
       return;
     }
 
@@ -1747,9 +1779,19 @@ export class WhatsappOrchestratorService {
         await this.reply(conv,msg.waId,'¡Con gusto!');
         return;
       }
+      const postText = this.normalizeForMatch(originalText);
+      if (/\b(?:me avisas|avisame|me notificas)\b.*\b(?:llegue|llega|pedido|domicilio)\b/.test(postText)) {
+        await this.reply(conv, msg.waId, 'No puedo confirmar un aviso automático de llegada. Para coordinar la entrega, ' + this.humanPhoneHint());
+        return;
+      }
+      if (/^(?:y\s+)?(?:me\s+)?(?:envias|mandas|incluyes|agregas|envia|manda|incluye|agrega)(?:me)?\s+con\s+/.test(postText)) {
+        await this.reply(conv, msg.waId, 'El pedido ya está registrado. Esta solicitud de cambio todavía no está aplicada; para confirmar si pueden incluirla, ' + this.humanPhoneHint());
+        return;
+      }
       // ETA / demora / faltante: no reabrir carrito ni buscar platos
-      if (isPostOrderFollowUpIntent(originalText)) {
-        await this.handlePostOrderFollowUp(conv, msg.waId, originalText, cfg);
+      const postInquiry = originalText.replace(/\bcu[aá]nto\s+sr\s+demora\b/gi, 'cuánto se demora');
+      if (isPostOrderFollowUpIntent(postInquiry)) {
+        await this.handlePostOrderFollowUp(conv, msg.waId, postInquiry, cfg);
         return;
       }
       await this.conversationService.reopenForNewOrder(conv);
@@ -11803,7 +11845,8 @@ export class WhatsappOrchestratorService {
   }
 
   private formatDeliveryEtaSentence(cfg: EffectiveWhatsappConfig): string {
-    const range = this.getDeliveryEtaRangeText(cfg);
+    const configured = this.getDeliveryEtaRangeText(cfg);
+    const range = /^\d{1,3}\s*[-–—]\s*\d{1,3}$/.test(configured) ? `${configured} minutos` : configured;
     if (/demora|tarda|minut/i.test(range)) {
       return `Suele demorar *${range.replace(/^\s*unos\s+/i, '')}* según la zona.`;
     }
@@ -22549,18 +22592,22 @@ export class WhatsappOrchestratorService {
     return null;
   }
 
-  private async tryHandleMerchantPaymentDetails(
-    conv: WhatsappConversation, waId: string, text: string, cfg: EffectiveWhatsappConfig,
-  ): Promise<boolean> {
+  private isMerchantPaymentDetailsQuestion(text: string): boolean {
     const t = this.normalizeForMatch(text);
     const paymentSubject = /\b(?:nequi|daviplata|transferencia|transferir|cuenta bancaria|datos de pago|titular|pago)\b/.test(t);
     const asksDetails = /\b(?:a nombre de quien|titular|datos (?:para|de)|(?:cual|que) (?:es )?(?:el |la )?(?:numero|cuenta|nequi|llave)|(?:este|ese) es|es este|es ese)\b/.test(t) ||
       /\b(?:nequi|daviplata) es\b/.test(t) ||
-      /\b(?:pasa|pasas|compartes|envias|das)\b.*\b(?:datos|cuenta|numero|nequi|llave)\b/.test(t);
+      /\b(?:pasa|pasas|compartes|envias|das|indica|indicas|indicar)\b.*\b(?:datos|cuenta|numero|nequi|llave)\b/.test(t);
     // Mixed edits/purchases need the ordinary multi-intent path; this handler
     // must not swallow a new item, recipient or explicit payment choice.
-    if (!paymentSubject || !asksDetails ||
-        /\b(?:mi (?:nombre|telefono|celular)|me llamo|agrega|anade|quita|cambia|quiero|regalas|vendes|dame|me das|pago por|pagare|a nombre de (?!quien\b))\b/.test(t)) return false;
+    return paymentSubject && asksDetails && !(
+        /\b(?:mi (?:nombre|telefono|celular)|me llamo|agrega|anade|quita|cambia|quiero|regalas|vendes|dame|me das|pago por|pagare|a nombre de (?!quien\b))\b/.test(t));
+  }
+
+  private async tryHandleMerchantPaymentDetails(
+    conv: WhatsappConversation, waId: string, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!this.isMerchantPaymentDetailsQuestion(text)) return false;
     const session = this.conversationService.getSession(conv);
     const answer = this.formatMerchantTransferDetails(cfg);
     const reminder = session.cart.length ? this.formatInterruptedStepReminder(conv, session) : '';

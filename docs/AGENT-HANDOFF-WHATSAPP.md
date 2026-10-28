@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda268: nombre, Nequi y seguimiento posterior (28/10)
+
+Base `87e47432`. Chats reales: «Natalia»+«Voy», «Me indicas el Nequi», cierre+rótulo ambiguo, salsas/aviso después de confirmar y reacciones. Conserva límites entre nombre y espera, responde datos de pago sin elegir método, procesa nombre+consulta en ráfaga y aclara destinatario frente a lugar. Después de confirmar, la solicitud de cambio se reconoce como no aplicada y se deriva al contacto del comercio; el aviso de llegada no se promete. Seguimiento con errata «sr demora» y minutos explícitos. Reacciones registradas sin respuesta.
+
+78 regresiones nuevas; foco258/4. Global21236/332 aprobada, inventario exacto y543fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-268-validation.json` e informe `whatsapp-reported-checkout-followups-validation-2810.md`. Modelos/servicios externos simulados; no evaluación real del canal ni inferencia. Sin persistencia nueva. Cero llamadas pagadas, Meta u órdenes externas; ledger267/256/11 intacto. Despliegue staging pendiente de verificación. Producción continúa265. Delta268 pendiente de portar a Kamppo, junto con266–267.
+
+No implementa edición automática de pedidos confirmados ni notificación de llegada. Rótulos ambiguos necesitan aclaración. Continúan pendientes muestra reservada, medios/canal y arranque de dos ejecutivos; no declarar vendible solo por esta batería.
+
+
 Punto de entrada actualizado al 14 de octubre de 2026: leer primero [Continuación local](WHATSAPP-LOCAL-NEXT-AGENT.md) y `AGENTS.md`. Este archivo conserva historial con estados y presupuestos antiguos; usar el relevo breve y las entradas finales para el estado vigente. No es evidencia de que el producto ya sea vendible.
 
 ## VIGENTE — tandas266–267: cambio de ejecutivo por presa y retirada negada (28/10)

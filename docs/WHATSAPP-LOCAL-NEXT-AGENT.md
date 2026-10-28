@@ -1,5 +1,14 @@
 ## VIGENTE — tandas266–267: cambio de ejecutivo por presa y retirada negada (28/10)
 
+## VIGENTE — tanda268: nombre, Nequi y seguimiento posterior (28/10)
+
+Base `87e47432`. Chats reales: «Natalia»+«Voy», «Me indicas el Nequi», cierre+rótulo ambiguo, salsas/aviso después de confirmar y reacciones. Conserva límites entre nombre y espera, responde datos de pago sin elegir método, procesa nombre+consulta en ráfaga y aclara destinatario frente a lugar. Después de confirmar, la solicitud de cambio se reconoce como no aplicada y se deriva al contacto del comercio; el aviso de llegada no se promete. Seguimiento con errata «sr demora» y minutos explícitos. Reacciones registradas sin respuesta.
+
+78 regresiones nuevas; foco258/4. Global21236/332 aprobada, inventario exacto y543fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-268-validation.json` e informe `whatsapp-reported-checkout-followups-validation-2810.md`. Modelos/servicios externos simulados; no evaluación real del canal ni inferencia. Sin persistencia nueva. Cero llamadas pagadas, Meta u órdenes externas; ledger267/256/11 intacto. Despliegue staging pendiente de verificación. Producción continúa265. Delta268 pendiente de portar a Kamppo, junto con266–267.
+
+No implementa edición automática de pedidos confirmados ni notificación de llegada. Rótulos ambiguos necesitan aclaración. Continúan pendientes muestra reservada, medios/canal y arranque de dos ejecutivos; no declarar vendible solo por esta batería.
+
+
 Base `5225ccb3`, después de promover265 a producción. Reporte del28/10: «Cambiame El De pechuga con Pollo broaster» añadía un pollo entero; «No no quiero Un Pollo quitalo» abría carta; la explicación con «sink» listaba broaster.266 identifica la línea por opción/nota y busca otra preparación de la misma familia del catálogo. Conserva opciones compatibles, notas, cantidad y resto del carrito; no añade proteína suelta.267 interpreta rechazo+quítalo como retirada. «Quiero cambiar un ejecutivo» pide dueño y preparación sin comprar.
 
 98regresiones nuevas, tres cartas sintéticas×agente simulado off/on y fixture PPP. Baseline corregido26/26rojo. Foco206/206 en cinco suites. Global21158/331 aprobada en cuatro bloques disjuntos, inventario exacto y542fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-266-267-validation.json` e informe `whatsapp-reported-executive-style-validation-2810.md`.
