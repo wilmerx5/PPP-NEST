@@ -1,3 +1,13 @@
+## VIGENTE — tanda 240: reparto y edición de una unidad validados (28/10)
+
+Base publicada `323f6143`, rama `staging`. Se retoman y conservan las correcciones locales239–240: reparto de dos unidades con nota común y notas propias, extra explícito separado y retirada de una nota positiva solo cuando ordinal absoluto, nombre completo y unidad coinciden. No modifica la otra fila ni el paso de checkout.
+
+Validación final:20.179/20.179 pruebas en309suites, dos fases disjuntas sin solaparse ni reintentos (resto20.099/308 y ráfagas80/1). Inventario exacto;620hashes intactos. TypeScript general y de build aprobados;7pruebas Node aprobadas. Evidencia durable `docs/whatsapp-batch-240-validation.json`; informe `docs/whatsapp-shared-serving-edit-validation-2810.md`. La global previa interrumpida no se cuenta.239 conserva su historial de un timeout bajo carga; esta ejecución final valida el conjunto actual.
+
+Límites: dos unidades con gramática delimitada; retiro de nota existente por posición absoluta y nombre completo, una unidad por fila. No cubre todos los repartos, opciones, anáforas ni notas compuestas. Próximo: reparto con opciones de catálogo y consultas combinadas; siguen pendientes históricos de preparación sin añadir, 7 up y saludo/destino. No afirmar todos los chats/PDF corregidos ni vendibilidad por conteos.
+
+Sin inferencia real/Meta/mapas/órdenes externas ni despliegue. Modelos/Main intactos. Servidor staging231 y producción235 según relevo, sin consulta nueva. Cierre local; publicación pendiente: GitHub no resuelve desde el entorno reanudado. HEAD coincide con la última referencia local origin/staging; no confundir con verificación remota nueva.
+
 ## VIGENTE — tanda 238: diagnóstico de reparto y notas compartidas (27/10)
 
 Base `9e9e5868`, staging.32 casos nuevos opt-in:30 en tres menús×agente simulado off/on×notas/notas compartidas/elipsis/extra/pago, más2del chat real. Resultado6verdes/26rojos; los6verdes completan DTO. No se agregan al inventario aprobado ni se declara corregido el caso.
