@@ -15,3 +15,9 @@ Límites: transporte/modelo/órdenes simulados; ráfaga con reloj controlado, no
 Primera global detenida: dos regresiones en correcciones existentes «la bebida que sea …». El nuevo seguimiento corto interceptaba esa gramática; se devolvieron conectores de corrección a la ruta anterior. Las expectativas históricas permanecen iguales; la aprobación requiere repetir todo el inventario sobre la fuente final.
 
 Segunda global: comprensión general aprobada, pero regresión en checkout por «la bebida del … con …». Se detuvo el bloque restante y se excluye esa ejecución de aprobación. El guard final distingue conectores de corrección frente a valores exactos de catálogo. Checkout completo42/42 y los dos casos históricos de «que sea» aprobados sin cambiar expectativas. Se vuelve a recorrer todo el inventario sobre la nueva fuente congelada.
+
+## Cierre
+
+Global20.940/328suites, inventario exacto,539fuentes src sin cambios; TypeScript general/build y Node92/92 aprobados.
+
+Código `9036bfe3` publicado y desplegado solo en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED; doce controles compilados nuevos/previos y guard central aprobados, servicios externos aislados. Env/compose/modelos intactos y producción244 sin cambios. Evidencia `whatsapp-batch-262-263-staging-deployment.json`; commit posterior documental, sin reconstrucción.

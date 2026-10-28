@@ -4,7 +4,7 @@ Base `9a8dfe94`. CHAT2510-08 alimentario desde «plato frito»/«en combo», Pep
 
 37casos nuevos, foco207/207; baseline corregido12/12rojo (6bebida ignorada,6recibo sin notas). Global20.940/328suites aprobada, cuatro bloques disjuntos, inventario exacto y539fuentes src sin cambios; TypeScript general/build y Node92/92 aprobados. Evidencia `whatsapp-batch-262-263-validation.json`. Evidencia `whatsapp-combo-burst-receipt-2810.json`, informe `whatsapp-combo-burst-receipt-validation-2810.md` con ajustes de oráculo explícitos. Notas distintas/consolidadas, totales, pagos pendientes y adicionales separados protegidos.
 
-No prueba de Meta ni tiempos históricos exactos, PDF ni domicilio/contacto original. Pendientes28/referencias abreviadas y otros compuestos; después muestra reservada/modelos/medios/canal y piloto. Cero inferencia pagada, Meta u órdenes reales; ledger267/256/11, modelos y producción244 intactos. Sin nuevo esquema/persistencia. Staging261 hasta deploy verificado.
+No prueba de Meta ni tiempos históricos exactos, PDF ni domicilio/contacto original. Pendientes28/referencias abreviadas y otros compuestos; después muestra reservada/modelos/medios/canal y piloto. Cero inferencia pagada, Meta u órdenes reales; ledger267/256/11, modelos y producción244 intactos. Sin nuevo esquema/persistencia. Código `9036bfe3` publicado y desplegado solo en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED; doce controles compilados nuevos/previos y guard central aprobados, servicios externos aislados. Env/compose/modelos intactos y producción244 sin cambios. Evidencia `whatsapp-batch-262-263-staging-deployment.json`; commit posterior documental, sin reconstrucción.
 
 ## VIGENTE — tandas260–261: ajíes y segunda corrección del combo (28/10)
 
