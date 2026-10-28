@@ -15,3 +15,5 @@ Persistencia: nuevo campo opcional JSON dentro de un pendiente existente, sin mi
 Cero llamadas pagadas, Meta u órdenes externas. Presupuesto267/256/11 intacto. Modelos y configuración sin cambios. Solo staging; producción sin modificaciones.
 
 Validación final: global21060 pruebas/330 suites, inventario exacto, 541fuentes congeladas; TypeScript general/build y Node aprobados. `whatsapp-batch-265-validation.json`.
+
+Código `f0ae0d00` publicado y desplegado solo en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED;16controles compilados nuevos/previos y guard central aprobados, con servicios externos aislados. Env/compose/modelos intactos; producción244 verificada sin cambios. Evidencia `whatsapp-batch-265-staging-deployment.json`. Commit posterior documental, sin reconstrucción.

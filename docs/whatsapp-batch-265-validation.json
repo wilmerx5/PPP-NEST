@@ -50,5 +50,6 @@
   "runtimeChanged": true,
   "persistence": "Optional pendingCartRemoval.batchGroups JSON field. No SQL migration. Cancel or finish affected drafts before rollback to an older image.",
   "productionChanged": false,
-  "deploymentStatus": "Pending staging deployment verification"
+  "deploymentStatus": "Verified healthy staging deployment; see whatsapp-batch-265-staging-deployment.json",
+  "runtimeCodeCommit": "f0ae0d00102e70852c428d1185aa823b550eaba8"
 }

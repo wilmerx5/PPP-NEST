@@ -41,7 +41,9 @@
         "evidence": "whatsapp-batch-265-validation.json",
         "tests": 96,
         "coverage": "Atomic incremental removal clarification, three synthetic menus, mocked agent off/on, pending groups and central confirmation guard; short name, number and note choices; DTO and receipt preserve remaining items.",
-        "limits": "Seeded cart, not original full journey, independent model/media/channel or pilot evaluation."
+        "limits": "Seeded cart, not original full journey, independent model/media/channel or pilot evaluation.",
+        "runtimeCodeCommit": "f0ae0d00102e70852c428d1185aa823b550eaba8",
+        "stagingDeployment": "whatsapp-batch-265-staging-deployment.json"
       }
     },
     {
