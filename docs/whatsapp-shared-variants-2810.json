@@ -1,0 +1,91 @@
+{
+  "batches": [
+    252,
+    253,
+    254
+  ],
+  "baseCommit": "fff3189201caf69cdfffd62a127cb0581b4fcf9a",
+  "baseline": {
+    "tests": 12,
+    "failed": 12,
+    "cases": [
+      {
+        "name": "Bento Oriental/agent=false/split=false: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 17
+      },
+      {
+        "name": "Bento Oriental/agent=false/split=true: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 20
+      },
+      {
+        "name": "Bento Oriental/agent=true/split=false: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 17
+      },
+      {
+        "name": "Bento Oriental/agent=true/split=true: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 20
+      },
+      {
+        "name": "Pasta Primavera/agent=false/split=false: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 17
+      },
+      {
+        "name": "Pasta Primavera/agent=false/split=true: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 20
+      },
+      {
+        "name": "Pasta Primavera/agent=true/split=false: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 17
+      },
+      {
+        "name": "Pasta Primavera/agent=true/split=true: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 20
+      },
+      {
+        "name": "Wrap Vegetal/agent=false/split=false: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 17
+      },
+      {
+        "name": "Wrap Vegetal/agent=false/split=true: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 20
+      },
+      {
+        "name": "Wrap Vegetal/agent=true/split=false: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 17
+      },
+      {
+        "name": "Wrap Vegetal/agent=true/split=true: common nondefault then complete pair and DTO",
+        "status": "failed",
+        "failedAssertionLine": 20
+      }
+    ]
+  },
+  "paidRequests": 0,
+  "source": "CHAT2510-05 common soup clause, expanded with synthetic portable cases",
+  "limits": [
+    "Extracted clause plus added valid catalog pair and synthetic checkout, not full original compound chat.",
+    "Unknown initial pair with already split variants remains outside new contract."
+  ],
+  "validationStatus": "passed",
+  "globalResult": {
+    "tests": 20643,
+    "suites": 323,
+    "mode": "Four disjoint approved blocks, four workers except isolated timers; exact inventory, no failed tests or timeout increase."
+  },
+  "focused": {
+    "tests": 194,
+    "suites": 5,
+    "newTests": 64
+  }
+}

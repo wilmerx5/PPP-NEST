@@ -1,3 +1,11 @@
+## VIGENTE — tandas252–254: opciones comunes y variantes previas (28/10)
+
+Base `fff31892`, staging.252 aplica «De <atributo> sería[n] los/las dos <opción>» por catálogo a dos unidades del mismo dueño, con plural simple único.253 reparte variantes ya separadas solo cuando notas/precio/atributos no modificados coinciden; si difieren pide aclaración sin mutación.254 verifica cláusula real extraída «los dos ajiacos» con sopa inicial Menudencias, dos presas, limonadas incluidas y adicional separado hasta DTO; checkout y aclaración añadidos, NO replay del compuesto original completo.
+
+64 casos nuevos en tres menús y PPP, agente simulado off/on. Baseline12/12 rojas; foco final194/194 en5suites. Conserva notas/otros pendientes, repetición segura y DTO con opciones. Global aprobada20.643/323suites, inventario exacto,638hashes sin cambios, TS general/build y Node92/92. Un bloque exploratorio solapado se terminó y se excluye; los cuatro bloques aprobados cubren todo el inventario. Evidencia `whatsapp-shared-variants-2810.json`, `whatsapp-shared-variants-validation-2810.md` y `whatsapp-batch-252-254-validation.json` al cierre.
+
+Pendientes: compuesto original con sopa común y presa desconocida; reparto ambiguo inicial con variantes ya separadas, notas diferentes con dueño explícito, recorridos08/28; después muestra independiente/modelos/medios/canal y piloto. Cero inferencia pagada, Meta, mapas u órdenes externas. Ledger267/256/11; modelos y Main/producción244 intactos. Runtime previo staging251 hasta nuevo despliegue verificado. Sin cambio de esquema/env/compose.
+
 ## VIGENTE — tandas249–251: arranque y aclaración del reparto real (28/10)
 
 Base `83142c21`. Fase del plan: recorridos reales y cierre seguro, antes de muestra independiente/modelo/canal y piloto supervisado. CHAT2510-05 se reproduce desde sus primeros cinco mensajes: dos ejecutivos, sopa/presas, limonada incluida y adicional. Se detectó que verificar solo cantidad dejaba pasar dos presas iguales y bebida errónea. Oráculo fuerte2/2rojo en base anterior; no atribuirlo a Luna.
