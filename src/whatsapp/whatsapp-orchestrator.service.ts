@@ -19785,11 +19785,16 @@ export class WhatsappOrchestratorService {
   private async tryHandleIncludedDrinkFollowup(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
     if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state)) return false;
     const said = normalizeCorrection(text).replace(/ (?:por f|por fa|porfa|por favor|gracias)$/, '');
-    const match = said.match(/^(?:y )?de tomar ([a-zñ]+(?: [a-zñ]+){0,3})$/);
+    const labelledFollowup = said.match(/^(?:y )?(?:la )?(?:bebida|gaseosa|refresco) ([a-zñ]+(?: [a-zñ]+){0,3})$/);
+    const match = said.match(/^(?:y )?de tomar ([a-zñ]+(?: [a-zñ]+){0,3})$/) || labelledFollowup;
     if (!match || /\b(?:otra?|mas|extra|adicional|aparte|dos|tres|una?)\b/.test(match[1])) return false;
     // Polite requests retain the existing owner clarification and continuation.
     if (/^(?:(?:me|nos) |(?:puedes|pueden|podrias|podrian|quiero|dame|enviame|mandame)\b)/.test(match[1])) return false;
     const products = await this.catalogService.getMenuProducts();
+    // A short label may be an exact catalog value (e.g. "agua de panela").
+    // Otherwise clauses naming a dish or describing a change keep their existing route.
+    if (labelledFollowup && /\b(?:que|sea|en|con|por|de|del|para|al)\b/.test(labelledFollowup[1]) &&
+      !products.some(product=>(product.attributes || []).some(attr=>/^(?:bebida|gaseosa|refresco)s?$/i.test(attr.attributeName) && attr.options.some(value=>normalizeCorrection(value)===labelledFollowup[1])))) return false;
     const owners = session.cart.flatMap((line,index)=>{
       const product=products.find(p=>p.id===line.productId);
       const attributes=(product?.attributes || []).filter(attr=>/^(?:bebida|gaseosa|refresco)s?$/i.test(attr.attributeName));
@@ -19803,6 +19808,7 @@ export class WhatsappOrchestratorService {
     if (session.pendingSubsetKitchenNote || session.mpPreferenceId) return clarify();
     // Existing option selections own their continuation; never replace them with a new prompt.
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
+    if (labelledFollowup && (owners.length!==1 || owners[0].line.quantity!==1)) return clarify();
     if (new Set(owners.map(row=>row.line.productId)).size!==1) {
       const labelled=match[1].replace(/^(?:(?:la|el) )?(?:bebida|gaseosa|refresco) /, '');
       const values=owners.flatMap(row=>row.attributes.flatMap(attr=>attr.options)).filter(value=>[match[1],labelled].includes(normalizeCorrection(value)));
@@ -22568,7 +22574,7 @@ export class WhatsappOrchestratorService {
         return (
           `*${i + 1}.* *${c.name}*\n` +
           `   Cant: *${qty}*  ·  $${Math.round(c.unitPrice * qty).toLocaleString('es-CO')}` +
-          attrs
+          attrs + (c.note?.trim() ? `\n   📝 ${c.note.trim()}` : '')
         );
       })
       .join('\n\n');
@@ -22578,6 +22584,7 @@ export class WhatsappOrchestratorService {
       `🧾 Orden *#${num}*\n` +
       `🕐 ${now}\n\n` +
       `*Detalle:*\n${items}\n\n` +
+      (session.customerNotes?.trim() ? `📝 Notas del pedido: ${session.customerNotes.trim()}\n\n` : '') +
       `Subtotal: $${Math.round(subtotal).toLocaleString('es-CO')}\n` +
       (prizeDiscount ? `Premio: −$${Math.round(prizeDiscount).toLocaleString('es-CO')}\n` : '') +
       (fee ? `Domicilio: $${Math.round(fee).toLocaleString('es-CO')}\n` : '') +

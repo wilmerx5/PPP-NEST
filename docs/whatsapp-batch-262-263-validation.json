@@ -1,0 +1,49 @@
+{
+  "baseCommit": "9a8dfe94aa864028ff0e564949b94ba04b2c25c3",
+  "batches": [
+    262,
+    263
+  ],
+  "tests": 20940,
+  "suites": 328,
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 159.19,
+      "sourceUnchanged": true
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 149.65,
+      "sourceUnchanged": true
+    },
+    "rest-final": {
+      "exitCode": 0,
+      "seconds": 266.97,
+      "sourceUnchanged": true
+    },
+    "timers-final": {
+      "exitCode": 0,
+      "seconds": 72.77,
+      "sourceUnchanged": true
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "sourceFiles": 539,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "paidRequests": 0,
+  "newRegressions": 37,
+  "focusTests": 207,
+  "nodeTests": 92,
+  "execution": "Four disjoint sequential blocks; four workers except isolated timers; complete inventory on final frozen source.",
+  "earlierAttempts": "First global failed two existing correction cases. Second global interrupted after checkout owner-reference regression. Both excluded from approval; original historical expectations preserved."
+}

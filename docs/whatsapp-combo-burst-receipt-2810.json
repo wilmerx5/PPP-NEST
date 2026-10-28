@@ -1,0 +1,24 @@
+{
+  "batches": [
+    262,
+    263
+  ],
+  "baseCommit": "9a8dfe94aa864028ff0e564949b94ba04b2c25c3",
+  "sourceEpisode": "CHAT2510-08",
+  "source": "Food phrases on synthetic menus; pickup/contact synthetic; burst timings controlled, not exact historical timing.",
+  "correctedBaseline": {
+    "failed": 12,
+    "drinkIgnored": 6,
+    "receiptNotesMissing": 6
+  },
+  "focused": {
+    "tests": 207,
+    "suites": 4,
+    "newTests": 37
+  },
+  "paidRequests": 0,
+  "globalStatus": "passed",
+  "productionChanged": false,
+  "globalTests": 20940,
+  "globalSuites": 328
+}

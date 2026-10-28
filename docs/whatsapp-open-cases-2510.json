@@ -82,7 +82,13 @@
         "substitution attaches to combo and persists",
         "retain two ajies note through simulated DTO; verify receipt note display separately"
       ],
-      "reproduced": "composition reproduced; full replacement/receipt still pending"
+      "reproduced": "composition reproduced; full replacement/receipt still pending",
+      "followup262263": {
+        "status": "food sequence and textual receipt verified on synthetic menus; not complete historical channel replay",
+        "evidence": "whatsapp-combo-burst-receipt-2810.json",
+        "coverage": "Split/burst initial combo, Pepsi, composition, substitution, counted condiments, repeated correction, simulated order DTO and textual WhatsApp receipt.",
+        "remaining": "Historical delivery/contact, exact transport timing, actual channel and any PDF rendering."
+      }
     }
   ]
 }

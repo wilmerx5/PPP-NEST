@@ -1,3 +1,11 @@
+## VIGENTE — tandas262–263: arranque del combo y recibo textual (28/10)
+
+Base `9a8dfe94`. CHAT2510-08 alimentario desde «plato frito»/«en combo», Pepsi, consulta, yuca, ajíes y segunda corrección hasta DTO/recibo. Ráfaga controlada y turnos separados en tres cartas sintéticas×agente simulado off/on. El pendiente de bebida en conversión ya era correcto: no cambiarlo.262 reconoce seguimiento etiquetado de bebida para un dueño/una unidad;263 muestra notas por línea y generales en el recibo textual.
+
+37casos nuevos, foco207/207; baseline corregido12/12rojo (6bebida ignorada,6recibo sin notas). Global20.940/328suites aprobada, cuatro bloques disjuntos, inventario exacto y539fuentes src sin cambios; TypeScript general/build y Node92/92 aprobados. Evidencia `whatsapp-batch-262-263-validation.json`. Evidencia `whatsapp-combo-burst-receipt-2810.json`, informe `whatsapp-combo-burst-receipt-validation-2810.md` con ajustes de oráculo explícitos. Notas distintas/consolidadas, totales, pagos pendientes y adicionales separados protegidos.
+
+No prueba de Meta ni tiempos históricos exactos, PDF ni domicilio/contacto original. Pendientes28/referencias abreviadas y otros compuestos; después muestra reservada/modelos/medios/canal y piloto. Cero inferencia pagada, Meta u órdenes reales; ledger267/256/11, modelos y producción244 intactos. Sin nuevo esquema/persistencia. Staging261 hasta deploy verificado.
+
 ## VIGENTE — tandas260–261: ajíes y segunda corrección del combo (28/10)
 
 Base `3dfdf543`. CHAT2510-08 desde compra canónica con Pepsi: consulta de composición, sustitución por yuca, petición de dos ajíes y segunda corrección.260 conserva el suministro contado como solicitud para cocina, sin borrar notas ni multiplicar cantidad; si se vende en carta aclara producto/precio.261 reconoce la segunda forma coloquial y aclara cantidad/línea/ingrediente ambiguos, conservando pendientes y notas.
