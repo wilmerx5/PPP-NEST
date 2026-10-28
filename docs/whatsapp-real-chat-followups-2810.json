@@ -24,7 +24,19 @@
       "tests": "src/whatsapp/whatsapp-multiple-explicit-removal.spec.ts",
       "currentCases": 50,
       "coverage": "Atomic explicit removals with full catalog titles, three menus, agent mock off/on; building/payment/final confirmation; unknown targets, repeated variants and pending payment/selection preserve the whole cart; 18 portable seeded-cart journeys reach DTO with kept quantities/notes.",
-      "limits": "Not the complete original journey. Actual catalog has multiple arroz-combo variants; incomplete titles require clarification. Full-title matching cannot certify arbitrary aliases."
+      "limits": "Not the complete original journey. Actual catalog has multiple arroz-combo variants; incomplete titles require clarification. Full-title matching cannot certify arbitrary aliases.",
+      "followup264": {
+        "evidence": "whatsapp-batch-264-validation.json",
+        "tests": 24,
+        "runtimeChanged": false,
+        "coverage": "Seeded-cart clarification journeys derived from CHAT2510-28: three synthetic catalogs and the PPP menu fixture, agent mocked off/on, building/payment/final-confirm states. Abbreviated and incomplete targets preserve the whole cart; a repeated full instruction removes only two exact products; retransmission preserves siblings; checkout DTO and text receipt retain remaining quantities and notes.",
+        "limits": [
+          "Not a replay of the complete original conversation or original customer data.",
+          "PPP seed attributes are empty: this suite tests removal identity, not initial option collection.",
+          "Clarification completes by repeating the entire removal instruction with full catalog names. Bare-name follow-ups and ordinal clarification are not certified.",
+          "No real model, audio, PDF, Meta, external order or pilot validation."
+        ]
+      }
     },
     {
       "episode": "CHAT2510-08",

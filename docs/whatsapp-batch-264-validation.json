@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-28",
+  "batch": 264,
+  "baseCommit": "49259ac573dd7aa406985118d5dd87c114c099d5",
+  "runtimeChanged": false,
+  "newTests": 24,
+  "focused": {
+    "tests": 264,
+    "suites": 5,
+    "passed": true,
+    "files": [
+      "whatsapp-multiple-removal-clarification.spec.ts",
+      "whatsapp-multiple-explicit-removal.spec.ts",
+      "whatsapp-multiple-negation.spec.ts",
+      "whatsapp-scoped-remove-all.spec.ts",
+      "whatsapp-cart-removal.spec.ts"
+    ]
+  },
+  "typescript": {
+    "command": "tsc --noEmit --incremental false",
+    "exitCode": 0
+  },
+  "global": {
+    "rerun": false,
+    "reason": "Only an additional regression suite and documentation changed; runtime and existing tests unchanged.",
+    "lastApprovedEvidence": "whatsapp-batch-262-263-validation.json",
+    "lastApprovedTests": 20940,
+    "lastApprovedSuites": 328
+  },
+  "scope": "Seeded-cart clarification journeys derived from CHAT2510-28: three synthetic catalogs and the PPP menu fixture, agent mocked off/on, building/payment/final-confirm states. Abbreviated and incomplete targets preserve the whole cart; a repeated full instruction removes only two exact products; retransmission preserves siblings; checkout DTO and text receipt retain remaining quantities and notes.",
+  "limits": [
+    "Not a replay of the complete original conversation or original customer data.",
+    "PPP seed attributes are empty: this suite tests removal identity, not initial option collection.",
+    "Clarification completes by repeating the entire removal instruction with full catalog names. Bare-name follow-ups and ordinal clarification are not certified.",
+    "No real model, audio, PDF, Meta, external order or pilot validation."
+  ],
+  "paidRequests": 0,
+  "budget": {
+    "authorized": 267,
+    "used": 256,
+    "remaining": 11,
+    "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75"
+  },
+  "deployment": {
+    "required": false,
+    "reason": "No runtime changes. Last staging runtime remains 9036bfe3 (batches 262–263). Production not modified."
+  }
+}

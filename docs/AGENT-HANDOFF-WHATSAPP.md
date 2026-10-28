@@ -2,6 +2,15 @@
 
 Punto de entrada actualizado al 14 de octubre de 2026: leer primero [Continuación local](WHATSAPP-LOCAL-NEXT-AGENT.md) y `AGENTS.md`. Este archivo conserva historial con estados y presupuestos antiguos; usar el relevo breve y las entradas finales para el estado vigente. No es evidencia de que el producto ya sea vendible.
 
+## VIGENTE — tanda264: retirada múltiple abreviada (28/10)
+
+Base `49259ac5`. Tanda de cobertura, sin cambio de runtime: 24 recorridos nuevos derivados de CHAT2510-28 con tres cartas sintéticas y fixture PPP × agente simulado off/on × construcción/pago/confirmación. «El pollo y el combo de arroz» y el título incompleto conservan todo el carrito; repetir la instrucción completa con nombres exactos retira solo los dos productos. Se preservan productos similares, cantidades y notas hasta DTO/recibo; repetir la retirada no elimina los restantes.
+
+Foco 264/264 en 5 suites y TypeScript general aprobados. No nueva global: solo suite nueva y documentación; última global vigente del runtime20.940/328 (262–263), sin sumar esta tanda como una global ejecutada. Evidencia `whatsapp-batch-264-validation.json` y `src/whatsapp/whatsapp-multiple-removal-clarification.spec.ts`.
+
+Límite: carrito inicial preparado, sin atributos PPP; no recorrido original completo ni respuestas de aclaración con solo un nombre/número. Siguiente: aclaración incremental sin repetir toda la orden, compuestos pendientes y evaluación reservada/modelos/medios/canal antes del piloto. Cero llamadas pagadas, Meta u órdenes reales; ledger267/256/11 intacto. Sin despliegue nuevo: runtime staging sigue9036bfe3; producción no modificada.
+
+
 ## Detección de medios y diferencia Main/staging
 
 Base `1e1e0268`, rama staging. Auditoría de los dos módulos compilados de WhatsApp de producción: recompilar Main a6890c4a en `/tmp/ppp-main-media-verify` con TypeScript/dependencias vigentes produjo exactamente los hashes activos en ppp_nest_api. AI `eceac7c6eb5f3455714fc5ca4cb2acd78d48a95a76f557e7f343208015b8a34c`; orquestador `90228fd9b79e5506a04ad3f68d7ed9cb801fd79dc9b5434be04c77816d48b9bc`. Es evidencia para esos dos módulos, no comparación binaria de todo el backend. Producción ejecuta Main del piloto; las tandas posteriores siguen solo en staging. En producción no está normalizeSpokenOrderCourtesy ni humanPhoneHint. No se cambió Main ni configuración productiva.
