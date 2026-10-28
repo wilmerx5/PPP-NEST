@@ -1,0 +1,145 @@
+{
+  "id": "text-economy-2810",
+  "baseCommit": "82a91ee4",
+  "status": "prepared_not_executed",
+  "candidates": [
+    "gpt-6-luna",
+    "gpt-6.1-sol"
+  ],
+  "order": [
+    "gpt-6-luna",
+    "gpt-6.1-sol"
+  ],
+  "agentOverrideMustBeAbsent": true,
+  "assistModelFixed": "gpt-6-luna",
+  "networkAndCredentialPreflightRequired": true,
+  "totalRequestCap": 40,
+  "requestCapPerModel": 20,
+  "repeats": 1,
+  "stopOnFailure": true,
+  "noRetriesOfFailedConversations": true,
+  "sharedLedger": {
+    "authorizedRequests": 188,
+    "usedRequests": 187,
+    "remainingRequests": 1,
+    "modified": false,
+    "extensionNeededBeforeRun": 39,
+    "note": "Operational cap selected by agent under user-authorized comparison; only extend immediately before actual inference, preserve history and synchronize private mirror."
+  },
+  "jobs": [
+    {
+      "id": "economy-ppp-checkout-2810",
+      "menu": "scripts/fixtures/whatsapp-beta-menu.json",
+      "scenarios": "scripts/fixtures/whatsapp-economy-ppp-2810.json",
+      "maxRequestsPerModel": 10,
+      "turns": 8,
+      "reviewFinalOrder": {
+        "items": {
+          "38": 2,
+          "71": 1
+        },
+        "lines": [
+          {
+            "id": 71,
+            "quantity": 1
+          },
+          {
+            "id": 38,
+            "quantity": 2,
+            "note": [
+              "sin arroz"
+            ]
+          }
+        ],
+        "attributes": [
+          {
+            "id": 71,
+            "key": "Bebida",
+            "value": "Pepsi"
+          }
+        ],
+        "requireNoExtraProducts": true,
+        "requireNoOrderBeforeConfirmation": true
+      },
+      "menuSha256": "da95ab36ef9de55ecb07cc69cdc2178f72e38441220eab8614600617e70232b1",
+      "scenariosSha256": "15b346c913c056ee25875d1d432a70e0d7950a7d98048d598965d1b3c5bf5086"
+    },
+    {
+      "id": "economy-falafel-checkout-2810",
+      "menu": "scripts/fixtures/whatsapp-falafel-menu-1510.json",
+      "scenarios": "scripts/fixtures/whatsapp-economy-falafel-2810.json",
+      "maxRequestsPerModel": 10,
+      "turns": 13,
+      "reviewFinalOrder": {
+        "items": {
+          "8921": 1,
+          "8922": 1
+        },
+        "lines": [
+          {
+            "id": 8921,
+            "quantity": 1,
+            "note": [
+              "sin tomate"
+            ],
+            "attrs": [
+              {
+                "key": "Bebida",
+                "value": "Limonada"
+              }
+            ]
+          },
+          {
+            "id": 8922,
+            "quantity": 1
+          }
+        ],
+        "attributes": [
+          {
+            "id": 8921,
+            "key": "Bebida",
+            "value": "Limonada"
+          }
+        ],
+        "requireNoExtraProducts": true,
+        "requireNoOrderBeforeConfirmation": true
+      },
+      "menuSha256": "6045bb6fe95ef3bcbe2008f97d3cdb64ca35a3c39ed399fff11a3817013ba172",
+      "scenariosSha256": "84b31539241409f78dbf764e3260ebbd39e997d447e733f9d78070335b124780"
+    }
+  ],
+  "providerPricesVerifiedAt": "2026-10-28",
+  "standardTextRatesPerMillion": {
+    "gpt-6-luna": {
+      "input": 0.1,
+      "cachedInput": 0.01,
+      "output": 0.5
+    },
+    "gpt-6.1-sol": {
+      "input": 2,
+      "cachedInput": 0.1,
+      "output": 10
+    }
+  },
+  "sources": [
+    "https://developers.openai.com/api/docs/models/gpt-6-luna",
+    "https://developers.openai.com/api/docs/models/gpt-6.1-sol"
+  ],
+  "blockingConditions": [
+    "OPENAI_API_KEY is not loaded in current environment",
+    "Unauthenticated connectivity probe failed with EAI_AGAIN before any inference"
+  ],
+  "knownRunnerLimitations": [
+    "Current runner aggregates mixed agent/assist tokens under candidate price; attribute request usage by actual requested model or exclude cost ranking until fixed",
+    "Final DTO is captured but order contents need explicit review; orderCount=1 alone is insufficient",
+    "These two known cases plus new checkout suffixes are a development smoke comparison, not statistical qualification for production"
+  ],
+  "decisionRules": [
+    "Fail candidate for any wrong product, quantity, variant, scoped note or premature external confirmation",
+    "Count only completed conversations with checked final DTO and visible responses",
+    "Zero model requests means deterministic router coverage, not evidence for that model",
+    "No cost winner if usage is missing or mixed-model costs are not attributed correctly",
+    "If Luna passes, use a larger reserved real-text evaluation and then controlled staging before promoting; no automatic production change",
+    "If evaluating a Sol fallback, validate fallback before executing candidate actions; never repeat accepted mutations blindly"
+  ]
+}

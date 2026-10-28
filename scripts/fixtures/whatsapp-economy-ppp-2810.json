@@ -1,0 +1,133 @@
+[
+  {
+    "id": "economy-ppp-checkout-2810",
+    "evaluationStatus": "prepared_not_executed; development comparison based on known cases, not holdout",
+    "messages": [
+      {
+        "text": "Buenas, para hoy me mandas un dúo de tacos con Coca Cola Zero y dos sopas de ajiaco sin arroz. Si no venden flan, no lo reemplaces.",
+        "expect": {
+          "items": {
+            "38": 2,
+            "71": 1
+          },
+          "attrs": [
+            {
+              "id": 71,
+              "key": "Bebida",
+              "value": "Coca Cola Zero"
+            }
+          ],
+          "lines": [
+            {
+              "id": 71,
+              "quantity": 1
+            },
+            {
+              "id": 38,
+              "quantity": 2,
+              "note": [
+                "sin arroz"
+              ]
+            }
+          ],
+          "replyAll": [
+            "flan"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Antes de seguir, cuánto vale cada sopa?",
+        "expect": {
+          "items": {
+            "38": 2,
+            "71": 1
+          },
+          "replyAll": [
+            "10.500"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "La bebida del dúo mejor Pepsi, las sopas déjalas igual.",
+        "expect": {
+          "items": {
+            "38": 2,
+            "71": 1
+          },
+          "attrs": [
+            {
+              "id": 71,
+              "key": "Bebida",
+              "value": "Pepsi"
+            }
+          ],
+          "lines": [
+            {
+              "id": 71,
+              "quantity": 1
+            },
+            {
+              "id": 38,
+              "quantity": 2,
+              "note": [
+                "sin arroz"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Mi nombre es Ana Torres",
+        "expect": {
+          "items": {
+            "38": 2,
+            "71": 1
+          },
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Mi telefono es 3000000001",
+        "expect": {
+          "items": {
+            "38": 2,
+            "71": 1
+          },
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "La dirección es Calle 10 # 20-30",
+        "expect": {
+          "items": {
+            "38": 2,
+            "71": 1
+          },
+          "address": "10",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Pago contraentrega",
+        "expect": {
+          "items": {
+            "38": 2,
+            "71": 1
+          },
+          "payment": "cash",
+          "orderCount": 0,
+          "state": "awaiting_final_confirm"
+        }
+      },
+      {
+        "text": "confirmar",
+        "expect": {
+          "orderCount": 1
+        }
+      }
+    ]
+  }
+]

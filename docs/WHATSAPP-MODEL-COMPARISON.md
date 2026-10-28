@@ -1,3 +1,5 @@
+> 28/10/2026 — Comparación económica autorizada por el usuario: Luna frente a Sol para texto. Casos y criterios preparados en `whatsapp-text-economy-evaluation-2810.md` y manifiesto `scripts/fixtures/whatsapp-text-economy-comparison-2810.json`. No ejecutada: sin clave cargada y conectividad OpenAI fallida. No hay un ganador nuevo, llamadas pagadas ni cambio de producción. Los resultados del 15/10 que siguen son históricos.
+
 # Reemplazo de modelo: selección y validación, 15/10/2026
 
 Actualización posterior: visión/assist Luna y audio GPT-Transcribe ya activos en staging; ver [validación de medios](WHATSAPP-MEDIA-MODELS.md). Las referencias a GPT-4.1/Whisper abajo describen la primera etapa, anterior a esta migración.
