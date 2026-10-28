@@ -87,5 +87,7 @@
     "tests": 194,
     "suites": 5,
     "newTests": 64
-  }
+  },
+  "runtimeCodeCommit": "4f825895cb4efb03fe55585867f9dc99355aeb9a",
+  "stagingDeployment": "docs/whatsapp-batch-252-254-staging-deployment.json"
 }

@@ -17,3 +17,5 @@ Baseline12/12 rojas antes del cambio: seis en opción común sobre fila de canti
 No se cubren el mensaje compuesto completo con sopa y presa desconocida, repartos ambiguos iniciales entre variantes separadas, pluralización general, anáforas abiertas ni notas distintas que autoricen reasignación de dueño. Siguen pendientes replays08/28, evaluación independiente de modelos/medios/canal y piloto supervisado. No atribuir precisión real a Luna/Sol por mocks ni calcular cobertura del corpus con estos conteos.
 
 Cero API pagada/Meta/mapas/órdenes externas. Presupuesto267/256/11 y espejo intactos; modelos y producción244 conservados. No cambia esquema ni configuración.
+
+Código `4f825895` desplegado y verificado solo en staging: running/healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED. Tres controles de comportamiento compilado y guard central aprobados con dependencias aisladas. Env/compose/modelos intactos. Imagen/backup/rollback en `whatsapp-batch-252-254-staging-deployment.json`; commit posterior solo documental. Producción244 sin cambios.
