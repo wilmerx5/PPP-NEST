@@ -90,5 +90,6 @@
   "limitations": [
     "Development mocks do not establish real image/audio accuracy, all historical chats/PDF coverage or independent general accuracy.",
     "Known-case real inference is isolated from external orders, Meta, maps and payments."
-  ]
+  ],
+  "nodeTests": 92
 }
