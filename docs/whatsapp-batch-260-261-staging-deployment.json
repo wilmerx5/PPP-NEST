@@ -1,0 +1,86 @@
+{
+  "batches": [
+    260,
+    261
+  ],
+  "runtimeCodeCommit": "c41b56d20937e4b06c7aed8c3fc4a9716b4fa533",
+  "verification": {
+    "compiledNewBehavior": "10 compiled paired-plan, negation, atomic split, combo, supply, idempotency, repeated substitution and central-confirmation checks passed; external services isolated",
+    "environment": "staging",
+    "checkedAt": "2026-10-28T20:03:08.432166+00:00",
+    "head": "c41b56d20937e4b06c7aed8c3fc4a9716b4fa533",
+    "image": "sha256:ed27d567a3fd297ab08146ede960884688d567fe97cded04f5a0fde2215efd67",
+    "candidateImage": "sha256:ed27d567a3fd297ab08146ede960884688d567fe97cded04f5a0fde2215efd67",
+    "state": "running",
+    "health": "healthy",
+    "restartCount": 0,
+    "models": {
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol"
+    },
+    "compiledSmoke": "3 compiled routing checks passed\n2 compiled description checks passed",
+    "compiledConfirmationGuard": "compiled unresolved distribution blocks direct confirmation",
+    "compiledModuleHashes": {
+      "whatsapp-agent-model": "4cb9ac9f0f24265375107f46539c3d17e24fc1396aface51b70c7e5bbe18525d",
+      "whatsapp-agent.service": "aac50bcaf8a9cdc11cd84962576aadf7f00de59e9e61210bb6fc64a42d0af784",
+      "whatsapp-cart-edits": "de69254f08d953219e09d1efafde71891a07d402630343abdd93fac85de6dbee",
+      "whatsapp-orchestrator.service": "375e09c39d7b644f9347365ad930d0391bc77e9da2a3098c7a49d337190ebac8",
+      "whatsapp-catalog.service": "96ed954ff33af9efee611da77eaac3af1a0d5ce9956634810dff6e51cc3c7099"
+    },
+    "endpoints": [
+      {
+        "url": "http://127.0.0.1:3301/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 54.71,
+            "heapTotal": 64.32,
+            "rss": 126.42
+          },
+          "timestamp": "2026-10-28T20:03:03.381Z"
+        }
+      },
+      {
+        "url": "https://dev.prontopolloportal.com/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 54.85,
+            "heapTotal": 64.32,
+            "rss": 126.42
+          },
+          "timestamp": "2026-10-28T20:03:03.560Z"
+        }
+      }
+    ],
+    "envSha256": "9a318abb69d6a267de33de4bdc35233eb78e690e426b945f85ebeeacce84d9b4",
+    "composeSha256": "cf8560aa0c07799146da868e5104c0ff3e7932cf20b8dd7d22bbd2c0d93ffa57",
+    "privateComposePreserved": true,
+    "privateEnvironmentPreserved": true,
+    "gitStatus": "?? bin/"
+  },
+  "rollback": {
+    "backup": "/root/ppp-260-261-backups/20261028T200204Z",
+    "previousImage": "sha256:41f9dbfaeb1794e7d9e1142584d3e0e12eb7b240ce084248e61e83c440da1a38",
+    "rollbackTag": "ppp-nest-staging:rollback-before-260-261"
+  },
+  "productionUnchanged": true,
+  "productionBatch": 244,
+  "productionSnapshot": [
+    "bc791e29f3e1fc98a8a384040e68c15a65e724c3",
+    "sha256:65df99ee0c36b916d07ed13256027302b0a8867c0088c1db0df7e811c632ac84 running 0"
+  ],
+  "paidRequests": 0,
+  "schemaMigration": false
+}

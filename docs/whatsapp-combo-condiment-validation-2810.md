@@ -11,3 +11,9 @@ Baseline inicial:6/6 fallaron porque los ajíes no quedaban en ninguna nota. Tra
 Foco final147/147 en3suites,80 nuevos: seis recorridos desde compra canónica con Pepsi,66 controles en tres menús × agente simulado off/on, ocho peticiones de servilletas/mostaza durante compra y confirmación. Carrito, respuestas, estado y DTO simulados comprobados. Global y TypeScript se registrarán en `whatsapp-batch-260-261-validation.json` al completar la pasada.
 
 Límites: no es replay completo del episodio08: no acredita ráfagas iniciales «pollo»/«en combo», elección inicial de Pepsi, domicilio/contacto reales ni render del recibo/PDF. No evaluación acústica ni nueva inferencia. Continúan episodio28/referencias abreviadas y otros compuestos del corpus, evaluación reservada/modelos/medios/canal y piloto. Cero llamadas pagadas, Meta u órdenes externas; ledger267/256/11 y modelos intactos. Sin nueva persistencia/esquema. Producción244 sin cambios.
+
+## Cierre
+
+Global20.903/327suites, inventario exacto,538fuentes src sin cambios; TypeScript general/build y Node92/92 aprobados.
+
+Código `c41b56d2` publicado y desplegado solo en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED; diez controles compilados nuevos/previos y guard central aprobados, servicios externos aislados. Env/compose/modelos intactos y producción244 sin cambios. Evidencia `whatsapp-batch-260-261-staging-deployment.json`; commit posterior documental, sin reconstrucción.
