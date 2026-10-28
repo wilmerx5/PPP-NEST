@@ -1414,6 +1414,7 @@ export class WhatsappOrchestratorService {
     if (/\b\d{1,2}\s+[a-z]{2,}\b/i.test(text)) {
       text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
     }
+    if (await this.tryHandlePairedCatalogPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleUnresolvedUnitDistribution(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleSharedCatalogFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleIncludedDrinkFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -2293,6 +2294,7 @@ export class WhatsappOrchestratorService {
       originalText = originalText.slice(0, recipient.index).trim();
       text = text.replace(recipientTail, '').trim() || originalText;
     }
+    if (await this.tryHandleExplicitComboPurchase(conv,msg.waId,session,originalText,cfg)) return;
     // A product replacement interrupts checkout; never feed it to field
     // handlers or remove the original before validating the replacement.
     if ((['awaiting_address','awaiting_name','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
@@ -5905,23 +5907,6 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // An explicit combo order owns its included options before a standalone flavor or model reply.
-    if (!session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
-      !/[¿?]/.test(originalText || text) && /\bcombo\b/i.test(originalText || text) &&
-      !/\b(?:aparte|adicional|extra)\b/i.test(originalText || text) &&
-      !this.catalogService.looksLikeClearlyMultiDishOrder(originalText || text) &&
-      (this.catalogService.looksLikeExplicitAddProductRequest(originalText || text) ||
-        /^(?:quiero|quisiera|dame|necesito|me das|me regalas)\s+(?:un|una|dos|tres|\d+)\b/i.test((originalText || text).trim()))) {
-      const family = this.catalogService.findProductVariantFamily(originalText || text,products);
-      // Family resolution can return a default for "un combo". Require a distinguishing
-      // word from the chosen catalog title in the meal head, before included options.
-      const picked = family && this.catalogService.pickVariantFromFamilyText(originalText || text,family);
-      const words = (name: string)=>this.normalizeForMatch(name).split(/\s+/);
-      const head = ` ${this.normalizeForMatch((originalText || text).split(/\bcon\b/i)[0])} `;
-      const namedVariant = picked && family && words(picked.name).some(word=>word.length>=3 &&
-        !family.variants.every(variant=>words(variant.name).includes(word)) && head.includes(` ${word} `));
-      if (namedVariant && await this.tryHandleVariantFamily(conv,msg.waId,session,originalText || text,products,cfg)) return;
-    }
 
     if (
       !session.pendingMatch &&
@@ -9731,7 +9716,7 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    if ((pending.replacement || pending.includesRequestedAccompaniment) &&
+    if ((pending.replacement || pending.includesRequestedAccompaniment || pending.unitAttributeGroups) &&
       Number.isFinite(chosenLite.price) && Number.isFinite(chosen.price) && chosenLite.price !== chosen.price) {
       // Re-quote without purchasing. Keep list indices, quantity and replacement ownership.
       const oldPrice = chosenLite.price;
@@ -9741,6 +9726,10 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId,
         `El precio de *${chosen.name}* cambió de ${this.catalogService.formatMoney(oldPrice)} a ${this.catalogService.formatMoney(chosen.price)} por unidad. No cambié tu pedido. Si estás de acuerdo, vuelve a elegir su número o nombre; también puedes elegir otra opción.`);
       return true;
+    }
+
+    if (pending.unitAttributeGroups) {
+      return this.commitPairedCatalogPurchase(conv,waId,session,chosen,pending.unitAttributeGroups,cfg);
     }
 
     if (pending.query === 'presentacion sola') {
@@ -11063,6 +11052,10 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, this.withPreface(preface, body));
       opts = { ...opts, preface: undefined };
     };
+
+    if (session.pendingMatch?.unitAttributeGroups) {
+      await say('Falta elegir la preparación del reparto de dos unidades antes de confirmar.');return;
+    }
 
     if (!session.cart.length) {
       await say('Aún no tienes nada en el carrito. Dime qué quieres por nombre o código.');
@@ -19652,6 +19645,105 @@ export class WhatsappOrchestratorService {
     await this.reply(conv,waId,`No he repartido las opciones ni añadido unidades. Indica el reparto completo para *${line.name}*: «uno con … y el otro con …».\n`+
       (product?.attributes || []).map(attr=>`${attr.attributeName}: ${attr.options.join(', ')}`).join('\n')+'\nFalta aclarar ese reparto antes de confirmar.');
     return true;
+  }
+
+  /** Resolve a named new combo before cart-context variant corrections can replace another meal. */
+  private async tryHandleExplicitComboPurchase(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+      /[¿?]/.test(text) || !/\bcombo\b/i.test(text) || /\b(?:aparte|adicional|extra)\b/i.test(text) ||
+      this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
+      !(this.catalogService.looksLikeExplicitAddProductRequest(text) || /^(?:quiero|quisiera|dame|necesito|me das|me regalas)\s+(?:un|una|dos|tres|\d+)\b/i.test(text.trim()))) return false;
+    const order=text.replace(/\bde\s+combo\b/i,'en combo');
+    const products=await this.catalogService.getMenuProducts();
+    const family=this.catalogService.findProductVariantFamily(order,products);
+    const picked=family && this.catalogService.pickVariantFromFamilyText(order,family);
+    const words=(name:string)=>this.normalizeForMatch(name).split(/\s+/);
+    const head=` ${this.normalizeForMatch(order.split(/\bcon\b/i)[0])} `;
+    if (!picked || !family || !this.catalogService.productImpliesCombo(picked) || !words(picked.name).some(word=>word.length>=3 && !family.variants.every(v=>words(v.name).includes(word)) && head.includes(` ${word} `))) return false;
+    if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote || session.pendingUnitDistribution || session.mpPreferenceId || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) {
+      // A selection explicitly naming this candidate remains owned by its normal continuation.
+      if (session.pendingMatch?.candidates.some(p=>p.id===picked.id)) return false;
+      await this.reply(conv,waId,'Antes de añadir ese combo falta aclarar la selección o el pago pendiente. El pedido sigue igual.');return true;
+    }
+    if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) return false;
+    if (picked.hasAttributes && picked.attributes?.length) {
+      const note=this.catalogService.orderKitchenNote(order,picked);
+      if (await this.handleProductWithVariants(conv,waId,session,picked,order,cfg,note,{quantity:Math.max(1,this.catalogService.extractQuantityFromMessage(order,products))})) return true;
+    }
+    return this.tryHandleVariantFamily(conv,waId,session,order,products,cfg);
+  }
+
+  /** Bounded two-unit catalog clauses: one/other may repeat for another attribute; both is shared. */
+  private async tryHandlePairedCatalogPurchase(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const pending=session.pendingMatch;
+    if (pending?.unitAttributeGroups) {
+      if (/^(?:reiniciar|cancelar|cancelar pedido|vaciar|borrar todo)$/i.test(text.trim())) return false;
+      const pick=this.catalogService.extractListPickNumber(text);
+      const said=` ${this.normalizeForMatch(text)} `;
+      const words=(name:string)=>this.normalizeForMatch(name).split(/\s+/);
+      const hits=pending.candidates.filter(p=>words(p.name).some(w=>w.length>=3 && !pending.candidates.every(other=>words(other.name).includes(w)) && said.includes(` ${w} `)));
+      const exactChoice=!/[¿?]/.test(text) && !/\b(?:no|sin|ni|excepto|pero|combo|quiero un|agrega|adicional|extra|aparte)\b/i.test(text) &&
+        ((pick!=null && /^\s*\d{1,2}[.!]?\s*$/.test(text) && pick>=1 && pick<=pending.candidates.length) || hits.length===1);
+      if (exactChoice) {
+        const products=await this.catalogService.getMenuProducts();
+        return this.tryResolvePendingMatchPick(conv,waId,session,String(pick || pending.candidates.indexOf(hits[0])+1),products,cfg);
+      }
+      await this.reply(conv,waId,'Conservo las opciones de cada una. Falta elegir la preparación para las dos unidades:\n'+pending.candidates.map((p,i)=>`${i+1}. ${p.name} · ${this.catalogService.formatMoney(p.price*2)} por las dos`).join('\n')+'\nEl pedido sigue igual; elige un número o cancela ese pedido.');return true;
+    }
+    if (/[¿?]/.test(text)) return false;
+    const markers=[...text.matchAll(/\b(uno|una|el otro|la otra|los dos|las dos)\s+con\s+/gi)];
+    if (markers.length<2 || markers.length>8 || !markers.some(m=>/otr[oa]/i.test(m[1]))) return false;
+    const head=text.slice(0,markers[0].index).replace(/[,;\s]+$/,'');
+    if (!/^(?:quiero|quisiera|dame|me regalas?|reg[aá]lame)\s+/i.test(head) || this.catalogService.extractQuantityFromSegment(head)!==2) return false;
+    const products=await this.catalogService.getMenuProducts();const family=this.catalogService.findProductVariantFamily(head,products);
+    if (!family || family.variants.length<2 || !family.variants.every(p=>p.attributes?.length)) return false;
+    const clauses=markers.map((m,i)=>({scope:/otr[oa]/i.test(m[1])?1:/dos/i.test(m[1])?2:0,text:text.slice(m.index!+m[0].length,markers[i+1]?.index ?? text.length).replace(/[,;.\s]+$/,'').replace(/\s+y$/i,'').trim()}));
+    const plans=family.variants.map(product=>{
+      const groups:Array<Array<{attributeName:string;attributeValue:string}>>=[[],[]];
+      for (const clause of clauses) {
+        const parsed=this.catalogService.resolveAttributesFromMessage(product,clause.text,[]);
+        if (parsed.status==='invalid' || !parsed.attributes.length || this.catalogService.orderKitchenNote(clause.text,product)) return null;
+        for (const index of clause.scope===2?[0,1]:[clause.scope]) for (const attr of parsed.attributes) {
+          const prior=groups[index].find(a=>a.attributeName===attr.attributeName);
+          if (prior && prior.attributeValue!==attr.attributeValue) return null;
+          if (!prior) groups[index].push(attr);
+        }
+      }
+      return groups.every(group=>product.attributes!.every(attr=>group.some(choice=>choice.attributeName===attr.attributeName)))?groups:null;
+    });
+    if (plans.every(plan=>!plan)) {
+      const recognizable=family.variants.some(product=>clauses.some(clause=>{const parsed=this.catalogService.resolveAttributesFromMessage(product,clause.text,[]);return parsed.status!=='invalid' && parsed.attributes.length>0;}));
+      if (!recognizable) return false;
+      await this.reply(conv,waId,'No pude validar todas las opciones de cada unidad. Reenvía el reparto completo con opciones de la carta; el pedido sigue igual.');return true;
+    }
+    if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote || session.mpPreferenceId || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) {
+      await this.reply(conv,waId,'Primero aclaremos la selección o pago pendiente. No cambié ni añadí unidades.');return true;
+    }
+    if (plans.some(plan=>!plan) || new Set(plans.map(plan=>JSON.stringify(plan))).size!==1) {
+      await this.reply(conv,waId,'No pude validar todas las opciones del reparto para las dos unidades. Indica el plato y las opciones completas; el pedido sigue igual.');return true;
+    }
+    if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) return false;
+    const next={...session,pendingMatch:{query:head,candidates:family.variants,intent:'order' as const,quantity:2,unitAttributeGroups:plans[0]!}};
+    await this.conversationService.saveSession(conv,next,'building_cart');
+    await this.reply(conv,waId,'Conservo una unidad con '+plans[0]![0].map(a=>a.attributeValue).join(', ')+' y la otra con '+plans[0]![1].map(a=>a.attributeValue).join(', ')+'.\nFalta elegir la preparación para las dos:\n'+family.variants.map((p,i)=>`${i+1}. ${p.name}`).join('\n')+'\nEscribe el número.');return true;
+  }
+
+  private async commitPairedCatalogPurchase(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,product: MenuProduct,groups: Array<Array<{attributeName:string;attributeValue:string}>>,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) {
+      await this.reply(conv,waId,'El restaurante está cerrado. Conservé el reparto pendiente y no añadí las unidades.');return true;
+    }
+    if (groups.length!==2 || session.pendingMatch?.quantity!==2 || groups.some(group=>group.length!==product.attributes?.length || !product.attributes?.every(attr=>group.some(choice=>choice.attributeName===attr.attributeName && attr.options.includes(choice.attributeValue))))) {
+      await this.reply(conv,waId,'Las opciones o la cantidad cambiaron. Falta aclarar el reparto completo; el pedido sigue igual.');return true;
+    }
+    let next:WhatsappSessionData={...session,pendingMatch:undefined,pendingQuantityHint:undefined};
+    for (const attributes of groups) {
+      const added=this.tryAddProductToCart(next,product,1,cfg,undefined,attributes,{sourceText:`1 ${product.name}`});
+      if (added.blocked || added.missingAttributes) {await this.reply(conv,waId,added.blocked?.reason || 'Falta completar las opciones del reparto; el pedido sigue igual.');return true;}
+      next=added.session;
+    }
+    await this.conversationService.saveSession(conv,next,'building_cart');
+    await this.reply(conv,waId,'Listo, conservé el reparto de las dos unidades ✅\n\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+this.formatContinueShoppingPrompt(next));return true;
   }
 
   /** A bounded reference to both existing units edits their shared catalog option atomically. */

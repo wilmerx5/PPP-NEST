@@ -1,0 +1,68 @@
+{
+  "batches": [
+    256,
+    257
+  ],
+  "baseCommit": "411fcafe",
+  "attachedAudioFiles": [
+    {
+      "file": "WhatsApp Ptt 2026-10-28 at 1.05.38 PM.ogg",
+      "sha256": "89b4cbb01bad5ddf78282fb5c0be64b8af17dc6fef5feeb098f030a62a29838a",
+      "bytes": 29629,
+      "durationSeconds": "13.726500",
+      "matchesWebhookSha256": true
+    },
+    {
+      "file": "WhatsApp Ptt 2026-10-28 at 1.06.25 PM.ogg",
+      "sha256": "508c212173dd698bbf6a1aab3e5e49b0e761c29209facc566b86cdeb01dafcc0",
+      "bytes": 12473,
+      "durationSeconds": "4.986500",
+      "matchesWebhookSha256": true
+    },
+    {
+      "file": "WhatsApp Ptt 2026-10-28 at 1.07.20 PM.ogg",
+      "sha256": "bbd37355d52e037d8882556f4dfd65613b17bd8a2306e4c0b7da6e0d6a2f5d66",
+      "bytes": 10642,
+      "durationSeconds": "4.466500",
+      "matchesWebhookSha256": true
+    }
+  ],
+  "sourceEnvironment": "staging",
+  "source": "Saved real transcripts matched to uploaded audio bytes by webhook SHA-256; no fresh acoustic inference",
+  "sourceCases": [
+    {
+      "fileTime": "13:05:38",
+      "problem": "Two executives collapsed to identical options and unchosen Broaster preparation"
+    },
+    {
+      "fileTime": "13:06:25",
+      "problem": "Explicit new combo replaced the two existing meals"
+    },
+    {
+      "fileTime": "13:07:20",
+      "problem": "After reset, de-combo phrase added standalone soda and misplaced arepa note"
+    }
+  ],
+  "baseline": {
+    "tests": 12,
+    "failed": 12
+  },
+  "focused": {
+    "tests": 354,
+    "suites": 8,
+    "newTests": 88
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "globalStatus": "passed",
+  "limits": [
+    "Bounded complete two-unit attribute plan, same preparation chosen for both.",
+    "Text and mocked audio pipeline tests do not measure acoustic recognition accuracy.",
+    "No deletion of preexisting drinks or customer orders."
+  ],
+  "globalResult": {
+    "tests": 20763,
+    "suites": 325,
+    "mode": "Four disjoint sequential approved blocks; no retries or timeout increases."
+  }
+}

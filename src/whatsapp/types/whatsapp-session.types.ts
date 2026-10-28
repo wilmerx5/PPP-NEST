@@ -103,6 +103,8 @@ export type WhatsappSessionData = {
   /** A product list left without a pick; recalled once before the final summary. */
   droppedPick?: { query: string; candidates: WhatsappProductCandidate[]; shown?: boolean };
   pendingMatch?: {
+    /** Complete per-unit catalog options retained while the product preparation is chosen. */
+    unitAttributeGroups?: Array<Array<{attributeName:string;attributeValue:string}>>;
     /** A retained browse list after its chosen item was already added. */
     selectionAdded?: boolean;
     /** Explicit candidate awaiting acceptance of its refreshed price. */
