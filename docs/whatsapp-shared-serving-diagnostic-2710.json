@@ -1,0 +1,1063 @@
+{
+  "base": "9e9e5868",
+  "suite": "whatsapp-shared-serving-distribution.repro.ts",
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "tests": 32,
+  "passed": 6,
+  "failed": 26,
+  "cases": [
+    {
+      "name": "0/false/notes: total and note ownership survive checkout",
+      "status": "passed",
+      "firstFailure": null,
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto arroz",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca arepa",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Sopa De Lentejas*\n   📝 _con harto arroz_\n2. *Sopa De Lentejas*\n   📝 _con poca arepa_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "0/false/shared: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto arroz",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca arepa",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Sopa De Lentejas*\n   📝 _con harto arroz_\n2. *Sopa De Lentejas*\n   📝 _con poca arepa_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "0/false/elliptical: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toHaveLength(expected)\n\nExpected length: 2\nReceived length: 1\nReceived array:  [{\"attributes\": [], \"code\": 8801, \"name\": \"Sopa De Lentejas\", \"note\": \"bien caliente\", \"productId\": 8801, \"quantity\": 2, \"unitPrice\": 20000}]",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 2,
+            "note": "bien caliente",
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De arroz",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "note": "con porcion de arroz",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Por ahora no manejamos: _arepa_.\n\nListo ✅\n\n1. *Sopa De Lentejas ×2*\n   📝 _bien caliente_\n2. *Porción De arroz*\n   📝 _con porcion de arroz_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "0/false/extra: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toContain(expected) // indexOf\n\nMatcher error: received value must not be null nor undefined\n\nReceived has value: undefined",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto arroz",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De arroz",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Sopa De Lentejas*\n   📝 _con harto arroz_\n2. *Sopa De Lentejas*\n3. *Porción De arroz*\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "0/false/payment: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8803,
+            "code": 8803,
+            "name": "Agua Mineral",
+            "quantity": 1,
+            "unitPrice": 3000,
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto arroz",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca arepa",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Sopa De Lentejas*\n   📝 _con harto arroz_\n2. *Sopa De Lentejas*\n   📝 _con poca arepa_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "0/true/notes: total and note ownership survive checkout",
+      "status": "passed",
+      "firstFailure": null,
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto arroz",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca arepa",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Sopa De Lentejas*\n   📝 _con harto arroz_\n2. *Sopa De Lentejas*\n   📝 _con poca arepa_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "0/true/shared: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto arroz",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca arepa",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Sopa De Lentejas*\n   📝 _con harto arroz_\n2. *Sopa De Lentejas*\n   📝 _con poca arepa_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "0/true/elliptical: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toHaveLength(expected)\n\nExpected length: 2\nReceived length: 1\nReceived array:  [{\"attributes\": [], \"code\": 8801, \"name\": \"Sopa De Lentejas\", \"note\": \"bien caliente\", \"productId\": 8801, \"quantity\": 2, \"unitPrice\": 20000}]",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 2,
+            "note": "bien caliente",
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De arroz",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "note": "con porcion de arroz",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Por ahora no manejamos: _arepa_.\n\nListo ✅\n\n1. *Sopa De Lentejas ×2*\n   📝 _bien caliente_\n2. *Porción De arroz*\n   📝 _con porcion de arroz_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "0/true/extra: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toContain(expected) // indexOf\n\nMatcher error: received value must not be null nor undefined\n\nReceived has value: undefined",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto arroz",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De arroz",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Sopa De Lentejas*\n   📝 _con harto arroz_\n2. *Sopa De Lentejas*\n3. *Porción De arroz*\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "0/true/payment: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8803,
+            "code": 8803,
+            "name": "Agua Mineral",
+            "quantity": 1,
+            "unitPrice": 3000,
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto arroz",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Sopa De Lentejas",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca arepa",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Sopa De Lentejas*\n   📝 _con harto arroz_\n2. *Sopa De Lentejas*\n   📝 _con poca arepa_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "1/false/notes: total and note ownership survive checkout",
+      "status": "passed",
+      "firstFailure": null,
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto quinoa",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca ensalada",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Bowl De Vegetales*\n   📝 _con harto quinoa_\n2. *Bowl De Vegetales*\n   📝 _con poca ensalada_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "1/false/shared: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto quinoa",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca ensalada",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Bowl De Vegetales*\n   📝 _con harto quinoa_\n2. *Bowl De Vegetales*\n   📝 _con poca ensalada_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "1/false/elliptical: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toHaveLength(expected)\n\nExpected length: 2\nReceived length: 1\nReceived array:  [{\"attributes\": [], \"code\": 8801, \"name\": \"Bowl De Vegetales\", \"note\": \"bien empacado\", \"productId\": 8801, \"quantity\": 2, \"unitPrice\": 20000}]",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 2,
+            "note": "bien empacado",
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De quinoa",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "note": "con porcion de quinoa",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Por ahora no manejamos: _ensalada_.\n\nListo ✅\n\n1. *Bowl De Vegetales ×2*\n   📝 _bien empacado_\n2. *Porción De quinoa*\n   📝 _con porcion de quinoa_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "1/false/extra: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto quinoa",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca ensalada",
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De quinoa",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Bowl De Vegetales*\n   📝 _con harto quinoa_\n2. *Bowl De Vegetales*\n   📝 _con poca ensalada_\n3. *Porción De quinoa*\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "1/false/payment: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8803,
+            "code": 8803,
+            "name": "Agua Mineral",
+            "quantity": 1,
+            "unitPrice": 3000,
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto quinoa",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca ensalada",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Bowl De Vegetales*\n   📝 _con harto quinoa_\n2. *Bowl De Vegetales*\n   📝 _con poca ensalada_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "1/true/notes: total and note ownership survive checkout",
+      "status": "passed",
+      "firstFailure": null,
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto quinoa",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca ensalada",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Bowl De Vegetales*\n   📝 _con harto quinoa_\n2. *Bowl De Vegetales*\n   📝 _con poca ensalada_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "1/true/shared: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto quinoa",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca ensalada",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Bowl De Vegetales*\n   📝 _con harto quinoa_\n2. *Bowl De Vegetales*\n   📝 _con poca ensalada_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "1/true/elliptical: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toHaveLength(expected)\n\nExpected length: 2\nReceived length: 1\nReceived array:  [{\"attributes\": [], \"code\": 8801, \"name\": \"Bowl De Vegetales\", \"note\": \"bien empacado\", \"productId\": 8801, \"quantity\": 2, \"unitPrice\": 20000}]",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 2,
+            "note": "bien empacado",
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De quinoa",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "note": "con porcion de quinoa",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Por ahora no manejamos: _ensalada_.\n\nListo ✅\n\n1. *Bowl De Vegetales ×2*\n   📝 _bien empacado_\n2. *Porción De quinoa*\n   📝 _con porcion de quinoa_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "1/true/extra: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto quinoa",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca ensalada",
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De quinoa",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Bowl De Vegetales*\n   📝 _con harto quinoa_\n2. *Bowl De Vegetales*\n   📝 _con poca ensalada_\n3. *Porción De quinoa*\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "1/true/payment: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8803,
+            "code": 8803,
+            "name": "Agua Mineral",
+            "quantity": 1,
+            "unitPrice": 3000,
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto quinoa",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Bowl De Vegetales",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca ensalada",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Bowl De Vegetales*\n   📝 _con harto quinoa_\n2. *Bowl De Vegetales*\n   📝 _con poca ensalada_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "2/false/notes: total and note ownership survive checkout",
+      "status": "passed",
+      "firstFailure": null,
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto queso",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca albahaca",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Pasta Primavera*\n   📝 _con harto queso_\n2. *Pasta Primavera*\n   📝 _con poca albahaca_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "2/false/shared: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto queso",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca albahaca",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Pasta Primavera*\n   📝 _con harto queso_\n2. *Pasta Primavera*\n   📝 _con poca albahaca_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "2/false/elliptical: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toHaveLength(expected)\n\nExpected length: 2\nReceived length: 1\nReceived array:  [{\"attributes\": [], \"code\": 8801, \"name\": \"Pasta Primavera\", \"note\": \"bien caliente\", \"productId\": 8801, \"quantity\": 2, \"unitPrice\": 20000}]",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 2,
+            "note": "bien caliente",
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De queso",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "note": "con porcion de queso",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Por ahora no manejamos: _albahaca_.\n\nListo ✅\n\n1. *Pasta Primavera ×2*\n   📝 _bien caliente_\n2. *Porción De queso*\n   📝 _con porcion de queso_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "2/false/extra: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto queso",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca albahaca",
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De queso",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Pasta Primavera*\n   📝 _con harto queso_\n2. *Pasta Primavera*\n   📝 _con poca albahaca_\n3. *Porción De queso*\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "2/false/payment: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8803,
+            "code": 8803,
+            "name": "Agua Mineral",
+            "quantity": 1,
+            "unitPrice": 3000,
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto queso",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca albahaca",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Pasta Primavera*\n   📝 _con harto queso_\n2. *Pasta Primavera*\n   📝 _con poca albahaca_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "2/true/notes: total and note ownership survive checkout",
+      "status": "passed",
+      "firstFailure": null,
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto queso",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca albahaca",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Pasta Primavera*\n   📝 _con harto queso_\n2. *Pasta Primavera*\n   📝 _con poca albahaca_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "2/true/shared: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto queso",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca albahaca",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Pasta Primavera*\n   📝 _con harto queso_\n2. *Pasta Primavera*\n   📝 _con poca albahaca_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "2/true/elliptical: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toHaveLength(expected)\n\nExpected length: 2\nReceived length: 1\nReceived array:  [{\"attributes\": [], \"code\": 8801, \"name\": \"Pasta Primavera\", \"note\": \"bien caliente\", \"productId\": 8801, \"quantity\": 2, \"unitPrice\": 20000}]",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 2,
+            "note": "bien caliente",
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De queso",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "note": "con porcion de queso",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Por ahora no manejamos: _albahaca_.\n\nListo ✅\n\n1. *Pasta Primavera ×2*\n   📝 _bien caliente_\n2. *Porción De queso*\n   📝 _con porcion de queso_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "2/true/extra: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto queso",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca albahaca",
+            "attributes": []
+          },
+          {
+            "productId": 8802,
+            "name": "Porción De queso",
+            "code": 8802,
+            "unitPrice": 4000,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Pasta Primavera*\n   📝 _con harto queso_\n2. *Pasta Primavera*\n   📝 _con poca albahaca_\n3. *Porción De queso*\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "2/true/payment: total and note ownership survive checkout",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+      "observed": {
+        "cart": [
+          {
+            "productId": 8803,
+            "code": 8803,
+            "name": "Agua Mineral",
+            "quantity": 1,
+            "unitPrice": 3000,
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con harto queso",
+            "attributes": []
+          },
+          {
+            "productId": 8801,
+            "name": "Pasta Primavera",
+            "code": 8801,
+            "unitPrice": 20000,
+            "quantity": 1,
+            "note": "con poca albahaca",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Listo ✅\n\n1. *Pasta Primavera*\n   📝 _con harto queso_\n2. *Pasta Primavera*\n   📝 _con poca albahaca_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "real soup phrasing false",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 2\n+ Received  + 2\n\n  Array [\n    Array [\n      20,\n-     1,\n+     2,\n    ],\n    Array [\n-     20,\n+     10,\n      1,\n    ],\n  ]",
+      "observed": {
+        "cart": [
+          {
+            "productId": 20,
+            "name": "Sopa De Menudencias",
+            "code": 20,
+            "unitPrice": 10500,
+            "quantity": 2,
+            "attributes": []
+          },
+          {
+            "productId": 10,
+            "name": "Porcion De Arroz",
+            "code": 10,
+            "unitPrice": 7000,
+            "quantity": 1,
+            "note": "con porcion de arroz",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Por ahora no manejamos: _arepita_.\n\nListo ✅\n\n1. *Sopa De Menudencias ×2*\n2. *Porcion De Arroz*\n   📝 _con porcion de arroz_\n\n¿*Algo más*?"
+        ]
+      }
+    },
+    {
+      "name": "real soup phrasing true",
+      "status": "failed",
+      "firstFailure": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 2\n+ Received  + 2\n\n  Array [\n    Array [\n      20,\n-     1,\n+     2,\n    ],\n    Array [\n-     20,\n+     10,\n      1,\n    ],\n  ]",
+      "observed": {
+        "cart": [
+          {
+            "productId": 20,
+            "name": "Sopa De Menudencias",
+            "code": 20,
+            "unitPrice": 10500,
+            "quantity": 2,
+            "attributes": []
+          },
+          {
+            "productId": 10,
+            "name": "Porcion De Arroz",
+            "code": 10,
+            "unitPrice": 7000,
+            "quantity": 1,
+            "note": "con porcion de arroz",
+            "attributes": []
+          }
+        ],
+        "replies": [
+          "Por ahora no manejamos: _arepita_.\n\nListo ✅\n\n1. *Sopa De Menudencias ×2*\n2. *Porcion De Arroz*\n   📝 _con porcion de arroz_\n\n¿*Algo más*?"
+        ]
+      }
+    }
+  ]
+}

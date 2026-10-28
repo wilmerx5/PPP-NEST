@@ -1,3 +1,11 @@
+## VIGENTE — tanda 238: diagnóstico de reparto y notas compartidas (27/10)
+
+Base `9e9e5868`, staging.32 casos nuevos opt-in:30 en tres menús×agente simulado off/on×notas/notas compartidas/elipsis/extra/pago, más2del chat real. Resultado6verdes/26rojos; los6verdes completan DTO. No se agregan al inventario aprobado ni se declara corregido el caso.
+
+Localizado: expandSpokenSameSkuNotes descarta nota común al reescribir; elipsis de acompañamiento cae a compra/rechazo; con extras puede perder nota de una unidad. Próximo: plan estructurado total/unidades/notas/atributos/extras, sin resegmentar texto y sin mutación parcial. Informe y evidencia: `docs/whatsapp-shared-serving-diagnostic-2710.md` y `.json`.
+
+TypeScript general aprobado; runtime intacto, no nueva global necesaria. Última validación consolidada237:20.036/306 con límites documentados. Sin API/Meta/mapas/órdenes externas. Main/producción235 y servidor staging231 intactos. No todos los chats/PDF corregidos.
+
 ## VIGENTE — tanda 237: pedidos hablados y cierre simulado (27/10)
 
 Base `e132dd91`, staging. Conserva cortesía final fuera del nombre, porciones adicionales, bandeja como contenedor cuando el catálogo lo permite, negación con cantidades/typos y acompañamientos tras nombres con «con». Reglas por catálogo, sin IDs/precios/nombres PPP en producción. Informe: `docs/whatsapp-spoken-order-repairs-validation-2710.md`.
