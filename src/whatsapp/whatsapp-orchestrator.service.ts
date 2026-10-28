@@ -1414,6 +1414,7 @@ export class WhatsappOrchestratorService {
     if (/\b\d{1,2}\s+[a-z]{2,}\b/i.test(text)) {
       text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
     }
+    if (await this.tryHandleMultipleRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandlePairedCatalogPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleUnresolvedUnitDistribution(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleSharedCatalogFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -16399,29 +16400,94 @@ export class WhatsappOrchestratorService {
     const menu = await this.catalogService.getMenuProducts();
     // A catalog title may itself contain "y el/la"; leave a single full title to the scoped handler.
     if (explicit && [...menu,...session.cart].some(item => canonical(item.name) === canonical(match[1]))) return false;
-    const ids: number[] = [];
-    for (const part of parts) {
-      const names = [...menu, ...session.cart].filter(item => canonical(item.name) === canonical(part));
-      const candidates = [...new Set(names.map(item => 'productId' in item ? item.productId : item.id))];
-      if (candidates.length !== 1) {
-        await this.reply(conv,waId,`No cambié el pedido. ¿Cuál producto quieres quitar con «${part.trim()}»? Dime su nombre completo.`);
-        return true;
-      }
-      ids.push(candidates[0]);
+    // A new complete removal instruction supersedes only our own unfinished list.
+    if (session.pendingCartRemoval?.batchGroups) {
+      session = { ...session, pendingCartRemoval: undefined };
+      await this.conversationService.saveSession(conv, session);
     }
-    if (explicit && ids.some(id => session.cart.filter(line => line.productId === id).length > 1)) {
-      await this.reply(conv,waId,'No cambié el pedido. Hay varias líneas de ese producto; dime cuál quieres quitar antes de aplicar los cambios.');
-      return true;
-    }
-    if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) {
+    if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) {
       await this.reply(conv,waId,'No cambié el pedido. Hay una selección o pago pendiente; aclaremos eso antes de quitar esos productos.');
       return true;
     }
-    const indices = session.cart.flatMap((line,index) => ids.includes(line.productId) ? [index] : []);
+    const groups: number[][] = [];
+    for (const part of parts) {
+      const names = [...menu, ...session.cart].filter(item => canonical(item.name) === canonical(part));
+      const candidates = [...new Set(names.map(item => 'productId' in item ? item.productId : item.id))];
+      const exact = candidates.length === 1;
+      const indices = session.cart.flatMap((line,index) =>
+        (exact ? line.productId === candidates[0] : explicit && correctionMatchesLine(line, part)) ? [index] : []);
+      if (!exact && !indices.length) {
+        await this.reply(conv,waId,`No cambié el pedido. ¿Cuál producto quieres quitar con «${part.trim()}»? Dime su nombre completo.`);
+        return true;
+      }
+      // Preserve the existing negative-list contract (all matching SKU variants).
+      if (negative) groups.push(...indices.map(index => [index]));
+      else groups.push(indices);
+    }
+    if (groups.some(group => group.length > 1)) {
+      await this.promptMultipleRemoval(conv,waId,session,groups);
+      return true;
+    }
+    const indices = [...new Set(groups.flat())];
     const next = indices.length ? this.removeCartLines(session,indices) : session;
     const state = next.cart.length ? conv.state : 'building_cart';
     await this.conversationService.saveSession(conv,next,state);
     await this.reply(conv,waId,(indices.length ? 'Listo, retiré los productos indicados.' : 'Esos productos no están en el carrito; el pedido sigue igual.') + '\n\n' + this.formatCartOnly(next,this.deliveryFeeFor(next,cfg)) + '\n\n' + (next.cart.length ? this.formatInterruptedStepReminder(conv,next) || this.formatContinueShoppingPrompt(next) : '¿Qué te gustaría pedir?'));
+    return true;
+  }
+
+  private async promptMultipleRemoval(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, groups: number[][],
+  ): Promise<void> {
+    const unresolved = groups.find(group => group.length > 1)!;
+    const options = unresolved.map(cartIndex => ({ cartIndex,
+      label: this.formatCartLineLabel(session.cart[cartIndex]) + (session.cart[cartIndex].note ? ` · ${session.cart[cartIndex].note}` : '') }));
+    const next = { ...session, pendingCartRemoval: { cartSignature: JSON.stringify(session.cart), options, batchGroups: groups } };
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,'No cambié el pedido. Hay varias opciones. ¿Cuál quieres quitar de esta lista?\n' +
+      options.map((option,index) => `${index+1}. ${option.label}`).join('\n') +
+      '\nEscribe el número, su nombre completo o una característica que lo distinga. Retiraré los productos juntos cuando aclaremos todas las opciones.');
+  }
+
+  private async tryHandleMultipleRemovalFollowup(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const pending = session.pendingCartRemoval;
+    if (!pending?.batchGroups) return false;
+    // Let a fresh complete list replace this request through the same parser.
+    if (/^(?:elimina|qu[ií]ta|retira|saca|borra)(?:me)?\s+.+\s+y\s+(?:el|la|los|las)\s/i.test(text) && !/[¿?]/.test(text)) return false;
+    const said = this.normalizeForMatch(text);
+    if (/^(?:(?:cancela|olvida) (?:el cambio del carrito|ese cambio|el cambio|eso)|no quites nada|dejalo igual)$/.test(said)) {
+      await this.conversationService.saveSession(conv,{ ...session,pendingCartRemoval:undefined });
+      await this.reply(conv,waId,'Listo, cancelé la retirada pendiente. El pedido sigue igual.');
+      return true;
+    }
+    if (pending.cartSignature !== JSON.stringify(session.cart)) {
+      await this.conversationService.saveSession(conv,{ ...session,pendingCartRemoval:undefined });
+      await this.reply(conv,waId,'El carrito cambió. No retiré ningún producto; dime de nuevo cuáles quitamos.');
+      return true;
+    }
+    if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key => key !== 'pendingCartRemoval' && !!session[key])) {
+      await this.reply(conv,waId,'Hay otra selección o pago pendiente. No cambié el pedido; aclaremos eso antes de retirar los productos.');
+      return true;
+    }
+    const numeric = /^\d+$/.test(text.trim()) ? Number(text.trim()) : null;
+    const named = numeric === null ? this.uniqueClarificationLine(session,pending.options,text) : null;
+    const index = numeric !== null ? pending.options[numeric-1]?.cartIndex : named && named !== 'ambiguous' ? named.index : undefined;
+    if (index === undefined) {
+      await this.reply(conv,waId,'No cambié el pedido. ' + this.formatPendingCartEditReminder(session));
+      return true;
+    }
+    const cursor = pending.batchGroups.findIndex(group => group.length > 1);
+    const groups = pending.batchGroups.map((group,i) => i === cursor ? [index] : group);
+    if (groups.some(group => group.length > 1)) {
+      await this.promptMultipleRemoval(conv,waId,session,groups);
+      return true;
+    }
+    const next = this.removeCartLines(session,[...new Set(groups.flat())]);
+    await this.conversationService.saveSession(conv,next,next.cart.length ? conv.state : 'building_cart');
+    await this.reply(conv,waId,'Listo, retiré los productos indicados.\n\n' + this.formatCartOnly(next,this.deliveryFeeFor(next,cfg)) +
+      '\n\n' + (next.cart.length ? this.formatInterruptedStepReminder(conv,next) || this.formatContinueShoppingPrompt(next) : '¿Qué te gustaría pedir?'));
     return true;
   }
 

@@ -36,6 +36,12 @@
           "Clarification completes by repeating the entire removal instruction with full catalog names. Bare-name follow-ups and ordinal clarification are not certified.",
           "No real model, audio, PDF, Meta, external order or pilot validation."
         ]
+      },
+      "followup265": {
+        "evidence": "whatsapp-batch-265-validation.json",
+        "tests": 96,
+        "coverage": "Atomic incremental removal clarification, three synthetic menus, mocked agent off/on, pending groups and central confirmation guard; short name, number and note choices; DTO and receipt preserve remaining items.",
+        "limits": "Seeded cart, not original full journey, independent model/media/channel or pilot evaluation."
       }
     },
     {

@@ -1,3 +1,11 @@
+## VIGENTE — tanda265: aclaración corta de retirada múltiple (28/10)
+
+Base `4290ddd4`. CHAT2510-28 derivado: «el de costillas» resuelve la lista activa sin convertirse en compra. Se guarda la retirada múltiple como grupos de líneas y se aplica solo al aclararlos todos. Número, nombre distintivo y nota; firma de carrito, cancelación, pago/otras selecciones y confirmación central protegidos. Sin nombres/IDs PPP en runtime.
+
+96regresiones nuevas en tres cartas sintéticas×agente simulado off/on; baseline12/12rojo. Foco360/360 en seis suites. Global21060/330 suites aprobada en cuatro bloques disjuntos, inventario exacto y541fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-265-validation.json`, informe `whatsapp-multiple-removal-followup-validation-2810.md`.
+
+Límites: carrito preparado, no replay original completo, ni inferencia/canal/audio/PDF reales. Pendientes compuestos restantes y muestra reservada/modelos/medios/canal antes del piloto. Cero llamadas pagadas, Meta u órdenes reales; ledger267/256/11 y modelos intactos. Nuevo campo JSON opcional `pendingCartRemoval.batchGroups`, sin migración SQL; antes de volver a una imagen anterior, resolver/cancelar normalmente los borradores afectados: la imagen vieja ignora el grupo. Producción no modificada. Despliegue staging pendiente de verificación.
+
 ## VIGENTE — tanda264: retirada múltiple abreviada (28/10)
 
 Base `49259ac5`. Tanda de cobertura, sin cambio de runtime: 24 recorridos nuevos derivados de CHAT2510-28 con tres cartas sintéticas y fixture PPP × agente simulado off/on × construcción/pago/confirmación. «El pollo y el combo de arroz» y el título incompleto conservan todo el carrito; repetir la instrucción completa con nombres exactos retira solo los dos productos. Se preservan productos similares, cantidades y notas hasta DTO/recibo; repetir la retirada no elimina los restantes.

@@ -1,0 +1,54 @@
+{
+  "baseCommit": "4290ddd44a1c636482e809806b827bca63ffffa0",
+  "batches": [
+    265
+  ],
+  "tests": 21060,
+  "suites": 330,
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 233.31,
+      "sourceUnchanged": true
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 222.01,
+      "sourceUnchanged": true
+    },
+    "rest-final": {
+      "exitCode": 0,
+      "seconds": 308.55,
+      "sourceUnchanged": true
+    },
+    "timers-final": {
+      "exitCode": 0,
+      "seconds": 117.74,
+      "sourceUnchanged": true
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "sourceFiles": 541,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "paidRequests": 0,
+  "newRegressions": 96,
+  "focusTests": 360,
+  "baseline": {
+    "passed": 0,
+    "failed": 12
+  },
+  "focusSuites": 6,
+  "runtimeChanged": true,
+  "persistence": "Optional pendingCartRemoval.batchGroups JSON field. No SQL migration. Cancel or finish affected drafts before rollback to an older image.",
+  "productionChanged": false,
+  "deploymentStatus": "Pending staging deployment verification"
+}
