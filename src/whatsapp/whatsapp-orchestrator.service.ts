@@ -1,3 +1,4 @@
+import { resolveDescribedSidePhrase } from './whatsapp-described-side';
 import { twoUnitServingPlan } from './whatsapp-two-unit-serving-plan';
 import {omitSubstitutionChoice, parseSubstitutionChoice} from './whatsapp-substitution-choice';
 import { whatsappProfileRecipient } from './whatsapp-profile-name';
@@ -1413,7 +1414,9 @@ export class WhatsappOrchestratorService {
     if (/\b\d{1,2}\s+[a-z]{2,}\b/i.test(text)) {
       text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
     }
-    if (await this.tryHandleMultipleCartNegation(conv, msg.waId, this.conversationService.getSession(conv), text, cfg)) return;
+    const removalText = /^(?:elimina|qu[ií]ta|retira|saca|borra)(?:me)?\b/i.test(inboundText) ? inboundText : text;
+    if (await this.tryHandleMultipleCartNegation(conv, msg.waId, this.conversationService.getSession(conv), removalText, cfg)) return;
+    if (await this.tryHandleAlreadyOrderedSideSwap(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) && !/[¿?]/.test(text)) {
       const another = this.rewriteAnotherOfVariant(text, this.conversationService.getSession(conv), await this.catalogService.getMenuProducts());
       if (another) text = another;
@@ -16362,21 +16365,32 @@ export class WhatsappOrchestratorService {
     text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state) || /[¿?]/.test(text)) return false;
-    const match = text.trim().replace(/[.!]+$/, '').match(/^no (?:va|van|quiero)\s+(.+?)(?:\s+por favor|\s+porfa)?$/i);
-    if (!match || !/\s+ni\s+/i.test(match[1])) return false;
-    const parts = match[1].split(/\s+ni\s+/i);
+    const request = text.trim().replace(/[.!]+$/, '');
+    const negative = request.match(/^no (?:va|van|quiero)\s+(.+?)(?:\s+por favor|\s+porfa)?$/i);
+    const explicit = request.match(/^(?:elimina|qu[ií]ta|retira|saca|borra)(?:me)?\s+(.+?)(?:\s+por favor|\s+porfa)?$/i);
+    const match = negative || explicit;
+    if (!match || !(negative ? /\s+ni\s+/i : /\s+y\s+(?=(?:el|la|los|las)\s)/i).test(match[1])) return false;
+    if (explicit && /[;,]|\b(?:conserva|deja|mant[eé]n)\b/i.test(match[1])) return false;
+    const parts = match[1].split(negative ? /\s+ni\s+/i : /\s+y\s+(?=(?:el|la|los|las)\s)/i);
     if (parts.length < 2 || parts.length > 5 || parts.some(part => /\b(?:que|quites|quitar|cambies|cambiar|sino|pero|agrega|pon|porque|si)\b/i.test(part))) return false;
     const normalize = (value: string) => this.normalizeForMatch(value).replace(/(\d)\s+(ml|l)\b/g,'$1$2').split(/\s+/).filter(word => !['el','la','los','las','de'].includes(word)).join(' ');
+    const canonical = (value: string) => explicit ? normalize(value).replace(/^1 /, '') : normalize(value);
     const menu = await this.catalogService.getMenuProducts();
+    // A catalog title may itself contain "y el/la"; leave a single full title to the scoped handler.
+    if (explicit && [...menu,...session.cart].some(item => canonical(item.name) === canonical(match[1]))) return false;
     const ids: number[] = [];
     for (const part of parts) {
-      const names = [...menu, ...session.cart].filter(item => normalize(item.name) === normalize(part));
+      const names = [...menu, ...session.cart].filter(item => canonical(item.name) === canonical(part));
       const candidates = [...new Set(names.map(item => 'productId' in item ? item.productId : item.id))];
       if (candidates.length !== 1) {
         await this.reply(conv,waId,`No cambié el pedido. ¿Cuál producto quieres quitar con «${part.trim()}»? Dime su nombre completo.`);
         return true;
       }
       ids.push(candidates[0]);
+    }
+    if (explicit && ids.some(id => session.cart.filter(line => line.productId === id).length > 1)) {
+      await this.reply(conv,waId,'No cambié el pedido. Hay varias líneas de ese producto; dime cuál quieres quitar antes de aplicar los cambios.');
+      return true;
     }
     if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) {
       await this.reply(conv,waId,'No cambié el pedido. Hay una selección o pago pendiente; aclaremos eso antes de quitar esos productos.');
@@ -18682,7 +18696,9 @@ export class WhatsappOrchestratorService {
     const amounts: Record<string,number> = {un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12};
     const amount = '(\\d{1,3}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)';
     const verb = '(?:por favor )?(?:cambia(?:me|le|les)?|cambiar|quiero cambiar)(?: solo)? ';
-    const quantityFirst = q.match(new RegExp('^'+verb+amount+' (?:de (?:los|las) )?(.+?) (?:por|a) (.+)$'));
+    const countedEdit = q.match(new RegExp('^'+verb+amount+' (?:de (?:los|las) )?(.+?) (?:por|a) (.+)$'));
+    const declaration = !countedEdit && q.match(new RegExp('^'+amount+' (.+?) (?:va|van) con\\s*(.+)$'));
+    const quantityFirst = countedEdit || declaration;
     const attributeFirst = !quantityFirst && q.match(new RegExp('^'+verb+'(?:el |la )?(.+?) de '+amount+' (.+?) (?:por|a) (.+)$'));
     if (!quantityFirst && !attributeFirst) return false;
     if (session.lastUnitOptionEdit?.sourceText === this.normalizeForMatch(text) &&
@@ -18717,7 +18733,8 @@ export class WhatsappOrchestratorService {
         const prefix = exact || [...attr.options].sort((a,b)=>b.length-a.length)
           .find(option=>destination.startsWith(this.normalizeForMatch(option)+' '));
         const tail = prefix ? destination.slice(this.normalizeForMatch(prefix).length).trim().replace(/^y\s+/,'') : '';
-        const paired = prefix && !exact ? this.pairedAttributeOption(product!, attr.attributeName, tail) : null;
+        const pairedTail = declaration ? tail.replace(/^con\s*/, '') : tail;
+        const paired = prefix && !exact ? this.pairedAttributeOption(product!, attr.attributeName, pairedTail) : null;
         if (paired) return [{cartIndex,line,attributeName:attr.attributeName,attributeValue:prefix!,note:undefined,extraAttributes:[paired]}];
         const kitchen = exact ? null : splitKitchenPreference(prefix ? 'pedido '+tail : destination);
         if (prefix && !exact && (!kitchen || kitchen.productText !== 'pedido')) return [];
@@ -19583,6 +19600,42 @@ export class WhatsappOrchestratorService {
     if (ids.length !== 1) return null;
     const rows = lines.filter(index => session.cart[index].productId === ids[0]);
     return rows.length === 1 ? rows[0] : { productId: ids[0] };
+  }
+
+  /** An explicit reference to an already ordered dish makes this a note edit, not another purchase. */
+  private async tryHandleAlreadyOrderedSideSwap(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state) || /[¿?;]/.test(text)) return false;
+    const said = normalizeCorrection(text).replace(/ (?:por favor|porfa|gracias)$/, '');
+    const request = said.match(/^(?:no )?(?:(?:el|la) (.+?) que ya te pedi (?:lo|la) quiero con|(?:al|a la) (.+?) que ya te pedi) en ve[sz] de ([a-zñ]+(?: [a-zñ]+){0,2}?) me regalas ([a-zñ]+(?: [a-zñ]+){0,2})$/);
+    if (!request || [request[3],request[4]].some(part => /\b(?:y|o|si|no|sin|con|un|una|dos|otro|otra|agrega|aparte)\b/.test(part))) return false;
+    const unchanged = async (message: string) => { await this.reply(conv,waId,message+' El pedido sigue igual.'); return true; };
+    if (session.mpPreferenceId) return unchanged('Hay un enlace de pago; revisemos el pago antes de cambiarlo.');
+    if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return unchanged('Hay una selección pendiente; aclaremos esa elección antes de cambiar la preparación.');
+    const query = request[1] || request[2];
+    const indices = session.cart.flatMap((line,index)=>correctionMatchesLine(line,query)?[index]:[]);
+    if (indices.length !== 1) return unchanged('¿A cuál línea del pedido le anoto el cambio? Dime el nombre completo del plato.');
+    const index = indices[0], line = session.cart[index];
+    if (line.quantity !== 1) return unchanged('¿A cuántas unidades de ese plato le anoto el cambio?');
+    const products = await this.catalogService.getMenuProducts();
+    const product = products.find(item=>item.id===line.productId);
+    const from = resolveDescribedSidePhrase(request[3],product?.description || ''), to = request[4];
+    if (!product || !from || from===to)
+      return unchanged('Necesito aclarar el acompañamiento que quieres cambiar en ese plato.');
+    // Do not append a conflicting positive/negative request or erase a compound stored note.
+    const clauses = (line.note || '').split(/[;.]+/).map(part=>normalizeCorrection(part));
+    if (clauses.some(part=>part.includes(`con ${from}`) || part.includes(`sin ${to}`)))
+      return unchanged('Hay una nota previa sobre ese acompañamiento; dime cómo debe quedar para conservar las demás instrucciones.');
+    let edit = editScopedCartNote(line.note,{kind:'append',query:'',note:`Sin ${from}`,preserve:[]});
+    if (!edit.blocked) edit = editScopedCartNote(edit.note,{kind:'append',query:'',note:`Con ${to}`,preserve:[]});
+    if (edit.blocked) return unchanged('La nota es demasiado larga; resume el cambio de acompañamiento.');
+    const next = {...session,cart:session.cart.map((item,position)=>position===index?{...item,note:edit.note}:item)};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,`Anoté la solicitud de preparación para *${line.name}*: sin ${from}, con ${to}. No añadí productos ni cobré extras.\n\n`+
+      this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
   }
 
   /** A later message can attach one substitution to a dish already in the cart. */

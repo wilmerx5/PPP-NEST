@@ -1,0 +1,11 @@
+{
+  "batches": [
+    245,
+    246,
+    247,
+    248
+  ],
+  "status": "validated_awaiting_staging_rollout",
+  "validation": "docs/whatsapp-batch-245-248-validation.json",
+  "production": "Unchanged, batch244. No Main promotion in this group."
+}

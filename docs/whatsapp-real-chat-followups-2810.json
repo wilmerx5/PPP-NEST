@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-28",
+  "batches": [
+    245,
+    246,
+    247,
+    248
+  ],
+  "baseCommit": "bc791e29",
+  "source": {
+    "path": "/home/levi/Downloads/chat.txt",
+    "sha256": "e85e4beaab6a26ef4fdf8e8ec5977ea2bcbe0d5417b017de616ff87a0b7b64b3",
+    "handling": "Original remains private. Only food/correction phrases used; fixture identity/contact/address synthetic. Audit 445 messages/28 episodes is an inventory, not an accuracy denominator."
+  },
+  "cases": [
+    {
+      "episode": "CHAT2510-28",
+      "pattern": "elimina el pollo frito y el combo de arroz chino",
+      "baseline": {
+        "tests": 30,
+        "passed": 0,
+        "failed": 30
+      },
+      "tests": "src/whatsapp/whatsapp-multiple-explicit-removal.spec.ts",
+      "currentCases": 50,
+      "coverage": "Atomic explicit removals with full catalog titles, three menus, agent mock off/on; building/payment/final confirmation; unknown targets, repeated variants and pending payment/selection preserve the whole cart; 18 portable seeded-cart journeys reach DTO with kept quantities/notes.",
+      "limits": "Not the complete original journey. Actual catalog has multiple arroz-combo variants; incomplete titles require clarification. Full-title matching cannot certify arbitrary aliases."
+    },
+    {
+      "episode": "CHAT2510-08",
+      "pattern": "existing combo + composition inquiry + requested side substitution + repeated request",
+      "baseline": {
+        "tests": 12,
+        "passed": 0,
+        "failed": 12
+      },
+      "tests": "src/whatsapp/whatsapp-existing-combo-side-journey.spec.ts",
+      "currentCases": 54,
+      "coverage": "Three menus, agent mock off/on, 12 journeys from explicit full-title purchase to simulated DTO; Pepsi survives content inquiry and preparation request; repeated request idempotent, no charged add-on.42 controls for ambiguous ownership, quantity, pending choice/payment, missing description, conflicting/long notes.",
+      "limits": "Explicit already-ordered reference, one unit, bounded one-side request. Does not replay the historical initial style selection, extra ajis, delivery/contact or the differently worded second correction."
+    },
+    {
+      "episode": "CHAT2510-08",
+      "pattern": "papá salda refers to papa salada in the selected dish description",
+      "baseline": {
+        "tests": 13,
+        "passed": 11,
+        "failed": 2,
+        "note": "Eleven helper contracts already passed; two original-typo integration cases failed before connecting the helper."
+      },
+      "tests": "src/whatsapp/whatsapp-described-side.spec.ts",
+      "currentCases": 13,
+      "coverage": "Two PPP fragment journeys through DTO and 11 pure helper contracts. Exact phrase first; one edit in a later word only with an exact first-word anchor and unique description phrase. Ambiguity and unanchored guesses rejected.",
+      "limits": "Not a general typo corrector; does not infer recipe or actual kitchen availability."
+    },
+    {
+      "episode": "CHAT2510-05",
+      "pattern": "un ejecutvo va conpierna pernil y con limonada",
+      "baseline": {
+        "tests": 2,
+        "passed": 0,
+        "failed": 2,
+        "actual": "Both mock modes changed quantity2 to3."
+      },
+      "tests": "src/whatsapp/whatsapp-counted-option-declaration.spec.ts",
+      "currentCases": 56,
+      "coverage": "Two original correction fragments on a seeded two-unit executive row; generic option plan reused for declarations. Three additional menus, agent mock off/on, 18 seeded-cart journeys through DTO with option/notes/drink ownership and repeat safety. Unknown/oversized/ambiguous/pending edits clarify. Explicit additions still add; questions preserve.",
+      "limits": "Not the complete initial distribution of soup, chicken cuts, included and extra drinks. Colombina is not mapped to a different cut absent catalog evidence."
+    }
+  ],
+  "focused": {
+    "tests": 455,
+    "suites": 11,
+    "passed": 455
+  },
+  "newRegressionCases": 173,
+  "inference": {
+    "paidRequests": 0,
+    "externalOrders": 0,
+    "metaMessages": 0,
+    "models": "All external inference mocked. Does not establish Luna/Sol or audio/image recognition accuracy.",
+    "ledgerUnchanged": {
+      "authorized": 267,
+      "used": 256,
+      "remaining": 11
+    }
+  },
+  "globalStatus": "passed",
+  "production": "No new production authorization inferred; Main/production retain batch244.",
+  "global": {
+    "tests": 20487,
+    "suites": 319,
+    "mode": "Final complete inventory in four disjoint sequential blocks; four workers except isolated timers; no retry or timeout increase within final validation"
+  }
+}
