@@ -1430,6 +1430,7 @@ export class WhatsappOrchestratorService {
       text = text.replace(/^mejor\s+(?=cambia\s)/i, '');
     }
     let originalText = text;
+    if (await this.tryHandleDefinitePreparationChange(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleTwoUnitServingPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleBinaryUnitSubset(conv,msg.waId,this.conversationService.getSession(conv),originalText,cfg)) return;
     // Resolve explicit one/other family plans before generic quantity/option
@@ -3586,6 +3587,13 @@ export class WhatsappOrchestratorService {
         await this.tryHandleMultiProductOrder(conv, msg.waId, session, swapped, cfg, originalText, products, originalText)) return;
     }
 
+    // A complete logistics-only phrase must not depend on a model response or
+    // become an invented destination. Existing destination/checkout rules apply.
+    if (businessOpenForBot && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+        isDeliverySetupWithoutFood(originalText) && isDeliveryLogisticsFluff(originalText) &&
+        !/\b(?:no|si)\b/.test(this.normalizeForMatch(originalText)) &&
+        await this.tryHandleDeliverySetup(conv, msg.waId, session, originalText, text, cfg)) return;
+
     if (businessOpenForBot && !session.cart.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
       const request = this.normalizeForMatch(originalText);
       const familyRequest = /\b(?:quiero|dame|me da|me das|me regala|me regalas|me envia|me envias)\b/.test(request) && !/[¿?]/.test(originalText)
@@ -3631,10 +3639,11 @@ export class WhatsappOrchestratorService {
     // For a new cart, resolve a plural full combo title before the multi-item splitter.
     // Explicit drink sizes still go through the existing volume-aware route.
     const explicitComboMeal = !session.cart.length && /\bcombos\b/i.test(text) && requestedDrinkVolume == null ? this.catalogService.explicitlyNamedCombo(text, products) : null;
-    const namedMeal = explicitComboMeal || this.catalogService.resolveNamedMenuDishProduct(text, products) ||
+    const implicitComboMeal = !session.cart.length && requestedDrinkVolume == null ? this.catalogService.implicitlyNamedCombo(text, products) : null;
+    const namedMeal = explicitComboMeal || implicitComboMeal || this.catalogService.resolveNamedMenuDishProduct(text, products) ||
       (hostedMeal && (requestedDrinkVolume == null || requestedDrinkVolume === includedDrinkVolume) ? hostedMeal.product : null);
     if (businessOpenForBot && !multiplePurchaseLines && !splitsSameSkuPair && namedMeal && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
-      (explicitComboMeal?.id === namedMeal.id || this.catalogService.orderNamesThisProduct(namedMeal.name, text) || this.catalogService.productWhoseHeadWasSpoken(text,products)?.id === namedMeal.id ||
+      (explicitComboMeal?.id === namedMeal.id || implicitComboMeal?.id === namedMeal.id || this.catalogService.orderNamesThisProduct(namedMeal.name, text) || this.catalogService.productWhoseHeadWasSpoken(text,products)?.id === namedMeal.id ||
         hostedMeal?.product.id === namedMeal.id && this.catalogService.findAllProductsEmbeddedInMessage(text,products).filter(product => !this.catalogService.isLikelyDrinkProduct(product)).length === 1) &&
       !/\by\s+(?:un|una|otro|otra|dos|tres|medio|media|cuarto|cuarta|\d+)\b/i.test(text) &&
       !/\b(?:aparte|a parte|adicional|extra|por separado)\b/i.test(text) &&
@@ -15521,6 +15530,43 @@ export class WhatsappOrchestratorService {
     if (hold?.length) hold[0] = `${notice}\n\n${hold[0]}`;
     else await this.reply(conv, waId, notice);
     return next;
+  }
+
+  /** A definite, fully named preparation refers to the existing dish family. */
+  private async tryHandleDefinitePreparationChange(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address',
+      'awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state) ||
+      session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+      CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const title = text.trim().replace(/^[¿]+|[?!.]+$/g,'').match(/^(?:el|la)\s+([\p{L} ]+)$/iu)?.[1];
+    if (!title || /\b(?:no|si|y|o|sin|quiero|agrega|otro|otra|para)\b/i.test(title)) return false;
+    const menu = await this.catalogService.getMenuProducts();
+    const exact = menu.filter(product => this.normalizeForMatch(product.name) === this.normalizeForMatch(title));
+    const target = exact.length === 1 ? exact[0] : exact.length ? null : this.catalogService.resolveNamedMenuDishProduct(title,menu);
+    if (!target || this.normalizeForMatch(title).split(' ').length !== this.normalizeForMatch(target.name).split(' ').length) return false;
+    const base = this.catalogService.stripCookingStyleTokens(target.name);
+    if (base === this.normalizeForMatch(target.name)) return false;
+    const previous = session.cart.filter(line => line.productId !== target.id &&
+      this.catalogService.stripCookingStyleTokens(line.name) === base);
+    if (!previous.length) {
+      if (!session.cart.some(line => line.productId === target.id)) return false;
+      await this.reply(conv,waId,`Esa preparación ya está en tu carrito. El pedido sigue igual.\n\n` +
+        (this.formatInterruptedStepReminder(conv,session) || this.formatContinueShoppingPrompt(session)));
+      return true;
+    }
+    if (new Set(previous.map(line => line.productId)).size !== 1 || session.cart.some(line => line.productId === target.id)) {
+      await this.reply(conv,waId,'Hay varias preparaciones en el carrito. Dime qué plato reemplazamos y por cuál. El pedido sigue igual.');
+      return true;
+    }
+    if (/[¿?]/.test(text)) {
+      await this.reply(conv,waId,`¿Quieres cambiar la preparación del plato que ya tienes? Escribe el nombre completo para cambiarlo. El pedido sigue igual.`);
+      return true;
+    }
+    return this.tryHandleAtomicCartReplacement(conv,waId,session,
+      `cambia ${previous[0].name} por ${target.name}`,menu,cfg);
   }
 
   private async tryHandleAtomicCartReplacement(

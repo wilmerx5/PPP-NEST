@@ -3230,6 +3230,31 @@ export class WhatsappCatalogService {
     return specific.length === 1 && specific[0].product.availableNow !== false ? specific[0].product : null;
   }
 
+  /** A complete package title without its "combo" label still owns its configured drink. */
+  implicitlyNamedCombo(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null {
+    if (/[¿?;\n]/.test(text) || this.isPriceInquiryIntent(text) || this.isAvailabilityInquiry(text)) return null;
+    const query = normalizeText(this.normalizeNumericOptionTokens(text,products))
+      .replace(/[.!]+$/,'').replace(/\s+(?:por favor|porfa|gracias)$/,'').trim();
+    const request = query.match(/^(.+?)\s+y\s+(?:gaseosa|bebida|refresco)\s+([a-z0-9 ]+)$/);
+    if (!request || /\b(?:combo|aparte|adicional|extra|otro|otra|sin|no)\b/.test(query)) return null;
+    const hits = products.filter(product => {
+      if (product.availableNow === false || !/^combo\s/i.test(product.name)) return false;
+      const title = normalizeText(product.name).replace(/^combo\s+(?:de\s+)?/,'');
+      if (title.split(' ').length < 3) return false;
+      const at = (` ${request[1]} `).indexOf(` ${title} `);
+      if (at < 0) return false;
+      const prefix = request[1].slice(0,at).trim();
+      const suffix = request[1].slice(at+title.length).trim();
+      if (!/^(?:(?:buenas noches|buenas tardes|buenos dias|hola|buenas|para pedir|quiero|dame|me regala|me regalas|me da|me das)\s+)*(?:un|una|dos|tres|\d{1,2})$/.test(prefix)) return false;
+      const drink = product.attributes?.some(attribute => /bebida|gaseosa|refresco/i.test(attribute.attributeName) &&
+        attribute.options.some(option => normalizeText(option) === request[2]));
+      const preparation = !suffix || product.attributes?.some(attribute => !/bebida|gaseosa|refresco/i.test(attribute.attributeName) &&
+        attribute.options.some(option => normalizeText(option) === suffix));
+      return !!drink && !!preparation;
+    });
+    return hits.length === 1 ? hits[0] : null;
+  }
+
   /** Todas las palabras del nombre aparecen en el mensaje, aunque la extracción recorte prefijos como “combo de”. */
   productFullyNamedIn(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null {
     const spoken = new Set(normalizeText(text || '').split(/[^a-z0-9]+/).filter(Boolean));

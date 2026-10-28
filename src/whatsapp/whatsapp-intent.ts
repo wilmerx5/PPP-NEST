@@ -209,6 +209,9 @@ export function isDeliveryLogisticsFluff(text: string): boolean {
     .replace(/\s+/g, ' ')
     .trim();
   if (!t) return true;
+  // A numeric article and repeated conversational fillers still do not name
+  // a destination. Match the whole phrase so an actual place remains intact.
+  if (/^(?:(?:para|que|porfa|por favor|un|una|1)\s+)*domicilios?(?:\s+(?:porfa|por favor|gracias))*$/.test(t)) return true;
   if (/^(un |una )?(domicilios?)( por favor| porfa)?$/.test(t)) return true;
   if (/^(por favor|porfa|gracias)$/.test(t)) return true;
   if (/^(buenas? (noches|tardes|dias)|hola|buenas)$/.test(t)) return true;
@@ -252,7 +255,7 @@ export function isDeliveryLogisticsFluff(text: string): boolean {
     return true;
   }
   if (
-    /^(para )?(un |una )?domicilio\b/.test(t) &&
+    /^(para )?(un |una )?domicilio(?: (?:por favor|porfa|gracias))?$/.test(t) &&
     t.split(' ').length <= 5 &&
     !/\d|torre|apto|apartamento|calle|carrera|castilla|castellon|tabaku|conjunto|barrio|terrazas/.test(
       t,

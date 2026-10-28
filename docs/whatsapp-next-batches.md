@@ -1,3 +1,13 @@
+## VIGENTE — tandas 241–243: tres pendientes históricos corregidos (28/10)
+
+Base '320c5785', staging. 241 distingue el arranque logístico «Para que porfa para 1 domicilio» de una dirección real; conserva destinos válidos. 242 un título completo con «el/la» cambia la preparación de la familia existente mediante el reemplazo atómico, conserva cantidades/opciones compatibles y no compra otra unidad; repetir es seguro y una pregunta no autoriza el cambio. 243 resuelve un único combo por su título completo de componentes más bebida configurada aunque no se diga «combo»; conserva preparación, cantidad y bebida numérica. Sin excepciones por productos/IDs/precios PPP.
+
+94 pruebas nuevas (20+34+40); foco359/359 en10 suites. Históricos originales22/28→28/28 (14 formulaciones×agente simulado off/on), expectativas intactas. NO equivalen a los28 recorridos completos delimitados en chat.txt ni a todo el PDF: falta una evaluación integral del corpus.
+
+Global única del grupo en dos fases disjuntas y seriales:20.273/20.273 en312 suites; resto20.186/310 a 4 workers y temporizadores87/2 aislados, sin reintentos ni aumentar timeouts. Inventario exacto,623 hashes intactos, TypeScript general/build y Node7/7 aprobados. Evidencia 'docs/whatsapp-batch-241-243-validation.json'; informe 'docs/whatsapp-historical-closures-validation-2810.md'. Cadencia autorizada por usuario: 3–5 tandas relacionadas con foco por tanda y una global al cierre.
+
+Límites: título definido completo y familias de preparación reconocidas, no anáforas universales; combo implícito con componentes completos y bebida explícita, no toda combinación libre. Próximo: trazabilidad por conversación del archivo/PDF y replays completos no reproducidos; variantes/opciones de los repartos fuera del contrato 239–240. Sin inferencia real/Meta/mapas/órdenes externas ni deploy. Modelos/Main intactos. Publicación pendiente por DNS de GitHub; servidor staging 231/producción 235 según relevo, sin consulta nueva.
+
 ## VIGENTE — tanda 240: reparto y edición de una unidad validados (28/10)
 
 Base publicada `323f6143`, rama `staging`. Se retoman y conservan las correcciones locales239–240: reparto de dos unidades con nota común y notas propias, extra explícito separado y retirada de una nota positiva solo cuando ordinal absoluto, nombre completo y unidad coinciden. No modifica la otra fila ni el paso de checkout.
