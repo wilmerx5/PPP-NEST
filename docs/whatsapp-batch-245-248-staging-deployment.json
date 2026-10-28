@@ -5,7 +5,89 @@
     247,
     248
   ],
-  "status": "validated_awaiting_staging_rollout",
+  "status": "deployed_verified_staging_only",
+  "runtimeCodeCommit": "47c9f4077bff0b749cd09b645ff29e65548654ca",
+  "verification": {
+    "environment": "staging",
+    "checkedAt": "2026-10-28T16:23:59.173094+00:00",
+    "head": "47c9f4077bff0b749cd09b645ff29e65548654ca",
+    "image": "sha256:554e5d56afb652972e2f62930497c6fcb863ab6960ba70465eef608311bb8204",
+    "candidateImage": "sha256:554e5d56afb652972e2f62930497c6fcb863ab6960ba70465eef608311bb8204",
+    "state": "running",
+    "health": "healthy",
+    "restartCount": 0,
+    "models": {
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol"
+    },
+    "compiledSmoke": "3 compiled routing checks passed\n2 compiled description checks passed",
+    "compiledModuleHashes": {
+      "whatsapp-agent-model": "4cb9ac9f0f24265375107f46539c3d17e24fc1396aface51b70c7e5bbe18525d",
+      "whatsapp-agent.service": "aac50bcaf8a9cdc11cd84962576aadf7f00de59e9e61210bb6fc64a42d0af784",
+      "whatsapp-cart-edits": "de69254f08d953219e09d1efafde71891a07d402630343abdd93fac85de6dbee",
+      "whatsapp-orchestrator.service": "8aad85dbc9ef45bc751fa5b2b5643e99bc5df7609b1aa87b2f0c4a7c22417467",
+      "whatsapp-catalog.service": "96ed954ff33af9efee611da77eaac3af1a0d5ce9956634810dff6e51cc3c7099"
+    },
+    "endpoints": [
+      {
+        "url": "http://127.0.0.1:3301/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 50.71,
+            "heapTotal": 55.27,
+            "rss": 117.06
+          },
+          "timestamp": "2026-10-28T16:23:58.817Z"
+        }
+      },
+      {
+        "url": "https://dev.prontopolloportal.com/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 50.66,
+            "heapTotal": 54.77,
+            "rss": 116.92
+          },
+          "timestamp": "2026-10-28T16:23:58.991Z"
+        }
+      }
+    ],
+    "envSha256": "9a318abb69d6a267de33de4bdc35233eb78e690e426b945f85ebeeacce84d9b4",
+    "composeSha256": "cf8560aa0c07799146da868e5104c0ff3e7932cf20b8dd7d22bbd2c0d93ffa57",
+    "privateComposePreserved": true,
+    "gitStatus": "?? bin/"
+  },
+  "backup": {
+    "backup": "/root/ppp-245-248-backups/20261028T162216Z",
+    "previousImage": "sha256:d7c822be4735076dc68d5e38efd83ec6777e61c31df65a1172d41d3bfe03b140",
+    "rollbackTag": "ppp-nest-staging:rollback-before-245-248"
+  },
+  "environmentFileUnchanged": true,
+  "modelsUnchanged": true,
+  "productionUnchanged": {
+    "head": "bc791e29f3e1fc98a8a384040e68c15a65e724c3",
+    "image": "sha256:65df99ee0c36b916d07ed13256027302b0a8867c0088c1db0df7e811c632ac84",
+    "status": "running",
+    "restartCount": 0
+  },
   "validation": "docs/whatsapp-batch-245-248-validation.json",
-  "production": "Unchanged, batch244. No Main promotion in this group."
+  "notes": [
+    "Only staging api rebuilt/recreated using staging compose/project. No database/volume/schema changes.",
+    "Private compose/environment, server bin/ and local generated files preserved.",
+    "Code from the complete final validation; following documentation-only commit needs no image rebuild.",
+    "Models, Meta, maps, persistence and orders mocked in conversational tests; compiled smoke and local/public API health verified without external test orders."
+  ]
 }
