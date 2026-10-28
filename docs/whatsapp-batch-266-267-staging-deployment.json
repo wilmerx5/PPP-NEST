@@ -1,0 +1,89 @@
+{
+  "batches": [
+    266,
+    267
+  ],
+  "runtimeCodeCommit": "ac8c2cd587de95f7148759da1e204dabdaf19aaa",
+  "verification": {
+    "compiledNewBehavior": "18 compiled referenced preparation routing, negated removal, atomic multiple-removal, short clarification, stale cart, direct guard, paired-plan, negation, atomic split, combo, supply, idempotency, repeated substitution, labelled drink, receipt notes and central-confirmation checks passed; external services isolated",
+    "environment": "staging",
+    "checkedAt": "2026-10-28T22:25:56.620750+00:00",
+    "head": "ac8c2cd587de95f7148759da1e204dabdaf19aaa",
+    "image": "sha256:b53f98d6098539cd4d0a39ed554f244ed04aecaa92817c149b9cc966732f4124",
+    "candidateImage": "sha256:b53f98d6098539cd4d0a39ed554f244ed04aecaa92817c149b9cc966732f4124",
+    "state": "running",
+    "health": "healthy",
+    "restartCount": 0,
+    "models": {
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna"
+    },
+    "compiledSmoke": "3 compiled routing checks passed\n2 compiled description checks passed",
+    "compiledConfirmationGuard": "compiled unresolved distribution blocks direct confirmation",
+    "compiledModuleHashes": {
+      "whatsapp-agent-model": "4cb9ac9f0f24265375107f46539c3d17e24fc1396aface51b70c7e5bbe18525d",
+      "whatsapp-agent.service": "aac50bcaf8a9cdc11cd84962576aadf7f00de59e9e61210bb6fc64a42d0af784",
+      "whatsapp-cart-edits": "de69254f08d953219e09d1efafde71891a07d402630343abdd93fac85de6dbee",
+      "whatsapp-orchestrator.service": "aa994cd847447214de1270c1372cc656c7b33207b4419260d4ab6d9c52beec9b",
+      "whatsapp-catalog.service": "96ed954ff33af9efee611da77eaac3af1a0d5ce9956634810dff6e51cc3c7099"
+    },
+    "endpoints": [
+      {
+        "url": "http://127.0.0.1:3301/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 50.64,
+            "heapTotal": 56.34,
+            "rss": 118.18
+          },
+          "timestamp": "2026-10-28T22:25:52.025Z"
+        }
+      },
+      {
+        "url": "https://dev.prontopolloportal.com/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 50.78,
+            "heapTotal": 56.34,
+            "rss": 118.3
+          },
+          "timestamp": "2026-10-28T22:25:52.216Z"
+        }
+      }
+    ],
+    "envSha256": "9a318abb69d6a267de33de4bdc35233eb78e690e426b945f85ebeeacce84d9b4",
+    "composeSha256": "cf8560aa0c07799146da868e5104c0ff3e7932cf20b8dd7d22bbd2c0d93ffa57",
+    "privateComposePreserved": true,
+    "privateEnvironmentPreserved": true,
+    "gitStatus": "?? bin/"
+  },
+  "rollback": {
+    "backup": "/root/ppp-266-267-backups/20261028T222446Z",
+    "previousImage": "sha256:e330cb271478bce5188d2c52ed3861d4f9fafc96a13f682e966eaa0b3e00ad64",
+    "rollbackTag": "ppp-nest-staging:rollback-before-266-267"
+  },
+  "production": {
+    "unchanged": true,
+    "snapshot": [
+      "5225ccb37cd92b5b3acd488cede9c627fc4c6244",
+      "sha256:c50f5be01a0944c54a75980e1d9e231b50fbb447a735cfb89f0cdccd1ed6c6f3 running 0"
+    ]
+  },
+  "paidRequests": 0,
+  "persistenceChanged": false,
+  "sqlMigration": false,
+  "compiledScope": "New preparation routing uses actual compiled catalog/handler and captures the atomic replacement request; negated removal executes the compiled scoped removal. Full replacement and checkout DTO covered by Jest with external services mocked."
+}

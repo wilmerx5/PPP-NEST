@@ -52,11 +52,12 @@
   "runtimeChanged": true,
   "persistenceChanged": false,
   "productionChanged": false,
-  "deploymentStatus": "Pending staging verification",
+  "deploymentStatus": "Verified staging; see whatsapp-batch-266-267-staging-deployment.json",
   "source": "User-provided WhatsApp transcript dated 2026-10-28 16:38–16:44; no phone or identity stored",
   "limits": [
     "Starts from the two correct meal lines observed after the original selection; original greeting/typo recognition by the real model is not re-evaluated.",
     "Initial exploratory test used empty agent actions and incorrectly expected original initial inference; its two initial-message failures are excluded as evidence of a production defect. Corrected baseline uses the observed cart for both PPP cases.",
     "Three synthetic menus and PPP fixture; models, external orders and Meta mocked. Not a channel, audio, PDF or independent model evaluation."
-  ]
+  ],
+  "runtimeCodeCommit": "ac8c2cd587de95f7148759da1e204dabdaf19aaa"
 }
