@@ -1,0 +1,91 @@
+{
+  "date": "2026-10-28",
+  "authorizedBy": "User: despliega main",
+  "promotedCommit": "2eaa0d61d13a3d06e2e8da1ab3d93ee13be27849",
+  "runtimeCodeCommit": "f0ae0d00102e70852c428d1185aa823b550eaba8",
+  "batchesIncluded": "245–265",
+  "promotion": "Fast-forward from bc791e29; no force push",
+  "validation": "whatsapp-batch-265-validation.json",
+  "verification": {
+    "compiledNewBehavior": "16 compiled atomic multiple-removal, short clarification, stale cart, direct guard, paired-plan, negation, atomic split, combo, supply, idempotency, repeated substitution, labelled drink, receipt notes and central-confirmation checks passed; external services isolated",
+    "environment": "production",
+    "checkedAt": "2026-10-28T21:27:05.333968+00:00",
+    "head": "2eaa0d61d13a3d06e2e8da1ab3d93ee13be27849",
+    "image": "sha256:c50f5be01a0944c54a75980e1d9e231b50fbb447a735cfb89f0cdccd1ed6c6f3",
+    "candidateImage": "sha256:c50f5be01a0944c54a75980e1d9e231b50fbb447a735cfb89f0cdccd1ed6c6f3",
+    "state": "running",
+    "health": null,
+    "restartCount": 0,
+    "models": {
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna"
+    },
+    "compiledSmoke": "3 compiled routing checks passed\n2 compiled description checks passed",
+    "compiledConfirmationGuard": "compiled unresolved distribution blocks direct confirmation",
+    "compiledModuleHashes": {
+      "whatsapp-agent-model": "4cb9ac9f0f24265375107f46539c3d17e24fc1396aface51b70c7e5bbe18525d",
+      "whatsapp-agent.service": "aac50bcaf8a9cdc11cd84962576aadf7f00de59e9e61210bb6fc64a42d0af784",
+      "whatsapp-cart-edits": "de69254f08d953219e09d1efafde71891a07d402630343abdd93fac85de6dbee",
+      "whatsapp-orchestrator.service": "8962595f15c65358a55c0f82cfadb6cf2c59ef40bd88668974e830b7ca5e1055",
+      "whatsapp-catalog.service": "96ed954ff33af9efee611da77eaac3af1a0d5ce9956634810dff6e51cc3c7099"
+    },
+    "endpoints": [
+      {
+        "url": "http://127.0.0.1:3000/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 56.6,
+            "heapTotal": 90.46,
+            "rss": 151.02
+          },
+          "timestamp": "2026-10-28T21:27:00.470Z"
+        }
+      },
+      {
+        "url": "https://api.prontopolloportal.com/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 56.72,
+            "heapTotal": 90.46,
+            "rss": 151.02
+          },
+          "timestamp": "2026-10-28T21:27:00.756Z"
+        }
+      }
+    ],
+    "envSha256": "a74c4d62351cceacca45e97beaee8ea3396613921bff45d64b8e72453fc92ac3",
+    "composeSha256": "d973f08a9a1708b7309e801c07738350ce8e4f61b17af295bf52b6828bdf3b84",
+    "privateComposePreserved": true,
+    "privateEnvironmentPreserved": true,
+    "gitStatus": "M docker-compose.yml\n?? Dockerfile.backup\n?? docker-compose.yml.before-main-adfa25-20261010"
+  },
+  "compiledHashesMatchStaging": true,
+  "backup": {
+    "backup": "/root/ppp-265-main-backups/20261028T212559Z",
+    "previousImage": "sha256:65df99ee0c36b916d07ed13256027302b0a8867c0088c1db0df7e811c632ac84",
+    "rollbackTag": "ppp-nest-api:rollback-before-265",
+    "previousHead": "bc791e29f3e1fc98a8a384040e68c15a65e724c3",
+    "privateHashes": {
+      ".env": "a74c4d62351cceacca45e97beaee8ea3396613921bff45d64b8e72453fc92ac3",
+      "docker-compose.yml": "d973f08a9a1708b7309e801c07738350ce8e4f61b17af295bf52b6828bdf3b84"
+    }
+  },
+  "rollbackCaveat": "Before reverting to the old image, finish or cancel affected draft pending unitAttributeGroups, pendingUnitDistribution and pendingCartRemoval.batchGroups flows normally; old code does not understand new pending plans. Do not delete customer data.",
+  "paidRequests": 0,
+  "externalTestOrders": 0,
+  "modelsChanged": false,
+  "sqlMigration": false
+}

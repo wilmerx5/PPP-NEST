@@ -1,3 +1,11 @@
+## DESPLIEGUE VIGENTE — Main/producción hasta tanda265 (28/10)
+
+Solicitud explícita «despliega main». `origin/Main` promovido por fast-forward de `bc791e29` a `2eaa0d61` (runtime `f0ae0d00`), con las tandas245–265 validadas en staging. Producción ejecuta imagen `sha256:c50f5be01a0944c54a75980e1d9e231b50fbb447a735cfb89f0cdccd1ed6c6f3`, running,0reinicios; APIlocal/pública200, DBconnected/circuitCLOSED.16controles compilados y guard central aprobados con dependencias aisladas; hashes de los cinco módulos auditados coinciden con staging. Global previa21.060/330, TypeScript general/build y Node aprobados;541fuentes siguen iguales. No se repitió la global para promover código idéntico.
+
+`.env`, compose privado, modelos y datos preservados; sin migración SQL, llamadas pagadas, Meta ni órdenes externas de prueba. Imagen previa etiquetada `ppp-nest-api:rollback-before-265`. Antes de rollback a244 resolver/cancelar normalmente borradores con nuevos planes pendientes; no borrar datos de clientes. Evidencia `whatsapp-main-promotion-265-2810.json`. El commit posterior solo registra documentación y no requiere reconstrucción.
+
+Continuar las tandas en `staging`. Este despliegue no cierra todos los chats/PDF ni acredita evaluación independiente de modelos, medios, canal o piloto. Pendientes y límites de265 siguen vigentes. Las menciones históricas a producción244 más abajo quedan superadas por esta verificación.
+
 ## VIGENTE — tanda265: aclaración corta de retirada múltiple (28/10)
 
 Base `4290ddd4`. CHAT2510-28 derivado: «el de costillas» resuelve la lista activa sin convertirse en compra. Se guarda la retirada múltiple como grupos de líneas y se aplica solo al aclararlos todos. Número, nombre distintivo y nota; firma de carrito, cancelación, pago/otras selecciones y confirmación central protegidos. Sin nombres/IDs PPP en runtime.
