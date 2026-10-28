@@ -1,0 +1,46 @@
+{
+  "baseCommit": "344ded5ffcac7659cf37241189fcaa89d37daad9",
+  "batches": [
+    258,
+    259
+  ],
+  "tests": 20823,
+  "suites": 326,
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 348.62,
+      "sourceUnchanged": true
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 289.01,
+      "sourceUnchanged": true
+    },
+    "rest-final": {
+      "exitCode": 0,
+      "seconds": 649.03,
+      "sourceUnchanged": true
+    },
+    "timers-final": {
+      "exitCode": 0,
+      "seconds": 67.61,
+      "sourceUnchanged": true
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "sourceFiles": 537,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "paidRequests": 0,
+  "newRegressions": 60,
+  "focusTests": 180
+}

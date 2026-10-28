@@ -1,3 +1,11 @@
+## VIGENTE — tandas258–259: lenguaje coloquial de combos (28/10)
+
+Base `344ded5f`.258 normaliza «combito»/«de combo» dentro de compra explícita;259 distingue la opción final «y <atributo> <valor>» de otro plato solo por coincidencia exacta con el catálogo del combo. Conserva preguntas, cantidades separadas, bebida previa y adicional explícita. Sin nombres/IDs/precios PPP en runtime.
+
+60 regresiones sintéticas nuevas derivadas de los reportes, tres menús × agente simulado off/on; foco180/180. Baseline36:26verdes/10rojas. Global20.823/326suites aprobada en cuatro bloques seriales disjuntos, inventario exacto y537fuentes de src congeladas; TypeScript general/build y pruebas Node aprobados. Evidencia `whatsapp-batch-258-259-validation.json`. Informe `whatsapp-colloquial-combos-validation-2810.md`, evidencia `whatsapp-colloquial-combos-2810.json`. No es muestra independiente ni nueva evaluación acústica/modelo. Ledger267/256/11 y espejo, modelos y producción244 intactos; cero inferencia pagada, Meta u órdenes reales. Sin nueva persistencia/esquema.
+
+Estado del plan: seguimos cerrando recorridos reales y lenguaje natural; pendientes08/28 y otros compuestos/repartos no cubiertos, después muestra independiente/modelos/medios/canal y piloto supervisado. Staging ejecuta257 hasta deploy verificado de esta tanda.
+
 ## VIGENTE — tandas256–257: tres audios reales y sus opciones (28/10)
 
 Base local255 `411fcafe`, sin desplegar255 por los nuevos reportes. Tres archivos aportados coinciden por SHA256 con webhooks/transcripciones guardadas de staging.256 conserva el reparto completo por unidad y pide preparación de la familia antes de comprar; selección y commit atómicos, bloqueo central de confirmación.257 procesa compra nueva de combo antes de correcciones del carrito y normaliza «de combo» en esa compra; no añade bebida suelta ni cambia ejecutivos previos. Conserva bebidas preexistentes.

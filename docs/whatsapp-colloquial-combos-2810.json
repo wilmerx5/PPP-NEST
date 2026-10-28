@@ -1,0 +1,28 @@
+{
+  "batches": [
+    258,
+    259
+  ],
+  "baseCommit": "344ded5ffcac7659cf37241189fcaa89d37daad9",
+  "source": "Synthetic colloquial variants derived from user-reported real combo requests; not held-out evaluation.",
+  "baseline": {
+    "passed": 26,
+    "failed": 10
+  },
+  "focused": {
+    "passed": 180,
+    "suites": 3,
+    "newTests": 60
+  },
+  "catalogs": [
+    "Pollo",
+    "Pescado",
+    "Tofu"
+  ],
+  "agentModes": "Mocked off/on",
+  "paidRequests": 0,
+  "globalStatus": "passed",
+  "productionChanged": false,
+  "globalTests": 20823,
+  "globalSuites": 326
+}

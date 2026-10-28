@@ -19649,17 +19649,26 @@ export class WhatsappOrchestratorService {
 
   /** Resolve a named new combo before cart-context variant corrections can replace another meal. */
   private async tryHandleExplicitComboPurchase(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    const order=text.replace(/\bcombito\b/gi,'combo').replace(/\bde\s+combo\b/i,'en combo');
     if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
-      /[¿?]/.test(text) || !/\bcombo\b/i.test(text) || /\b(?:aparte|adicional|extra)\b/i.test(text) ||
-      this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
+      /[¿?]/.test(text) || !/\bcombo\b/i.test(order) || /\b(?:aparte|adicional|extra)\b/i.test(text) ||
       !(this.catalogService.looksLikeExplicitAddProductRequest(text) || /^(?:quiero|quisiera|dame|necesito|me das|me regalas)\s+(?:un|una|dos|tres|\d+)\b/i.test(text.trim()))) return false;
-    const order=text.replace(/\bde\s+combo\b/i,'en combo');
     const products=await this.catalogService.getMenuProducts();
     const family=this.catalogService.findProductVariantFamily(order,products);
     const picked=family && this.catalogService.pickVariantFromFamilyText(order,family);
     const words=(name:string)=>this.normalizeForMatch(name).split(/\s+/);
     const head=` ${this.normalizeForMatch(order.split(/\bcon\b/i)[0])} `;
     if (!picked || !family || !this.catalogService.productImpliesCombo(picked) || !words(picked.name).some(word=>word.length>=3 && !family.variants.every(v=>words(v.name).includes(word)) && head.includes(` ${word} `))) return false;
+    // A bare catalog option after "y" still belongs to this combo:
+    // "con bebida naranja y acompañamiento frito". Do not absorb a separately
+    // quantified dish or an unrecognized clause into the included options.
+    const multiProbe=order.replace(/\s+y\s+([^,;.]+)$/i,(whole,clause:string)=>{
+      const normalized=this.normalizeForMatch(clause).replace(/^(?:el|la|los|las)\s+/,'');
+      const included=picked.attributes?.some(attr=>attr.options.some(option=>
+        normalized===this.normalizeForMatch(`${attr.attributeName} ${option}`)));
+      return included?` con ${clause}`:whole;
+    });
+    if (this.catalogService.looksLikeClearlyMultiDishOrder(multiProbe)) return false;
     if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote || session.pendingUnitDistribution || session.mpPreferenceId || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) {
       // A selection explicitly naming this candidate remains owned by its normal continuation.
       if (session.pendingMatch?.candidates.some(p=>p.id===picked.id)) return false;
