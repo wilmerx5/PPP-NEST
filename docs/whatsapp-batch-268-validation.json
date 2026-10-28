@@ -54,7 +54,7 @@
   "runtimeChanged": true,
   "persistenceChanged": false,
   "productionChanged": false,
-  "deploymentStatus": "Validated locally; staging deployment pending",
+  "deploymentStatus": "Verified staging; see whatsapp-batch-268-staging-deployment.json",
   "baseline": {
     "failed": 18,
     "passed": 2,
@@ -64,5 +64,6 @@
     "External services and models mocked; no real Meta timing, inference, PDF or audio evaluation.",
     "Post-order changes require human confirmation; no automatic kitchen mutation or arrival notification added.",
     "Ambiguous recipient/place requires clarification; no inferred geocoding."
-  ]
+  ],
+  "runtimeCodeCommit": "f9f7701d72b65dfcc59bc483713d12ae2f4c7118"
 }

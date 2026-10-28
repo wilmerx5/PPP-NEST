@@ -22,7 +22,7 @@ Baseline corregido: 18 fallos / 2 controles aprobados. El primer intento tenía 
 
 Foco final: 258 pruebas / 4 suites aprobadas. Un foco intermedio incluyó la suite general05 (aprobada), pero también cargó las dos pruebas nuevas del rótulo antes de la corrección; no se cuenta como aprobación final.
 
-Global aprobada: 21236 pruebas / 332 suites, inventario exacto, TypeScript general/build y Node aprobados. Despliegue staging pendiente de verificación. Fuentes congeladas durante la global. Cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. Producción continúa265; delta268 para futura migración a Kamppo.
+Global aprobada: 21236 pruebas / 332 suites, inventario exacto, TypeScript general/build y Node aprobados. Código `f9f7701d` publicado y desplegado en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED. Siete controles compilados nuevos y18previos aprobados con servicios aislados; routing/modelos y guard central aprobados. Env/compose preservados y producción265 verificada sin cambios. Evidencia `whatsapp-batch-268-staging-deployment.json`; cierre documental posterior sin reconstrucción. Fuentes congeladas durante la global. Cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. Producción continúa265; delta268 para futura migración a Kamppo.
 
 ## Límites
 
