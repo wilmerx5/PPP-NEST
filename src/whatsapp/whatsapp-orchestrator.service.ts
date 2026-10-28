@@ -5905,6 +5905,24 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // An explicit combo order owns its included options before a standalone flavor or model reply.
+    if (!session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+      !/[¿?]/.test(originalText || text) && /\bcombo\b/i.test(originalText || text) &&
+      !/\b(?:aparte|adicional|extra)\b/i.test(originalText || text) &&
+      !this.catalogService.looksLikeClearlyMultiDishOrder(originalText || text) &&
+      (this.catalogService.looksLikeExplicitAddProductRequest(originalText || text) ||
+        /^(?:quiero|quisiera|dame|necesito|me das|me regalas)\s+(?:un|una|dos|tres|\d+)\b/i.test((originalText || text).trim()))) {
+      const family = this.catalogService.findProductVariantFamily(originalText || text,products);
+      // Family resolution can return a default for "un combo". Require a distinguishing
+      // word from the chosen catalog title in the meal head, before included options.
+      const picked = family && this.catalogService.pickVariantFromFamilyText(originalText || text,family);
+      const words = (name: string)=>this.normalizeForMatch(name).split(/\s+/);
+      const head = ` ${this.normalizeForMatch((originalText || text).split(/\bcon\b/i)[0])} `;
+      const namedVariant = picked && family && words(picked.name).some(word=>word.length>=3 &&
+        !family.variants.every(variant=>words(variant.name).includes(word)) && head.includes(` ${word} `));
+      if (namedVariant && await this.tryHandleVariantFamily(conv,msg.waId,session,originalText || text,products,cfg)) return;
+    }
+
     if (
       !session.pendingMatch &&
       !session.pendingAttribute &&
@@ -10716,6 +10734,8 @@ export class WhatsappOrchestratorService {
     text: string,
     products: MenuProduct[],
   ): Promise<boolean> {
+    // A named meal with a drink must retain its food; this shortcut only owns standalone flavor choices.
+    if (this.catalogService.looksLikeFoodPlusDrinkOrder(text)) return false;
     const choices = this.catalogService.ambiguousFlavorDrinks(text, products);
     if (!choices?.length) return false;
     const quantity = Math.max(1, this.catalogService.extractQuantityFromMessage(text, products) || 1);

@@ -1,0 +1,36 @@
+{
+  "batch": 255,
+  "baseCommit": "f606a423beb81a5b79169f46f6994ecaf9fd187a",
+  "source": "User-supplied food transcript 28/10 plus bounded read-only server trace; personal fields excluded",
+  "baseline": {
+    "sourceComboTests": 2,
+    "failed": 2,
+    "failure": "Standalone flavor selector captured meal before inference"
+  },
+  "navigationFinding": {
+    "matchingEnvironment": "staging",
+    "productionMatch": false,
+    "sequence": [
+      "rice list",
+      "pick1",
+      "rice added",
+      "drink inquiry",
+      "natural juice inquiry",
+      "juice list"
+    ],
+    "bugConfirmed": false
+  },
+  "newTests": 32,
+  "focused": {
+    "tests": 136,
+    "suites": 5
+  },
+  "paidRequests": 0,
+  "modelChange": false,
+  "globalStatus": "passed",
+  "globalResult": {
+    "tests": 20675,
+    "suites": 324,
+    "mode": "Four disjoint sequential approved blocks; no retries or timeout increases."
+  }
+}
