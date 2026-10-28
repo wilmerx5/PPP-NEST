@@ -1,0 +1,13 @@
+# Tandas260–261: ajíes y segunda corrección del combo
+
+Base `3dfdf543767c2eb016779c728947d46aa85c0f0d`, staging. Fuente CHAT2510-08 de chat.txt privado: consulta de composición, «no, el combo que ya te pedi, lo quiero con en vez de papá salda me regalas yuca», «Y dos ajíes me puedes enviar porfi» y «tambienlo quiero lo quiero con en vez de papá salda me regalas yuca». Solo se trasladan frases de comida; identidad/contacto y checkout son sintéticos.
+
+260 reconoce una petición acotada de suministros contados para cocina. Conserva notas previas; una línea/unidad recibe la nota de preparación y varias líneas/unidades reciben una nota general sin multiplicar la cantidad. La repetición no duplica la nota. Si la carta vende el suministro, aclara producto/precio sin añadirlo como nota sin cargo. Respeta selección/pago pendiente y límites de longitud. Se presenta como solicitud para cocina, no garantía de disponibilidad.
+
+261 reconoce la segunda forma coloquial de pedir una sustitución y reutiliza la validación de descripción/notas. Con varias líneas, cantidad ambigua o acompañamiento desconocido pide aclaración y conserva el pedido. No añade excepciones de restaurante.
+
+Baseline inicial:6/6 fallaron porque los ajíes no quedaban en ninguna nota. Tras corregir eso, los seis recorridos llegaron al DTO conservando notas incluso sin cambio261, pero era una comprobación insuficiente: la repetición podía limitarse a mostrar el carrito. Se fortaleció la expectativa de respuesta explícita. Además18 controles de repetición ambigua/cantidad/ingrediente desconocido fallaron por respuesta genérica, aunque el carrito permanecía igual. Se añadió reconocimiento y aclaración explícitos, conservando las expectativas de las suites anteriores.
+
+Foco final147/147 en3suites,80 nuevos: seis recorridos desde compra canónica con Pepsi,66 controles en tres menús × agente simulado off/on, ocho peticiones de servilletas/mostaza durante compra y confirmación. Carrito, respuestas, estado y DTO simulados comprobados. Global y TypeScript se registrarán en `whatsapp-batch-260-261-validation.json` al completar la pasada.
+
+Límites: no es replay completo del episodio08: no acredita ráfagas iniciales «pollo»/«en combo», elección inicial de Pepsi, domicilio/contacto reales ni render del recibo/PDF. No evaluación acústica ni nueva inferencia. Continúan episodio28/referencias abreviadas y otros compuestos del corpus, evaluación reservada/modelos/medios/canal y piloto. Cero llamadas pagadas, Meta u órdenes externas; ledger267/256/11 y modelos intactos. Sin nueva persistencia/esquema. Producción244 sin cambios.

@@ -1,0 +1,48 @@
+{
+  "baseCommit": "3dfdf543767c2eb016779c728947d46aa85c0f0d",
+  "batches": [
+    260,
+    261
+  ],
+  "tests": 20903,
+  "suites": 327,
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 153.13,
+      "sourceUnchanged": true
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 150.09,
+      "sourceUnchanged": true
+    },
+    "rest-final": {
+      "exitCode": 0,
+      "seconds": 245.74,
+      "sourceUnchanged": true
+    },
+    "timers-final": {
+      "exitCode": 0,
+      "seconds": 67.8,
+      "sourceUnchanged": true
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "sourceFiles": 538,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "paidRequests": 0,
+  "newRegressions": 80,
+  "focusTests": 147,
+  "nodeTests": 92,
+  "execution": "Four disjoint sequential blocks; four workers except isolated timers; no retries or timeout increases"
+}

@@ -1,0 +1,30 @@
+{
+  "batches": [
+    260,
+    261
+  ],
+  "baseCommit": "3dfdf543767c2eb016779c728947d46aa85c0f0d",
+  "sourceEpisode": "CHAT2510-08",
+  "sourceSha256": "e85e4beaab6a26ef4fdf8e8ec5977ea2bcbe0d5417b017de616ff87a0b7b64b3",
+  "baseline": {
+    "lostCondiment": {
+      "failed": 6,
+      "passed": 0
+    },
+    "genericRepeatReplies": {
+      "failed": 18,
+      "cartPreserved": true
+    }
+  },
+  "focused": {
+    "tests": 147,
+    "suites": 3,
+    "newTests": 80
+  },
+  "models": "Mocked off/on; no inference-quality claim",
+  "paidRequests": 0,
+  "globalStatus": "passed",
+  "productionChanged": false,
+  "globalTests": 20903,
+  "globalSuites": 327
+}

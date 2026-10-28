@@ -1,3 +1,11 @@
+## VIGENTE — tandas260–261: ajíes y segunda corrección del combo (28/10)
+
+Base `3dfdf543`. CHAT2510-08 desde compra canónica con Pepsi: consulta de composición, sustitución por yuca, petición de dos ajíes y segunda corrección.260 conserva el suministro contado como solicitud para cocina, sin borrar notas ni multiplicar cantidad; si se vende en carta aclara producto/precio.261 reconoce la segunda forma coloquial y aclara cantidad/línea/ingrediente ambiguos, conservando pendientes y notas.
+
+80 pruebas nuevas, tres menús×agente simulado off/on, foco147/147. Baseline6/6ajies perdidos;18controles de segunda corrección detectaron respuestas genéricas sin mutación. Se fortaleció respuesta explícita además de carrito/DTO. Global20.903/327suites aprobada, cuatro bloques disjuntos, inventario exacto y538fuentes src sin cambios; TypeScript general/build y Node92/92 aprobados. Evidencia `whatsapp-batch-260-261-validation.json`. Evidencia `whatsapp-combo-condiment-2810.json` e informe `whatsapp-combo-condiment-validation-2810.md`.
+
+No replay completo08: faltan arranque en ráfagas, primera elección bebida, domicilio/contacto y renderrecibo/PDF. Pendientes28/referencias abreviadas y otros compuestos, evaluación reservada/modelos/medios/canal y piloto. Sin inferencia pagada, Meta u órdenes externas; ledger267/256/11, modelos y producción244 intactos. Sin nueva persistencia/esquema. Staging259 hasta deploy verificado.
+
 ## VIGENTE — tandas258–259: lenguaje coloquial de combos (28/10)
 
 Base `344ded5f`.258 normaliza «combito»/«de combo» dentro de compra explícita;259 distingue la opción final «y <atributo> <valor>» de otro plato solo por coincidencia exacta con el catálogo del combo. Conserva preguntas, cantidades separadas, bebida previa y adicional explícita. Sin nombres/IDs/precios PPP en runtime.
