@@ -1,0 +1,89 @@
+{
+  "batches": [
+    255,
+    256,
+    257
+  ],
+  "runtimeCodeCommit": "dae4821ee70ab481854aaee9ac3e7bada4661bef",
+  "verification": {
+    "compiledNewBehavior": "5 compiled paired-plan, negation, atomic split, new-combo routing and central-confirmation checks passed; external services isolated",
+    "environment": "staging",
+    "checkedAt": "2026-10-28T19:11:04.903277+00:00",
+    "head": "dae4821ee70ab481854aaee9ac3e7bada4661bef",
+    "image": "sha256:af1083d269b9e1253b4ee73abb0eea3e4e587c267af88a298321a6c435036685",
+    "candidateImage": "sha256:af1083d269b9e1253b4ee73abb0eea3e4e587c267af88a298321a6c435036685",
+    "state": "running",
+    "health": "healthy",
+    "restartCount": 0,
+    "models": {
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+    },
+    "compiledSmoke": "3 compiled routing checks passed\n2 compiled description checks passed",
+    "compiledConfirmationGuard": "compiled unresolved distribution blocks direct confirmation",
+    "compiledModuleHashes": {
+      "whatsapp-agent-model": "4cb9ac9f0f24265375107f46539c3d17e24fc1396aface51b70c7e5bbe18525d",
+      "whatsapp-agent.service": "aac50bcaf8a9cdc11cd84962576aadf7f00de59e9e61210bb6fc64a42d0af784",
+      "whatsapp-cart-edits": "de69254f08d953219e09d1efafde71891a07d402630343abdd93fac85de6dbee",
+      "whatsapp-orchestrator.service": "b2b90be6d0786ff542930c6a2b10af409cdb6f011b344da0f1b0962a608cf267",
+      "whatsapp-catalog.service": "96ed954ff33af9efee611da77eaac3af1a0d5ce9956634810dff6e51cc3c7099"
+    },
+    "endpoints": [
+      {
+        "url": "http://127.0.0.1:3301/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 50.29,
+            "heapTotal": 56.06,
+            "rss": 117.93
+          },
+          "timestamp": "2026-10-28T19:10:58.637Z"
+        }
+      },
+      {
+        "url": "https://dev.prontopolloportal.com/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 50.54,
+            "heapTotal": 56.06,
+            "rss": 118.06
+          },
+          "timestamp": "2026-10-28T19:10:58.685Z"
+        }
+      }
+    ],
+    "envSha256": "9a318abb69d6a267de33de4bdc35233eb78e690e426b945f85ebeeacce84d9b4",
+    "composeSha256": "cf8560aa0c07799146da868e5104c0ff3e7932cf20b8dd7d22bbd2c0d93ffa57",
+    "privateComposePreserved": true,
+    "privateEnvironmentPreserved": true,
+    "gitStatus": "?? bin/"
+  },
+  "rollback": {
+    "backup": "/root/ppp-256-257-backups/20261028T190933Z",
+    "previousImage": "sha256:40623e12dc8a9850b2a2b182fc7fe59b11ad93f927a934084c548c31e306715e",
+    "rollbackTag": "ppp-nest-staging:rollback-before-256-257"
+  },
+  "production": {
+    "unchanged": true,
+    "batch": 244,
+    "head": "bc791e29f3e1fc98a8a384040e68c15a65e724c3",
+    "image": "sha256:65df99ee0c36b916d07ed13256027302b0a8867c0088c1db0df7e811c632ac84"
+  },
+  "paidRequests": 0,
+  "schemaMigration": false,
+  "deploymentNote": "First health check occurred during startup; subsequent complete verification passed. Documentation-only follow-up does not rebuild runtime.",
+  "rollbackSessionCaveat": "Old image does not understand pendingMatch.unitAttributeGroups. Cancel/restart affected staging test drafts before rollback; never erase customer data."
+}

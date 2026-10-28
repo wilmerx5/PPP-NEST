@@ -33,3 +33,7 @@ La primera global256 detectó2regresiones del caso antiguo de acompañamiento/de
 Antes de la validación final se cerró el uso de cantidades previas en la compra explícita y se añadió la comprobación de horario al consumir el plan pendiente. Las pasadas intermedias interrumpidas o de fuente anterior no cuentan como aprobación. Los controles incluyen la pista anterior de dos pollos y el cierre del local después de abrir la selección.
 
 Un bloque de desarrollo posterior detectó2regresiones de empaque: la familia elegía medio pollo cuando se nombraba dentro de una nota de caja. El atajo exige ahora que el candidato sea un combo y deja esa nota al manejador existente. Las expectativas históricas permanecen intactas; se añaden2controles. Esa ejecución tampoco se cuenta como aprobación.
+
+## Despliegue verificado
+
+Código `dae4821e` publicado y desplegado en staging: running/healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED. Cinco controles nuevos compilados, guard central y rutas/modelos aprobados con servicios externos aislados. Env/compose/modelos intactos; imagen/rollback en `whatsapp-batch-256-257-staging-deployment.json`. Producción244 sin cambios. Commit posterior solo documental, sin reconstrucción. La primera comprobación ocurrió durante arranque; la posterior verificación completa pasó. Reiniciar el borrador de prueba antes de reenviar los audios: no se modificaron carritos históricos.

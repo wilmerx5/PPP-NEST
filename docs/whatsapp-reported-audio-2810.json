@@ -64,5 +64,7 @@
     "tests": 20763,
     "suites": 325,
     "mode": "Four disjoint sequential approved blocks; no retries or timeout increases."
-  }
+  },
+  "runtimeCodeCommit": "dae4821ee70ab481854aaee9ac3e7bada4661bef",
+  "stagingDeployment": "whatsapp-batch-256-257-staging-deployment.json"
 }
