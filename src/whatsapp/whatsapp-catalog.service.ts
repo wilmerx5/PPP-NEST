@@ -4802,7 +4802,8 @@ export class WhatsappCatalogService {
     // "con arroz" es nota de guarnición, salvo que el cliente haya nombrado un
     // plato completo y esa palabra sea una opción de ese plato.
     // "un Combo Burger con papas saladas" orders that full name with a note.
-    const ordersByCount = /^(?:\d{1,2}|un|una|dos|tres)\s/.test(normalizeText(raw.replace(LEADING_ORDER_VERB, '')));
+    const ordersByCount = /^(?:\d{1,2}|un|una|dos|tres)\s/.test(normalizeText(raw.replace(LEADING_ORDER_VERB, '')
+      .replace(/^(?:mira[,\s]+)?(?:quisiera|necesito|deseo)\s+(?:por\s+favor\s+)?(?=(?:\d{1,2}|un|una|dos|tres)\s)/i, '')));
     if (this.looksLikeSideModificationNote(raw) && !available.some((product) => {
       const name = normalizeText(product.name);
       if (name.split(' ').length < 2 || !q.includes(name)) return false;

@@ -317,7 +317,9 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
  */
 export function applyLocalGlossary(text: string): string {
   // A truncated purchase verb must be repaired before phrase/side-swap parsing.
-  const source = (text || '').trim().replace(/^uiero(?=\s+(?:un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b)/i,'quiero');
+  const source = (text || '').trim().replace(/^uiero(?=\s+(?:un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b)/i,'quiero')
+    .replace(/(\p{L})[`´](?=\p{L})/gu, '$1')
+    .replace(/\b(?:quieor|qiero|quiro|qiuero|quieri)\b/gi, 'quiero');
   let out = normalizeSideSwapPhrase(source);
   if (!out) return out;
 

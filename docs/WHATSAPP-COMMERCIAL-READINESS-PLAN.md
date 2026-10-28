@@ -1,3 +1,13 @@
+## VIGENTE — tanda 237: pedidos hablados y cierre simulado (27/10)
+
+Base `e132dd91`, staging. Conserva cortesía final fuera del nombre, porciones adicionales, bandeja como contenedor cuando el catálogo lo permite, negación con cantidades/typos y acompañamientos tras nombres con «con». Reglas por catálogo, sin IDs/precios/nombres PPP en producción. Informe: `docs/whatsapp-spoken-order-repairs-validation-2710.md`.
+
+42 regresiones en tres menús × agente simulado off/on:30 de interpretación y12 hasta DTO. Históricos20/28 (antes10/28); quedan cambio de preparación de ejecutivo sin añadir, 7 up, saludo de domicilio como destino y reparto de dos sopas. NO todos los chats/PDF corregidos.
+
+Validación consolidada20.036/306 suites: primera global20.021/20.024 con3timeouts, suite de ráfagas repetida completa80/80 con timeout normal; spec ampliado42/42. No una única global verde. Runtime sin cambios entre ejecuciones; snapshot final intacto. TS general/build y Node92 aprobados. Evidencia `docs/whatsapp-batch-237-consolidated-validation.json`. Sensibilidad temporal aún pendiente de causa definitiva; no elevar timeout por rutina.
+
+Siguiente: reparto de dos unidades con nota compartida y notas distintas, controles de extras explícitos, interrupciones de pago/dirección y DTO; matriz en `docs/whatsapp-batch-237-independent-review-2710.md`. Sin API pagada/Meta/mapas/órdenes externas. Main/producción hasta235 sin cambios; staging servidor231,232–237 pendientes de despliegue agrupado. No declarar vendible por conteos.
+
 ## DESPLIEGUE VIGENTE — Main/producción hasta tanda235 (26/10,23:04 Bogotá)
 
 Solicitud explícita del usuario. Main local y origin/Main promovidos por fast-forward de `a935f555` a `4323399237be485633083325269e799202f5e7c4`. Producción `/var/www/ppp-nest` ejecuta ese código; imagen activa `sha256:bc59fd2608d760f7d4fb62071a181cfba15d010e051ce2a0d34afa0366f6a09c`, running,0reinicios. Health local/público OK, DBconnected, circuitoCLOSED; lógica de sustitución compilada comprobada. Modelos iguales a staging. Validación235:19.952/304 suites.

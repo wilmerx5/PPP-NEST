@@ -11,7 +11,7 @@ import { hasExplicitOrderApprovalClause, blocksImplicitOrderApproval } from './w
 import { beginTurnDecision, captureInquiryDecision, captureActionDecision, capturePurchaseDecision, finishTurnDecision, type TurnDecisionFrame } from './whatsapp-turn-decision';
 import { prepareValidatedPurchases, hasCompleteToolPurchaseEvidence } from './whatsapp-purchase-plan';
 import { dialogueProductReferences } from './whatsapp-dialogue-context';
-import { normalizeSpokenOrderCourtesy } from './whatsapp-spoken-courtesy';
+import { foldAdditionalPortion, normalizeSpokenOrderCourtesy, stripTrailingCourtesy } from './whatsapp-spoken-courtesy';
 import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-request';
 import {followUpExtraNote, followUpHandlingNote, splitKitchenPreference, splitOptionIndexAnswer, trailingServingNote} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
@@ -1310,7 +1310,9 @@ export class WhatsappOrchestratorService {
       }
     }
     const inboundText = text;
-    text = applyLocalGlossary(text);
+    text = /\b(?:en\s+(?:vez|ves|lugar)|envez)\s+de\b/i.test(text)
+      ? this.glossaryKeepingDishNames(text, await this.catalogService.getMenuProducts())
+      : applyLocalGlossary(text);
     if (!['awaiting_name', 'awaiting_address', 'awaiting_phone'].includes(conv.state || '')) {
       text = this.catalogService.dropRedundantReminders(
         this.catalogService.alignMenuSpelling(text, await this.catalogService.getMenuProducts()),
@@ -1361,7 +1363,7 @@ export class WhatsappOrchestratorService {
         .replace(/\s+y\s+el\s+/gi, ' y un ')
         .replace(/\s+y\s+la\s+/gi, ' y una ');
     }
-    text = normalizeSpokenOrderCourtesy(text);
+    text = foldAdditionalPortion(stripTrailingCourtesy(normalizeSpokenOrderCourtesy(text)));
     // "y agrégale / ponle una limonada" adds to the order, like "agrégame".
     if (!/\b(?:unidad(?:es)?|a\s+es[ea]s?|al\s+mismo|a\s+la\s+misma)\b/i.test(text)) text = text
       .replace(/^(?:y\s+)?a\s*parte\s+((?:un|una|unos|unas|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\s.+?)[.!\s]*$/i, 'agrégame $1 aparte')
@@ -3218,6 +3220,19 @@ export class WhatsappOrchestratorService {
         const product = menu.find(product => product.id === matches[0].productId)!;
         const quantityText = correctionOrder[1].replace(matches[0].name,matches[0].name.replace(/^\d+(?:\/\d+)?\s+/, ''));
         const quantity = this.catalogService.extractQuantityFromMessage(quantityText,[product]);
+        // "no quiero las 4 bandejas" refuses lines already ordered; "no, quiero 4" corrects the amount.
+        if (/^no\s+quiero\s+(?:el|la|los|las|es[ae]s?)\s/i.test(originalText)) {
+          const named = /\b(?:\d+|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/i.test(quantityText);
+          const left = named && quantity < matches[0].quantity ? matches[0].quantity - quantity : 0;
+          const next = {...session,cart:left ? session.cart.map(line => line === matches[0] ? {...line,quantity:left} : line)
+            : session.cart.filter(line => line !== matches[0]),
+            pendingMatch:undefined,pendingAttribute:undefined,pendingMultiOrder:undefined,pendingQuantityHint:undefined};
+          await this.conversationService.saveSession(conv,next,'building_cart');
+          const done = left ? `Dejo *${matches[0].name}* ×${left}.` : `Quité *${matches[0].name}*.`;
+          await this.reply(conv,msg.waId,next.cart.length ? done+'\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))
+            : done+' El carrito quedó vacío. ¿Qué te gustaría pedir?');
+          return;
+        }
         const next = {...session,cart:session.cart.map(line => line === matches[0] ? {...line,quantity} : line),
           pendingMatch:undefined,pendingAttribute:undefined,pendingMultiOrder:undefined,pendingQuantityHint:undefined};
         const limit = evaluateCartLimits(next.cart,this.toCartLimitsConfig(cfg,next),{orderType:next.orderType});
@@ -3447,7 +3462,8 @@ export class WhatsappOrchestratorService {
     const products = cfg.ignoreBusinessHours
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
-
+    text = this.dropServingContainer(text, products);
+    originalText = this.dropServingContainer(originalText, products);
 
     if (businessOpenForBot && await this.tryHandleEachCategoryPurchase(conv,msg.waId,session,originalText,products,cfg)) return;
     if (businessOpenForBot && await this.tryHandleOfferedOptionPurchase(conv, msg.waId, session, originalText, products, cfg)) return;
@@ -19340,6 +19356,43 @@ export class WhatsappOrchestratorService {
     await this.reply(conv, waId, this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) + '\n\n'+(this.formatInterruptedStepReminder(conv,session)||this.formatContinueShoppingPrompt(session)));
     return true;
 
+  }
+
+  /** "dos arroz con pollo en lugar de ensalada": "con pollo" belongs to the dish name, not to the side swap. */
+  private glossaryKeepingDishNames(text: string, products: MenuProduct[]): string {
+    const kept: string[] = [];
+    let guarded = text;
+    const swap = String.raw`\s+(?:en\s+(?:vez|ves|lugar)|envez)\s+de\s+(?:la\s+|el\s+|los\s+|las\s+)?(\p{L}{3,})(?:\s+(\p{L}{3,}))?(?=\s*(?:[,.;!\n]|$))`;
+    for (const product of [...products].sort((a, b) => b.name.length - a.name.length)) {
+      if (!/\bcon\b/i.test(product.name)) continue;
+      const name = product.name.trim().split(/\s+/).map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
+      const description = ` ${this.normalizeForMatch(product.description || '')} `;
+      guarded = guarded.replace(new RegExp(`\\b${name}(?=\\s+(?:en\\s+(?:vez|ves|lugar)|envez)\\s+de\\b)`, 'gi'), found => {
+        kept.push(found);
+        return `§${kept.length - 1}§`;
+      }).replace(new RegExp(`(§\\d+§)${swap}`, 'giu'), (all, dish: string, removed: string, replacement?: string) => {
+        if (/^(?:y|con|sin|para|por|que)$/i.test(removed) || (replacement && /^(?:y|con|sin|para|por|que|porfa)$/i.test(replacement))) return all;
+        if (!replacement) return `${dish} sin ${removed}`;
+        const oneSide = description.includes(` ${this.normalizeForMatch(`${removed} ${replacement}`)} `);
+        return oneSide ? `${dish} sin ${removed} ${replacement}` : `${dish} sin ${removed} y con ${replacement}`;
+      });
+    }
+    if (!kept.length) return applyLocalGlossary(text);
+    return applyLocalGlossary(guarded).replace(/§(\d+)§/g, (_all, index: string) => kept[Number(index)]);
+  }
+
+  /** "Una bandeja de arroz con pollo": the container wraps a fully named dish unless the catalog sells "bandeja de …". */
+  private dropServingContainer(text: string, products: MenuProduct[]): string {
+    return text.replace(/\b(bandeja|plato|cajita|caja)\s+de\s+(?=\S)/gi, (whole, container: string, offset: number) => {
+      const rest = ` ${this.normalizeForMatch(text.slice(offset + whole.length))} `;
+      const word = this.normalizeForMatch(container);
+      if (products.some(product => ` ${this.normalizeForMatch(product.name)} `.includes(` ${word} de `))) return whole;
+      const named = products.some(product => {
+        const name = this.normalizeForMatch(product.name);
+        return !name.startsWith(word) && rest.startsWith(` ${name} `);
+      });
+      return named ? '' : whole;
+    });
   }
 
   /** "Y me regala un X / en vez de A más B o C": one named dish; the alternatives are never purchases. */
