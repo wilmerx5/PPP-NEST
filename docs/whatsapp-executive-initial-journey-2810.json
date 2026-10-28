@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-28",
+  "batches": [
+    249,
+    250,
+    251
+  ],
+  "baseCommit": "83142c21",
+  "source": {
+    "path": "/home/levi/Downloads/chat.txt",
+    "sha256": "e85e4beaab6a26ef4fdf8e8ec5977ea2bcbe0d5417b017de616ff87a0b7b64b3",
+    "episode": "CHAT2510-05",
+    "scope": "First five source food/logistics messages, then added catalog clarification and synthetic address/payment/confirmation. Not a verbatim replay of the full original conversation."
+  },
+  "baseline": {
+    "firstWeakOracle": "Two tests initially passed when checking only meal quantity. Stronger option/response/pending assertions exposed the defect; the weak result does not establish correct ordering.",
+    "strongSource": {
+      "tests": 2,
+      "passed": 0,
+      "failed": 2,
+      "report": "/tmp/ppp-249-strong-baseline.json"
+    },
+    "observed": [
+      "Both meals silently changed to pechuga although the customer requested different cuts.",
+      "Included drinks stayed Colombiana and the bot reported de tomar limonada por f as unavailable.",
+      "Additional limonada was purchased correctly.",
+      "Six new question controls exposed an existing path that changed the drink on a question."
+    ]
+  },
+  "changes": {
+    "249": "Persist unresolved distribution as typed JSON session data; preserve cart and require complete catalog options. Central order creation path also blocks unresolved distribution, including tool skipFinalConfirm.",
+    "250": "A bounded de tomar follow-up updates included drink options only for one distinct owning product. Unknown options, multiple owners and conflicting selections/payment clarify. Questions return actual configured options and do not mutate. Explicit additional drinks keep purchase semantics.",
+    "251": "Two source-derived journeys plus eighteen portable journeys validate clarification, drink ownership, quantities, pending lifecycle and final DTO. Six direct tool confirmations and six removal/reset controls included."
+  },
+  "newTests": {
+    "whatsapp-executive-initial-journey.spec.ts": 2,
+    "whatsapp-pending-unit-distribution.spec.ts": 42,
+    "whatsapp-included-drink-followup.spec.ts": 48
+  },
+  "focused": {
+    "passed": 439,
+    "failed": 0,
+    "suites": 9
+  },
+  "globalStatus": "passed",
+  "paidRequests": 0,
+  "externalTestOrders": 0,
+  "models": "All provider calls mocked. Effective deployed text/media models unchanged.",
+  "ledger": {
+    "authorized": 267,
+    "used": 256,
+    "remaining": 11
+  },
+  "limits": [
+    "Original unknown cut is not equated to a configured cut; clarification is an added branch, not proof the original chat now completes verbatim.",
+    "Shared attributes that differ from defaults need explicit complete clarification; source fixture already has Ajiaco as default.",
+    "Bounded distribution from one existing quantity-two cart row of one owning product. Already split variants, general multi-product distributions and arbitrary rewording remain outside this contract.",
+    "Transport bursts, actual maps, images/audio and independent real-model quality not measured.",
+    "New optional pendingUnitDistribution session state is not understood by older images. Before rolling staging back, cancel/restart affected test drafts; never delete customer data."
+  ],
+  "production": "Main and production remain at batch244; no promotion authorized for this group.",
+  "developmentRegressions": [
+    {
+      "phase": "first accuracy-a",
+      "passed": 3885,
+      "failed": 3,
+      "cause": "New handler intercepted la bebida te without recognizing the attribute label.",
+      "fix": "Prefer exact configured value, then recognize an optional beverage label; existing expectations unchanged."
+    },
+    {
+      "phase": "first accuracy-b",
+      "passed": 3641,
+      "failed": 2,
+      "cause": "Polite drink requests with several owners lost their existing owner selection continuation.",
+      "fix": "Exclude polite request grammar from the new short-followup rule; reuse existing owner clarification and retain active selections."
+    }
+  ],
+  "global": {
+    "tests": 20579,
+    "suites": 322,
+    "mode": "Final complete inventory in four disjoint sequential blocks; four workers except isolated timers; no retry or timeout increase within final validation"
+  }
+}

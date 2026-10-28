@@ -133,6 +133,8 @@ export type WhatsappSessionData = {
    * Se reparte cuando el producto ya está en el carrito.
    */
   pendingUnitSplit?: string;
+  /** An unresolved two-unit distribution must be completed before checkout. */
+  pendingUnitDistribution?: {productId: number; quantity: number; sourceText: string};
   /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
   /** Read-only context for a follow-up about unavailable items; never a purchase draft. */
   recentUnavailableOrder?: { items: string[]; expiresAt: number };

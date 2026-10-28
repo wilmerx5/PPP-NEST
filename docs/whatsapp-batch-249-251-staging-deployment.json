@@ -1,0 +1,10 @@
+{
+  "batches": [
+    249,
+    250,
+    251
+  ],
+  "status": "validated_awaiting_staging",
+  "production": "Unchanged at244",
+  "validation": "docs/whatsapp-batch-249-251-validation.json"
+}
