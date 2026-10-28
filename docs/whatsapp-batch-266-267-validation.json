@@ -1,0 +1,62 @@
+{
+  "baseCommit": "5225ccb37cd92b5b3acd488cede9c627fc4c6244",
+  "batches": [
+    266,
+    267
+  ],
+  "tests": 21158,
+  "suites": 331,
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 220.58,
+      "sourceUnchanged": true
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 205.87,
+      "sourceUnchanged": true
+    },
+    "rest-final": {
+      "exitCode": 0,
+      "seconds": 297.78,
+      "sourceUnchanged": true
+    },
+    "timers-final": {
+      "exitCode": 0,
+      "seconds": 116.61,
+      "sourceUnchanged": true
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "sourceFiles": 542,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "paidRequests": 0,
+  "newRegressions": 98,
+  "focusTests": 206,
+  "baseline": {
+    "passed": 0,
+    "failed": 26,
+    "file": "/tmp/ppp-266-baseline-corrected.json"
+  },
+  "focusSuites": 5,
+  "runtimeChanged": true,
+  "persistenceChanged": false,
+  "productionChanged": false,
+  "deploymentStatus": "Pending staging verification",
+  "source": "User-provided WhatsApp transcript dated 2026-10-28 16:38–16:44; no phone or identity stored",
+  "limits": [
+    "Starts from the two correct meal lines observed after the original selection; original greeting/typo recognition by the real model is not re-evaluated.",
+    "Initial exploratory test used empty agent actions and incorrectly expected original initial inference; its two initial-message failures are excluded as evidence of a production defect. Corrected baseline uses the observed cart for both PPP cases.",
+    "Three synthetic menus and PPP fixture; models, external orders and Meta mocked. Not a channel, audio, PDF or independent model evaluation."
+  ]
+}

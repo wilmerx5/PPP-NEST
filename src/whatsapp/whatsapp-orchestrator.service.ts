@@ -1415,6 +1415,8 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
     }
     if (await this.tryHandleMultipleRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleReferencedCookingChange(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleRejectedProductRemoval(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandlePairedCatalogPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleUnresolvedUnitDistribution(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleSharedCatalogFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -15557,6 +15559,65 @@ export class WhatsappOrchestratorService {
     return next;
   }
 
+  /** A referenced option identifies the existing meal, not a new whole protein. */
+  private async tryHandleReferencedCookingChange(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state)) return false;
+    const said = this.normalizeForMatch(text);
+    const vague = said.match(/^quiero cambiar (?:un|una) (.+)$/);
+    if (vague) {
+      const lines=session.cart.filter(line=>correctionMatchesLine(line,vague[1]));
+      if (!lines.length) return false;
+      await this.reply(conv,waId,'¿Cuál de estos platos quieres cambiar y qué preparación prefieres?\n' +
+        lines.map(line=>this.formatCartLineLabel(line)).join('\n') + '\nIndica la opción que tiene y la nueva preparación. El pedido sigue igual.');
+      return true;
+    }
+    const short = said.match(/^(?:cambia|cambiame) (?:el|la) (?:de |que tiene )(.+?) (?:con|a|por) (.+)$/);
+    const contrast = said.match(/^(?:el|la) que tiene (.+?) que ya no sea (.+?) (?:sino|sink) (.+)$/);
+    if (!short && !contrast) return false;
+    const reference = (short || contrast)![1];
+    const destination = short ? short[2] : contrast![3];
+    const style = this.catalogService.extractRequestedProteinStyle(destination);
+    if (!style) return false;
+    const unchanged = async (reason: string) => { await this.reply(conv,waId,reason+' El pedido sigue igual.');return true; };
+    if (/[¿?]/.test(text)) return unchanged(`Si quieres aplicar ese cambio, escribe «cambia el de ${reference} a ${destination}».`);
+    if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return unchanged('Hay una selección o pago pendiente; aclaremos eso antes de cambiar la preparación.');
+    const indices = session.cart.flatMap((line,index)=>correctionMatchesLine(line,reference)?[index]:[]);
+    if (indices.length!==1 || session.cart[indices[0]].quantity!==1) return unchanged('Necesito identificar una sola unidad: dime el plato y la opción que tiene para cambiar su preparación.');
+    const index=indices[0], original=session.cart[index];
+    const menu=await this.catalogService.getMenuProducts();
+    const source=menu.find(product=>product.id===original.productId);
+    if (!source) return unchanged('No encontré el plato original en la carta actual.');
+    if (contrast) {
+      const fromStyle=this.catalogService.extractRequestedProteinStyle(contrast[2]);
+      if (!fromStyle || !this.catalogService.matchesCookingStyle(original.name,fromStyle)) return unchanged('La preparación que indicas no coincide con esa línea; aclara cuál cambiamos.');
+    }
+    const target=this.catalogService.findCookingStyleSibling(source,menu,style);
+    if (!target) return unchanged('No encontré una única presentación disponible de ese mismo plato con esa preparación.');
+    const words=this.normalizeForMatch(target.name).split(' ');
+    if (!destination.split(' ').filter(word=>!['el','la','con','en','a'].includes(word)).every(word=>words.includes(word))) return unchanged('Necesito aclarar la preparación completa que quieres para ese plato.');
+    if (target.id===original.productId) return unchanged('Ese plato ya tiene esa preparación.');
+    if ((original.attributes || []).some(chosen=>!target.attributes?.some(attr=>attr.attributeName===chosen.attributeName && attr.options.includes(chosen.attributeValue)))) return unchanged('Esa presentación no admite todas las opciones actuales; dime cuáles quieres conservar o cambiar.');
+    return this.tryHandleAtomicCartReplacement(conv,waId,{...session,pendingCartReplacement:{
+      cartSignature:JSON.stringify(session.cart),options:[{cartIndex:index,label:this.formatCartLineLabel(original)}],addQuery:target.name,
+    }},'1',menu,cfg,{sourceIsCatalogTitle:true});
+  }
+
+  /** Explicit rejection plus “quítalo” is removal, even with a repeated “no”. */
+  private async tryHandleRejectedProductRemoval(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state) || /[¿?]/.test(text)) return false;
+    const match=this.normalizeForMatch(text).match(/^(?:no )+quiero (.+?) (?:quitalo|quitala|retiralo|retirala)$/);
+    if (!match || /\b(?:y|pero|sino|sin|excepto|conserva)\b/.test(match[1])) return false;
+    if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) {
+      await this.reply(conv,waId,'Hay una selección pendiente. Aclaremos qué producto retiramos; el pedido sigue igual.');return true;
+    }
+    if (await this.tryHandleScopedCartRemoval(conv,waId,session,`quita ${match[1]}`,cfg)) return true;
+    await this.reply(conv,waId,'No encontré ese producto en tu carrito. Dime el nombre de la línea que quieres quitar; el pedido sigue igual.');return true;
+  }
+
   /** A definite, fully named preparation refers to the existing dish family. */
   private async tryHandleDefinitePreparationChange(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
@@ -15597,6 +15658,7 @@ export class WhatsappOrchestratorService {
   private async tryHandleAtomicCartReplacement(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
+    opts?: { sourceIsCatalogTitle?: boolean },
   ): Promise<boolean> {
     const resumeState = conv.state as NonNullable<WhatsappSessionData['pendingCheckoutResume']>;
     const pending = session.pendingCartReplacement;
@@ -15664,7 +15726,7 @@ export class WhatsappOrchestratorService {
     const selected = explicit.status === 'complete' || explicit.status === 'partial'
       ? [...compatible.filter(old => !explicit.attributes.some(next => next.attributeName === old.attributeName)), ...explicit.attributes]
       : compatible;
-    const added = this.tryAddProductToCart(base, product, quantity, cfg, undefined, selected, { sourceText: addQuery, replacement });
+    const added = this.tryAddProductToCart(base, product, quantity, cfg, undefined, selected, { sourceText: opts?.sourceIsCatalogTitle ? undefined : addQuery, replacement });
     if (added.blocked) {
       await this.reply(conv, waId, 'No pude completar el reemplazo. El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, session));
       return true;

@@ -1,3 +1,11 @@
+## VIGENTE — tandas266–267: cambio de ejecutivo por presa y retirada negada (28/10)
+
+Base `5225ccb3`, después de promover265 a producción. Reporte del28/10: «Cambiame El De pechuga con Pollo broaster» añadía un pollo entero; «No no quiero Un Pollo quitalo» abría carta; la explicación con «sink» listaba broaster.266 identifica la línea por opción/nota y busca otra preparación de la misma familia del catálogo. Conserva opciones compatibles, notas, cantidad y resto del carrito; no añade proteína suelta.267 interpreta rechazo+quítalo como retirada. «Quiero cambiar un ejecutivo» pide dueño y preparación sin comprar.
+
+98regresiones nuevas, tres cartas sintéticas×agente simulado off/on y fixture PPP. Baseline corregido26/26rojo. Foco206/206 en cinco suites. Global21158/331 aprobada en cuatro bloques disjuntos, inventario exacto y542fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-266-267-validation.json` e informe `whatsapp-reported-executive-style-validation-2810.md`.
+
+Inicio desde el carrito correcto mostrado por el usuario, sin certificar de nuevo la inferencia del saludo/«limo da» ni la selección inicial. Las dos pruebas exploratorias del arranque con modelo vacío se descartaron como evidencia de defecto productivo. Pendientes ambiguos, incompatibilidad de opciones, pago, cantidades, preguntas y catálogo no disponible conservan el pedido. Sin nueva persistencia/esquema. Cero inferencia pagada, Meta u órdenes externas; ledger267/256/11 y modelos intactos. Producción continúa265. Despliegue staging pendiente de verificación.
+
 ## DESPLIEGUE VIGENTE — Main/producción hasta tanda265 (28/10)
 
 Solicitud explícita «despliega main». `origin/Main` promovido por fast-forward de `bc791e29` a `2eaa0d61` (runtime `f0ae0d00`), con las tandas245–265 validadas en staging. Producción ejecuta imagen `sha256:c50f5be01a0944c54a75980e1d9e231b50fbb447a735cfb89f0cdccd1ed6c6f3`, running,0reinicios; APIlocal/pública200, DBconnected/circuitCLOSED.16controles compilados y guard central aprobados con dependencias aisladas; hashes de los cinco módulos auditados coinciden con staging. Global previa21.060/330, TypeScript general/build y Node aprobados;541fuentes siguen iguales. No se repitió la global para promover código idéntico.
