@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda283: exclusiones con «ni» (29/10)
 
+Tanda283 desplegada en staging: código `161edad7`, imagen `sha256:9da197eecdeb00f2cddb9ba7a70a897bc4fb0639f313214ed2585f40905368b1`, healthy,0reinicios, API local/pública operativas y comprobaciones compiladas de«ni»/conflicto/recuperación aprobadas. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-283-staging-deployment.json`. PPP producción y Kamppo conservan282.
+
 Base `981f290d`. «Uno sin cebolla ni tomate» y otras exclusiones de2/3ingredientes conservan una sola nota y piden destino entre varios platos; una unidad se puede separar sin afectar las demás. La detección de conflictos reconoce también el ingrediente que sigue a«ni», en ambos sentidos, y permite seleccionar otro plato o cancelar la indicación pendiente.
 
 348 pruebas nuevas (312 recorridos y36límites), baseline155aprobadas/193fallidas, foco756aprobadas. Global23301/350, inventario exacto y562fuentes congeladas; TypeScript general/build y scripts Node aprobados. Ver `whatsapp-batch-283-validation.json` y `whatsapp-batch-283-patterns.md`.
