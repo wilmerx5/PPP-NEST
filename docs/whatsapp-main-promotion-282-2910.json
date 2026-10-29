@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-29",
+  "authorizedBy": "User: despliega en main y migra los nuevos cambios a kamppo",
+  "promotedCommit": "670a899cec05e3104c8a8ad32665ca8d0f8e3c95",
+  "runtimeCodeCommit": "a4718b58a8b798142cbda4fd954807500a49c08a",
+  "batchesIncluded": "266–282",
+  "promotion": "Fast-forward of origin/Main; existing dirty local Main checkout preserved",
+  "validation": "whatsapp-batch-282-validation.json",
+  "deploymentVerified": false,
+  "deploymentBlocker": "Repeated SSH connection timeouts from this session; no production deploy command executed",
+  "kamppoPortCommit": "d482cbc3628d0664c78a48e397e5b8b12cdc3595",
+  "kamppoValidation": "22857 engine tests, 445 API tests, 92 runner tests passed; 15 live evals skipped",
+  "kamppoDeploymentRun": "https://github.com/wilmerx5/kamppo/actions/runs/40920891475",
+  "ciIssue": "PPP run40883864510: six existing burst journeys exceeded default5s timeout; 22849 tests passed. CI now runs each suite once in bounded groups, timers serially, with20s journey timeout. Remote revalidation pending.",
+  "paidRequests": 0,
+  "externalOrders": 0
+}

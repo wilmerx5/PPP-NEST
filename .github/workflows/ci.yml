@@ -30,8 +30,13 @@ jobs:
       - name: Typecheck
         run: yarn tsc --noEmit -p tsconfig.build.json
 
-      - name: WhatsApp regressions
-        run: yarn test:whatsapp --ci
+      # Keep long conversation journeys and timer-sensitive suites in bounded groups.
+      # The previous commands reran all WhatsApp cases in the general unit step.
+      - name: Conversation journeys
+        run: yarn jest --ci --testPathPattern=whatsapp-general-accuracy --maxWorkers=2 --testTimeout=20000
 
-      - name: Unit tests
-        run: yarn test --passWithNoTests --ci
+      - name: Remaining unit tests
+        run: yarn jest --ci --testPathIgnorePatterns='whatsapp-general-accuracy|whatsapp-image-burst.spec.ts|whatsapp-webhook.controller.spec.ts' --maxWorkers=2 --testTimeout=20000
+
+      - name: Timer-sensitive WhatsApp tests
+        run: yarn jest --ci --runInBand --runTestsByPath src/whatsapp/whatsapp-image-burst.spec.ts src/whatsapp/whatsapp-webhook.controller.spec.ts --testTimeout=20000
