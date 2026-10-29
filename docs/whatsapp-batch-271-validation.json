@@ -55,7 +55,7 @@
   "persistenceChanged": false,
   "sqlMigration": false,
   "productionChanged": false,
-  "deploymentStatus": "Validated locally; staging deployment pending",
+  "deploymentStatus": "Deployed and verified in staging",
   "baseline": {
     "failed": 42,
     "passed": 30
@@ -64,5 +64,7 @@
     "Derived variants of user-shared abandoned checkout; not new observed production conversations.",
     "External services and models mocked; no real Meta, inference, PDF or audio evaluation.",
     "Silence does not establish a bot-caused abandonment; no conversion gain measured."
-  ]
+  ],
+  "runtimeCodeCommit": "4f70698b286454f8d3462cb36ad7c60440268661",
+  "deploymentEvidence": "whatsapp-batch-271-staging-deployment.json"
 }

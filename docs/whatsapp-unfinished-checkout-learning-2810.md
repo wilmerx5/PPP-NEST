@@ -12,7 +12,7 @@ El cliente dijo «Estefani» y «Me indicas el nequi». El bot pidió la direcci
 
 Antes del cambio:42 fallos/30 aprobadas en72 casos. Después:72/72 nuevas, foco318/4 aprobado. Tres cartas y agente simulado off/on. El recorrido nombre+pregunta en ráfaga llega a DTO con nombre y nota correctos, sin crear la orden antes de confirmar. Consultar la cuenta no elige el método. Una solicitud mixta sigue la ruta normal, y «mi Nequi es…» no pregunta por el comercio. Si faltan datos configurados, no se inventan.
 
-Cambio: reconocimiento acotado de consultas completas sobre cuentas, con cortesía, posesivos y verbo transferir. Sin datos de cuenta, productos o precios fijos en runtime. Sin nueva persistencia, migración SQL ni cambio de modelos. Global aprobada: 21476 pruebas/335 suites; TypeScript general/build y Node aprobados. Despliegue staging pendiente.
+Cambio: reconocimiento acotado de consultas completas sobre cuentas, con cortesía, posesivos y verbo transferir. Sin datos de cuenta, productos o precios fijos en runtime. Sin nueva persistencia, migración SQL ni cambio de modelos. Global aprobada: 21476 pruebas/335 suites; TypeScript general/build y Node aprobados. Código `4f70698b` publicado y desplegado en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED. Nueve controles compilados nuevos y31previos aprobados con dependencias aisladas; routing/modelos y guard central aprobados. Env/compose preservados y producción265 verificada sin cambios. Evidencia `whatsapp-batch-271-staging-deployment.json`; cierre documental posterior sin reconstrucción.
 
 ## Otras señales y siguientes tandas
 
