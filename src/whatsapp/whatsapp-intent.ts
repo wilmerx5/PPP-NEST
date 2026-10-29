@@ -280,6 +280,27 @@ export function isNothingElseOrderIntent(text: string): boolean {
   return [said, core, unprefixed].some((t) => !!t && t.length <= 48 && nothingElsePhrase(t));
 }
 
+/** Standalone drink browsing, without a concrete product, quantity or modifier. */
+export function isGenericDrinkBrowseIntent(text: string): boolean {
+  const t = withoutVocatives(normalizeIntentText(text)).replace(/^hola\s+/, '');
+  return /^(?:(?:(?:quiero|quisiera|dame|tienes|tienen|hay|me das|me regalas|regalame)\s+)?(?:algo\s+(?:de|para)\s+(?:tomar|beber)|una\s+bebida)|que\s+(?:hay|tienes|tienen|manejan)\s+(?:de|para)\s+(?:tomar|beber))$/.test(t);
+}
+
+/** Complete cart-wide price requests; never interpret a named-product quote as closing. */
+export function cartTotalFollowupIntent(
+  text: string,
+  pendingPriceInquiry = false,
+): 'close' | 'reference' | null {
+  const t = withoutVocatives(normalizeIntentText(text));
+  if (!t || t.length > 120) return null;
+  if (/^(?:(?:de\s+)?todo\s+lo\s+que\s+(?:pedi|he pedido|llevo)|(?:de\s+)?todo\s+el\s+pedido|(?:el\s+)?total(?:\s+del\s+pedido)?)$/.test(t) ||
+    (pendingPriceInquiry && /^(?:de\s+)?todo$/.test(t))) return 'reference';
+  const question = t.match(/^(.*?)\s+(?:y\s+)?(cuanto\s+.+)$/);
+  if (!question || !isNothingElseOrderIntent(question[1].replace(/\s+y$/, ''))) return null;
+  const wholeCartQuestion = /^cuanto\s+(?:(?:es|seria|sale|vale|cuesta)(?:\s+(?:todo|en total|el total|todo el pedido))?|(?:te\s+)?debo|llevo)(?:\s+en\s+total)?$/.test(question[2]);
+  return wholeCartQuestion ? 'close' : null;
+}
+
 function withoutVocatives(t: string): string {
   return t
     .replace(/\b(?:senor(?:a|ita)?|veci(?:n[oa])?|joven|amig[oa]|don|dona|herman[oa]|parce|mi\s+amor|mij[oa]|por\s+favor|porfa|muchas\s+gracias|gracias|pues)\b/g, ' ')

@@ -1,0 +1,85 @@
+{
+  "baseCommit": "599238203bf5e367695ba8fa01e8a0d4c22b01a1",
+  "batches": [
+    276
+  ],
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 225.55,
+      "sourceUnchanged": true,
+      "tests": 4206,
+      "failed": 0
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 223.02,
+      "sourceUnchanged": true,
+      "tests": 3405,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 313.27,
+      "sourceUnchanged": true,
+      "tests": 14111,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.16,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 551,
+  "tests": 21738,
+  "suites": 339,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 276,
+  "focus": {
+    "passed": 100,
+    "suites": 2
+  },
+  "newRegressionTests": 75,
+  "baseline": [
+    {
+      "name": "baseline",
+      "failed": 20,
+      "passed": 32,
+      "skipped": 0
+    },
+    {
+      "name": "drink-baseline",
+      "failed": 6,
+      "passed": 2,
+      "skipped": 52
+    }
+  ],
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "scope": [
+    "Standalone beverage browse questions and courteous requests",
+    "Cart-wide price clarifications cannot become address references",
+    "Close plus colloquial total question advances with final review required",
+    "Named-product, quantity and mixed-request guards"
+  ],
+  "limits": [
+    "Mocked models and external services, no real Meta orders",
+    "Fixtures derive from reported chats; not new production conversations",
+    "No claim of automatic learning or improved conversion",
+    "No Kamppo port or PPP production deployment"
+  ]
+}

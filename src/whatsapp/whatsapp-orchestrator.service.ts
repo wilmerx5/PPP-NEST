@@ -58,6 +58,8 @@ import {
   isDeliveryLogisticsFluff,
   isHumanHandoffRequest,
   isNothingElseOrderIntent,
+  cartTotalFollowupIntent,
+  isGenericDrinkBrowseIntent,
   isDeclineMoreItemsIntent,
   isFinishCheckoutIntent,
   isHypotheticalOrderQuestion,
@@ -3194,15 +3196,13 @@ export class WhatsappOrchestratorService {
       if (await this.tryResolvePendingMatchPick(conv, msg.waId, session, originalText, await this.catalogService.getMenuProducts(), cfg)) return;
     }
     // A cart-wide total question is not a product-price selection or an address.
-    const totalUtterance = this.normalizeForMatch(originalText).replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim();
-    const closesWithTotal = /^(?:no mas|no maa|nada mas|solo eso|eso es todo)\s+(?:y\s+)?cuanto\s+(?:es|seria|sale|vale|es el total)(?:\s+(?:todo|en total))?$/.test(totalUtterance);
-    const clarifiesCartTotal = /^(?:de\s+)?todo\s+lo\s+que\s+(?:pedi|he pedido|llevo)$/.test(totalUtterance);
-    if (session.cart.length && (closesWithTotal || clarifiesCartTotal) &&
+    const totalFollowup = cartTotalFollowupIntent(originalText, !!session.pendingPriceInquiry);
+    if (session.cart.length && totalFollowup &&
       !['completed', 'closed', 'human', 'human_takeover'].includes(conv.state)) {
       session = { ...session, pendingPriceInquiry: undefined };
       await this.conversationService.saveSession(conv, session);
       const recap = this.formatCartOnly(session, this.deliveryFeeFor(session, cfg));
-      if (closesWithTotal && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
+      if (totalFollowup === 'close' && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
         await this.tryConfirmOrder(conv, msg.waId, session, { preface: recap, requireFinalReview: true });
       } else {
         await this.reply(conv, msg.waId, recap + '\n\n' + (this.formatInterruptedStepReminder(conv, session) || '¿Algo más?'));
@@ -3465,10 +3465,7 @@ export class WhatsappOrchestratorService {
     }
     // Generic drink browsing must precede product/address splitting ("para tomar").
     // A complete phrase only: concrete drinks, quantities and meal modifiers keep their routes.
-    const genericDrinkBrowse = /^(?:(?:hola|veci)\s+)*(?:(?:quiero|quisiera|dame|tienes|tienen|hay|me das)\s+)?(?:algo\s+(?:de|para)\s+(?:tomar|beber)|una\s+bebida)(?:\s+(?:porfa|por favor|veci))?$/.test(
-      this.normalizeForMatch(originalText).replace(/[¿?¡!.,]/g, '').trim(),
-    );
-    if (genericDrinkBrowse && !session.pendingAttribute) {
+    if (isGenericDrinkBrowseIntent(originalText) && !session.pendingAttribute) {
       const drinkProducts = await this.catalogService.getMenuProducts();
       const hit = this.catalogService.findCategoryBrowseHit('bebidas', drinkProducts, cfg.menuConceptGroups);
       if (hit?.products.length) {

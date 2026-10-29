@@ -1,5 +1,14 @@
 
 
+## VIGENTE — tanda276: variantes básicas de bebidas y total (28/10)
+
+Base59923820. Derivadas de los reportes275: «qué hay para tomar», «qué tienes de beber», «me regalas algo de tomar», «todo el pedido», «el total», «de todo» ante aclaración de precio y cierres «no más, cuánto te debo»/«solo eso veci, cuánto llevo». Separamos solicitudes completas del total y navegación genérica; reutilizamos cierre y resumen canónico. «Todo» suelto solo refiere al total cuando hay consulta de precio pendiente; producto concreto/modificador/cantidad conserva su ruta. Preguntas no confirman ni inventan dirección.
+
+75 regresiones nuevas: router completo con dos cartas sintéticas, agente simulado off/on, estados de carrito/dirección, controles de precio individual, compra concreta y revisión final; guardas puras adicionales. Baseline26fallos/34aprobadas en dos ejecuciones separadas (52total y8bebidas); 15guardas posteriores. Foco100/2. Global21738/339 aprobada, inventario exacto y551fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-276-validation.json`.
+
+Modelos y servicios simulados; cero llamadas pagadas/Meta/órdenes externas; ledger267/256/11 intacto. No prueba de comportamiento del modelo real ni de conversión. Publicación/despliegue se registran por separado. Producción PPP sigue265; delta266–276 pendiente de Kamppo. No se modifica Kamppo en esta tanda. Pendientes: más combinaciones naturales, arranque original de dos ejecutivos, muestra reservada y medios/canal.
+
+
 ## VIGENTE — tanda275: bebidas, categorías y cierre con total (28/10)
 
 Tanda275 publicada y desplegada en staging: código `3dbcb6a4`, imagen `sha256:77f0b375d4b30b5bd7f9f0f4ef24984b333267d07fb11e920f7f0a333b7f32a0`, healthy,0reinicios, APIlocal/pública200. Controles compilados de categorías/cierre y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-275-staging-deployment.json`. Kamppo solo recibió la corrección del identificador (runtime973a072, healthy); delta lingüístico266–275 pendiente.
