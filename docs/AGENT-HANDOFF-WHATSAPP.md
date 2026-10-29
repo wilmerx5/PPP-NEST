@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda277: pagar frente a cancelar y espera conversacional (28/10)
 
+Tanda277 publicada y desplegada en staging: código `69ce65ea`, imagen `sha256:77a205bdf007785c26107e590200b3f07bfa216c62cf7eba8687dba2e33d2acf`, healthy,0reinicios, APIlocal/pública200. Controles compilados de pago/espera y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-277-staging-deployment.json`. Sin cambios en Kamppo durante esta tanda; delta lingüístico266–277 pendiente.
+
 Base `e71b053b`. Investigación pública de RAE/ASALE/DEM y corpus de WhatsApp, contrastada con los chats compartidos. Fuentes, límites y prioridades en `whatsapp-regional-patterns-2810.md`. Ejemplos nuevos sintéticos, no transcripciones regionales de clientes.
 
 «Quiero cancelar con efectivo/por transferencia» borraba el carrito; ahora la frase completa usa los métodos configurados, conservando las preguntas como consultas. Complemento desconocido/compuesto pide aclarar pagar o anular antes de mutar. «Quiero cancelar el pedido» sigue cancelando. Esperas completas como «ahorita te digo» y «dame un ratito» conservan datos y estado durante checkout, sin capturarse como dirección ni confirmar. Sin SQL ni cambios de modelos.
