@@ -1,0 +1,27 @@
+{
+  "batch": 296,
+  "baseCommit": "9099e57a05ca7e3c3cb44c715e99db9bfad44b7a",
+  "newTests": 48,
+  "baselinePassed": 48,
+  "focusPassed": 480,
+  "focusSuites": 3,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 295,
+    "tests": 26514,
+    "suites": 362
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "coverage": "Three synthetic catalogs, simulated agent off/on, four note-redirection scenarios, cash/transfer, checkout state, final order DTO and receipt",
+  "limits": [
+    "Seeded carts, not complete original customer chats",
+    "One unit per line; quantities and prices preserved in cart assertions",
+    "No new preparation/SKU replacement behavior",
+    "No real model, media or Meta validation",
+    "No deployment: test-only change"
+  ]
+}

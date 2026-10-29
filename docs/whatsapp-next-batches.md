@@ -1,3 +1,11 @@
+## VIGENTE — tanda296: «el otro» hasta orden y recibo (29/10)
+
+Base `9099e57a`.48 recorridos nuevos sobre tres catálogos sintéticos, agente simulado off/on y efectivo/transferencia. Nota «sin cebolla» aplicada a una línea; «no, el otro» con destino único, aclaración entre varias líneas, destino con nota incompatible y cancelación de la redirección. Conserva el carrito mientras aclara; la resolución mueve solo la nota reciente y mantiene las notas anteriores, bebidas, presentaciones, cantidades y precios. Continúa por recogida, pago, revisión y confirmación; DTO y recibo contienen la nota en el plato correcto. No crea orden antes de confirmar.
+
+Baseline48/48; foco480/3; TypeScript general/build aprobados. Solo pruebas, sin cambios del motor ni despliegue nuevo. Último global de runtime:26514/362 en295; no atribuirlo al inventario ampliado296. Evidencia `whatsapp-batch-296-validation.json` y `whatsapp-batch-296-patterns.md`.
+
+PPP staging295, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Carritos preparados de una unidad por línea, no reproducción íntegra de chats nuevos ni prueba de audio. Esta tanda acredita notas; no generaliza «el otro» a cambios de SKU/preparación. Idiomas siguen aplazados. Próximo: referencias de preparación/variante hasta checkout y aclaración persistente de operaciones mixtas.
+
 ## VIGENTE — tanda295: producto frente a ocasión de consumo (29/10)
 
 Base `0bb16f76`. Reporte Kamppo «hamburguers for lunch»; usuario aplazó expresamente idiomas. Se reproduce solo la familia española: «tienen hamburguesas para almorzar», cena/desayuno, saludo/veci/porfa y verbo «tines». Consulta explícita acotada separa producto y ocasión; respeta calificadores, título literal de catálogo, selección pendiente y estados de checkout. Presentaciones por palabras del catálogo, no IDs de PPP. Una sola mini hamburguesa también es oferta válida; agotados no se listan y ausencia real no se cambia por ejecutivos. Sin compra implícita ni promesa de horario futuro.

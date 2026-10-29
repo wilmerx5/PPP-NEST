@@ -1,5 +1,14 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda296: «el otro» hasta orden y recibo (29/10)
+
+Base `9099e57a`.48 recorridos nuevos sobre tres catálogos sintéticos, agente simulado off/on y efectivo/transferencia. Nota «sin cebolla» aplicada a una línea; «no, el otro» con destino único, aclaración entre varias líneas, destino con nota incompatible y cancelación de la redirección. Conserva el carrito mientras aclara; la resolución mueve solo la nota reciente y mantiene las notas anteriores, bebidas, presentaciones, cantidades y precios. Continúa por recogida, pago, revisión y confirmación; DTO y recibo contienen la nota en el plato correcto. No crea orden antes de confirmar.
+
+Baseline48/48; foco480/3; TypeScript general/build aprobados. Solo pruebas, sin cambios del motor ni despliegue nuevo. Último global de runtime:26514/362 en295; no atribuirlo al inventario ampliado296. Evidencia `whatsapp-batch-296-validation.json` y `whatsapp-batch-296-patterns.md`.
+
+PPP staging295, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Carritos preparados de una unidad por línea, no reproducción íntegra de chats nuevos ni prueba de audio. Esta tanda acredita notas; no generaliza «el otro» a cambios de SKU/preparación. Idiomas siguen aplazados. Próximo: referencias de preparación/variante hasta checkout y aclaración persistente de operaciones mixtas.
+
+
 ## VIGENTE — tanda295: producto frente a ocasión de consumo (29/10)
 
 Tanda295 desplegada en staging: código `d4533407`, imagen `sha256:763875a6257c241fe50552f4e4579fbf1049a0c22382b90fc768f95cd2a61fb3`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica295 en pruebas locales. Evidencia `whatsapp-batch-295-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
