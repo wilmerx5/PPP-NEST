@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda281: exclusiones compuestas y selección entre tres platos (29/10)
 
+Tanda281 publicada y desplegada en staging: código `0a7e746e`, imagen `sha256:60fbf91fdfd8924947d206ab4ddaf479986a40505776f8dd7e23150b46d4efda`, healthy,0reinicios, APIlocal/pública200. Controles compilados de exclusiones compuestas, selección y recuperación y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-281-staging-deployment.json`. Sin cambios en Kamppo durante esta tanda; delta lingüístico266–281 pendiente.
+
 Base `8d6c0e53`. Cierra el límite de280 para «uno sin cebolla y sin tomate»: los recorridos compran los productos y envían la frase completa, sin inyectar la selección. Antes la nota podía ir al último de tres platos o afectar todas las unidades. Ahora pregunta destino o divide solo la unidad solicitada; conserva notas y precios. Número, nombre y reparación ordinal resuelven la selección pendiente; preguntas de total/repetición no la consumen. Incompatibilidades del mismo ingrediente exigen aclarar; elegir otro plato o retirar la indicación funciona sin borrar productos.
 
 328 pruebas nuevas:128selecciones,48divisiones,64conflictos,64interrupciones,8recuperaciones y16límites puros. Baseline304fallos/0aprobadas; foco328/2 nuevas y390/5 vecinas. Global22593/347, inventario exacto y559fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-281-validation.json`; origen y alcance en `whatsapp-batch-281-patterns.md`.
