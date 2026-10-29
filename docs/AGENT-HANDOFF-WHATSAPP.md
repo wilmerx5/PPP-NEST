@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda286: retirada referenciada de una unidad (29/10)
 
+Tanda286 desplegada en staging: código `80b98eeb`, imagen `sha256:1f293aaff9f29b5704496bad6fd82f5ad98534f02cd40b143664bc407366b571`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica286 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-286-staging-deployment.json`. PPP producción y Kamppo conservan282.
+
 Base `b4fcef74`. «Quita uno de los de pechuga» retira una unidad; si varias líneas coinciden, pregunta y conserva esa cantidad al seleccionar por número o característica. El campo opcional `pendingCartRemoval.quantity: 1` distingue esta intención. Firma del carrito, cancelación, pago/otras selecciones y preguntas protegen la operación. Consultar el total no consume la selección. La última unidad deja carrito vacío en compra.
 
 420 pruebas nuevas: 216 retiradas, 72 aclaraciones, 96 guardas y 36 interrupciones/vaciado. Baseline inicial 384 casos: 102 aprobados / 282 fallidos; las interrupciones detectaron 12 fallos adicionales del total, corregidos. Foco final 882/3. Global 24401/353, inventario exacto y 565 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-286-validation.json` y `whatsapp-batch-286-patterns.md`.
