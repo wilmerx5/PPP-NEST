@@ -1,0 +1,65 @@
+{
+  "baseCommit": "843f25855f9267fdac79d33df97bac8b9124b90c",
+  "batches": [
+    284
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 283.92,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 630.74,
+      "sourceUnchanged": true,
+      "tests": 15994,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 7.99,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 563,
+  "tests": 23621,
+  "suites": 351,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 284,
+  "newRegressionTests": 320,
+  "newSuites": 1,
+  "focusPassed": 1036,
+  "focusSuites": 4,
+  "baseline": {
+    "passed": 160,
+    "failed": 160
+  },
+  "families": {
+    "explicitPartialSplit": 192,
+    "wholeCartAtomicNote": 128
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic menus and previously stored note fixtures; models and services mocked",
+    "Only contradiction validation before explicit named partial splits and whole-cart note application",
+    "No new inferred note relocation between units, variant replacement or ambiguous removal behavior",
+    "No real channel evaluation; batch284 not ported to production or Kamppo"
+  ]
+}

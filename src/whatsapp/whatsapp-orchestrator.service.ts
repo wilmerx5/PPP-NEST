@@ -19721,6 +19721,15 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** Validate the entire target before splitting or editing any unit. */
+  private async tryBlockKitchenNoteConflict(conv: WhatsappConversation, waId: string, lines: WhatsappCartItem[], note: string): Promise<boolean> {
+    const conflicts = lines.filter(line=>kitchenNotesConflict(line.note,note));
+    if (!conflicts.length) return false;
+    const previous = conflicts.map(line=>`*${line.name}*: «${line.note}»`).join('\n');
+    await this.reply(conv,waId,`Ya hay una indicación incompatible con «${note}»:\n${previous}\n\nNo cambié ninguna unidad. Revisa la nota anterior o dime otro cambio.`);
+    return true;
+  }
+
   /** "una sin cebolla" / "sin cebolla" with several cart lines and no dish named: ask which line, never the last one. */
   private async tryHandleUnscopedCartKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
     if (session.cart.length < 2 || /[¿?]/.test(text) || text.length > 120 ||
@@ -19743,6 +19752,7 @@ export class WhatsappOrchestratorService {
     const units = session.cart.reduce((sum, line) => sum + line.quantity, 0);
     const reminder = (next: WhatsappSessionData) => this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next);
     if (quantity === units) {
+      if (await this.tryBlockKitchenNoteConflict(conv,waId,session.cart,note)) return true;
       const edits = session.cart.map(line => editScopedCartNote(line.note, { kind: 'append', query: '', note, preserve: [] }));
       if (edits.some(edit => edit.blocked)) return false;
       const next = { ...session, cart: session.cart.map((line, index) => ({ ...line, note: edits[index].note })) };
@@ -19778,6 +19788,7 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, '¿De cuál producto y cuántas unidades llevan esa nota? Así conservo las demás como están.');
       return true;
     }
+    if (await this.tryBlockKitchenNoteConflict(conv,waId,[line],partialNote.note)) return true;
     const note = editScopedCartNote(line.note, {kind:'append',query:'',note:partialNote.note,preserve:[]});
     if (note.blocked) {
       await this.reply(conv, waId, 'La nota es demasiado larga. ¿Puedes resumirla? El carrito sigue igual.');

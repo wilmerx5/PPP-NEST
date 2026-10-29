@@ -1,5 +1,14 @@
 
 
+## VIGENTE — tanda284: conflictos antes de dividir unidades o anotar todo el carrito (29/10)
+
+Base `843f2585`. Dos rutas no comprobaban las notas anteriores: división parcial con producto/cantidades explícitos y nota para todas las unidades del carrito. Ahora se valida todo el destino antes de mutar. Si existe«con tomate» frente a«sin tomate», muestra el plato y la nota incompatible y conserva todas las unidades. Un nuevo cambio compatible funciona sin dejar un bloqueo pendiente.
+
+320 pruebas nuevas:192divisiones explícitas y128aplicaciones a todo el carrito, en2catálogos, compra/revisión y agente simulado activo/inactivo. Baseline160aprobadas/160fallidas; foco1036/4. Global23621/351, inventario exacto y563fuentes congeladas; TypeScript general/build y scripts Node aprobados. Evidencia `whatsapp-batch-284-validation.json` y `whatsapp-batch-284-patterns.md`.
+
+Sin campos nuevos, SQL ni cambios de modelos. Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. No se amplía el traslado inferido entre varias unidades ni el cambio de variante o retirada ambigua: siguen como siguiente tramo. La respuesta no promete haber resuelto la contradicción; el carrito original se conserva. Producción PPP y Kamppo mantienen282;283/284 son trabajo de staging.
+
+
 ## VIGENTE — tanda283: exclusiones con «ni» (29/10)
 
 Tanda283 desplegada en staging: código `161edad7`, imagen `sha256:9da197eecdeb00f2cddb9ba7a70a897bc4fb0639f313214ed2585f40905368b1`, healthy,0reinicios, API local/pública operativas y comprobaciones compiladas de«ni»/conflicto/recuperación aprobadas. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-283-staging-deployment.json`. PPP producción y Kamppo conservan282.
