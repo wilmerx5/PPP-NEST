@@ -1,3 +1,4 @@
+import {mealtimeAvailabilityQuery} from './whatsapp-mealtime-query';
 import { resolveDescribedSidePhrase } from './whatsapp-described-side';
 import { twoUnitServingPlan } from './whatsapp-two-unit-serving-plan';
 import {omitSubstitutionChoice, parseSubstitutionChoice} from './whatsapp-substitution-choice';
@@ -1499,6 +1500,7 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
     }
     if (await this.tryHandleMultipleRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleMealtimeAvailability(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleCountedRemovalAddition(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleReferencedUnitRemoval(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleReferencedCookingChange(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -13371,6 +13373,32 @@ export class WhatsappOrchestratorService {
         (menu ? `\nMenú: ${menu}` : ''),
     );
     return true;
+  }
+
+  private async tryHandleMealtimeAvailability(conv:WhatsappConversation,waId:string,session:WhatsappSessionData,text:string,cfg:EffectiveWhatsappConfig):Promise<boolean> {
+    if (!['building_cart','greeting'].includes(conv.state) || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.mpPreferenceId || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
+    const query=mealtimeAvailabilityQuery(text);
+    if(!query)return false;
+    const products=await this.catalogService.getMenuProducts();
+    // A literal catalog title has priority over interpreting its suffix as context.
+    const full=this.catalogService.availabilitySubject(text);
+    if(full && products.some(p=>this.normalizeForMatch(p.name)===this.normalizeForMatch(full)))return false;
+    const asked='¿Tienes '+query+'?';
+    // A family query is valid even when the only available SKU is a mini/other presentation.
+    if (/^[a-zñ]{3,}$/.test(query)) {
+      const word=this.catalogService.singularToken(query);
+      const family=products.filter(p=>this.normalizeForMatch(p.name).split(/\s+/).some(token=>this.catalogService.singularToken(token)===word));
+      const offers=family.filter(p=>p.availableNow!==false);
+      if(family.length && !offers.length) {
+        await this.reply(conv,waId,'Por ahora no hay opciones disponibles de '+query+'. El pedido sigue igual.');return true;
+      }
+      if(offers.length && offers.length<=12) {
+        await this.conversationService.saveSession(conv,{...session,pendingMatch:{query,candidates:offers,intent:'info'}},'building_cart');
+        await this.reply(conv,waId,this.catalogService.formatCategoryList(query,offers));return true;
+      }
+    }
+    if(await this.tryHandleFamilyBrowse(conv,waId,session,asked,products))return true;
+    return this.tryHandleProductAvailabilityQuestion(conv,waId,session,asked,products,cfg);
   }
 
   private async tryHandleProductAvailabilityQuestion(

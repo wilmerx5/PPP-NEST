@@ -1,0 +1,65 @@
+{
+  "baseCommit": "0bb16f76144a25f44000503bdae6f092fc89ad32",
+  "batches": [
+    295
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 329.99,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 461.41,
+      "sourceUnchanged": true,
+      "tests": 18887,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.17,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 575,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 26514,
+  "suites": 362,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 295,
+  "newTests": 87,
+  "focusPassed": 304,
+  "focusSuites": 5,
+  "baseline": {
+    "passed": 8,
+    "failed": 28,
+    "cases": 36
+  },
+  "expandedIntermediate": {
+    "passed": 75,
+    "failed": 8,
+    "cases": 83,
+    "issue": "Single available presentation still fell through; fixed before final validation"
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "productionBatch": 292,
+  "kamppoBatch": 282,
+  "languages": "Spanish only; user explicitly deferred mixed-language work"
+}

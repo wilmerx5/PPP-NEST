@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda295: producto frente a ocasión de consumo (29/10)
+
+Base `0bb16f76`. Reporte Kamppo «hamburguers for lunch»; usuario aplazó expresamente idiomas. Se reproduce solo la familia española: «tienen hamburguesas para almorzar», cena/desayuno, saludo/veci/porfa y verbo «tines». Consulta explícita acotada separa producto y ocasión; respeta calificadores, título literal de catálogo, selección pendiente y estados de checkout. Presentaciones por palabras del catálogo, no IDs de PPP. Una sola mini hamburguesa también es oferta válida; agotados no se listan y ausencia real no se cambia por ejecutivos. Sin compra implícita ni promesa de horario futuro.
+
+87 pruebas nuevas:60 recorridos con tres familias, carrito vacío/existente y agente simulado off/on;16 controles de presentación única, agotado, inexistente y todas agotadas;11 límites/calificadores. Baseline36:8 aprobados/28 fallidos. Foco304/5; global26514/362, inventario exacto y575 fuentes congeladas. TypeScript general/build y Node aprobados. Global no-timers con timeout20s como CI; timers seriales. Evidencia `whatsapp-batch-295-validation.json` y `whatsapp-batch-295-patterns.md`.
+
+Cero inferencia/Meta/órdenes externas, ledger267/256/11 intacto. Sin SQL/modelos nuevos. Revisión de patrones seleccionados ya versionados y chats del hilo, no recenso de todos los chats originales ni nueva revisión de audio/PDF. Prioridad siguiente: referencias/cambios, cierre informal, datos fragmentados y postventa. Producción292 y Kamppo282; deploy staging se registra aparte. Mezcla de idiomas aplazada.
+
+
 ## VIGENTE — tanda294: total intercalado y recuperación de opciones (29/10)
 
 Tanda294 desplegada en staging: código `de3e16be`, imagen `sha256:999bc03177539e9150ee810e58c334834626db362f5c15d9f90cae5eb3e0319d`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica294 en pruebas locales. Evidencia `whatsapp-batch-294-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
