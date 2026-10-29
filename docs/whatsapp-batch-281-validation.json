@@ -1,0 +1,79 @@
+{
+  "baseCommit": "8d6c0e53c6ce2531e0bedb72625d364251ed8012",
+  "batches": [
+    281
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 272.03,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 302.8,
+      "sourceUnchanged": true,
+      "tests": 14966,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 5.98,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 559,
+  "tests": 22593,
+  "suites": 347,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 281,
+  "interruptedGlobalAttempt": "Stopped before completion to clarify the conflict reply; final global rerun from scratch on frozen sources",
+  "focus": {
+    "newPassed": 328,
+    "newSuites": 2,
+    "neighborPassed": 390,
+    "neighborSuites": 5
+  },
+  "newRegressionTests": 328,
+  "families": {
+    "threeDishSelection": 128,
+    "unitSplit": 48,
+    "selectionConflict": 64,
+    "interruptions": 64,
+    "conflictRecovery": 8,
+    "pureBoundary": 16
+  },
+  "baseline": {
+    "failed": 304,
+    "passed": 0
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "scope": [
+    "Raw same-unit repeated exclusions select a dish before mutating a three-line cart",
+    "Only requested units receive a compound note",
+    "Subtotal, previous notes, quantities and review state preserved",
+    "Contradictory selection stays pending and supports another destination or cancellation"
+  ],
+  "limits": [
+    "Mocked models/services; no real Meta, audio, order or conversion validation",
+    "Two or three explicit sin clauses only; not arbitrary compound requests",
+    "Three-dish choice happens before applying the note, not redirection after it",
+    "No all-PDF coverage, Kamppo port or production deployment"
+  ]
+}

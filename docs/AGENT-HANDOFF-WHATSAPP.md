@@ -1,5 +1,16 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda281: exclusiones compuestas y selección entre tres platos (29/10)
+
+Base `8d6c0e53`. Cierra el límite de280 para «uno sin cebolla y sin tomate»: los recorridos compran los productos y envían la frase completa, sin inyectar la selección. Antes la nota podía ir al último de tres platos o afectar todas las unidades. Ahora pregunta destino o divide solo la unidad solicitada; conserva notas y precios. Número, nombre y reparación ordinal resuelven la selección pendiente; preguntas de total/repetición no la consumen. Incompatibilidades del mismo ingrediente exigen aclarar; elegir otro plato o retirar la indicación funciona sin borrar productos.
+
+328 pruebas nuevas:128selecciones,48divisiones,64conflictos,64interrupciones,8recuperaciones y16límites puros. Baseline304fallos/0aprobadas; foco328/2 nuevas y390/5 vecinas. Global22593/347, inventario exacto y559fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-281-validation.json`; origen y alcance en `whatsapp-batch-281-patterns.md`.
+
+Regla acotada a dos/tres exclusiones «sin… y sin…» de una misma unidad; no interpreta toda frase compuesta. La selección entre tres platos es anterior a aplicar la nota: no amplía «no, el otro» después de aplicarla. Siguen pendientes «sin X ni Y», compuestos mixtos/condicionales, traslado posterior entre3+líneas, muestra reservada e integración real de canal/modelo. Sin campos nuevos, SQL ni modelos cambiados.
+
+Cero llamadas pagadas, Meta u órdenes externas; ledger267/256/11 intacto. Variantes sintéticas de patrones compartidos, no replay integral de PDF ni aprendizaje automático. Producción PPP sigue265; delta266–281 pendiente de Kamppo. Despliegue registrado por separado.
+
+
 ## VIGENTE — tanda280: matriz amplia de conversación y notas (28–29/10)
 
 Tanda280 publicada y desplegada en staging: código `86380c39`, imagen `sha256:4fefb616b52858f977a99a22963848d2325e3e8e33627143a38e56622bbac7b2`, healthy,0reinicios, APIlocal/pública200. Controles compilados de contexto, contradicciones y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-280-staging-deployment.json`. Sin cambios en Kamppo durante esta tanda; delta lingüístico266–280 pendiente.

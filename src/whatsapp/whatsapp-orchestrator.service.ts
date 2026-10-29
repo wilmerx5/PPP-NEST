@@ -20,7 +20,7 @@ import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from '.
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import { isCondimentPacketNote, condimentIntensityNote, dedupeKitchenNoteParts, interpretProductNote, joinKitchenNotes } from './whatsapp-product-intent';
 import { parseScopedCartNote, editScopedCartNote, kitchenNotesConflict } from './whatsapp-cart-note';
-import { parsePartialNote } from './whatsapp-partial-note';
+import { parsePartialNote, isCompoundExclusionNote } from './whatsapp-partial-note';
 import { parseCartNoteRevision, reviseLineNote, type CartNoteRevision } from './whatsapp-note-revision';
 import { applyCartLineEdits } from './whatsapp-cart-edits';
 import { correctionMatchesLine, normalizeCorrection, omitRedundantAttributeNote, parseCartQuantityCorrection } from './whatsapp-quantity-correction';
@@ -19726,8 +19726,10 @@ export class WhatsappOrchestratorService {
         session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
         CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
     const said = this.normalizeForMatch(text).replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '').trim();
-    const parsed = said.match(/^(?:y\s+)?(?:(?:las|los)\s+)?(?:(un[oa]?|dos|tres|cuatro|cinco|\d{1,2})\s+)?(?:de\s+(?:ellas|ellos|esas|esos)\s+)?((?:sin|poco|poca)\s+[a-zñ]+(?:\s+[a-zñ]+){0,3})$/);
-    if (!parsed || /\b(?:y|e|o|con|mas|otr[oa]s?|normal(?:es)?|adicional|aparte|pero)\b/.test(parsed[2])) return false;
+    const compound = said.match(/^(?:y\s+)?(?:(un[oa]?|dos|tres|cuatro|cinco|\d{1,2})\s+)?(sin\s+.+)$/);
+    const parsed = compound && isCompoundExclusionNote(compound[2]) ? compound :
+      said.match(/^(?:y\s+)?(?:(?:las|los)\s+)?(?:(un[oa]?|dos|tres|cuatro|cinco|\d{1,2})\s+)?(?:de\s+(?:ellas|ellos|esas|esos)\s+)?((?:sin|poco|poca)\s+[a-zñ]+(?:\s+[a-zñ]+){0,3})$/);
+    if (!parsed || !isCompoundExclusionNote(parsed[2]) && /\b(?:y|e|o|con|mas|otr[oa]s?|normal(?:es)?|adicional|aparte|pero)\b/.test(parsed[2])) return false;
     const counts: Record<string, number> = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5 };
     const quantity = parsed[1] ? counts[parsed[1]] ?? Number(parsed[1]) : 0;
     const menu = await this.catalogService.getMenuProducts();
@@ -20329,6 +20331,12 @@ export class WhatsappOrchestratorService {
       const requested = pending.quantity || units;
       // A single selected row can be split; multiple rows must match the requested total.
       if (requested > units || rows.length > 1 && requested !== units) return ask();
+      const conflicts = rows.filter(index=>kitchenNotesConflict(session.cart[index].note,note));
+      if (conflicts.length) {
+        const existing = conflicts.map(index=>`*${session.cart[index].name}*: «${session.cart[index].note}»`).join('\n');
+        await this.reply(conv,waId,`Ya hay una indicación incompatible con «${note}»:\n${existing}\n\nTu pedido sigue igual. Elige otro plato o retira la indicación pendiente.\n\n`+this.formatSubsetKitchenNoteQuestion(session));
+        return true;
+      }
       const edits = rows.map(index=>editScopedCartNote(session.cart[index].note, {kind:'append',query:'',note,preserve:[]}));
       if (edits.some(edit=>edit.blocked)) return ask();
       const cart = session.cart.flatMap((line,index)=>{
