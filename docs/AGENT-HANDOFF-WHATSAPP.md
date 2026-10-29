@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda270: interrupciones de nombre y lugar (28/10)
+
+Base `fb0e2c6d`. Conserva calle y apartamento enviados antes de «es el conjunto»; recogida limpia la duda pendiente. Añadir un producto de catálogo durante la pregunta de nombre vuelve al flujo de compra; el nombre explícito posterior resuelve la duda. Las preguntas no compran ni deciden el rol. Campo JSON opcional `pendingRecipientOrPlaceAddress`, sin SQL; solo recuerda una calle aceptada durante la duda, nunca la dirección anterior guardada. Pin nuevo invalida la calle recordada; aclarar después el conjunto todavía puede requerir aportar de nuevo el destino. Antes de rollback, resolver/cancelar normalmente los borradores afectados.
+
+54 regresiones nuevas, tres cartas×agente simulado off/on. Baseline24fallos/12aprobadas,18guardas adicionales. Foco426/6. Global21404/334 aprobada, inventario exacto y545fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-270-validation.json` e informe `whatsapp-checkout-role-interruptions-validation-2810.md`.
+
+Modelos/servicios externos simulados; cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. Despliegue staging pendiente de verificación. Producción continúa265. Delta266–270 pendiente de portar a Kamppo; no se modifica ese repositorio. Continúan pendientes arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
+
+
 ## VIGENTE — tanda269: espera y recuperación de nombre/lugar (28/10)
 
 Base `61977986`. Continúa268: «Voy»/«ya te digo» en otro turno recibe espera sin modificar datos. «Es el barrio/conjunto» recupera el rótulo ambiguo y lo adjunta a la dirección posterior; «es mi nombre» resuelve destinatario. Consultas, afirmaciones vagas y preguntas sobre el rol no deciden por el cliente. Campo JSON opcional `pendingRecipientOrPlace`, sin SQL; guard central bloquea confirmación hasta resolverlo, incluso skipFinalConfirm. Reinicio/nombre nuevo explícito limpian la duda. Antes de rollback, resolver/cancelar normalmente los borradores afectados; no borrar datos.

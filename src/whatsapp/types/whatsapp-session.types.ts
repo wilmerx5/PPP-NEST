@@ -266,6 +266,8 @@ export type WhatsappSessionData = {
   pendingDeliveryPlace?: string;
   /** Bare checkout label whose role (recipient or delivery place) is not confirmed yet. */
   pendingRecipientOrPlace?: string;
+  /** Full street supplied while the label role is pending; never a previously saved destination. */
+  pendingRecipientOrPlaceAddress?: string;
   /** Do not reoffer a saved destination after the customer requested a new one. */
   freshDeliveryAddressRequested?: boolean;
   /**

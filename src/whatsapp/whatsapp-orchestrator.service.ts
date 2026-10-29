@@ -1121,6 +1121,7 @@ export class WhatsappOrchestratorService {
         .join(', ');
       sessionLoc = {
         ...sessionLoc,
+        pendingRecipientOrPlaceAddress: undefined,
         orderType: 'delivery',
         address: addr,
         fulfillmentChosen: true,
@@ -1200,7 +1201,7 @@ export class WhatsappOrchestratorService {
         !closingSession.pendingAttribute && !closingSession.pendingMatch && !closingSession.pendingMultiOrder &&
         !CART_EDIT_SELECTION_KEYS.some(key => !!closingSession[key]) &&
         !this.repliesWithCatalogDishName(closingParts[1], await this.catalogService.getMenuProducts())) {
-      await this.conversationService.saveSession(conv, {...closingSession, pendingRecipientOrPlace:closingParts[1]}, 'awaiting_name');
+      await this.conversationService.saveSession(conv, {...closingSession, pendingRecipientOrPlace:closingParts[1],pendingRecipientOrPlaceAddress:undefined}, 'awaiting_name');
       await this.reply(conv, msg.waId, `¿*${closingParts[1]}* es el nombre para el pedido o el barrio/conjunto de entrega? Necesito el nombre y la dirección completa para continuar.`);
       return;
     }
@@ -18073,6 +18074,8 @@ export class WhatsappOrchestratorService {
       pendingAddressConflict: undefined,
       pendingDeliveryUnit: undefined,
       pendingDeliveryPlace: undefined,
+      pendingRecipientOrPlace: undefined,
+      pendingRecipientOrPlaceAddress: undefined,
       freshDeliveryAddressRequested: undefined,
       address,
       fulfillmentChosen: true,
@@ -18145,6 +18148,7 @@ export class WhatsappOrchestratorService {
         return {
           ...session,
           address: joined.slice(0, 240),
+          ...(session.pendingRecipientOrPlaceAddress ? {pendingRecipientOrPlaceAddress:joined.slice(0,240)} : {}),
           orderType: 'delivery',
           fulfillmentChosen: true,
           addressConfirmed: true,
@@ -18162,6 +18166,7 @@ export class WhatsappOrchestratorService {
       ...session,
       orderType: 'delivery',
       address: addr,
+      ...(session.pendingRecipientOrPlace ? {pendingRecipientOrPlaceAddress:this.isStrongExplicitAddress(addr) ? addr : undefined} : {}),
       fulfillmentChosen: true,
       addressConfirmed: !!session.addressConfirmed || strong,
       ...(addressChanged
@@ -20848,6 +20853,7 @@ export class WhatsappOrchestratorService {
     session = {
       ...session,
       address: nextAddr,
+      ...(session.pendingRecipientOrPlaceAddress ? {pendingRecipientOrPlaceAddress:nextAddr} : {}),
       // Mantener fee/coords del conjunto; no recalcular por torre/apto
       // No duplicar en Notas: el detalle ya va en la dirección
     };
@@ -22619,11 +22625,19 @@ export class WhatsappOrchestratorService {
       return true;
     }
     if (nameRole || placeRole) {
-      const next = {...session, pendingRecipientOrPlace:undefined};
+      const next = {...session, pendingRecipientOrPlace:undefined, pendingRecipientOrPlaceAddress:undefined};
       if (placeRole) {
+        const freshAddress = session.pendingRecipientOrPlaceAddress && this.isStrongExplicitAddress(session.pendingRecipientOrPlaceAddress)
+          ? session.pendingRecipientOrPlaceAddress : undefined;
         Object.assign(next, {pendingDeliveryPlace:label, address:undefined, addressConfirmed:false,
           deliveryLat:undefined, deliveryLng:undefined, deliveryFeeCalculated:undefined, deliveryDistanceKm:undefined,
           deliveryOutOfCoverage:false, freshDeliveryAddressRequested:true});
+        if (freshAddress) {
+          Object.assign(next, this.withDeliveryAddress(next, freshAddress));
+          await this.conversationService.saveSession(conv, next);
+          await this.tryConfirmOrder(conv, waId, next, {requireFinalReview:true, preface:`Anoté *${label}* junto con la dirección que acabas de enviar.`});
+          return true;
+        }
         await this.conversationService.saveSession(conv, next, 'awaiting_name');
         await this.reply(conv, waId, `Anoté *${label}* como barrio/conjunto. ¿A nombre de quién dejamos el pedido? Después necesito la dirección completa.`);
       } else {
@@ -22633,13 +22647,21 @@ export class WhatsappOrchestratorService {
       }
       return true;
     }
+    // A requested catalog addition can interrupt the name question. Keep the
+    // unresolved role so the central checkout guard still requires clarification.
+    if (conv.state === 'awaiting_name' && !/[¿?]/.test(text) &&
+        /^(?:agrega|agregame|anade|anademe|adiciona)\s+/.test(said) &&
+        this.catalogService.findProductEmbeddedInMessage(text, await this.catalogService.getMenuProducts())) {
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      return false;
+    }
     const explicitName = text.match(/^(?:mi nombre es|me llamo|a nombre de)\s+(.+)$/i)?.[1];
-    if (conv.state === 'awaiting_name' && !this.isConfirmKeyword(text) && !isFinalConfirmAffirmation(text) &&
+    if ((conv.state === 'awaiting_name' || explicitName) && !this.isConfirmKeyword(text) && !isFinalConfirmAffirmation(text) &&
         isUsableWhatsappCustomerName(explicitName || text) && !this.looksLikeAddressRejectingPersonName(text) &&
         !this.looksLikePayment(text, cfg.paymentMethods) &&
         !this.repliesWithCatalogDishName(text, await this.catalogService.getMenuProducts())) {
       // A fresh name answers checkout without assigning the earlier ambiguous label to a place.
-      await this.conversationService.saveSession(conv, {...session,pendingRecipientOrPlace:undefined});
+      await this.conversationService.saveSession(conv, {...session,pendingRecipientOrPlace:undefined,pendingRecipientOrPlaceAddress:undefined});
     }
     return false;
   }

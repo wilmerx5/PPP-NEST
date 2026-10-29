@@ -1,0 +1,70 @@
+{
+  "baseCommit": "fb0e2c6dccaca1c11a6b61529046e87a255cddb0",
+  "batches": [
+    270
+  ],
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 218.49,
+      "sourceUnchanged": true,
+      "tests": 4206,
+      "failed": 0
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 195.98,
+      "sourceUnchanged": true,
+      "tests": 3405,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 276.25,
+      "sourceUnchanged": true,
+      "tests": 13777,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.09,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 545,
+  "tests": 21404,
+  "suites": 334,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 54,
+  "focusTests": 426,
+  "focusSuites": 6,
+  "runtimeChanged": true,
+  "persistenceChanged": true,
+  "newOptionalSessionField": "pendingRecipientOrPlaceAddress",
+  "sqlMigration": false,
+  "productionChanged": false,
+  "deploymentStatus": "Validated locally; staging deployment pending",
+  "baseline": {
+    "failed": 24,
+    "passed": 12,
+    "additionalGuards": 18
+  },
+  "limits": [
+    "External services and models mocked; no real Meta, inference, PDF or audio evaluation.",
+    "Location pin invalidates remembered street; resolving the place role afterwards may request the destination again.",
+    "Resolve or normally cancel pending recipient/place drafts before rollback."
+  ]
+}
