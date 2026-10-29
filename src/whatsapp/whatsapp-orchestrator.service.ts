@@ -1498,6 +1498,7 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
     }
     if (await this.tryHandleMultipleRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleCountedRemovalAddition(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleReferencedUnitRemoval(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleReferencedCookingChange(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleRejectedProductRemoval(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -15686,6 +15687,55 @@ export class WhatsappOrchestratorService {
     if (hold?.length) hold[0] = `${notice}\n\n${hold[0]}`;
     else await this.reply(conv, waId, notice);
     return next;
+  }
+
+  /** Plan both actions in a detached session; persist only a complete valid result. */
+  private async tryHandleCountedRemovalAddition(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state)) return false;
+    const raw=text.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').replace(/^¿/,'');
+    const request=raw.match(/^(?:quita|quitame|retira|retirame|saca|sacame|elimina) (.+?) y (?:agrega|agregame|anade|ponme) (.+)$/);
+    if (!request) return false;
+    const unchanged=async(reason:string)=>{await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;};
+    if (/[¿?]/.test(text)) return unchanged('Para aplicar ambos cambios, envía la instrucción sin pregunta.');
+    if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+        session.pendingUnitDistribution || session.pendingSubsetKitchenNote || session.pendingPriceInquiry || session.pendingCompositionAsk ||
+        CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
+      return unchanged('Hay una selección o pago pendiente; aclaremos eso antes de aplicar ambos cambios.');
+    const counts:Record<string,number>={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+    const token='(un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[+-]?\\d+(?:[.,]\\d+)?)';
+    const removal=request[1].match(new RegExp(`^${token} de (?:los|las) de (.+)$`));
+    const addition=request[2].match(new RegExp(`^${token} (.+)$`));
+    if (!removal || !addition) return unchanged('Repite la petición completa con la cantidad que retiramos y la cantidad y nombre del producto que añadimos.');
+    const removed=counts[removal[1]]??Number(removal[1]), added=counts[addition[1]]??Number(addition[1]);
+    if (![removed,added].every(amount=>Number.isSafeInteger(amount)&&amount>=1&&amount<=99))
+      return unchanged('Indica cantidades enteras entre 1 y 99 para ambos cambios.');
+    const parsed=parseScopedCartRemoval(`quita uno de los de ${removal[2]}`);
+    if (!parsed || parsed.quantity!==1 || parsed.target!==undefined || parsed.preserve.length || /\b(?:si|pero|sino|excepto|conserva|agrega|cambia)\b/.test(removal[2]))
+      return unchanged('Aclara una sola retirada y una sola adición, sin otras acciones o condiciones.');
+    const indices=session.cart.flatMap((line,index)=>correctionMatchesLine(line,parsed.query)?[index]:[]);
+    if (indices.length!==1) return unchanged('No identifiqué una sola línea para retirar. Repite ambos cambios con el plato y su opción.');
+    const index=indices[0], original=session.cart[index];
+    if (removed>original.quantity) return unchanged(`Esa línea tiene ${original.quantity} unidades; no puedo retirar ${removed}.`);
+    const products=await this.catalogService.getMenuProducts();
+    const targets=products.filter(product=>this.normalizeForMatch(product.name)===this.normalizeForMatch(addition[2]));
+    if (targets.length!==1 || targets[0].availableNow===false)
+      return unchanged('No encontré un único producto disponible con ese nombre para añadir. Repite la petición con su nombre completo.');
+    const product=targets[0];
+    if (product.hasAttributes && product.attributes?.length)
+      return unchanged('El producto que quieres añadir necesita opciones. Aclaremos esa elección antes de aplicar ambos cambios.');
+    const draft=structuredClone(session);
+    draft.cart=draft.cart.flatMap((line,i)=>i!==index?[line]:line.quantity>removed?[{...line,quantity:line.quantity-removed}]:[]);
+    const result=this.tryAddProductToCart(draft,product,added,cfg);
+    if (result.blocked || result.missingAttributes || result.alreadyHad)
+      return unchanged('No pude completar ambos cambios dentro de los límites del pedido.');
+    const next={...this.reconcileSubstitutionPending(result.session),lastDrinkAddition:undefined};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,`Listo, quité ${removed} ${removed===1?'unidad':'unidades'} de *${original.name}* y agregué ${added} de *${product.name}*.\n\n`+
+      this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
   }
 
   /** Resolve every counted removal before persisting; never apply a valid prefix. */

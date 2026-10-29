@@ -125,6 +125,14 @@ Base `ee127315`. Aclara cada referencia ambigua conservando todas las cantidades
 
 Sin SQL o modelos nuevos. Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Fixtures sintéticos derivados del plan; no nueva revisión de chats/PDF/audio. Pruebas de dos cláusulas, gramática de289; no añadir+cambiar+retirar ni reparto entre líneas. Para sustituir una petición contada pendiente: cancelar y repetir. Siguiente: matriz trazable de fuentes/paridad y operaciones heterogéneas. PPP producción y Kamppo mantienen282;283–290 son staging. Despliegue registrado aparte.
 
+## VIGENTE — tanda291: retirada contada y adición atómica (29/10)
+
+Base `e147c34b`. «Quita uno de los de pechuga y agrega dos Agua Mineral» valida una retirada y una adición antes de guardar. Prepara resultado en copia de sesión, reutiliza adición/límites existentes y conserva notas/opciones/precios de las demás unidades. Acumula en línea compatible; límites sobre resultado final. Cantidad inválida, referencia desconocida/ambigua/insuficiente, destino desconocido/ambiguo/agotado/con opciones, límites, pregunta/condición/tercera acción y selecciones/pagos pendientes conservan todo.
+
+420 pruebas nuevas (192 operaciones,216 guardas,12 recuperaciones), tres catálogos, compra/revisión y agente simulado off/on. Baseline inicial396:192 aprobadas/204 fallidas;24 guardas añadidas después. Foco1130/4. Global26237/358, inventario exacto y570 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-291-validation.json` y `whatsapp-batch-291-patterns.md`.
+
+Sin SQL, campos de sesión ni modelos nuevos. Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Fixtures sintéticos; no nueva revisión de chats/PDF/audio. Gramática acotada, destino por nombre completo sin opciones requeridas. No orden inverso, alias, tres acciones, preparación ni aclaración persistente de esta mezcla. Siguiente: opciones/aclaración de operaciones mixtas y matriz trazable de fuentes/paridad. PPP producción y Kamppo mantienen282;283–291 son staging. Despliegue registrado aparte.
+
 ## Historial de validaciones y planes anteriores
 
 Las etiquetas «VIGENTE» de las entradas antiguas describían su fecha. Para prioridades y estado actual, usar la hoja de ruta superior y la última evidencia de despliegue.

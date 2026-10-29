@@ -1,5 +1,14 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda291: retirada contada y adición atómica (29/10)
+
+Base `e147c34b`. «Quita uno de los de pechuga y agrega dos Agua Mineral» valida una retirada y una adición antes de guardar. Prepara resultado en copia de sesión, reutiliza adición/límites existentes y conserva notas/opciones/precios de las demás unidades. Acumula en línea compatible; límites sobre resultado final. Cantidad inválida, referencia desconocida/ambigua/insuficiente, destino desconocido/ambiguo/agotado/con opciones, límites, pregunta/condición/tercera acción y selecciones/pagos pendientes conservan todo.
+
+420 pruebas nuevas (192 operaciones,216 guardas,12 recuperaciones), tres catálogos, compra/revisión y agente simulado off/on. Baseline inicial396:192 aprobadas/204 fallidas;24 guardas añadidas después. Foco1130/4. Global26237/358, inventario exacto y570 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-291-validation.json` y `whatsapp-batch-291-patterns.md`.
+
+Sin SQL, campos de sesión ni modelos nuevos. Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Fixtures sintéticos; no nueva revisión de chats/PDF/audio. Gramática acotada, destino por nombre completo sin opciones requeridas. No orden inverso, alias, tres acciones, preparación ni aclaración persistente de esta mezcla. Siguiente: opciones/aclaración de operaciones mixtas y matriz trazable de fuentes/paridad. PPP producción y Kamppo mantienen282;283–291 son staging. Despliegue registrado aparte.
+
+
 ## VIGENTE — tanda290: aclaración de retiradas compuestas (29/10)
 
 Tanda290 desplegada en staging: código `d7babf8a`, imagen `sha256:6978a43d7b1502593df22a43e2f052dd53586bc577bf174caed3b0137e94fe42`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica290 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-290-staging-deployment.json`. PPP producción y Kamppo conservan282.
