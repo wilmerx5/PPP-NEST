@@ -15688,7 +15688,6 @@ export class WhatsappOrchestratorService {
     return next;
   }
 
-  /** A numbered clarification must preserve the original removal quantity. */
   /** Resolve every counted removal before persisting; never apply a valid prefix. */
   private async tryHandleCompoundCountedRemoval(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
@@ -15704,7 +15703,8 @@ export class WhatsappOrchestratorService {
     const parts=raw.replace(/^(?:quita|quitame|retira|retirame|saca|sacame|elimina) /,'').split(/\s+y\s+/);
     if (parts.length<2 || parts.length>5) return unchanged('Indica entre dos y cinco retiradas con sus cantidades y opciones.');
     const counts:Record<string,number>={uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
-    const operations=new Map<number,number>();
+    const groups:number[][]=[], quantities:number[]=[];
+    const known=new Set<number>();
     for (const part of parts) {
       const match=part.match(/^(uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[+-]?\d+(?:[.,]\d+)?) de (?:los|las) de (.+)$/);
       if (!match) return unchanged('Repite la petición completa indicando cuántas unidades retiramos de cada opción.');
@@ -15716,19 +15716,40 @@ export class WhatsappOrchestratorService {
           /\b(?:si|pero|sino|agrega|cambia|conserva|excepto)\b/.test(match[2]))
         return unchanged('Aclara la petición completa sin mezclar retiradas con otras acciones o condiciones.');
       const indices=session.cart.flatMap((line,index)=>correctionMatchesLine(line,parsed.query)?[index]:[]);
-      if (indices.length!==1)
+      if (!indices.length)
         return unchanged(`No identifiqué una sola línea para «${match[2]}». Repite todas las retiradas con el plato y la opción que distingue cada línea.`);
       const index=indices[0];
-      if (operations.has(index)) return unchanged('Dos retiradas señalan la misma línea. Repite la petición completa con una cantidad total por línea.');
-      if (amount>session.cart[index].quantity)
+      if (indices.length===1 && known.has(index)) return unchanged('Dos retiradas señalan la misma línea. Repite la petición completa con una cantidad total por línea.');
+      if (indices.length===1 && amount>session.cart[index].quantity)
         return unchanged(`La línea «${match[2]}» tiene ${session.cart[index].quantity} unidades; no puedo retirar ${amount}. Repite la petición completa con las cantidades correctas.`);
+      if (indices.length===1) known.add(index);
+      groups.push(indices);quantities.push(amount);
+    }
+    if (groups.some(group=>group.length>1)) {
+      await this.promptMultipleRemoval(conv,waId,session,groups,quantities);
+      return true;
+    }
+    return this.applyCountedRemovals(conv,waId,session,groups,quantities,cfg);
+  }
+
+  private async applyCountedRemovals(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    groups: number[][], quantities: number[], cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const operations=new Map<number,number>();
+    for (const [i,group] of groups.entries()) {
+      const index=group[0], amount=quantities[i], line=session.cart[index];
+      if (group.length!==1 || !line || operations.has(index) || !Number.isSafeInteger(amount) || amount<1 || amount>99 || amount>line.quantity) {
+        await this.reply(conv,waId,'No cambié el pedido. Revisa las cantidades y elige líneas distintas; el pedido sigue igual.');
+        return true;
+      }
       operations.set(index,amount);
     }
     const cart=session.cart.flatMap((line,index)=>{
       const amount=operations.get(index);
       return amount===undefined?[line]:line.quantity>amount?[{...line,quantity:line.quantity-amount}]:[];
     });
-    const next={...this.reconcileSubstitutionPending({...session,cart}),lastDrinkAddition:undefined};
+    const next={...this.reconcileSubstitutionPending({...session,cart}),lastDrinkAddition:undefined,pendingCartRemoval:undefined};
     await this.conversationService.saveSession(conv,next,cart.length?conv.state:'building_cart');
     await this.reply(conv,waId,`Listo, quité ${[...operations.values()].reduce((a,b)=>a+b,0)} unidades de las líneas indicadas.\n\n`+
       this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
@@ -16751,14 +16772,15 @@ export class WhatsappOrchestratorService {
   }
 
   private async promptMultipleRemoval(
-    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, groups: number[][],
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, groups: number[][], quantities?: number[],
   ): Promise<void> {
     const unresolved = groups.find(group => group.length > 1)!;
     const options = unresolved.map(cartIndex => ({ cartIndex,
       label: this.formatCartLineLabel(session.cart[cartIndex]) + (session.cart[cartIndex].note ? ` · ${session.cart[cartIndex].note}` : '') }));
-    const next = { ...session, pendingCartRemoval: { cartSignature: JSON.stringify(session.cart), options, batchGroups: groups } };
+    const next = { ...session, pendingCartRemoval: { cartSignature: JSON.stringify(session.cart), options, batchGroups: groups, ...(quantities ? {batchQuantities:quantities} : {}) } };
     await this.conversationService.saveSession(conv,next);
-    await this.reply(conv,waId,'No cambié el pedido. Hay varias opciones. ¿Cuál quieres quitar de esta lista?\n' +
+    const amount=quantities?.[groups.findIndex(group=>group.length>1)];
+    await this.reply(conv,waId,(amount ? `No cambié el pedido. ¿De cuál línea retiro ${amount} ${amount===1?'unidad':'unidades'}? El pedido sigue igual.\n` : 'No cambié el pedido. Hay varias opciones. ¿Cuál quieres quitar de esta lista?\n') +
       options.map((option,index) => `${index+1}. ${option.label}`).join('\n') +
       '\nEscribe el número, su nombre completo o una característica que lo distinga. Retiraré los productos juntos cuando aclaremos todas las opciones.');
   }
@@ -16785,6 +16807,10 @@ export class WhatsappOrchestratorService {
       await this.reply(conv,waId,'Hay otra selección o pago pendiente. No cambié el pedido; aclaremos eso antes de retirar los productos.');
       return true;
     }
+    if (pending.batchQuantities && (cartTotalFollowupIntent(text,true) || this.looksLikeOrderTotalQuestion(text))) {
+      await this.reply(conv,waId,this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+this.formatPendingCartEditReminder(session));
+      return true;
+    }
     const numeric = /^\d+$/.test(text.trim()) ? Number(text.trim()) : null;
     const named = numeric === null ? this.uniqueClarificationLine(session,pending.options,text) : null;
     const index = numeric !== null ? pending.options[numeric-1]?.cartIndex : named && named !== 'ambiguous' ? named.index : undefined;
@@ -16793,11 +16819,20 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const cursor = pending.batchGroups.findIndex(group => group.length > 1);
+    if (pending.batchQuantities) {
+      const amount=pending.batchQuantities[cursor];
+      if (!Number.isSafeInteger(amount) || amount<1 || amount>99 || !session.cart[index] || amount>session.cart[index].quantity ||
+          pending.batchGroups.some((group,i)=>i!==cursor && group.length===1 && group[0]===index)) {
+        await this.reply(conv,waId,'Esa línea no permite la retirada o ya está elegida en otra parte. Elige otra opción o cancela el cambio. El pedido sigue igual.');
+        return true;
+      }
+    }
     const groups = pending.batchGroups.map((group,i) => i === cursor ? [index] : group);
     if (groups.some(group => group.length > 1)) {
-      await this.promptMultipleRemoval(conv,waId,session,groups);
+      await this.promptMultipleRemoval(conv,waId,session,groups,pending.batchQuantities);
       return true;
     }
+    if (pending.batchQuantities) return this.applyCountedRemovals(conv,waId,session,groups,pending.batchQuantities,cfg);
     const next = this.removeCartLines(session,[...new Set(groups.flat())]);
     await this.conversationService.saveSession(conv,next,next.cart.length ? conv.state : 'building_cart');
     await this.reply(conv,waId,'Listo, retiré los productos indicados.\n\n' + this.formatCartOnly(next,this.deliveryFeeFor(next,cfg)) +
@@ -17899,8 +17934,10 @@ export class WhatsappOrchestratorService {
     if (edit.cartSignature && edit.cartSignature !== JSON.stringify(session.cart)) {
       return 'El carrito cambió. Dime otra vez cuál plato y qué cambio hacemos antes de confirmar.';
     }
+    const removal=session.pendingCartRemoval;
+    const removalAmount=removal?.quantity ?? removal?.batchQuantities?.[removal.batchGroups?.findIndex(group=>group.length>1) ?? -1];
     const question = {
-      pendingCartRemoval: session.pendingCartRemoval?.quantity ? `Para continuar, ¿de cuál línea retiramos ${session.pendingCartRemoval.quantity===1 ? 'una unidad' : `${session.pendingCartRemoval.quantity} unidades`}?` : 'Para continuar, ¿cuál línea quitamos?',
+      pendingCartRemoval: removalAmount ? `Para continuar, ¿de cuál línea retiramos ${removalAmount===1 ? 'una unidad' : `${removalAmount} unidades`}?` : 'Para continuar, ¿cuál línea quitamos?',
       pendingCartQuantity: 'Para continuar el cambio de cantidad, elige la línea:',
       pendingCartReplacement: 'Para continuar el reemplazo, elige la línea:',
       pendingCartAttributeEdit: 'Para continuar el cambio, elige el plato:',

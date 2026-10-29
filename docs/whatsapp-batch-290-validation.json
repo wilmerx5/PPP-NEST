@@ -1,0 +1,68 @@
+{
+  "baseCommit": "ee1273156c776ec68d7c3baebc1490395d8d998e",
+  "batches": [
+    290
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 273.53,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 396.19,
+      "sourceUnchanged": true,
+      "tests": 18190,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.71,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 569,
+  "tests": 25817,
+  "suites": 357,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 290,
+  "newRegressionTests": 276,
+  "newSuites": 1,
+  "focusPassed": 1260,
+  "focusSuites": 7,
+  "baseline": {
+    "passed": 36,
+    "failed": 228,
+    "additionalTestsAfterBaseline": 12
+  },
+  "families": {
+    "clarifications": 96,
+    "guards": 120,
+    "recovery": 48,
+    "overlapRecovery": 12
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Saved cart fixtures, mocked models and external services",
+    "Bounded counted removal grammar; two clauses covered",
+    "Not new chats/PDF/audio review",
+    "Not promoted to production or migrated to Kamppo"
+  ]
+}

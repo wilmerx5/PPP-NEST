@@ -211,6 +211,8 @@ export type WhatsappSessionData = {
     options: Array<{ cartIndex: number; label: string }>;
     /** Atomic multi-product removal: each group selects one original cart line. */
     batchGroups?: number[][];
+    /** Parallel amounts for counted removal; absent means remove whole lines. */
+    batchQuantities?: number[];
   };
   /**
    * Tras cotizar precio (“¿Te lo agrego?”): si responde *sí*, agregar este SKU.
