@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda275: bebidas, categorías y cierre con total (28/10)
 
+Tanda275 publicada y desplegada en staging: código `3dbcb6a4`, imagen `sha256:77f0b375d4b30b5bd7f9f0f4ef24984b333267d07fb11e920f7f0a333b7f32a0`, healthy,0reinicios, APIlocal/pública200. Controles compilados de categorías/cierre y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-275-staging-deployment.json`. Kamppo solo recibió la corrección del identificador (runtime973a072, healthy); delta lingüístico266–275 pendiente.
+
 Reportes nuevos desde Kamppo: «Quiero algo de tomar», «No maa», «tienes carne?» con postres, «no mas, cuanto es?» y «de todo lo que pedi» capturado como dirección. Corrección PPP: navegación genérica de bebidas antes de partir producto/dirección; categorías por palabra completa (res no coincide con Postres); errata completa de cierre; total del carrito y avance con revisión final obligatoria; aclaración del total conserva dirección y carrito. Sin nombres/IDs/precios de PPP en reglas. Las mejoras lingüísticas permanecen aquí para migración posterior.
 
 25 regresiones nuevas; foco25/1. Global21663/338 aprobada, inventario exacto y550fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-275-validation.json`. Incluye controles de no confirmar ante pregunta, preservar carrito/notas, no cerrar rechazos parciales y distinguir ambas rutas de conceptos. Modelos y servicios simulados; cero llamadas pagadas/Meta/órdenes externas; ledger267/256/11 intacto. No acredita experiencia del modelo real ni conversión.

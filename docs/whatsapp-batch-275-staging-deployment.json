@@ -1,0 +1,82 @@
+{
+  "batch": 275,
+  "runtimeCodeCommit": "3dbcb6a436a5b3ff074013349b715c23cccc8182",
+  "verification": {
+    "compiledNewBehavior": "4 compiled category-boundary and closing-typo checks passed\n3 compiled greeting checks passed: default, stored invitation, legacy stored invitation\n3 compiled repeat-question checks passed: role repeated without mutation, specific question not swallowed, closed conversation excluded\n3 compiled role-pin checks passed: quote preserved, rejection preserved, mismatched pin discarded\n9 compiled colloquial account-question and mixed-request guards passed\n3 compiled interruption checks passed: fresh street tracked, pickup clears role, clarification preserves street\n3 compiled role checks passed: direct confirmation block, question preserved, place resolved\n7 compiled checkout checks passed: merchant questions, choice/mixed-request guards, ETA units and burst boundaries\n18 compiled referenced preparation routing, negated removal, atomic multiple-removal, short clarification, stale cart, direct guard, paired-plan, negation, atomic split, combo, supply, idempotency, repeated substitution, labelled drink, receipt notes and central-confirmation checks passed; external services isolated",
+    "environment": "staging",
+    "checkedAt": "2026-10-29T02:39:28.676162+00:00",
+    "head": "3dbcb6a436a5b3ff074013349b715c23cccc8182",
+    "image": "sha256:77f0b375d4b30b5bd7f9f0f4ef24984b333267d07fb11e920f7f0a333b7f32a0",
+    "candidateImage": "sha256:77f0b375d4b30b5bd7f9f0f4ef24984b333267d07fb11e920f7f0a333b7f32a0",
+    "state": "running",
+    "health": "healthy",
+    "restartCount": 0,
+    "models": {
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol"
+    },
+    "compiledSmoke": "3 compiled routing checks passed\n2 compiled description checks passed",
+    "compiledConfirmationGuard": "compiled unresolved distribution blocks direct confirmation",
+    "compiledModuleHashes": {
+      "whatsapp-agent-model": "4cb9ac9f0f24265375107f46539c3d17e24fc1396aface51b70c7e5bbe18525d",
+      "whatsapp-agent.service": "aac50bcaf8a9cdc11cd84962576aadf7f00de59e9e61210bb6fc64a42d0af784",
+      "whatsapp-cart-edits": "de69254f08d953219e09d1efafde71891a07d402630343abdd93fac85de6dbee",
+      "whatsapp-orchestrator.service": "1e8df50a7e7c72407404d67b78856ad136146ea16a86930cf5a75f2d31866e3f",
+      "whatsapp-catalog.service": "96ed954ff33af9efee611da77eaac3af1a0d5ce9956634810dff6e51cc3c7099"
+    },
+    "endpoints": [
+      {
+        "url": "http://127.0.0.1:3301/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 53.03,
+            "heapTotal": 58.62,
+            "rss": 120.88
+          },
+          "timestamp": "2026-10-29T02:39:24.188Z"
+        }
+      },
+      {
+        "url": "https://dev.prontopolloportal.com/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 53.15,
+            "heapTotal": 58.62,
+            "rss": 120.88
+          },
+          "timestamp": "2026-10-29T02:39:24.385Z"
+        }
+      }
+    ],
+    "envSha256": "9a318abb69d6a267de33de4bdc35233eb78e690e426b945f85ebeeacce84d9b4",
+    "composeSha256": "cf8560aa0c07799146da868e5104c0ff3e7932cf20b8dd7d22bbd2c0d93ffa57",
+    "privateComposePreserved": true,
+    "privateEnvironmentPreserved": true,
+    "gitStatus": "?? bin/"
+  },
+  "productionUnchanged": true,
+  "production": {
+    "compose": "d973f08a9a1708b7309e801c07738350ce8e4f61b17af295bf52b6828bdf3b84",
+    "env": "a74c4d62351cceacca45e97beaee8ea3396613921bff45d64b8e72453fc92ac3",
+    "head": "5225ccb37cd92b5b3acd488cede9c627fc4c6244",
+    "image": "sha256:c50f5be01a0944c54a75980e1d9e231b50fbb447a735cfb89f0cdccd1ed6c6f3",
+    "started": "2026-10-28T21:26:35.467660683Z"
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "kamppoRuntimeFix": "973a0725995265bb7e1351057b8c5369d1ba1bca",
+  "languageChangesPortedToKamppo": false
+}
