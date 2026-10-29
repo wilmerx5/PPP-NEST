@@ -1,0 +1,27 @@
+{
+  "batch": 298,
+  "baseCommit": "bacddb3dcb8dc4147c9ab20deac584a59a0c39da",
+  "newTests": 384,
+  "newPassed": 384,
+  "relatedPassed": 456,
+  "focusTotalPassed": 840,
+  "focusSuites": 3,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 295,
+    "tests": 26514,
+    "suites": 362
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic seeded carts, not 384 independent real chats",
+    "Eight rejection families crossed with catalogs, merge, remaining quantity, simulated agent and payment",
+    "Recovery repeats the complete instruction; short clarification remains pending",
+    "No new real model, media or Meta validation",
+    "No deployment: test-only change"
+  ]
+}

@@ -1,3 +1,11 @@
+## VIGENTE — tanda298: matriz de recuperación de operaciones mixtas (29/10)
+
+Base `bacddb3d`.384 recorridos sintéticos:8 rechazos (destino inexistente, retirada excesiva/negativa, adición decimal/cero, referencia inexistente, condición, tercera acción) ×3 catálogos ×agente simulado off/on ×efectivo/transferencia ×retirada parcial/completa ×destino nuevo/existente. Primero exige carrito intacto y respuesta explícita; después repite la instrucción completa corregida. Comprueba retirada y adición juntas, fusión de cantidades, notas/atributos del plato restante, ausencia de notas heredadas en el producto añadido, estados de checkout, creación única solo al confirmar, unidades exactas del DTO y total/nota en recibo.
+
+384 nuevos aprobados +456 regresiones relacionadas =840 pruebas en3 suites; TypeScript general/build aprobados. Sin fallos nuevos ni cambio de motor. Publicación de pruebas, sin despliegue nuevo. Último global de runtime26514/362 en295; no reejecutado ni atribuido al inventario ampliado298. Evidencia `whatsapp-batch-298-validation.json` y `whatsapp-batch-298-patterns.md`.
+
+Última verificación registrada: PPP staging295, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Límite pendiente: aclaraciones cortas y persistentes de operaciones mixtas («el segundo»); esta tanda acredita recuperación repitiendo la petición completa, no soluciona ese límite.
+
 ## VIGENTE — tanda297: preparación parcial hasta confirmación (29/10)
 
 Base `250febb5`.72 recorridos nuevos: tres catálogos sintéticos, agente simulado off/on, grupos de2/3/4 unidades, posición de línea alternada y efectivo/transferencia. «Cámbiame uno de los de pechuga a pollo broaster» y referencias equivalentes de tofu/pescado. Separa exactamente una unidad, conserva notas y atributos compatibles, mantiene la otra línea con bebida/opciones distintas y aplica el precio del destino. Verifica carrito exacto, respuesta, estados de recogida/pago/confirmación, ausencia de creación anticipada, una sola creación, unidades del DTO con notas/atributos y recibo con total correcto.

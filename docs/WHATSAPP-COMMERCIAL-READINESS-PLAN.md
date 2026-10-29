@@ -183,6 +183,14 @@ Baseline72/72; foco466/3; TypeScript general/build aprobados. Sin fallos nuevos 
 
 PPP staging295, producción292, Kamppo282 según última verificación registrada. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. No implica validación con modelo real. Idiomas aplazados. Próximo: recuperación de operaciones mixtas ambiguas y continuidad tras aclaraciones, conservando el pedido hasta resolver destino y cantidad.
 
+## VIGENTE — tanda298: matriz de recuperación de operaciones mixtas (29/10)
+
+Base `bacddb3d`.384 recorridos sintéticos:8 rechazos (destino inexistente, retirada excesiva/negativa, adición decimal/cero, referencia inexistente, condición, tercera acción) ×3 catálogos ×agente simulado off/on ×efectivo/transferencia ×retirada parcial/completa ×destino nuevo/existente. Primero exige carrito intacto y respuesta explícita; después repite la instrucción completa corregida. Comprueba retirada y adición juntas, fusión de cantidades, notas/atributos del plato restante, ausencia de notas heredadas en el producto añadido, estados de checkout, creación única solo al confirmar, unidades exactas del DTO y total/nota en recibo.
+
+384 nuevos aprobados +456 regresiones relacionadas =840 pruebas en3 suites; TypeScript general/build aprobados. Sin fallos nuevos ni cambio de motor. Publicación de pruebas, sin despliegue nuevo. Último global de runtime26514/362 en295; no reejecutado ni atribuido al inventario ampliado298. Evidencia `whatsapp-batch-298-validation.json` y `whatsapp-batch-298-patterns.md`.
+
+Última verificación registrada: PPP staging295, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Límite pendiente: aclaraciones cortas y persistentes de operaciones mixtas («el segundo»); esta tanda acredita recuperación repitiendo la petición completa, no soluciona ese límite.
+
 ## Historial de validaciones y planes anteriores
 
 Las etiquetas «VIGENTE» de las entradas antiguas describían su fecha. Para prioridades y estado actual, usar la hoja de ruta superior y la última evidencia de despliegue.
