@@ -1,5 +1,16 @@
 
 
+## VIGENTE — tanda279: traslado inmediato de una nota recién aplicada (28/10)
+
+Base `0ce5fb31`. Secuencia: dos platos → «uno sin cebolla» → «1» → «no, el otro» / «perdón, el otro» / «mejor el otro». Antes la nota permanecía en el primero. Ahora se restaura la nota anterior de origen y se añade solo la indicación recién elegida al segundo, conservando precios, cantidades y demás notas.
+
+Alcance deliberado: selección resuelta por `pendingSubsetKitchenNote.byUnits`, dos líneas elegibles de una unidad y un cambio efectivo. Nuevo campo JSON opcional `lastKitchenNoteSelection`: carrito anterior, firma posterior, índice, nota y fecha. Sin SQL. Se consume al siguiente texto procesado; enlaces de ubicación, medios y takeover lo invalidan (reacciones ignoradas no cuentan como nueva instrucción). Firma distinta, más de10min, fecha futura, selección/pago pendiente o estado cerrado impiden trasladar. Repetir no vuelve a alternar. Una nota previa «con cebolla» obliga a aclarar frente a «sin cebolla». No generalizar esta comprobación a toda contradicción posible de cocina. Próximas pruebas: poco/menos/frente a sin, notas compuestas y destino nombrado entre tres líneas.
+
+72 regresiones nuevas; baseline12fallos/0aprobadas y60 controles adicionales. Foco218/3. Global21913/342 aprobada, inventario exacto y554fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-279-validation.json`.
+
+Cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. No prueba de inferencia real ni medios/canal. No se trasladan automáticamente notas entre tres líneas, cantidades múltiples, notas preexistentes sin cambio o cualquier otra ruta de edición. El campo opcional puede ignorarse en rollback; no reutilizar un contexto antiguo tras restaurar sesiones. Producción PPP sigue265; delta266–279 pendiente de Kamppo. Despliegue registrado por separado.
+
+
 ## VIGENTE — tanda278: aclaración ordinal de una nota pendiente (28/10)
 
 Tanda278 publicada y desplegada en staging: código `58d6edcf`, imagen `sha256:ec8d0526d0228fec4b24f2bc4fbf6ea7b41c2ec7596c6e9e0ad0aa14a0071729`, healthy,0reinicios, APIlocal/pública200. Controles compilados de aclaración ordinal y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-278-staging-deployment.json`. Sin cambios en Kamppo durante esta tanda; delta lingüístico266–278 pendiente.

@@ -1,0 +1,67 @@
+{
+  "baseCommit": "0ce5fb31258016394284fe181084b11e11c65314",
+  "batches": [
+    279
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 276.51,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 269.73,
+      "sourceUnchanged": true,
+      "tests": 14286,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.4,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 554,
+  "tests": 21913,
+  "suites": 342,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 279,
+  "focus": {
+    "passed": 218,
+    "suites": 3
+  },
+  "newRegressionTests": 72,
+  "baseline": {
+    "failed": 12,
+    "passed": 0
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "scope": [
+    "Immediate redirection of a newly resolved kitchen note between two single-unit cart lines",
+    "Restore source prior note and append only selected note to target",
+    "Cart signature, ten-minute expiry, intervening text/media, pending selection, closed state, repetition and polarity guards"
+  ],
+  "limits": [
+    "Synthetic sequences on two catalogs; mocked model and services",
+    "Only notes just resolved through pendingSubsetKitchenNote byUnits, not every note-edit path",
+    "No automatic interpretation across three lines or multi-unit lines",
+    "No real WhatsApp/audio validation, Kamppo port or production deployment"
+  ]
+}

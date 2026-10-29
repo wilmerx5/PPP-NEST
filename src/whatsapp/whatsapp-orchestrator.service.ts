@@ -1022,6 +1022,10 @@ export class WhatsappOrchestratorService {
       const fresh = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, fresh);
     }
+    if (msg.messageType !== 'text' || !this.isKitchenNoteRedirect(msg.text || '') || conv.humanTakeover || continuation?.approvalAfter) {
+      const current = this.conversationService.getSession(conv);
+      if (current.lastKitchenNoteSelection) await this.conversationService.saveSession(conv, {...current, lastKitchenNoteSelection:undefined});
+    }
     if (conv.humanTakeover) {
       return;
     }
@@ -1190,7 +1194,9 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    const checkoutSession = this.conversationService.getSession(conv);
+    let checkoutSession = this.conversationService.getSession(conv);
+    if (await this.tryRedirectLastKitchenNote(conv, msg.waId, checkoutSession, text, cfg)) return;
+    checkoutSession = this.conversationService.getSession(conv);
     if (/^awaiting_(?:name|address|phone|payment|final_confirm)$/.test(conv.state || '') && checkoutSession.cart.length &&
         isCheckoutWaitIntent(text)) {
       await this.reply(conv, msg.waId, 'Claro, te espero. Cuando estés listo seguimos con el pedido.');
@@ -20201,6 +20207,44 @@ export class WhatsappOrchestratorService {
     return session.cart.flatMap((line,index)=>ids.has(line.productId)?[index]:[]);
   }
 
+  private isKitchenNoteRedirect(text: string): boolean {
+    return /^(?:no\s*,\s*|perd[oó]n\s*,?\s+|mejor\s+)(?:el\s+otro|la\s+otra)(?:\s+(?:porfa|por favor))?[.!]?$/i.test(text.trim());
+  }
+
+  private async tryRedirectLastKitchenNote(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    const last = session.lastKitchenNoteSelection;
+    if (!last) return false;
+    // Only the next message can refer to this selection. Consume before any action.
+    const next = {...session, lastKitchenNoteSelection: undefined};
+    await this.conversationService.saveSession(conv, next);
+    if (!this.isKitchenNoteRedirect(text)) return false;
+    const clarify = async () => {
+      await this.reply(conv, waId, '¿A cuál plato quieres pasar la nota y cuál es la indicación? El pedido sigue igual.');
+      return true;
+    };
+    if (!['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
+        session.pendingUnitDistribution || session.pendingCategoryBrowse || session.pendingAddOffer ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || !last.createdAt ||
+        Date.now() - last.createdAt < 0 || Date.now() - last.createdAt > 10 * 60 * 1000 ||
+        last.cartSignature !== JSON.stringify(session.cart) || last.beforeCart.length !== 2 ||
+        session.cart.length !== 2 || session.cart.some(line => line.quantity !== 1) ||
+        ![0,1].includes(last.sourceIndex)) return clarify();
+    const target = 1 - last.sourceIndex;
+    const exclusion = normalizeCorrection(last.note).match(/^sin (.+)$/);
+    const targetNote = ` ${normalizeCorrection(last.beforeCart[target].note || '')} `;
+    if (exclusion && targetNote.includes(` con ${exclusion[1]} `)) return clarify();
+    const edit = editScopedCartNote(last.beforeCart[target].note, {kind:'append',query:'',note:last.note,preserve:[]});
+    if (edit.blocked) return clarify();
+    const cart = last.beforeCart.map((line,index) => ({...line, ...(index === target ? {note:edit.note} : {})}));
+    const repaired = {...next,cart};
+    await this.conversationService.saveSession(conv, repaired);
+    await this.reply(conv, waId, `Listo, pasé la nota «${last.note}» a *${cart[target].name}*. Conservé las demás indicaciones.\n\n` +
+      this.formatCartOnly(repaired,this.deliveryFeeFor(repaired,cfg)) + '\n\n' +
+      (this.formatInterruptedStepReminder(conv,repaired) || this.formatContinueShoppingPrompt(repaired)));
+    return true;
+  }
+
   private async tryHandleSubsetKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
     const pending = session.pendingSubsetKitchenNote;
     if (!pending || conv.state==='awaiting_mp_payment') return false;
@@ -20296,7 +20340,11 @@ export class WhatsappOrchestratorService {
         return [...(quantity < line.quantity ? [{...line,quantity:line.quantity-quantity}] : []),
           {...line,quantity,note:edits[selected].note}];
       });
-      const next = {...session,cart,pendingSubsetKitchenNote:undefined};
+      const canRedirect = eligible.length === 2 && session.cart.length === 2 && rows.length === 1 && requested === 1 &&
+        session.cart.every(line => line.quantity === 1) && JSON.stringify(cart) !== JSON.stringify(session.cart);
+      const next = {...session,cart,pendingSubsetKitchenNote:undefined,
+        lastKitchenNoteSelection: canRedirect ? {beforeCart:structuredClone(session.cart),cartSignature:JSON.stringify(cart),
+          sourceIndex:rows[0],note,createdAt:Date.now()} : undefined};
       await this.conversationService.saveSession(conv,next);
       await this.reply(conv,waId,'Anotado en las unidades indicadas ✅\n\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
       return true;
