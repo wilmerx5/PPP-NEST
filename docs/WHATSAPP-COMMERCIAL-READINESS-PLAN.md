@@ -1,5 +1,14 @@
 
 
+## VIGENTE — tanda278: aclaración ordinal de una nota pendiente (28/10)
+
+Base `3b3652f0`. Secuencia sintética: comprar dos platos distintos → «uno sin cebolla» → «no, el segundo», «perdón, el segundo» o «mejor el segundo». Antes esas respuestas no resolvían la nota. Ahora se reconoce la reparación completa y se reutiliza el selector de la nota pendiente. Sin cambios globales a la negación ni nuevas persistencias. «No el segundo», pregunta, posición inexistente y «el otro» sin antecedente conservan la elección pendiente. Una línea de tres unidades recibe la nota solo en una; responder durante revisión final no confirma.
+
+44 regresiones nuevas, dos cartas×agente simulado off/on. Baseline12fallos/12aprobadas; 20 controles posteriores. Foco182/3. Global21841/341 aprobada, inventario exacto y553fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-278-validation.json`.
+
+Cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. No acredita inferencia real ni temporización del canal. No se implementa traslado automático de notas ya aplicadas ante «no, el otro»: sigue pendiente evaluar memoria de la corrección y su vigencia. Referencia de diseño existente: `tryUndoLastUnitOptionEdit` y `lastUnitOptionEdit` guardan carrito anterior y firma; no reutilizar esa marca entre tipos de edición sin pruebas de vigencia. Producción PPP continúa265; delta266–278 pendiente de Kamppo. Estado de despliegue registrado por separado.
+
+
 ## VIGENTE — tanda277: pagar frente a cancelar y espera conversacional (28/10)
 
 Tanda277 publicada y desplegada en staging: código `69ce65ea`, imagen `sha256:77a205bdf007785c26107e590200b3f07bfa216c62cf7eba8687dba2e33d2acf`, healthy,0reinicios, APIlocal/pública200. Controles compilados de pago/espera y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-277-staging-deployment.json`. Sin cambios en Kamppo durante esta tanda; delta lingüístico266–277 pendiente.

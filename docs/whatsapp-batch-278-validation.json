@@ -1,0 +1,67 @@
+{
+  "baseCommit": "3b3652f0b9e7b5f7227dd5b4674e6978119eb32a",
+  "batches": [
+    278
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 292.55,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 264.42,
+      "sourceUnchanged": true,
+      "tests": 14214,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.63,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 553,
+  "tests": 21841,
+  "suites": 341,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 278,
+  "focus": {
+    "passed": 182,
+    "suites": 3
+  },
+  "newRegressionTests": 44,
+  "baseline": {
+    "failed": 12,
+    "passed": 12
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "scope": [
+    "Ordinal discourse repair resolves a pending kitchen note",
+    "Bare negations, questions, out-of-range and unanchored references preserve the pending choice",
+    "One-unit splitting and final-review guards"
+  ],
+  "limits": [
+    "Synthetic sequences on two catalogs; mocked model and external services",
+    "Does not move an already-applied note on no el otro",
+    "Does not evaluate real WhatsApp burst timing or audio",
+    "No Kamppo port or production deployment"
+  ]
+}

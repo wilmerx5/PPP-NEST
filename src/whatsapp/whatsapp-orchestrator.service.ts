@@ -20259,6 +20259,10 @@ export class WhatsappOrchestratorService {
       }
       return false;
     }
+    // A discourse repair can select an ordinal; a bare negation must not.
+    // Restrict this to the pending note, never to a new purchase or a compound edit.
+    const repairedOrdinal = text.trim().match(/^(?:no\s*,\s*|perd[oó]n\s*,?\s+|mejor\s+)((?:el|la)\s+(?:primer[oa]|segund[oa]|tercer[oa]|cuart[oa]))(?:\s+(?:porfa|por favor))?[.!]?$/i);
+    if (repairedOrdinal) text = repairedOrdinal[1];
     const ask=async()=>{await this.reply(conv,waId,this.formatSubsetKitchenNoteQuestion(session));return true;};
     if (/\bde cada\b/i.test(text) || isNothingElseOrderIntent(text) || this.isConfirmKeyword(text)) return ask();
     if (/[¿?]/.test(text) || /^(?:no|si|agrega|quita|cambia)\b/.test(this.normalizeForMatch(text)) || pending.note&&/^(?:dame|quiero)\b/i.test(text)) return false;
