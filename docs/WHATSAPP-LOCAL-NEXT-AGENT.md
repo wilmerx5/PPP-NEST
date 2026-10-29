@@ -1,5 +1,16 @@
 
 
+## VIGENTE — tanda280: matriz amplia de conversación y notas (28–29/10)
+
+Base `4657bd29`. Tanda ampliada solicitada por el usuario: 352 pruebas nuevas en cuatro familias, controles de límites y continuación hasta una orden simulada. Fuentes: fragmentos de los PDF11/10 y18/10, chats compartidos y variantes sintéticas de la investigación previa. Trazabilidad y límites en `whatsapp-batch-280-patterns.md`; no es cobertura completa del corpus.
+
+Corrige esperas («espera un momento», «déjame revisar», «ya te confirmo»), repetición («no entendí bien», «qué me habías preguntado») y total («cuánto queda todo») sin capturar nombres/direcciones ni confirmar. En traslado inmediato de notas, «poca/menos/extra/bajito de/aparte» del mismo ingrediente frente a «sin» exige aclaración y conserva el carrito. No cambia modelos, SQL ni el alcance de dos líneas de una unidad de279.
+
+352/3 nuevas y358/5 vecinas aprobadas. Una global final: 22265/345, inventario exacto y557fuentes congeladas, TypeScript general/build y Node aprobados. Baseline contexto160fallos/80aprobadas; notas32 fallos de comportamiento reproducidos. Otros16fallos iniciales de notas eran contrato del test (tildes/selección compuesta), no correcciones del motor. Evidencia `whatsapp-batch-280-validation.json`.
+
+Cero llamadas pagadas, Meta u órdenes externas; ledger267/256/11 intacto. Ocho pruebas compuestas arrancan con selección pendiente preparada: comprensión inicial de notas compuestas ambiguas y destinos entre3+platos sigue pendiente. No muestra reservada, medios/canal ni conversión. Producción PPP sigue265; delta266–280 pendiente de Kamppo. Despliegue registrado por separado.
+
+
 ## VIGENTE — tanda279: traslado inmediato de una nota recién aplicada (28/10)
 
 Tanda279 publicada y desplegada en staging: código `f0617753`, imagen `sha256:927016ab3cbed2a6b25978d14f1cf895f84f7df02e006b93260bdc5cc32be338`, healthy,0reinicios, APIlocal/pública200. Controles compilados de traslado de nota y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-279-staging-deployment.json`. Sin cambios en Kamppo durante esta tanda; delta lingüístico266–279 pendiente.

@@ -283,7 +283,7 @@ export function isNothingElseOrderIntent(text: string): boolean {
 /** A complete request to wait, never the data that follows it. */
 export function isCheckoutWaitIntent(text: string): boolean {
   const t = withoutVocatives(normalizeIntentText(text));
-  return /^(?:(?:ya\s+)?voy|un\s+(?:momento|momentico|ratito|ratico)|dame\s+un\s+(?:momento|momentico|ratito|ratico|chance)|esperame|(?:ya|ahorita|ahora)\s+te\s+digo|(?:ya|ahorita|ahora)\s+te\s+(?:paso|mando|envio)\s+(?:la\s+(?:direccion|ubicacion)|el\s+(?:nombre|telefono)))$/.test(t);
+  return /^(?:(?:ya\s+)?voy|un\s+(?:momento|momentico|momentito|ratito|ratico)|dame\s+un\s+(?:momento|momentico|momentito|ratito|ratico|chance)|esperame|espera(?:me)? un (?:momento|momentico|momentito|ratito|ratico)|dejame (?:revisar|mirar|ver)|ya te confirmo|(?:ya|ahorita|ahora)\s+te\s+digo|(?:ya|ahorita|ahora)\s+te\s+(?:paso|mando|envio)\s+(?:la\s+(?:direccion|ubicacion)|el\s+(?:nombre|telefono)))$/.test(t);
 }
 
 /** Standalone drink browsing, without a concrete product, quantity or modifier. */
@@ -301,6 +301,7 @@ export function cartTotalFollowupIntent(
   if (!t || t.length > 120) return null;
   if (/^(?:(?:de\s+)?todo\s+lo\s+que\s+(?:pedi|he pedido|llevo)|(?:de\s+)?todo\s+el\s+pedido|(?:el\s+)?total(?:\s+del\s+pedido)?)$/.test(t) ||
     (pendingPriceInquiry && /^(?:de\s+)?todo$/.test(t))) return 'reference';
+  if (/^cuanto queda (?:todo|todo el pedido)(?: en total)?$/.test(t)) return 'reference';
   const question = t.match(/^(.*?)\s+(?:y\s+)?(cuanto\s+.+)$/);
   if (!question || !isNothingElseOrderIntent(question[1].replace(/\s+y$/, ''))) return null;
   const wholeCartQuestion = /^cuanto\s+(?:(?:es|seria|sale|vale|cuesta)(?:\s+(?:todo|en total|el total|todo el pedido))?|(?:te\s+)?debo|llevo)(?:\s+en\s+total)?$/.test(question[2]);

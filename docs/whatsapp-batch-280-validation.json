@@ -1,0 +1,84 @@
+{
+  "baseCommit": "4657bd29a12a8c413a8813a218a5189d247e285c",
+  "batches": [
+    280
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 279.44,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 276.63,
+      "sourceUnchanged": true,
+      "tests": 14638,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.21,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 557,
+  "tests": 22265,
+  "suites": 345,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 280,
+  "focus": {
+    "newPassed": 352,
+    "newSuites": 3,
+    "neighborPassed": 358,
+    "neighborSuites": 5
+  },
+  "newRegressionTests": 352,
+  "families": {
+    "wait": 80,
+    "repeat": 80,
+    "total": 80,
+    "noteConflict": 80,
+    "mockOrderContinuation": 12,
+    "pureBoundary": 20
+  },
+  "baseline": {
+    "contextFailed": 160,
+    "contextPassed": 80,
+    "initialNotesFailed": 48,
+    "initialNotesPassed": 32,
+    "notesReproducedBehaviorFailures": 32,
+    "notesTestContractCorrections": 16,
+    "explanation": "8 accent-normalization assertions and 8 compound-selection fixtures corrected; not counted as engine fixes."
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "scope": [
+    "Whole-utterance checkout waits and requests to repeat preserve data and next step",
+    "Cart-wide total question with known or pending delivery fee",
+    "Conservative contradiction guard during immediate note redirection",
+    "Explicit simulated confirmation retains quantities and notes"
+  ],
+  "limits": [
+    "Mocked models and external services; no independent held-out inference, Meta/audio or conversion validation",
+    "8 compound-note cases start at a seeded pending selection, not raw utterance parsing",
+    "No expansion of redirection to three lines or multiple units",
+    "Not all PDF conversations replayed; extracted text patterns only",
+    "No Kamppo port or production deployment"
+  ]
+}

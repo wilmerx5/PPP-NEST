@@ -54,3 +54,21 @@ export function editScopedCartNote(existing: string | undefined, edit: ScopedCar
   if (remaining.length === parts.length && parts.some(part => normalizeCorrection(part).includes(normalizeCorrection(edit.note)))) return { note: existing, blocked: true };
   return { note: next };
 }
+
+/** Conservative guard for moving a note onto another line, not an instruction to replace it.
+ * Compare complete ingredient phrases: salt is not salsa and onion is not onion sauce.
+ * Unrecognised prose is deliberately left outside this limited contradiction detector.
+ */
+export function kitchenNotesConflict(existing: string | undefined, added: string): boolean {
+  const directives = (note: string) => note.split(/[;.,]+|\s+y\s+/i).flatMap(raw => {
+    const clause = normalizeCorrection(raw);
+    const exclusion = clause.match(/(?:^| )sin (.+)$/);
+    if (exclusion) return [{ingredient:exclusion[1], excluded:true}];
+    const inclusion = clause.match(/(?:^| )(?:con(?: (?:poc[oa]s?|menos|mas|extra))?|poc[oa]s?|menos|mas|extra|bajit[oa] de) (.+)$/);
+    if (inclusion) return [{ingredient:inclusion[1], excluded:false}];
+    const separate = clause.match(/^(.+?) (?:aparte|por separado)$/);
+    return separate ? [{ingredient:separate[1], excluded:false}] : [];
+  });
+  return directives(existing || '').some(old => directives(added).some(next =>
+    old.ingredient === next.ingredient && old.excluded !== next.excluded));
+}

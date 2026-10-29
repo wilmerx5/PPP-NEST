@@ -19,7 +19,7 @@ import {followUpExtraNote, followUpHandlingNote, splitKitchenPreference, splitOp
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import { isCondimentPacketNote, condimentIntensityNote, dedupeKitchenNoteParts, interpretProductNote, joinKitchenNotes } from './whatsapp-product-intent';
-import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
+import { parseScopedCartNote, editScopedCartNote, kitchenNotesConflict } from './whatsapp-cart-note';
 import { parsePartialNote } from './whatsapp-partial-note';
 import { parseCartNoteRevision, reviseLineNote, type CartNoteRevision } from './whatsapp-note-revision';
 import { applyCartLineEdits } from './whatsapp-cart-edits';
@@ -17830,7 +17830,7 @@ export class WhatsappOrchestratorService {
     if (!session.cart.length || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm','awaiting_attribute'].includes(conv.state)) return false;
     const request = this.normalizeForMatch(text).replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim()
       .replace(/^(?:veci|vecino|vecina) /, '').replace(/ (?:veci|vecino|vecina|porfa|por favor)$/, '');
-    if (!/^(?:dime|no entendi|como asi|que me preguntaste|me repites)$/.test(request)) return false;
+    if (!/^(?:dime|no entendi(?: bien)?|como asi|que me (?:preguntaste|habias preguntado)|me repites|puedes repetir(?: la pregunta)?)$/.test(request)) return false;
     const reminder = session.pendingRecipientOrPlace
       ? `¿*${session.pendingRecipientOrPlace}* es el nombre para el pedido o el barrio/conjunto de entrega?`
       : this.formatInterruptedStepReminder(conv, session) || '¿Quieres agregar algo más? Si terminaste, escribe *solo eso* para seguir.';
@@ -20231,9 +20231,7 @@ export class WhatsappOrchestratorService {
         session.cart.length !== 2 || session.cart.some(line => line.quantity !== 1) ||
         ![0,1].includes(last.sourceIndex)) return clarify();
     const target = 1 - last.sourceIndex;
-    const exclusion = normalizeCorrection(last.note).match(/^sin (.+)$/);
-    const targetNote = ` ${normalizeCorrection(last.beforeCart[target].note || '')} `;
-    if (exclusion && targetNote.includes(` con ${exclusion[1]} `)) return clarify();
+    if (kitchenNotesConflict(last.beforeCart[target].note, last.note)) return clarify();
     const edit = editScopedCartNote(last.beforeCart[target].note, {kind:'append',query:'',note:last.note,preserve:[]});
     if (edit.blocked) return clarify();
     const cart = last.beforeCart.map((line,index) => ({...line, ...(index === target ? {note:edit.note} : {})}));
