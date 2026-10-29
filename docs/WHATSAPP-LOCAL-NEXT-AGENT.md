@@ -1,5 +1,16 @@
 
 
+## VIGENTE — tanda282: traslado de notas entre tres o más platos (29/10)
+
+Base `68dbb4a9`. Amplía la corrección inmediata de una nota ya seleccionada: «perdón, al tercero», «no, al [nombre completo]» y «mejor al 2» mueven solo esa indicación y conservan las previas. «No, el otro» entre varios destinos pregunta; permite responder por número/nombre, elegir otro destino tras un conflicto o dejar la nota donde estaba. Repetir una corrección reconocible sin contexto no añade productos.
+
+360 pruebas nuevas:192 traslados,128 guardas y40 recuperaciones en dos catálogos sintéticos, carritos de3/4líneas y agente simulado activo/inactivo. Baseline192fallos/0aprobadas; foco512/3. Global22953/348, inventario exacto y560fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-282-validation.json` y `whatsapp-batch-282-patterns.md`.
+
+Solo líneas de una unidad y selección reciente (10min, sin renovar al aclarar), carrito intacto, sin otro flujo pendiente. Nombres duplicados, conflictos y referencias desconocidas preguntan sin mutar. Campo opcional de sesión `awaitingDestination`, sin SQL ni modelos nuevos. Pendientes: reparto/traslado con varias unidades, correcciones compuestas, «sin X ni Y», muestra reservada e integración real de canal/modelo.
+
+Cero llamadas pagadas, Meta u órdenes externas; ledger267/256/11 intacto. Casos derivados de patrones reales, no replay completo de PDFs ni aprendizaje automático. Producción PPP sigue265; delta266–282 pendiente de Kamppo. Despliegue registrado por separado.
+
+
 ## VIGENTE — tanda281: exclusiones compuestas y selección entre tres platos (29/10)
 
 Tanda281 publicada y desplegada en staging: código `0a7e746e`, imagen `sha256:60fbf91fdfd8924947d206ab4ddaf479986a40505776f8dd7e23150b46d4efda`, healthy,0reinicios, APIlocal/pública200. Controles compilados de exclusiones compuestas, selección y recuperación y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-281-staging-deployment.json`. Sin cambios en Kamppo durante esta tanda; delta lingüístico266–281 pendiente.

@@ -1,0 +1,65 @@
+{
+  "baseCommit": "68dbb4a91bb7af87c27eccc7cb12fad97519a853",
+  "batches": [
+    282
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 332.51,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 27106.03,
+      "sourceUnchanged": true,
+      "tests": 15326,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 12.54,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 560,
+  "tests": 22953,
+  "suites": 348,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 282,
+  "newRegressionTests": 360,
+  "focusPassed": 512,
+  "focusSuites": 3,
+  "families": {
+    "explicitRelocation": 192,
+    "guards": 128,
+    "recovery": 40
+  },
+  "baseline": {
+    "failed": 192,
+    "passed": 0
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Mocked models and services; no real channel or inference evaluation",
+    "Single-unit cart lines only; recent selected kitchen note only",
+    "Exact destination name, ordinal or number; ambiguous references ask",
+    "No production deployment or Kamppo migration"
+  ]
+}

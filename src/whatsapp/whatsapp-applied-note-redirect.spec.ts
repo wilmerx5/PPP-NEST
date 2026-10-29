@@ -42,13 +42,15 @@ for(const names of menus)for(const agent of [false,true]){
    await h.sendQueued('no, el otro');
    expect(h.conv.sessionData.cart).toEqual(corrected);
   }else expect(h.conv.sessionData.cart).toEqual(before);
-  expect(h.conv.sessionData.lastKitchenNoteSelection).toBeFalsy();
+  if(scenario==='conflict')expect(h.conv.sessionData.lastKitchenNoteSelection?.awaitingDestination).toBe(true);
+  else expect(h.conv.sessionData.lastKitchenNoteSelection).toBeFalsy();
   expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 
  it.each(['multiple-units','three-lines','already-noted'])(`does not infer another unit or preexisting note ${names[0]} agent=${agent}: %s`,async scenario=>{
   const {h}=await setup({quantity:scenario==='multiple-units'?2:1,third:scenario==='three-lines',sourceNote:scenario==='already-noted'?'salsa aparte; sin cebolla':undefined});
-  expect(h.conv.sessionData.lastKitchenNoteSelection).toBeFalsy();
+  if(scenario==='three-lines')expect(h.conv.sessionData.lastKitchenNoteSelection).toBeTruthy();
+  else expect(h.conv.sessionData.lastKitchenNoteSelection).toBeFalsy();
   const before=structuredClone(h.conv.sessionData.cart);
   await h.sendQueued('no, el otro');
   expect(h.conv.sessionData.cart).toEqual(before);

@@ -1022,9 +1022,11 @@ export class WhatsappOrchestratorService {
       const fresh = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, fresh);
     }
-    if (msg.messageType !== 'text' || !this.isKitchenNoteRedirect(msg.text || '') || conv.humanTakeover || continuation?.approvalAfter) {
+    {
       const current = this.conversationService.getSession(conv);
-      if (current.lastKitchenNoteSelection) await this.conversationService.saveSession(conv, {...current, lastKitchenNoteSelection:undefined});
+      if (msg.messageType !== 'text' || !this.isKitchenNoteRedirect(msg.text || '', current) || conv.humanTakeover || continuation?.approvalAfter) {
+        if (current.lastKitchenNoteSelection) await this.conversationService.saveSession(conv, {...current, lastKitchenNoteSelection:undefined});
+      }
     }
     if (conv.humanTakeover) {
       return;
@@ -20209,39 +20211,80 @@ export class WhatsappOrchestratorService {
     return session.cart.flatMap((line,index)=>ids.has(line.productId)?[index]:[]);
   }
 
-  private isKitchenNoteRedirect(text: string): boolean {
-    return /^(?:no\s*,\s*|perd[oó]n\s*,?\s+|mejor\s+)(?:el\s+otro|la\s+otra)(?:\s+(?:porfa|por favor))?[.!]?$/i.test(text.trim());
+  /** Full repair phrases, or an exact answer to our own destination question. */
+  private kitchenNoteRedirectReference(text: string, session?: WhatsappSessionData): string | null {
+    if (!text.trim() || text.length > 180 || /[¿?]/.test(text)) return null;
+    const raw = text.trim().replace(/[.!]+$/, '').replace(/\s+(?:porfa|por favor)$/i, '').trim();
+    const repair = raw.match(/^(?:no\s*,\s*|perd[oó]n\s*,?\s+|mejor\s+)(?:al|el|la|a la)\s+(.+)$/i);
+    if (repair) return normalizeCorrection(repair[1]);
+    if (!session?.lastKitchenNoteSelection?.awaitingDestination) return null;
+    if (/^no muevas la nota$/i.test(raw)) return '__cancel_redirect__';
+    const reference = normalizeCorrection(raw).replace(/^(?:al|el|la|a la)\s+/, '');
+    if (/^(?:\d{1,2}|otr[oa]|primer[oa]|segund[oa]|tercer[oa]|cuart[oa]|quint[oa])$/.test(reference) ||
+      session.cart.some(line=>normalizeCorrection(line.name).replace(/^(?:el|la)\s+/, '') === reference)) return reference;
+    return null;
+  }
+
+  private isKitchenNoteRedirect(text: string, session?: WhatsappSessionData): boolean {
+    return this.kitchenNoteRedirectReference(text, session) !== null;
   }
 
   private async tryRedirectLastKitchenNote(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
     const last = session.lastKitchenNoteSelection;
-    if (!last) return false;
-    // Only the next message can refer to this selection. Consume before any action.
-    const next = {...session, lastKitchenNoteSelection: undefined};
-    await this.conversationService.saveSession(conv, next);
-    if (!this.isKitchenNoteRedirect(text)) return false;
+    const reference = this.kitchenNoteRedirectReference(text, session);
+    const available = ['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) &&
+      !session.mpPreferenceId && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder && !session.pendingSubsetKitchenNote &&
+      !session.pendingUnitDistribution && !session.pendingCategoryBrowse && !session.pendingAddOffer && !session.pendingPriceInquiry && !CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]);
     const clarify = async () => {
-      await this.reply(conv, waId, '¿A cuál plato quieres pasar la nota y cuál es la indicación? El pedido sigue igual.');
+      await this.reply(conv, waId, '¿Qué quieres corregir de tu pedido? Dime el plato y la indicación. El pedido sigue igual.');
       return true;
     };
-    if (!['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
-        session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
-        session.pendingUnitDistribution || session.pendingCategoryBrowse || session.pendingAddOffer ||
-        CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || !last.createdAt ||
-        Date.now() - last.createdAt < 0 || Date.now() - last.createdAt > 10 * 60 * 1000 ||
-        last.cartSignature !== JSON.stringify(session.cart) || last.beforeCart.length !== 2 ||
-        session.cart.length !== 2 || session.cart.some(line => line.quantity !== 1) ||
-        ![0,1].includes(last.sourceIndex)) return clarify();
-    const target = 1 - last.sourceIndex;
-    if (kitchenNotesConflict(last.beforeCart[target].note, last.note)) return clarify();
-    const edit = editScopedCartNote(last.beforeCart[target].note, {kind:'append',query:'',note:last.note,preserve:[]});
-    if (edit.blocked) return clarify();
-    const cart = last.beforeCart.map((line,index) => ({...line, ...(index === target ? {note:edit.note} : {})}));
+    // A repeated repair without its context must not become a fresh purchase.
+    if (!last) {
+      const cartReference = reference !== null && (/^(?:\d{1,2}|otr[oa]|primer[oa]|segund[oa]|tercer[oa]|cuart[oa]|quint[oa])$/.test(reference) ||
+        session.cart.some(line=>normalizeCorrection(line.name).replace(/^(?:el|la)\s+/, '') === reference));
+      return cartReference && available && session.cart.length > 0 ? clarify() : false;
+    }
+    const next = {...session, lastKitchenNoteSelection: undefined};
+    await this.conversationService.saveSession(conv, next);
+    if (reference === null) return false;
+    if (!available || !last.createdAt || Date.now() - last.createdAt < 0 || Date.now() - last.createdAt > 10 * 60 * 1000 ||
+      last.cartSignature !== JSON.stringify(session.cart) || last.beforeCart.length !== session.cart.length ||
+      session.cart.length < 2 || session.cart.some(line=>line.quantity !== 1) ||
+      !Number.isInteger(last.sourceIndex) || last.sourceIndex < 0 || last.sourceIndex >= session.cart.length) return clarify();
+    if (reference === '__cancel_redirect__') {
+      await this.reply(conv,waId,`Dejé la nota en *${session.cart[last.sourceIndex].name}*. Tu pedido sigue igual.`);
+      return true;
+    }
+    const positions: Record<string,number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3,cuarto:4,cuarta:4,quinto:5,quinta:5};
+    const ordinal = positions[reference] || (/^\d{1,2}$/.test(reference) ? Number(reference) : 0);
+    const targets = /^(?:otro|otra)$/.test(reference) ? session.cart.flatMap((_,i)=>i !== last.sourceIndex ? [i] : []) :
+      ordinal ? (ordinal >= 1 && ordinal <= session.cart.length ? [ordinal-1] : []) :
+      session.cart.flatMap((line,i)=>normalizeCorrection(line.name).replace(/^(?:el|la)\s+/, '') === reference ? [i] : []);
+    const askDestination = async (reason = '') => {
+      // Retain the original timestamp and cart fingerprint, never renew an old selection.
+      await this.conversationService.saveSession(conv,{...session,lastKitchenNoteSelection:{...last,awaitingDestination:true}});
+      await this.reply(conv,waId,`${reason ? reason+'\n\n' : ''}¿A cuál plato paso la nota «${last.note}»? Sigue en *${session.cart[last.sourceIndex].name}*.\n`+
+        session.cart.map((line,i)=>`${i+1}. ${this.formatCartLineLabel(line)}${line.note ? ` — ${line.note}` : ''}`).join('\n')+
+        '\nEscribe el número o el nombre completo. Para dejarla donde está, escribe «no muevas la nota».');
+      return true;
+    };
+    if (targets.length !== 1) return askDestination();
+    const target = targets[0];
+    if (target === last.sourceIndex) {
+      await this.reply(conv,waId,`La nota ya está en *${session.cart[target].name}*. Tu pedido sigue igual.`);
+      return true;
+    }
+    if (kitchenNotesConflict(last.beforeCart[target].note,last.note))
+      return askDestination(`*${session.cart[target].name}* tiene una indicación incompatible: «${last.beforeCart[target].note}». No cambié el pedido.`);
+    const edit = editScopedCartNote(last.beforeCart[target].note,{kind:'append',query:'',note:last.note,preserve:[]});
+    if (edit.blocked) return askDestination('La nota resultante sería demasiado larga. No cambié el pedido.');
+    const cart = last.beforeCart.map((line,index)=>({...line,...(index === target ? {note:edit.note} : {})}));
     const repaired = {...next,cart};
-    await this.conversationService.saveSession(conv, repaired);
-    await this.reply(conv, waId, `Listo, pasé la nota «${last.note}» a *${cart[target].name}*. Conservé las demás indicaciones.\n\n` +
-      this.formatCartOnly(repaired,this.deliveryFeeFor(repaired,cfg)) + '\n\n' +
-      (this.formatInterruptedStepReminder(conv,repaired) || this.formatContinueShoppingPrompt(repaired)));
+    await this.conversationService.saveSession(conv,repaired);
+    await this.reply(conv,waId,`Listo, pasé la nota «${last.note}» a *${cart[target].name}*. Conservé las demás indicaciones.\n\n`+
+      this.formatCartOnly(repaired,this.deliveryFeeFor(repaired,cfg))+'\n\n'+
+      (this.formatInterruptedStepReminder(conv,repaired)||this.formatContinueShoppingPrompt(repaired)));
     return true;
   }
 
@@ -20346,7 +20389,7 @@ export class WhatsappOrchestratorService {
         return [...(quantity < line.quantity ? [{...line,quantity:line.quantity-quantity}] : []),
           {...line,quantity,note:edits[selected].note}];
       });
-      const canRedirect = eligible.length === 2 && session.cart.length === 2 && rows.length === 1 && requested === 1 &&
+      const canRedirect = eligible.length >= 2 && session.cart.length >= 2 && rows.length === 1 && requested === 1 &&
         session.cart.every(line => line.quantity === 1) && JSON.stringify(cart) !== JSON.stringify(session.cart);
       const next = {...session,cart,pendingSubsetKitchenNote:undefined,
         lastKitchenNoteSelection: canRedirect ? {beforeCart:structuredClone(session.cart),cartSignature:JSON.stringify(cart),

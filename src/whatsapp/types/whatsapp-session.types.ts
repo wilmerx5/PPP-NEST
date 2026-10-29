@@ -60,7 +60,7 @@ export type WhatsappSessionData = {
   /** Read-only price clarification, separate from an order selection. */
   pendingPriceInquiry?: { cartSignature: string; state: string; productIds: number[] };
   /** One immediate repair of a resolved note between two single-unit rows. */
-  lastKitchenNoteSelection?: { beforeCart: WhatsappCartItem[]; cartSignature: string; sourceIndex: number; note: string; createdAt: number };
+  lastKitchenNoteSelection?: { beforeCart: WhatsappCartItem[]; cartSignature: string; sourceIndex: number; note: string; createdAt: number; awaitingDestination?: boolean };
   lastUnitOptionEdit?: { sourceText: string; cartSignature: string; beforeCart?: WhatsappCartItem[]; createdAt?: number };
   pendingCartAttributeEdit?: {
     sourceText: string;

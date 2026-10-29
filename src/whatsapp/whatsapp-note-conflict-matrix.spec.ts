@@ -34,6 +34,7 @@ for(const agent of [false,true]) it.each(cases)(`redirect conflict ${names[0]} a
   expect(normalizeCorrection(h.conv.sessionData.cart[1].note || '')).toBe(normalizeCorrection(targetNote===note?note:`${targetNote}; ${note}`));
   expect(reply).toContain(names[1]);
  }
- expect(h.conv.sessionData.lastKitchenNoteSelection).toBeFalsy();
+ if(blocked)expect(h.conv.sessionData.lastKitchenNoteSelection?.awaitingDestination).toBe(true);
+ else expect(h.conv.sessionData.lastKitchenNoteSelection).toBeFalsy();
  expect(h.conv.state).toBe('building_cart');expect(h.service.ordersService.create).not.toHaveBeenCalled();
 });
