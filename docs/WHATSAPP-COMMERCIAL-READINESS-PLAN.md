@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda294, código `de3e16be`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294 (293 solo pruebas); para Kamppo:283–294. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 26.427 pruebas /361 suites aprobadas en294, con dependencias simuladas. No equivalen a26.427 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda295, código `d4533407`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 (293 solo pruebas); para Kamppo:283–295. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 26.514 pruebas /362 suites aprobadas en295, con dependencias simuladas. No equivalen a26.514 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -158,6 +158,8 @@ Base `b4c1df2d`. «Cuánto va todo», «en cuánto va todo» y «cuánto va el p
 Baseline tras corregir fixtures:36/72 pasan y36 fallan. Foco631/5; global26427/361, inventario exacto y573 fuentes congeladas; TypeScript general/build y Node aprobados. Un timeout inicial de5s con seis workers se revalidó ejecutando toda la suite afectada en serie, sin cambiar código ni timeout; las demás suites se ejecutaron con cuatro workers. Evidencia `whatsapp-batch-294-validation.json`. Cero inferencia/Meta/órdenes externas, ledger267/256/11 intacto. Modelos preservados; sin SQL ni campos nuevos. Datos sintéticos, no nuevos chats/audio/PDF revisados. Producción292 y Kamppo282; publicación/despliegue staging se registra aparte.
 
 ## VIGENTE — tanda295: producto frente a ocasión de consumo (29/10)
+
+Tanda295 desplegada en staging: código `d4533407`, imagen `sha256:763875a6257c241fe50552f4e4579fbf1049a0c22382b90fc768f95cd2a61fb3`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica295 en pruebas locales. Evidencia `whatsapp-batch-295-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
 
 Base `0bb16f76`. Reporte Kamppo «hamburguers for lunch»; usuario aplazó expresamente idiomas. Se reproduce solo la familia española: «tienen hamburguesas para almorzar», cena/desayuno, saludo/veci/porfa y verbo «tines». Consulta explícita acotada separa producto y ocasión; respeta calificadores, título literal de catálogo, selección pendiente y estados de checkout. Presentaciones por palabras del catálogo, no IDs de PPP. Una sola mini hamburguesa también es oferta válida; agotados no se listan y ausencia real no se cambia por ejecutivos. Sin compra implícita ni promesa de horario futuro.
 
