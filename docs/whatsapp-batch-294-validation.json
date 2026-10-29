@@ -1,0 +1,73 @@
+{
+  "baseCommit": "b4c1df2d8afb63f7c0e48035007ffc43678b8bb4",
+  "batches": [
+    294
+  ],
+  "phases": {
+    "accuracy-retry": {
+      "exitCode": 0,
+      "seconds": 117.51,
+      "sourceUnchanged": true,
+      "tests": 80,
+      "failed": 0
+    },
+    "accuracy": {
+      "exitCode": 0,
+      "tests": 7611,
+      "failed": 0,
+      "sourceUnchanged": true,
+      "note": "One initial 5-second timeout at six workers; full affected suite passed serially with unchanged timeout and sources"
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 466.17,
+      "sourceUnchanged": true,
+      "tests": 18800,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.16,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 573,
+  "initialAccuracyAttempt": {
+    "exitCode": 1,
+    "seconds": 284.66,
+    "sourceUnchanged": true,
+    "tests": 7610,
+    "failed": 1
+  },
+  "tests": 26427,
+  "suites": 361,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 294,
+  "newTests": 80,
+  "focusPassed": 631,
+  "focusSuites": 5,
+  "baseline": {
+    "passed": 36,
+    "failed": 36,
+    "cases": 72,
+    "fixtureCorrections": "AI generateTurn mocked; beverage fixtures follow existing explicit-choice policy (juice, shake, smoothie)"
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "modelsChanged": false,
+  "productionBatch": 292,
+  "kamppoBatch": 282
+}

@@ -302,6 +302,7 @@ export function cartTotalFollowupIntent(
   if (/^(?:(?:de\s+)?todo\s+lo\s+que\s+(?:pedi|he pedido|llevo)|(?:de\s+)?todo\s+el\s+pedido|(?:el\s+)?total(?:\s+del\s+pedido)?)$/.test(t) ||
     (pendingPriceInquiry && /^(?:de\s+)?todo$/.test(t))) return 'reference';
   if (/^cuanto queda (?:todo|todo el pedido)(?: en total)?$/.test(t)) return 'reference';
+  if (/^(?:en )?cuanto va (?:todo|todo el pedido|el pedido)(?: en total| hasta ahora)?$/.test(t)) return 'reference';
   const question = t.match(/^(.*?)\s+(?:y\s+)?(cuanto\s+.+)$/);
   if (!question || !isNothingElseOrderIntent(question[1].replace(/\s+y$/, ''))) return null;
   const wholeCartQuestion = /^cuanto\s+(?:(?:es|seria|sale|vale|cuesta)(?:\s+(?:todo|en total|el total|todo el pedido))?|(?:te\s+)?debo|llevo)(?:\s+en\s+total)?$/.test(question[2]);
