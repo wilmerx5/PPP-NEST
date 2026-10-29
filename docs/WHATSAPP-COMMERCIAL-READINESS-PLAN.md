@@ -1,5 +1,14 @@
 
 
+## VIGENTE — tanda285: preparación de una sola unidad (29/10)
+
+Base `57c93413`. «Cambia uno de los de pechuga a pollo broaster» separa una unidad de la línea identificada y conserva las demás, sus opciones y notas. Reutiliza el catálogo para encontrar la presentación equivalente; valida el resultado completo antes de guardar. Ambigüedad, incompatibilidad, pagos/selecciones pendientes y límites conservan el carrito.
+
+360 pruebas nuevas: 216 cambios y 144 guardas en tres familias, dos modos de agente y compra/revisión. Baseline inicial de 312 casos: 84 aprobados / 228 fallidos; después se añadieron 48 guardas. Foco final 458/2. Global 23981/352, inventario exacto y 564 fuentes congeladas; TypeScript general/build y scripts Node aprobados. Evidencia `whatsapp-batch-285-validation.json` y `whatsapp-batch-285-patterns.md`.
+
+Sin campos de sesión nuevos, SQL ni modelos nuevos. Cero inferencia pagada, Meta u órdenes externas; ledger 267/256/11 intacto. Fixtures de carrito previo, no replay de compra/audio. Quedan pendientes referencias ambiguas con aclaración, cambios compuestos y retirada parcial. PPP producción y Kamppo mantienen 282; 283–285 son trabajo de staging. Despliegue registrado por separado.
+
+
 ## VIGENTE — tanda284: conflictos antes de dividir unidades o anotar todo el carrito (29/10)
 
 Tanda284 desplegada en staging: código `52fb3894`, imagen `sha256:4720b8d1ed5c5a99545ce0a7c01f9a17cf50f67fdf30a1c77df37b78b165e9c9`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica284 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-284-staging-deployment.json`. PPP producción y Kamppo conservan282.

@@ -15687,16 +15687,17 @@ export class WhatsappOrchestratorService {
     }
     const short = said.match(/^(?:cambia|cambiame) (?:el|la) (?:de |que tiene )(.+?) (?:con|a|por) (.+)$/);
     const contrast = said.match(/^(?:el|la) que tiene (.+?) que ya no sea (.+?) (?:sino|sink) (.+)$/);
-    if (!short && !contrast) return false;
-    const reference = (short || contrast)![1];
-    const destination = short ? short[2] : contrast![3];
+    const partial = said.match(/^(?:cambia|cambiame) (?:uno de los|una de las) (?:de |que tienen )(.+?) (?:con|a|por) (.+)$/);
+    if (!short && !contrast && !partial) return false;
+    const reference = (partial || short || contrast)![1];
+    const destination = partial ? partial[2] : short ? short[2] : contrast![3];
     const style = this.catalogService.extractRequestedProteinStyle(destination);
     if (!style) return false;
     const unchanged = async (reason: string) => { await this.reply(conv,waId,reason+' El pedido sigue igual.');return true; };
-    if (/[¿?]/.test(text)) return unchanged(`Si quieres aplicar ese cambio, escribe «cambia el de ${reference} a ${destination}».`);
+    if (/[¿?]/.test(text)) return unchanged(`Si quieres aplicar ese cambio, escribe «cambia ${partial ? 'uno de los de' : 'el de'} ${reference} a ${destination}».`);
     if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return unchanged('Hay una selección o pago pendiente; aclaremos eso antes de cambiar la preparación.');
     const indices = session.cart.flatMap((line,index)=>correctionMatchesLine(line,reference)?[index]:[]);
-    if (indices.length!==1 || session.cart[indices[0]].quantity!==1) return unchanged('Necesito identificar una sola unidad: dime el plato y la opción que tiene para cambiar su preparación.');
+    if (indices.length!==1 || (!partial && session.cart[indices[0]].quantity!==1)) return unchanged('Necesito identificar una sola unidad: dime el plato y la opción que tiene para cambiar su preparación.');
     const index=indices[0], original=session.cart[index];
     const menu=await this.catalogService.getMenuProducts();
     const source=menu.find(product=>product.id===original.productId);
@@ -15711,6 +15712,21 @@ export class WhatsappOrchestratorService {
     if (!destination.split(' ').filter(word=>!['el','la','con','en','a'].includes(word)).every(word=>words.includes(word))) return unchanged('Necesito aclarar la preparación completa que quieres para ese plato.');
     if (target.id===original.productId) return unchanged('Ese plato ya tiene esa preparación.');
     if ((original.attributes || []).some(chosen=>!target.attributes?.some(attr=>attr.attributeName===chosen.attributeName && attr.options.includes(chosen.attributeValue)))) return unchanged('Esa presentación no admite todas las opciones actuales; dime cuáles quieres conservar o cambiar.');
+    if (partial) {
+      // Build the full result in memory. Never persist a split until the target and limits are valid.
+      const added = this.tryAddProductToCart(session,target,1,cfg,undefined,original.attributes,
+        {replacement:{originalLine:structuredClone(original)}});
+      if (added.blocked || added.missingAttributes) return unchanged('No pude completar el cambio conservando las opciones actuales.');
+      const next = {...added.session,cart:added.session.cart.flatMap((line,i)=>i===index && original.quantity>1
+        ? [{...original,quantity:original.quantity-1},line] : [line])};
+      const limit = evaluateCartLimits(next.cart,this.toCartLimitsConfig(cfg,next),{orderType:next.orderType});
+      if (!limit.ok) return unchanged('El cambio supera los límites del pedido.');
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,`Listo, cambié una unidad de *${original.name}* por *${target.name}*.\n\n` +
+        this.formatCartOnly(next,this.deliveryFeeFor(next,cfg)) + '\n\n' +
+        (this.formatInterruptedStepReminder(conv,next) || this.formatContinueShoppingPrompt(next)));
+      return true;
+    }
     return this.tryHandleAtomicCartReplacement(conv,waId,{...session,pendingCartReplacement:{
       cartSignature:JSON.stringify(session.cart),options:[{cartIndex:index,label:this.formatCartLineLabel(original)}],addQuery:target.name,
     }},'1',menu,cfg,{sourceIsCatalogTitle:true});
