@@ -1,5 +1,10 @@
 # Relevo del agente: PPP WhatsApp
 
+## DIAGNÓSTICO ABIERTO — reporte Kamppo bebidas/cierre/registro (28/10)
+
+No hay corrección ni deploy nuevo. En PPP274 y Kamppo local `daabec4b`, «Quiero algo De tomar» responde producto no disponible pese a bebidas presentes; «No maa» no avanza al checkout, mientras «No más» sí. «Si» tras revisión final sí intenta crear. Adaptador Kamppo construye `clientRequestId` hasta128, columna `orders.client_request_id` limitada a64; prueba aislada imponiendo ese contrato reproduce el error interno y «llámanos al el restaurante». No se consultaron logs/DB productivos. Manifiesto de migración apunta a PPP265, no274; los dos huecos lingüísticos también persisten aquí. Evidencia `whatsapp-kamppo-reported-drink-checkout-diagnostic-2810.json`; repro opt-in `src/whatsapp/whatsapp-something-to-drink.repro.ts` (14probes,9rojos/5verdes; el control de categoría con modelo vacío no acredita defecto del modelo real). Sin cambios de runtime, inferencia pagada, Meta ni órdenes externas. Copias temporales de pruebas Kamppo retiradas del checkout; evidencia en `/tmp/kamppo-*-repro.*`. Priorizar contrato de creación y mensaje de error en adaptador; después lenguaje de bebidas y cierre tolerante a errata. No truncar identificadores sin considerar colisiones/idempotencia.
+
+
 ## VIGENTE — tanda274: saludo sin invitación a llamar (28/10)
 
 Solicitud explícita del usuario: fomentar que prueben el chat quitando «Si quieres, también puedes llamarnos al…» del saludo. El prefijo queda «Con gusto te atiendo.». Cambia valor por defecto y limpia esa frase de plantillas antiguas mediante la normalización exclusiva de bienvenida. Sin persistencia, SQL ni cambio de modelos.

@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-28",
+  "scope": "Diagnostic requested by user; runtime and deployments unchanged",
+  "pppCommit": "07ea156365cc41ca57698a9b22c5bf5a7f8dfc66",
+  "kamppoCommit": "daabec4b72aa918c097ef4273f6f0ccae85cc255",
+  "kamppoSourceManifest": "5225ccb37cd92b5b3acd488cede9c627fc4c6244",
+  "findings": [
+    {
+      "input": "Quiero algo De tomar",
+      "ppp": "Reproduces unsupported-product response with drinks present",
+      "kamppo": "Same response",
+      "modelModes": "Agent disabled and mocked enabled; no real inference"
+    },
+    {
+      "input": "No maa",
+      "ppp": "building_cart; does not advance",
+      "kamppo": "building_cart; does not advance",
+      "control": "No más advances to awaiting_address in both"
+    },
+    {
+      "input": "Si after final review",
+      "ppp": "Calls mocked order creation once",
+      "kamppoCore": "Calls mocked order creation once",
+      "kamppoAdapter": "Builds clientRequestId of length128 for UUID conversation and long synthetic Meta ID; orders column max64. Simulated DB boundary rejects; reproduces leaked internal error and malformed phone fallback."
+    }
+  ],
+  "limitations": [
+    "No production logs or live DB inspected. Adapter reproduction uses a mock enforcing the actual entity/migration length, not an actual PostgreSQL write.",
+    "14 probes per core:9 failed/5 passed. One failure for Qué bebidas tienes with agent enabled comes from the intentionally empty model mock and is not evidence of a real-model defect.",
+    "No full replay of the customer identity/address or inferred model outputs.",
+    "Diagnostic reproduction excluded from default Jest inventory by .repro.ts suffix; not a newly passing batch."
+  ],
+  "paidCalls": 0,
+  "metaMessages": 0,
+  "externalOrders": 0
+}
