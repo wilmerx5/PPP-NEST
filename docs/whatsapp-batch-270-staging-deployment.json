@@ -1,0 +1,80 @@
+{
+  "batches": [
+    270
+  ],
+  "runtimeCodeCommit": "164da9cc49f9093f3a53d0e212fd1fc120fd233d",
+  "verification": {
+    "compiledNewBehavior": "3 compiled interruption checks passed: fresh street tracked, pickup clears role, clarification preserves street\n3 compiled role checks passed: direct confirmation block, question preserved, place resolved\n7 compiled checkout checks passed: merchant questions, choice/mixed-request guards, ETA units and burst boundaries\n18 compiled referenced preparation routing, negated removal, atomic multiple-removal, short clarification, stale cart, direct guard, paired-plan, negation, atomic split, combo, supply, idempotency, repeated substitution, labelled drink, receipt notes and central-confirmation checks passed; external services isolated",
+    "environment": "staging",
+    "checkedAt": "2026-10-29T00:32:25.603802+00:00",
+    "head": "164da9cc49f9093f3a53d0e212fd1fc120fd233d",
+    "image": "sha256:85030bb825b274c9d6b8c197bc9b6ff0d0dead989812d9d760713daf2a934660",
+    "candidateImage": "sha256:85030bb825b274c9d6b8c197bc9b6ff0d0dead989812d9d760713daf2a934660",
+    "state": "running",
+    "health": "healthy",
+    "restartCount": 0,
+    "models": {
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+    },
+    "compiledSmoke": "3 compiled routing checks passed\n2 compiled description checks passed",
+    "compiledConfirmationGuard": "compiled unresolved distribution blocks direct confirmation",
+    "compiledModuleHashes": {
+      "whatsapp-agent-model": "4cb9ac9f0f24265375107f46539c3d17e24fc1396aface51b70c7e5bbe18525d",
+      "whatsapp-agent.service": "aac50bcaf8a9cdc11cd84962576aadf7f00de59e9e61210bb6fc64a42d0af784",
+      "whatsapp-cart-edits": "de69254f08d953219e09d1efafde71891a07d402630343abdd93fac85de6dbee",
+      "whatsapp-orchestrator.service": "cd87e92b47b5b8dc216ee49164068ecbf2c21ab566403d16018e5fde78ac5609",
+      "whatsapp-catalog.service": "96ed954ff33af9efee611da77eaac3af1a0d5ce9956634810dff6e51cc3c7099"
+    },
+    "endpoints": [
+      {
+        "url": "http://127.0.0.1:3301/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 50.11,
+            "heapTotal": 55.11,
+            "rss": 116.12
+          },
+          "timestamp": "2026-10-29T00:32:21.436Z"
+        }
+      },
+      {
+        "url": "https://dev.prontopolloportal.com/api/health",
+        "httpStatus": 200,
+        "body": {
+          "status": "ok",
+          "db": "connected",
+          "circuitBreaker": "CLOSED",
+          "cacheSize": 0,
+          "memory": {
+            "heapUsed": 50.45,
+            "heapTotal": 55.11,
+            "rss": 116.37
+          },
+          "timestamp": "2026-10-29T00:32:21.487Z"
+        }
+      }
+    ],
+    "envSha256": "9a318abb69d6a267de33de4bdc35233eb78e690e426b945f85ebeeacce84d9b4",
+    "composeSha256": "cf8560aa0c07799146da868e5104c0ff3e7932cf20b8dd7d22bbd2c0d93ffa57",
+    "privateComposePreserved": true,
+    "privateEnvironmentPreserved": true,
+    "gitStatus": "?? bin/"
+  },
+  "productionBeforeAndAfter": "5225ccb37cd92b5b3acd488cede9c627fc4c6244\nsha256:c50f5be01a0944c54a75980e1d9e231b50fbb447a735cfb89f0cdccd1ed6c6f3 running 0\na74c4d62351cceacca45e97beaee8ea3396613921bff45d64b8e72453fc92ac3  /var/www/ppp-nest/.env\nd973f08a9a1708b7309e801c07738350ce8e4f61b17af295bf52b6828bdf3b84  /var/www/ppp-nest/docker-compose.yml\n",
+  "productionChanged": false,
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "sourceUnchangedSinceGlobal": true,
+  "ledgerUnchanged": true,
+  "rollbackTag": "ppp-nest-staging:rollback-before-270"
+}

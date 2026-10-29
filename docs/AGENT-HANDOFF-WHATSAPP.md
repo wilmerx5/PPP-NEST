@@ -6,7 +6,7 @@ Base `fb0e2c6d`. Conserva calle y apartamento enviados antes de «es el conjunto
 
 54 regresiones nuevas, tres cartas×agente simulado off/on. Baseline24fallos/12aprobadas,18guardas adicionales. Foco426/6. Global21404/334 aprobada, inventario exacto y545fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-270-validation.json` e informe `whatsapp-checkout-role-interruptions-validation-2810.md`.
 
-Modelos/servicios externos simulados; cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. Despliegue staging pendiente de verificación. Producción continúa265. Delta266–270 pendiente de portar a Kamppo; no se modifica ese repositorio. Continúan pendientes arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
+Modelos/servicios externos simulados; cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. Código `164da9cc` publicado y desplegado en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED. Tres controles compilados nuevos y28previos aprobados con dependencias aisladas; routing/modelos y guard central aprobados. Env/compose preservados y producción265 verificada sin cambios. Evidencia `whatsapp-batch-270-staging-deployment.json`; cierre documental posterior sin reconstrucción. Producción continúa265. Delta266–270 pendiente de portar a Kamppo; no se modifica ese repositorio. Continúan pendientes arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
 
 
 ## VIGENTE — tanda269: espera y recuperación de nombre/lugar (28/10)

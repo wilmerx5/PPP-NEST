@@ -56,7 +56,7 @@
   "newOptionalSessionField": "pendingRecipientOrPlaceAddress",
   "sqlMigration": false,
   "productionChanged": false,
-  "deploymentStatus": "Validated locally; staging deployment pending",
+  "deploymentStatus": "Deployed and verified in staging",
   "baseline": {
     "failed": 24,
     "passed": 12,
@@ -66,5 +66,7 @@
     "External services and models mocked; no real Meta, inference, PDF or audio evaluation.",
     "Location pin invalidates remembered street; resolving the place role afterwards may request the destination again.",
     "Resolve or normally cancel pending recipient/place drafts before rollback."
-  ]
+  ],
+  "runtimeCodeCommit": "164da9cc49f9093f3a53d0e212fd1fc120fd233d",
+  "deploymentEvidence": "whatsapp-batch-270-staging-deployment.json"
 }
