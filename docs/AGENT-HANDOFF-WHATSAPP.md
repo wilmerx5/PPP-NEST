@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda280: matriz amplia de conversación y notas (28–29/10)
 
+Tanda280 publicada y desplegada en staging: código `86380c39`, imagen `sha256:4fefb616b52858f977a99a22963848d2325e3e8e33627143a38e56622bbac7b2`, healthy,0reinicios, APIlocal/pública200. Controles compilados de contexto, contradicciones y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-280-staging-deployment.json`. Sin cambios en Kamppo durante esta tanda; delta lingüístico266–280 pendiente.
+
 Base `4657bd29`. Tanda ampliada solicitada por el usuario: 352 pruebas nuevas en cuatro familias, controles de límites y continuación hasta una orden simulada. Fuentes: fragmentos de los PDF11/10 y18/10, chats compartidos y variantes sintéticas de la investigación previa. Trazabilidad y límites en `whatsapp-batch-280-patterns.md`; no es cobertura completa del corpus.
 
 Corrige esperas («espera un momento», «déjame revisar», «ya te confirmo»), repetición («no entendí bien», «qué me habías preguntado») y total («cuánto queda todo») sin capturar nombres/direcciones ni confirmar. En traslado inmediato de notas, «poca/menos/extra/bajito de/aparte» del mismo ingrediente frente a «sin» exige aclaración y conserva el carrito. No cambia modelos, SQL ni el alcance de dos líneas de una unidad de279.
