@@ -1,0 +1,25 @@
+{
+  "batch": 282,
+  "codeCommit": "a4718b58a8b798142cbda4fd954807500a49c08a",
+  "status": "deployment_pending_connection_timeout",
+  "checkedAt": "2026-10-29T13:29:52.112954+00:00",
+  "sshAttempts": 3,
+  "sshExitCode": 255,
+  "publicHealthCurlExitCode": 28,
+  "remoteDeploymentStarted": false,
+  "activeRuntimeVerified": false,
+  "lastVerifiedRuntimeCodeCommit": "0a7e746edb0c82ce45e30f6276cd2ee9917ff846",
+  "lastVerifiedImage": "sha256:60fbf91fdfd8924947d206ab4ddaf479986a40505776f8dd7e23150b46d4efda",
+  "productionSnapshotBefore": {
+    "compose": "d973f08a9a1708b7309e801c07738350ce8e4f61b17af295bf52b6828bdf3b84",
+    "env": "a74c4d62351cceacca45e97beaee8ea3396613921bff45d64b8e72453fc92ac3",
+    "head": "5225ccb37cd92b5b3acd488cede9c627fc4c6244",
+    "image": "sha256:c50f5be01a0944c54a75980e1d9e231b50fbb447a735cfb89f0cdccd1ed6c6f3",
+    "started": "2026-10-28T21:26:35.467660683Z"
+  },
+  "productionSnapshotAfter": null,
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "kamppoChanged": false,
+  "resume": "Restore SSH connectivity; fetch/merge staging, build only api with private staging compose, verify compiled smoke and local/public health. No production deployment."
+}

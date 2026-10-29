@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda282: traslado de notas entre tres o más platos (29/10)
 
+**Despliegue pendiente por conexión:** código `a4718b58` publicado en `origin/staging`. Tres conexiones SSH agotaron el tiempo antes de ejecutar el deploy; la API pública también agotó15s desde esta sesión. No se verificó runtime nuevo ni salud actual. Último runtime verificado:281 (`0a7e746e`). Reanudar despliegue y controles compilados al recuperar acceso. Evidencia `whatsapp-batch-282-staging-deployment.json`.
+
 Base `68dbb4a9`. Amplía la corrección inmediata de una nota ya seleccionada: «perdón, al tercero», «no, al [nombre completo]» y «mejor al 2» mueven solo esa indicación y conservan las previas. «No, el otro» entre varios destinos pregunta; permite responder por número/nombre, elegir otro destino tras un conflicto o dejar la nota donde estaba. Repetir una corrección reconocible sin contexto no añade productos.
 
 360 pruebas nuevas:192 traslados,128 guardas y40 recuperaciones en dos catálogos sintéticos, carritos de3/4líneas y agente simulado activo/inactivo. Baseline192fallos/0aprobadas; foco512/3. Global22953/348, inventario exacto y560fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-282-validation.json` y `whatsapp-batch-282-patterns.md`.
