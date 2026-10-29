@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda287: «yes» y cierre en confirmación (29/10)
 
+Tanda287 desplegada en staging: código `588552e7`, imagen `sha256:e23b0ece1dca61a3cf94cefb63f3fdcb8f7626b850722196e59246f7ad3a9638`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica287 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-287-staging-deployment.json`. PPP producción y Kamppo conservan282.
+
 Base `42f7cdc6`. Se priorizó el chat reportado de Kamppo: «yes» → «¿Algo más?» → «no» repetido. PPP también reproduce el fallo. Ahora «yes» completo reconoce aprobación final, respetando preguntas, mensajes mixtos y cambios pendientes. «No», «no más» y «solo eso» en ese paso conservan el resumen y piden confirmar o corregir; nunca crean la orden por negación.
 
 384 pruebas nuevas en tres productos, dos modos simulados, efectivo/transferencia y domicilio/recogida: 120 aprobaciones, 120 no autorizaciones, 72 cierres repetidos y 72 cambios pendientes. Baseline 192 aprobados / 192 fallidos; foco 384/1. Global 24785/354, inventario exacto y 566 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-287-validation.json` y `whatsapp-batch-287-patterns.md`.
