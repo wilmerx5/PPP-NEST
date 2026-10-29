@@ -1,0 +1,72 @@
+{
+  "baseCommit": "67a6f8d56de9745a9b5cce1e7bbd14a443786bce",
+  "batches": [
+    275
+  ],
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 222.95,
+      "sourceUnchanged": true,
+      "tests": 4206,
+      "failed": 0
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 227.49,
+      "sourceUnchanged": true,
+      "tests": 3405,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 316.64,
+      "sourceUnchanged": true,
+      "tests": 14036,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.62,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 550,
+  "tests": 21663,
+  "suites": 338,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 275,
+  "focus": {
+    "passed": 25,
+    "suites": 1
+  },
+  "newRegressionTests": 25,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "scope": [
+    "Generic beverage browsing before product/address parsing",
+    "Whole-word meat category matching excludes Postres",
+    "Bounded No maa closing typo",
+    "Close plus total question advances checkout with mandatory final review",
+    "Cart-wide price clarification cannot become address"
+  ],
+  "limits": [
+    "Mocked models and external services; no real Meta orders",
+    "Language changes deliberately remain in PPP until later Kamppo port",
+    "Kamppo adapter request-ID fix is a separate commit 973a0725995265bb7e1351057b8c5369d1ba1bca",
+    "No production PPP deployment"
+  ]
+}

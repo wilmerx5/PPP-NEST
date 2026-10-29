@@ -1,4 +1,13 @@
 
+
+## VIGENTE — tanda275: bebidas, categorías y cierre con total (28/10)
+
+Reportes nuevos desde Kamppo: «Quiero algo de tomar», «No maa», «tienes carne?» con postres, «no mas, cuanto es?» y «de todo lo que pedi» capturado como dirección. Corrección PPP: navegación genérica de bebidas antes de partir producto/dirección; categorías por palabra completa (res no coincide con Postres); errata completa de cierre; total del carrito y avance con revisión final obligatoria; aclaración del total conserva dirección y carrito. Sin nombres/IDs/precios de PPP en reglas. Las mejoras lingüísticas permanecen aquí para migración posterior.
+
+25 regresiones nuevas; foco25/1. Global21663/338 aprobada, inventario exacto y550fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-275-validation.json`. Incluye controles de no confirmar ante pregunta, preservar carrito/notas, no cerrar rechazos parciales y distinguir ambas rutas de conceptos. Modelos y servicios simulados; cero llamadas pagadas/Meta/órdenes externas; ledger267/256/11 intacto. No acredita experiencia del modelo real ni conversión.
+
+Corrección separada Kamppo `973a072`: identificador completo SHA-256 cuando excede64, claves cortas preservadas; API441 aprobadas/15liveomitidas, build aprobado. No se portó motor PPP. El estado de despliegue se registra por separado. Producción PPP continúa265; delta266–275 pendiente de Kamppo.
+
 ## VIGENTE — tanda274: saludo sin invitación a llamar (28/10)
 
 Solicitud explícita del usuario: fomentar que prueben el chat quitando «Si quieres, también puedes llamarnos al…» del saludo. El prefijo queda «Con gusto te atiendo.». Cambia valor por defecto y limpia esa frase de plantillas antiguas mediante la normalización exclusiva de bienvenida. Sin persistencia, SQL ni cambio de modelos.

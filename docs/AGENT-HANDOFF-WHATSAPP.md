@@ -1,6 +1,15 @@
 # Relevo del agente: PPP WhatsApp
 
-## DIAGNÓSTICO ABIERTO — reporte Kamppo bebidas/cierre/registro (28/10)
+## VIGENTE — tanda275: bebidas, categorías y cierre con total (28/10)
+
+Reportes nuevos desde Kamppo: «Quiero algo de tomar», «No maa», «tienes carne?» con postres, «no mas, cuanto es?» y «de todo lo que pedi» capturado como dirección. Corrección PPP: navegación genérica de bebidas antes de partir producto/dirección; categorías por palabra completa (res no coincide con Postres); errata completa de cierre; total del carrito y avance con revisión final obligatoria; aclaración del total conserva dirección y carrito. Sin nombres/IDs/precios de PPP en reglas. Las mejoras lingüísticas permanecen aquí para migración posterior.
+
+25 regresiones nuevas; foco25/1. Global21663/338 aprobada, inventario exacto y550fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-275-validation.json`. Incluye controles de no confirmar ante pregunta, preservar carrito/notas, no cerrar rechazos parciales y distinguir ambas rutas de conceptos. Modelos y servicios simulados; cero llamadas pagadas/Meta/órdenes externas; ledger267/256/11 intacto. No acredita experiencia del modelo real ni conversión.
+
+Corrección separada Kamppo `973a072`: identificador completo SHA-256 cuando excede64, claves cortas preservadas; API441 aprobadas/15liveomitidas, build aprobado. No se portó motor PPP. El estado de despliegue se registra por separado. Producción PPP continúa265; delta266–275 pendiente de Kamppo.
+
+
+## HISTÓRICO — diagnóstico previo a tanda275 y corrección Kamppo973a072 (28/10)
 
 No hay corrección ni deploy nuevo. En PPP274 y Kamppo local `daabec4b`, «Quiero algo De tomar» responde producto no disponible pese a bebidas presentes; «No maa» no avanza al checkout, mientras «No más» sí. «Si» tras revisión final sí intenta crear. Adaptador Kamppo construye `clientRequestId` hasta128, columna `orders.client_request_id` limitada a64; prueba aislada imponiendo ese contrato reproduce el error interno y «llámanos al el restaurante». No se consultaron logs/DB productivos. Manifiesto de migración apunta a PPP265, no274; los dos huecos lingüísticos también persisten aquí. Evidencia `whatsapp-kamppo-reported-drink-checkout-diagnostic-2810.json`; repro opt-in `src/whatsapp/whatsapp-something-to-drink.repro.ts` (14probes,9rojos/5verdes; el control de categoría con modelo vacío no acredita defecto del modelo real). Sin cambios de runtime, inferencia pagada, Meta ni órdenes externas. Copias temporales de pruebas Kamppo retiradas del checkout; evidencia en `/tmp/kamppo-*-repro.*`. Priorizar contrato de creación y mensaje de error en adaptador; después lenguaje de bebidas y cierre tolerante a errata. No truncar identificadores sin considerar colisiones/idempotencia.
 

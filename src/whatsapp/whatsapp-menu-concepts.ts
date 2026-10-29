@@ -395,8 +395,8 @@ function categoryMatchesConcept(
     if (!n || n.length < 3) continue;
     if (cat === n || catStem === stemLoose(n)) return true;
     if (hasWholeWordOrStem(cat, n)) return true;
-    // "Carnes a la parrilla" contiene alias
-    if (cat.includes(n) || cat.includes(stemLoose(n))) return true;
+    // Match boundaries above already handle "Carnes a la parrilla".
+    // Substrings would classify "Postres" as "res".
   }
   return false;
 }

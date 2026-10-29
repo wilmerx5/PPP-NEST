@@ -293,7 +293,7 @@ function nothingElsePhrase(t: string): boolean {
     /^ada\s+mas$/.test(t) ||
     /^(asi\s+)?nomas$/.test(t) ||
     // "No, no mas" / "no no más" / "ya no mas" / "no gracias"
-    /^(ya\s+)?no(\s+no)?\s+mas$/.test(t) ||
+    /^(ya\s+)?no(\s+no)?\s+(?:mas|maa)$/.test(t) ||
     /^(no\s+gracias|gracias\s+no)(?:\s+nada\s+mas)?$/.test(t) ||
     // "es todo" / "eso es todo" / "ya es todo" / "con eso es todo"
     /^(ya\s+)?(eso\s+)?es\s+todo$/.test(t) ||
