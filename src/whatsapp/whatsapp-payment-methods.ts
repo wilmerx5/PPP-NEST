@@ -169,6 +169,26 @@ export function getEnabledPaymentMethods(
   });
 }
 
+/** Parse payment-shaped wording separately from the configured payment choices. */
+export function parseRegionalPaymentIntent(text: string): { methodText: string; question: boolean } | null {
+  const t = normalizeKeyword(text).replace(/[¿?¡!.,]/g, ' ')
+    .replace(/\b(?:por favor|porfa|gracias|veci)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  const match = t.match(/^(?:(?:quiero|quisiera|voy a|puedo|podria|se puede)\s+cancelar|(?:te\s+)?cancelo)(?:\s+el\s+pedido)?\s+(?:con|por|en)\s+(.+)$/);
+  return match ? { methodText: match[1], question: /[¿?]/.test(text) || /^(?:puedo|podria|se puede)\b/.test(t) } : null;
+}
+
+/** "Cancelar" can mean paying. Require a complete phrase and a configured method. */
+export function normalizeRegionalPaymentIntent(
+  text: string,
+  methods: WhatsappPaymentMethodConfig[],
+): string | null {
+  const intent = parseRegionalPaymentIntent(text);
+  if (!intent) return null;
+  const method = methods.find(m => [m.label, ...m.keywords].some(k => normalizeKeyword(k) === intent.methodText));
+  if (!method) return null;
+  return intent.question ? `puedo pagar con ${intent.methodText}?` : `pago con ${intent.methodText}`;
+}
+
 export function findPaymentMethodByText(
   text: string,
   methods: WhatsappPaymentMethodConfig[],

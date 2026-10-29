@@ -60,6 +60,7 @@ import {
   isNothingElseOrderIntent,
   cartTotalFollowupIntent,
   isGenericDrinkBrowseIntent,
+  isCheckoutWaitIntent,
   isDeclineMoreItemsIntent,
   isFinishCheckoutIntent,
   isHypotheticalOrderQuestion,
@@ -134,6 +135,8 @@ import {
   isPaymentCapabilityQuestion,
   paymentMethodLabel,
   type WhatsappPaymentMethodConfig,
+  normalizeRegionalPaymentIntent,
+  parseRegionalPaymentIntent,
 } from './whatsapp-payment-methods';
 import {
   buildOrderLimitsPromptBlock,
@@ -1189,9 +1192,19 @@ export class WhatsappOrchestratorService {
 
     const checkoutSession = this.conversationService.getSession(conv);
     if (/^awaiting_(?:name|address|phone|payment|final_confirm)$/.test(conv.state || '') && checkoutSession.cart.length &&
-        /^(?:(?:ya\s+)?voy|un moment(?:o|ico)|dame un momento|ya te digo|esperame)[.!]*$/.test(this.normalizeForMatch(text))) {
+        isCheckoutWaitIntent(text)) {
       await this.reply(conv, msg.waId, 'Claro, te espero. Cuando estés listo seguimos con el pedido.');
       return;
+    }
+    if (checkoutSession.cart.length && !['completed', 'closed', 'human', 'human_takeover'].includes(conv.state)) {
+      const paymentText = normalizeRegionalPaymentIntent(text, cfg.paymentMethods);
+      // Preserve the existing cash-change route for a complete bill statement.
+      const cashStatement = new RegExp(String.raw`^(?:te\s+)?cancelo\s+con\s+(?:un\s+billete\s+de\s+)?\$?\s*${this.CASH_CHANGE_AMOUNT}[.!]?$`, 'i').test(text.trim());
+      if (!paymentText && !cashStatement && parseRegionalPaymentIntent(text)) {
+        await this.reply(conv, msg.waId, '¿Con “cancelar” te refieres a pagar o a anular el pedido? Tu pedido sigue igual.');
+        return;
+      }
+      text = paymentText || text;
     }
     if (await this.tryRepeatCheckoutQuestion(conv, msg.waId, checkoutSession, text, cfg)) return;
     if (await this.tryResolveRecipientOrPlace(conv, msg.waId, checkoutSession, text, cfg)) return;

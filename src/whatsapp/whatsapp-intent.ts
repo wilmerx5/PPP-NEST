@@ -280,6 +280,12 @@ export function isNothingElseOrderIntent(text: string): boolean {
   return [said, core, unprefixed].some((t) => !!t && t.length <= 48 && nothingElsePhrase(t));
 }
 
+/** A complete request to wait, never the data that follows it. */
+export function isCheckoutWaitIntent(text: string): boolean {
+  const t = withoutVocatives(normalizeIntentText(text));
+  return /^(?:(?:ya\s+)?voy|un\s+(?:momento|momentico|ratito|ratico)|dame\s+un\s+(?:momento|momentico|ratito|ratico|chance)|esperame|(?:ya|ahorita|ahora)\s+te\s+digo|(?:ya|ahorita|ahora)\s+te\s+(?:paso|mando|envio)\s+(?:la\s+(?:direccion|ubicacion)|el\s+(?:nombre|telefono)))$/.test(t);
+}
+
 /** Standalone drink browsing, without a concrete product, quantity or modifier. */
 export function isGenericDrinkBrowseIntent(text: string): boolean {
   const t = withoutVocatives(normalizeIntentText(text)).replace(/^hola\s+/, '');

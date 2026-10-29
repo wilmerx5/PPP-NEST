@@ -1,0 +1,90 @@
+{
+  "baseCommit": "e71b053bed85242e89f2231462b665ca2f90e2d3",
+  "batches": [
+    277
+  ],
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 131.56,
+      "sourceUnchanged": true,
+      "tests": 4206,
+      "failed": 0
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 155.71,
+      "sourceUnchanged": true,
+      "tests": 3405,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 266.28,
+      "sourceUnchanged": true,
+      "tests": 14170,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.04,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 552,
+  "tests": 21797,
+  "suites": 340,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 277,
+  "focus": {
+    "passed": 219,
+    "suites": 3
+  },
+  "newRegressionTests": 59,
+  "baseline": {
+    "failed": 32,
+    "passed": 0,
+    "note": "Not all failures represent data corruption; some concern response contracts"
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "scope": [
+    "Regional cancelar wording uses configured payment methods rather than clearing cart",
+    "Unknown or compound cancelar-with wording asks before mutation",
+    "Complete checkout wait utterances preserve session and state",
+    "Actual cancellation, payment question, final review and substantive-input guards"
+  ],
+  "limits": [
+    "Mocked models and external services, no real Meta orders",
+    "Synthetic cases derived from public language evidence; not new customer conversations",
+    "No accent recognition, country-level coverage or conversion claim",
+    "No Kamppo port or PPP production deployment"
+  ],
+  "runnerRetry": {
+    "phase": "accuracy-b",
+    "workersFirstAttempt": 6,
+    "timeouts": 2,
+    "retryWorkers": 4,
+    "sourceChanged": false,
+    "reusedPhase": "accuracy-a passed on identical frozen sources"
+  },
+  "initialGlobalRegression": {
+    "case": "Cancelo con 100mil",
+    "failed": 1,
+    "phase": "accuracy-b",
+    "resolution": "Preserve complete existing bill statement route; six additional regression guards; full global rerun"
+  }
+}

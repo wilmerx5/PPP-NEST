@@ -1,5 +1,16 @@
 
 
+## VIGENTE — tanda277: pagar frente a cancelar y espera conversacional (28/10)
+
+Base `e71b053b`. Investigación pública de RAE/ASALE/DEM y corpus de WhatsApp, contrastada con los chats compartidos. Fuentes, límites y prioridades en `whatsapp-regional-patterns-2810.md`. Ejemplos nuevos sintéticos, no transcripciones regionales de clientes.
+
+«Quiero cancelar con efectivo/por transferencia» borraba el carrito; ahora la frase completa usa los métodos configurados, conservando las preguntas como consultas. Complemento desconocido/compuesto pide aclarar pagar o anular antes de mutar. «Quiero cancelar el pedido» sigue cancelando. Esperas completas como «ahorita te digo» y «dame un ratito» conservan datos y estado durante checkout, sin capturarse como dirección ni confirmar. Sin SQL ni cambios de modelos.
+
+59 regresiones nuevas; baseline32fallos/0aprobadas (algunos son solo respuesta), 27 controles posteriores. Foco219/3. Global21797/340 aprobada, inventario exacto y552fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-277-validation.json`.
+
+Modelos/servicios simulados; cero llamadas pagadas, Meta y órdenes externas. Ledger267/256/11 intacto. No acredita precisión del modelo real, acentos, cobertura por país ni conversión. Producción PPP sigue265; delta266–277 pendiente de Kamppo. Próximas tandas: mensajes fragmentados y reparaciones, alias locales ambiguos, cantidades/distribución, pago/cambio y muestra reservada; medios/canal requieren evaluación aparte.
+
+
 ## VIGENTE — tanda276: variantes básicas de bebidas y total (28/10)
 
 Tanda276 publicada y desplegada en staging: código `d6d038de`, imagen `sha256:7e5f622467a84cb733cf1ad5426107eb75f431459801d5477f615c592217ede8`, healthy,0reinicios, APIlocal/pública200. Controles compilados de total/bebidas y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-276-staging-deployment.json`. Kamppo solo recibió la corrección del identificador (runtime973a072, healthy); delta lingüístico266–276 pendiente.
