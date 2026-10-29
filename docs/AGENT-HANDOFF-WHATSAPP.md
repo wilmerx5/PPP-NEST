@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda287: «yes» y cierre en confirmación (29/10)
+
+Base `42f7cdc6`. Se priorizó el chat reportado de Kamppo: «yes» → «¿Algo más?» → «no» repetido. PPP también reproduce el fallo. Ahora «yes» completo reconoce aprobación final, respetando preguntas, mensajes mixtos y cambios pendientes. «No», «no más» y «solo eso» en ese paso conservan el resumen y piden confirmar o corregir; nunca crean la orden por negación.
+
+384 pruebas nuevas en tres productos, dos modos simulados, efectivo/transferencia y domicilio/recogida: 120 aprobaciones, 120 no autorizaciones, 72 cierres repetidos y 72 cambios pendientes. Baseline 192 aprobados / 192 fallidos; foco 384/1. Global 24785/354, inventario exacto y 566 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-287-validation.json` y `whatsapp-batch-287-patterns.md`.
+
+Sin SQL, campos ni modelos nuevos. Cero inferencia pagada/órdenes externas; ledger 267/256/11 intacto. Fixtures parten de confirmación completa; no son replay del canal real. Kamppo inspeccionado solo en lectura: su función local también omitía «yes», pero no se validó runtime ni se migró. PPP producción y Kamppo mantienen 282; 283–287 son staging. Quedan pendientes cantidades de retirada y pedidos compuestos, desplazados por esta incidencia.
+
+
 ## VIGENTE — tanda286: retirada referenciada de una unidad (29/10)
 
 Tanda286 desplegada en staging: código `80b98eeb`, imagen `sha256:1f293aaff9f29b5704496bad6fd82f5ad98534f02cd40b143664bc407366b571`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica286 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-286-staging-deployment.json`. PPP producción y Kamppo conservan282.

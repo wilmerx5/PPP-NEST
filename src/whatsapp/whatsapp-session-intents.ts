@@ -455,7 +455,7 @@ export function isFinalConfirmAffirmation(text: string): boolean {
     .replace(/\s+/g, ' ')
     .trim();
   if (!rest) return false;
-  return /^(?:(?:si+|sip|sep|claro(?: que si)?|correcto|exacto|perfecto|listo|dale|de una|ok|okay|vale|bueno|confirmo|confirmado|(?:asi )?esta bien|asi esta|todo (?:esta )?bien|todo correcto) )+$/.test(`${rest} `);
+  return /^(?:(?:yes|si+|sip|sep|claro(?: que si)?|correcto|exacto|perfecto|listo|dale|de una|ok|okay|vale|bueno|confirmo|confirmado|(?:asi )?esta bien|asi esta|todo (?:esta )?bien|todo correcto) )+$/.test(`${rest} `);
 }
 
 /** “¿Cuánto demora?” / “en cuánto llega?” — ETA de domicilio. */

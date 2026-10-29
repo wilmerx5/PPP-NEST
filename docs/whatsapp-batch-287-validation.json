@@ -1,0 +1,68 @@
+{
+  "baseCommit": "42f7cdc614a50c5c2547fbac8d4640098c909d2b",
+  "batches": [
+    287
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 277.59,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 397.48,
+      "sourceUnchanged": true,
+      "tests": 17158,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 7.01,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 566,
+  "tests": 24785,
+  "suites": 354,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 287,
+  "newRegressionTests": 384,
+  "newSuites": 1,
+  "focusPassed": 384,
+  "focusSuites": 1,
+  "baseline": {
+    "passed": 192,
+    "failed": 192
+  },
+  "families": {
+    "approval": 120,
+    "nonApproval": 120,
+    "repeatedCloseRecovery": 72,
+    "pendingEdits": 72
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Complete final-confirmation fixtures, not capture of address/payment",
+    "Models and external order creation mocked",
+    "No broad English or arbitrary mixed-message support",
+    "Kamppo inspected read-only, not runtime replay or migration",
+    "Quantity removal work deferred for this reported checkout incident"
+  ]
+}

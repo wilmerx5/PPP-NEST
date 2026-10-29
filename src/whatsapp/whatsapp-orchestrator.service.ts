@@ -1449,6 +1449,22 @@ export class WhatsappOrchestratorService {
       }
     }
     if (conv.state === 'awaiting_final_confirm' && await this.tryAnswerRecalledPick(conv, msg.waId, text, cfg)) return;
+    // A negative answer at the approval step is not consent and must not reopen shopping.
+    if (conv.state === 'awaiting_final_confirm' && /^(?:no(?: mas)?|solo eso)(?: gracias| porfa| veci)?$/.test(this.normalizeForMatch(text))) {
+      const current = this.conversationService.getSession(conv);
+      const editReminder = this.formatPendingCartEditReminder(current);
+      if (current.cart.length && editReminder) {
+        await this.reply(conv,msg.waId,editReminder);
+        return;
+      }
+      if (current.cart.length && !current.pendingAttribute && !current.pendingMatch && !current.pendingAddOffer &&
+        !current.pendingSideSwap && !current.pendingMultiOrder && !current.droppedPick?.shown) {
+        await this.reply(conv,msg.waId,this.formatOrderSummary(conv,current,this.deliveryFeeFor(current,cfg),cfg.paymentMethods) +
+          '\n\nEl pedido aún no está registrado. Si está correcto, escribe *confirmar*. Si algo está mal, dime qué cambiamos.');
+        return;
+      }
+    }
+
     // The summary asks "Si está bien, escribe confirmar"; a whole yes answers it.
     if (conv.state === 'awaiting_final_confirm' && isFinalConfirmAffirmation(text)) {
       const current = this.conversationService.getSession(conv);
