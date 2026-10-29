@@ -1482,6 +1482,7 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
     }
     if (await this.tryHandleMultipleRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleReferencedUnitRemoval(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleReferencedCookingChange(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleRejectedProductRemoval(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandlePairedCatalogPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -15671,6 +15672,57 @@ export class WhatsappOrchestratorService {
     return next;
   }
 
+  /** A numbered clarification must preserve the original one-unit removal intent. */
+  private async tryHandleReferencedUnitRemoval(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state)) return false;
+    const said = this.normalizeForMatch(text);
+    const request = said.match(/^(?:quita|quitame|retira|retirame|saca|sacame|elimina) (?:uno de los|una de las) de (.+)$/);
+    const pending = session.pendingCartRemoval?.quantity === 1 ? session.pendingCartRemoval : undefined;
+    if (!request && !pending) return false;
+    const unchanged = async (reason: string) => {await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;};
+    if (pending && /^(?:no quites nada|dejalo igual|(?:cancela|olvida) (?:ese cambio|el cambio|eso))$/.test(said)) {
+      await this.conversationService.saveSession(conv,{...session,pendingCartRemoval:undefined});
+      return unchanged('Cancelé la retirada pendiente.');
+    }
+    if (!request && pending?.cartSignature !== JSON.stringify(session.cart)) {
+      await this.conversationService.saveSession(conv,{...session,pendingCartRemoval:undefined});
+      return unchanged('El carrito cambió; dime de nuevo de cuál plato retiramos una unidad.');
+    }
+    if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote ||
+      CART_EDIT_SELECTION_KEYS.some(key=>key!=='pendingCartRemoval' && !!session[key]) || (session.pendingCartRemoval && !pending))
+      return unchanged('Hay otra selección o pago pendiente; aclaremos eso antes de retirar una unidad.');
+    if (!request && pending && (cartTotalFollowupIntent(text,true) || this.looksLikeOrderTotalQuestion(text))) {
+      await this.reply(conv,waId,this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+this.formatPendingCartEditReminder(session));
+      return true;
+    }
+    if (/[¿?]/.test(text)) return unchanged('Para retirar una unidad, envía la instrucción o selección sin pregunta.');
+    const parsed = request ? parseScopedCartRemoval(text) : null;
+    if (request && (!parsed || parsed.quantity!==1 || parsed.target!==undefined || parsed.preserve.length))
+      return unchanged('Dime una sola retirada completa, con la opción del plato.');
+    const numeric = /^\d+$/.test(text.trim()) ? Number(text.trim()) : null;
+    const named = !request && numeric===null && pending ? this.uniqueClarificationLine(session,pending.options,text) : null;
+    const indices = request ? session.cart.flatMap((line,index)=>correctionMatchesLine(line,parsed!.query)?[index]:[]) :
+      numeric!==null ? (pending!.options[numeric-1] ? [pending!.options[numeric-1].cartIndex] : []) :
+      named && named!=='ambiguous' ? [named.index] : [];
+    if (!indices.length) return unchanged(request ? 'No encontré ese plato en el carrito.' : 'Indica un número de la lista o una característica que distinga el plato.');
+    if (indices.length>1) {
+      const options=indices.map(cartIndex=>({cartIndex,label:this.formatCartLineLabel(session.cart[cartIndex]) +
+        (session.cart[cartIndex].note ? ` · ${session.cart[cartIndex].note}` : '')}));
+      await this.conversationService.saveSession(conv,{...session,pendingCartRemoval:{quantity:1,cartSignature:JSON.stringify(session.cart),options}});
+      await this.reply(conv,waId,'¿De cuál plato retiro una unidad?\n'+options.map((o,i)=>`${i+1}. ${o.label}`).join('\n')+'\nEscribe el número o una característica. El pedido sigue igual.');
+      return true;
+    }
+    const index=indices[0],original=session.cart[index];
+    const changed=original.quantity>1 ? {...session,cart:session.cart.map((line,i)=>i===index?{...line,quantity:line.quantity-1}:line)} : this.removeCartLines(session,[index]);
+    const next={...this.reconcileSubstitutionPending(changed),pendingCartRemoval:undefined,lastDrinkAddition:undefined};
+    await this.conversationService.saveSession(conv,next,next.cart.length?conv.state:'building_cart');
+    await this.reply(conv,waId,`Listo, quité una unidad de *${original.name}*.\n\n`+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
+      (next.cart.length ? this.formatInterruptedStepReminder(conv,next) || this.formatContinueShoppingPrompt(next) : '¿Qué te gustaría pedir?'));
+    return true;
+  }
+
   /** A referenced option identifies the existing meal, not a new whole protein. */
   private async tryHandleReferencedCookingChange(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
@@ -17776,7 +17828,7 @@ export class WhatsappOrchestratorService {
       return 'El carrito cambió. Dime otra vez cuál plato y qué cambio hacemos antes de confirmar.';
     }
     const question = {
-      pendingCartRemoval: 'Para continuar, ¿cuál línea quitamos?',
+      pendingCartRemoval: session.pendingCartRemoval?.quantity===1 ? 'Para continuar, ¿de cuál línea retiramos una unidad?' : 'Para continuar, ¿cuál línea quitamos?',
       pendingCartQuantity: 'Para continuar el cambio de cantidad, elige la línea:',
       pendingCartReplacement: 'Para continuar el reemplazo, elige la línea:',
       pendingCartAttributeEdit: 'Para continuar el cambio, elige el plato:',

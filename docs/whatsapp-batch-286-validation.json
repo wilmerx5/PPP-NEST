@@ -1,0 +1,70 @@
+{
+  "baseCommit": "b4fcef7414a867a54cc804d9216bfa4acde46400",
+  "batches": [
+    286
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 277.5,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 381.68,
+      "sourceUnchanged": true,
+      "tests": 16774,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.83,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 565,
+  "tests": 24401,
+  "suites": 353,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 286,
+  "newRegressionTests": 420,
+  "newSuites": 1,
+  "focusPassed": 882,
+  "focusSuites": 3,
+  "initialBaseline": {
+    "cases": 384,
+    "passed": 102,
+    "failed": 282
+  },
+  "additionalTests": 36,
+  "interruptionBaselineFailed": 12,
+  "families": {
+    "directRemoval": 216,
+    "clarification": 72,
+    "guards": 96,
+    "interruptionAndEmpty": 36
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic saved carts; models and external services mocked",
+    "One explicit unit referenced by option, narrow grammar",
+    "No arbitrary partial quantities or compound edits",
+    "Not promoted to production or ported to Kamppo"
+  ]
+}

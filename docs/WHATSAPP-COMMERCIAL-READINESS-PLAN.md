@@ -1,5 +1,14 @@
 
 
+## VIGENTE — tanda286: retirada referenciada de una unidad (29/10)
+
+Base `b4fcef74`. «Quita uno de los de pechuga» retira una unidad; si varias líneas coinciden, pregunta y conserva esa cantidad al seleccionar por número o característica. El campo opcional `pendingCartRemoval.quantity: 1` distingue esta intención. Firma del carrito, cancelación, pago/otras selecciones y preguntas protegen la operación. Consultar el total no consume la selección. La última unidad deja carrito vacío en compra.
+
+420 pruebas nuevas: 216 retiradas, 72 aclaraciones, 96 guardas y 36 interrupciones/vaciado. Baseline inicial 384 casos: 102 aprobados / 282 fallidos; las interrupciones detectaron 12 fallos adicionales del total, corregidos. Foco final 882/3. Global 24401/353, inventario exacto y 565 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-286-validation.json` y `whatsapp-batch-286-patterns.md`.
+
+Sin SQL ni cambios de modelos. Cero inferencia pagada, Meta u órdenes externas; ledger 267/256/11 intacto. Fixtures de carrito previo, no replay de compra/audio. Quedan pendientes cantidades parciales distintas de uno y pedidos compuestos. PPP producción y Kamppo mantienen 282; 283–286 son trabajo de staging. Despliegue registrado por separado.
+
+
 ## VIGENTE — tanda285: preparación de una sola unidad (29/10)
 
 Tanda285 desplegada en staging: código `dd48c78e`, imagen `sha256:362043f7f0c3411f36f7e5239c20c009d5d1ce46a9c7b0e297f30b86f5c88bba`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica285 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-285-staging-deployment.json`. PPP producción y Kamppo conservan282.

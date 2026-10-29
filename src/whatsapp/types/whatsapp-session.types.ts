@@ -205,6 +205,8 @@ export type WhatsappSessionData = {
   };
   /** El cliente pidió quitar algo ambiguo: elige línea del carrito por número. */
   pendingCartRemoval?: {
+    /** Preserve the explicit one-unit intent while choosing a referenced line. */
+    quantity?: 1;
     cartSignature?: string;
     options: Array<{ cartIndex: number; label: string }>;
     /** Atomic multi-product removal: each group selects one original cart line. */
