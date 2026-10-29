@@ -19731,7 +19731,7 @@ export class WhatsappOrchestratorService {
     const compound = said.match(/^(?:y\s+)?(?:(un[oa]?|dos|tres|cuatro|cinco|\d{1,2})\s+)?(sin\s+.+)$/);
     const parsed = compound && isCompoundExclusionNote(compound[2]) ? compound :
       said.match(/^(?:y\s+)?(?:(?:las|los)\s+)?(?:(un[oa]?|dos|tres|cuatro|cinco|\d{1,2})\s+)?(?:de\s+(?:ellas|ellos|esas|esos)\s+)?((?:sin|poco|poca)\s+[a-zñ]+(?:\s+[a-zñ]+){0,3})$/);
-    if (!parsed || !isCompoundExclusionNote(parsed[2]) && /\b(?:y|e|o|con|mas|otr[oa]s?|normal(?:es)?|adicional|aparte|pero)\b/.test(parsed[2])) return false;
+    if (!parsed || !isCompoundExclusionNote(parsed[2]) && /\b(?:y|e|o|ni|con|mas|otr[oa]s?|normal(?:es)?|adicional|aparte|pero)\b/.test(parsed[2])) return false;
     const counts: Record<string, number> = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5 };
     const quantity = parsed[1] ? counts[parsed[1]] ?? Number(parsed[1]) : 0;
     const menu = await this.catalogService.getMenuProducts();

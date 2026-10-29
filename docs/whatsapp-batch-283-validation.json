@@ -1,0 +1,68 @@
+{
+  "baseCommit": "981f290d0fbdf72fa2a95b1552e5d3fdf6b4382e",
+  "batches": [
+    283
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 277.71,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 772.88,
+      "sourceUnchanged": true,
+      "tests": 15674,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 9.39,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 562,
+  "tests": 23301,
+  "suites": 350,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 283,
+  "newRegressionTests": 348,
+  "newSuites": 2,
+  "focusPassed": 756,
+  "baseline": {
+    "passed": 155,
+    "failed": 193
+  },
+  "families": {
+    "selection": 128,
+    "unitSplit": 48,
+    "conflict": 64,
+    "interruptions": 64,
+    "recovery": 8,
+    "pureBoundaries": 36
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic variants of shared chat patterns, models and services mocked",
+    "Two/three ingredient exclusions only; does not interpret arbitrary conditions or orders",
+    "No real channel, audio, model or conversion validation",
+    "Batch283 not migrated to Kamppo or production by this change"
+  ]
+}

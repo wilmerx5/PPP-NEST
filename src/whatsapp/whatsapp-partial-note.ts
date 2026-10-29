@@ -3,15 +3,21 @@ import { normalizeCorrection } from './whatsapp-quantity-correction';
 const counts: Record<string, number> = { un:1, uno:1, una:1, dos:2, tres:3, cuatro:4, cinco:5, seis:6, siete:7, ocho:8, nueve:9, diez:10 };
 const count = (word: string) => counts[word] || (/^\d{1,2}$/.test(word) ? Number(word) : 0);
 
-/** Two or three explicit exclusions belonging to the same unit, not separate orders.
- * Ingredients remain catalog-independent; commands, quantities and conditions are excluded.
+/** Two or three exclusions of the same unit. “Ni” inherits the preceding “sin”.
+ * Return full ingredient phrases so conflict detection uses the same bounded grammar.
  */
-export function isCompoundExclusionNote(text: string): boolean {
-  if (text.length > 120 || /[¿?;]/.test(text)) return false;
-  const parts = normalizeCorrection(text).split(' y ');
-  return parts.length >= 2 && parts.length <= 3 && parts.every(part =>
+export function compoundExclusionIngredients(text: string): string[] | null {
+  if (text.length > 120 || /[¿?;]/.test(text)) return null;
+  const parts = normalizeCorrection(text).replace(/ ni (?:sin )?/g, ' y sin ').split(' y ');
+  if (parts.length < 2 || parts.length > 3 || !parts.every(part =>
     /^sin [a-zñ]+(?: [a-zñ]+){0,2}$/.test(part) &&
-    !/\b(?:y|e|o|con|no|un|una|uno|dos|tres|cuatro|cinco|agrega|agregar|anade|anadir|quita|quitar|cambia|cambiar|reemplaza|reemplazar|pagar|pago|pedido|quiero|pero|si|mas|otra|otro|otras|otros|adicional|aparte|normal|normales)\b/.test(part));
+    !/\b(?:y|e|o|ni|con|no|un|una|uno|dos|tres|cuatro|cinco|agrega|agregar|anade|anadir|quita|quitar|cambia|cambiar|reemplaza|reemplazar|pagar|pago|pedido|quiero|pero|si|mas|otra|otro|otras|otros|adicional|aparte|normal|normales)\b/.test(part) &&
+    !/\bsin\b/.test(part.slice(4)))) return null;
+  return parts.map(part=>part.slice(4));
+}
+
+export function isCompoundExclusionNote(text: string): boolean {
+  return compoundExclusionIngredients(text) !== null;
 }
 
 /** An explicit exclusion for a subset, with an explicit unchanged remainder. */
@@ -44,7 +50,7 @@ export function parsePartialNote(text: string): { quantity: number; note: string
   const implied = normalized.replace(/\s+(?:por favor|porfa|gracias)$/, '')
     .match(/^(?:y\s+)?(\w+)\s+(?:de\s+(?:ellas|ellos|esas|esos|las\s+dos|los\s+dos)\s+)?((?:sin|poco|poca|bien|extra)\s+.+)$/);
   if (implied && count(implied[1]) && implied[2].length <= 120 &&
-      (isCompoundExclusionNote(implied[2]) || !/\b(?:y|agrega|quita|cambia|reemplaza|pero|si|mas|otra|otro|otras|otros|adicional|aparte|normal|normales)\b/.test(implied[2]))) {
+      (isCompoundExclusionNote(implied[2]) || !/\b(?:y|ni|agrega|quita|cambia|reemplaza|pero|si|mas|otra|otro|otras|otros|adicional|aparte|normal|normales)\b/.test(implied[2]))) {
     return { quantity: count(implied[1]), note: implied[2], implied: true };
   }
   const other = normalized.match(/^(\w+)\s+(sin\s+.+?)\s+y\s+el\s+otro\s+normal$/);

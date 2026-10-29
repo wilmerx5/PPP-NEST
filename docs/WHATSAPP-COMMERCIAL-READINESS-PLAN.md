@@ -1,5 +1,14 @@
 
 
+## VIGENTE — tanda283: exclusiones con «ni» (29/10)
+
+Base `981f290d`. «Uno sin cebolla ni tomate» y otras exclusiones de2/3ingredientes conservan una sola nota y piden destino entre varios platos; una unidad se puede separar sin afectar las demás. La detección de conflictos reconoce también el ingrediente que sigue a«ni», en ambos sentidos, y permite seleccionar otro plato o cancelar la indicación pendiente.
+
+348 pruebas nuevas (312 recorridos y36límites), baseline155aprobadas/193fallidas, foco756aprobadas. Global23301/350, inventario exacto y562fuentes congeladas; TypeScript general/build y scripts Node aprobados. Ver `whatsapp-batch-283-validation.json` y `whatsapp-batch-283-patterns.md`.
+
+Sin catálogo fijo, SQL ni cambio de modelos. Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Límites: no expresiones arbitrarias con condiciones o más de3exclusiones, ni todas las correcciones de varias unidades. Las pruebas negativas puras acreditan el parser, no todos los fallbacks del modelo. Esta tanda permanece en staging;282 fue promovida aMain y portado aKamppo. Evidencia de activación se registra aparte.
+
+
 ## VIGENTE — tanda282: traslado de notas entre tres o más platos (29/10)
 
 **Actualización de promoción:** PPP producción verificada en `981f290d` (código282), imagen `sha256:1a4e6b996b9a40ce7ba99103e73c95d63ce548ad19139d97ce89e0367a2dcb39`; API local/pública operativas,0reinicios, controles compilados y configuración preservada. Se usó el workflow manual de Kamppo porque el SSH local agotaba tiempo. Kamppo también ejecuta266–282: `d482cbc3628d`, imagen `sha256:5728183a360ae02938ac8809ff834585af740bd4bcf342436e00f13122d19df8`, workflow de deploy aprobado. Ver `whatsapp-main-promotion-282-2910.json`. El bloqueo descrito debajo es histórico; staging aún requiere su siguiente actualización.

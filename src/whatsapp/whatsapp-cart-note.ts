@@ -1,3 +1,4 @@
+import { compoundExclusionIngredients } from './whatsapp-partial-note';
 import { normalizeCorrection } from './whatsapp-quantity-correction';
 
 export type ScopedCartNote = { kind: 'append' | 'remove'; query: string; note: string; preserve: string[] };
@@ -62,6 +63,8 @@ export function editScopedCartNote(existing: string | undefined, edit: ScopedCar
 export function kitchenNotesConflict(existing: string | undefined, added: string): boolean {
   const directives = (note: string) => note.split(/[;.,]+|\s+y\s+/i).flatMap(raw => {
     const clause = normalizeCorrection(raw);
+    const sharedExclusions = compoundExclusionIngredients(clause);
+    if (sharedExclusions) return sharedExclusions.map(ingredient=>({ingredient,excluded:true}));
     const exclusion = clause.match(/(?:^| )sin (.+)$/);
     if (exclusion) return [{ingredient:exclusion[1], excluded:true}];
     const inclusion = clause.match(/(?:^| )(?:con(?: (?:poc[oa]s?|menos|mas|extra))?|poc[oa]s?|menos|mas|extra|bajit[oa] de) (.+)$/);
