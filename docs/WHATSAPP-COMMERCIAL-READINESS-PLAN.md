@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda287, código `588552e7`; PPP producción y motor Kamppo hasta282. Delta pendiente:283–287. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 24.785 pruebas /354 suites aprobadas en287, con dependencias simuladas. No equivalen a24.785 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda288, código `3db03dde`; PPP producción y motor Kamppo hasta282. Delta pendiente:283–288. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 25.145 pruebas /355 suites aprobadas en288, con dependencias simuladas. No equivalen a25.145 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -96,6 +96,8 @@ Este plan no certifica que el sistema esté listo para venta ni promete cubrir �
 ---
 
 ## VIGENTE — tanda288: cantidades de retirada referenciada (29/10)
+
+Tanda288 desplegada en staging: código `3db03dde`, imagen `sha256:cab26a51896df63ec95518802e36105bb6322c6e95122db17d304afb30987c29`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica288 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-288-staging-deployment.json`. PPP producción y Kamppo conservan282.
 
 Base `ce2449aa`. «Quita dos de los de pechuga» conserva cantidad al aclarar por número/nota. Rechaza cantidades inválidas o superiores a las de la línea, sin repartir la retirada entre otras líneas; permite elegir otra tras insuficiencia. Conserva total intercalado, cancelación, firma del carrito, pagos/otras selecciones. Campo opcional `pendingCartRemoval.quantity` ahora numérico validado; sin SQL/modelos nuevos.
 

@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda288: cantidades de retirada referenciada (29/10)
 
+Tanda288 desplegada en staging: código `3db03dde`, imagen `sha256:cab26a51896df63ec95518802e36105bb6322c6e95122db17d304afb30987c29`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica288 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-288-staging-deployment.json`. PPP producción y Kamppo conservan282.
+
 Base `ce2449aa`. «Quita dos de los de pechuga» conserva cantidad al aclarar por número/nota. Rechaza cantidades inválidas o superiores a las de la línea, sin repartir la retirada entre otras líneas; permite elegir otra tras insuficiencia. Conserva total intercalado, cancelación, firma del carrito, pagos/otras selecciones. Campo opcional `pendingCartRemoval.quantity` ahora numérico validado; sin SQL/modelos nuevos.
 
 360 pruebas nuevas (144retiradas,144guardas,72recuperaciones), tres catálogos, compra/revisión y agente simulado off/on. Baseline26aprobadas/334fallidas; foco882/3. Global25145/355, inventario exacto y567fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-288-validation.json` y `whatsapp-batch-288-patterns.md`.
