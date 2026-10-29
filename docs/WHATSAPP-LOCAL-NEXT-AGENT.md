@@ -1,5 +1,14 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda288: cantidades de retirada referenciada (29/10)
+
+Base `ce2449aa`. «Quita dos de los de pechuga» conserva cantidad al aclarar por número/nota. Rechaza cantidades inválidas o superiores a las de la línea, sin repartir la retirada entre otras líneas; permite elegir otra tras insuficiencia. Conserva total intercalado, cancelación, firma del carrito, pagos/otras selecciones. Campo opcional `pendingCartRemoval.quantity` ahora numérico validado; sin SQL/modelos nuevos.
+
+360 pruebas nuevas (144retiradas,144guardas,72recuperaciones), tres catálogos, compra/revisión y agente simulado off/on. Baseline26aprobadas/334fallidas; foco882/3. Global25145/355, inventario exacto y567fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-288-validation.json` y `whatsapp-batch-288-patterns.md`.
+
+Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Carritos previos preparados como fixtures, no conversaciones nuevas ni audio. Cantidades nuevas principales2/3 y límites inválidos; gramática acotada, no reparto entre líneas ni cambios compuestos. Siguiente: operaciones compuestas y auditoría trazable de fuentes/paridad. Producción PPP y Kamppo mantienen282;283–288 son trabajo de staging. Despliegue se registra aparte.
+
+
 El usuario pidió el plan completo para elevar la calidad. Consultar el inicio de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md): paridad283–287, inventario trazable de chats/PDF, cantidades y cambios compuestos, consolidación de acciones, conversaciones completas, muestra independiente con modelo, medios/canal y piloto medido. Los umbrales allí son propuestas, no métricas alcanzadas. Próxima tanda prevista288: cantidades de retirada; aún no implementada. Este cambio es documental: no se desplegó ni migró código ni se gastó inferencia. Staging287 y producción/Kamppo282 siguen siendo la última evidencia registrada.
 
 

@@ -28,7 +28,7 @@ Salida: cada fuente disponible está inventariada con estado revisado/pendiente/
 
 ### 2. Completar correcciones y consolidar reglas comunes
 
-Próxima tanda prevista288: retirar cantidades explícitas («quita dos de los de pechuga»), conservar la cantidad al aclarar, impedir retirar más de lo existente, cancelar y recuperarse de una selección antigua. Esto aún no está implementado.
+Tanda288 implementada y validada localmente: retirar cantidades explícitas («quita dos de los de pechuga»), conservar la cantidad al aclarar, impedir retirar más de lo existente, cancelar y recuperarse de una selección antigua. Alcance acotado a referencias «de los/las de»; no acredita todas las redacciones. Véase evidencia288 y despliegue separado.
 
 Después, por familias:
 - Cambios compuestos: «quita dos, cambia uno a broaster y deja las bebidas»; planificar todas las operaciones contra el mismo carrito. Aclarar antes de ejecutar una parte ambigua; no afirmar éxito total cuando solo se aplicó una parte.
@@ -87,13 +87,21 @@ Un error de pedido/precio, orden duplicada, confirmación indebida o mezcla entr
 ## Próximas acciones concretas
 
 1. Preparar la matriz de pendientes reales de chats/PDF y el paquete de paridad283–287, con prioridad al bloqueo de confirmación287.
-2. Tanda288: cantidades de retirada y aclaración; después reparto y cambios compuestos mediante operaciones validadas.
+2. Cantidades referenciadas cubiertas en288; siguiente: reparto y cambios compuestos mediante operaciones validadas.
 3. Seleccionar conversaciones independientes nuevas y presupuestar un ensayo real completo, sin consumirlas antes para desarrollo.
 4. Verificar canal y recuperación operativa; iniciar piloto de texto supervisado solo al cumplir las puertas anteriores.
 
 Este plan no certifica que el sistema esté listo para venta ni promete cubrir «todo» el lenguaje. Define qué evidencia falta y qué resultado permite avanzar. Fuentes: reportes283–287; `docs/whatsapp-regional-patterns-2810.md`; índices de chats/PDF mencionados; historial técnico conservado debajo.
 
 ---
+
+## VIGENTE — tanda288: cantidades de retirada referenciada (29/10)
+
+Base `ce2449aa`. «Quita dos de los de pechuga» conserva cantidad al aclarar por número/nota. Rechaza cantidades inválidas o superiores a las de la línea, sin repartir la retirada entre otras líneas; permite elegir otra tras insuficiencia. Conserva total intercalado, cancelación, firma del carrito, pagos/otras selecciones. Campo opcional `pendingCartRemoval.quantity` ahora numérico validado; sin SQL/modelos nuevos.
+
+360 pruebas nuevas (144retiradas,144guardas,72recuperaciones), tres catálogos, compra/revisión y agente simulado off/on. Baseline26aprobadas/334fallidas; foco882/3. Global25145/355, inventario exacto y567fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-288-validation.json` y `whatsapp-batch-288-patterns.md`.
+
+Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Carritos previos preparados como fixtures, no conversaciones nuevas ni audio. Cantidades nuevas principales2/3 y límites inválidos; gramática acotada, no reparto entre líneas ni cambios compuestos. Siguiente: operaciones compuestas y auditoría trazable de fuentes/paridad. Producción PPP y Kamppo mantienen282;283–288 son trabajo de staging. Despliegue se registra aparte.
 
 ## Historial de validaciones y planes anteriores
 
