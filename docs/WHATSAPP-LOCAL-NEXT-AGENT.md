@@ -1,3 +1,7 @@
+## Hoja de ruta operativa actualizada — 29/10/2026
+
+El usuario pidió el plan completo para elevar la calidad. Consultar el inicio de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md): paridad283–287, inventario trazable de chats/PDF, cantidades y cambios compuestos, consolidación de acciones, conversaciones completas, muestra independiente con modelo, medios/canal y piloto medido. Los umbrales allí son propuestas, no métricas alcanzadas. Próxima tanda prevista288: cantidades de retirada; aún no implementada. Este cambio es documental: no se desplegó ni migró código ni se gastó inferencia. Staging287 y producción/Kamppo282 siguen siendo la última evidencia registrada.
+
 
 
 ## VIGENTE — tanda287: «yes» y cierre en confirmación (29/10)

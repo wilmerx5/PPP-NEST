@@ -1,3 +1,104 @@
+# Plan operativo de calidad — 29/10/2026
+
+Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son evidencia histórica, no una lista acumulativa de tareas abiertas. Responsable de implementación y pruebas: agente en PPP staging; validación del servicio y decisiones comerciales: operador del restaurante con evidencia del agente.
+
+## Punto de partida y alcance
+
+- Última evidencia: PPP staging tanda287, código `588552e7`; PPP producción y motor Kamppo hasta282. Delta pendiente:283–287. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 24.785 pruebas /354 suites aprobadas en287, con dependencias simuladas. No equivalen a24.785 conversaciones reales ni a una tasa de éxito comercial.
+- Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
+- Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
+- El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
+
+## Orden de trabajo y entregables
+
+### 0. Igualar versiones y contener incidentes críticos
+
+Preparar el paquete283–287 con código, fixtures, contratos y límites. Priorizar el cierre287 si siguen apareciendo pedidos bloqueados. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
+
+Salida: el mismo caso reportado pasa en PPP y en la integración Kamppo; una prueba controlada confirma la versión realmente activa. Promover/desplegar con autorización aplicable; este plan no ejecuta una promoción a Main ni una migración. Mantener versión anterior y procedimiento de reversión. Una migración pendiente se muestra como pendiente, nunca como fallo nuevo de una corrección supuestamente activa.
+
+### 1. Inventario trazable de chats, PDF, audio e investigación
+
+Auditar `scripts/fixtures/whatsapp-real-chat-patterns.json`, `whatsapp-pdf-1110-patterns.json`, los archivos originales disponibles y `docs/whatsapp-regional-patterns-2810.md`. Para cada fuente: identificador anónimo, modalidad, turnos, patrón, resultado esperado, test asociado, último resultado, evidencia y pendiente. Separar conversación real, transcripción, ejemplo sintético y variante generada. No etiquetar región por suposición ni tratar la investigación lingüística como chats reales de restaurantes.
+
+Clasificar pedidos no cerrados: fallo demostrado del bot, cliente deja de responder con siguiente paso claro, problema operativo/cobertura, desistimiento explícito o causa desconocida. No atribuir todo abandono al bot. Reacciones y mensajes de espera no deben crear datos falsos ni insistencias inútiles.
+
+Salida: cada fuente disponible está inventariada con estado revisado/pendiente/no disponible y cada incidencia importante tiene un caso trazable. Un fixture llamado «reserved» no garantiza independencia: auditar si ya se ejecutó o se usó para corregir antes de reservarlo.
+
+### 2. Completar correcciones y consolidar reglas comunes
+
+Próxima tanda prevista288: retirar cantidades explícitas («quita dos de los de pechuga»), conservar la cantidad al aclarar, impedir retirar más de lo existente, cancelar y recuperarse de una selección antigua. Esto aún no está implementado.
+
+Después, por familias:
+- Cambios compuestos: «quita dos, cambia uno a broaster y deja las bebidas»; planificar todas las operaciones contra el mismo carrito. Aclarar antes de ejecutar una parte ambigua; no afirmar éxito total cuando solo se aplicó una parte.
+- Repartos: varios productos/unidades con bebidas, preparaciones y notas diferentes; «el otro», «los demás», «menos uno» y segunda corrección. Conservar precio, cantidades, opciones y destinatario de cada nota.
+- Contradicciones: retirar/reemplazar una nota explícitamente, distinguir exclusión de un extra cobrado y no añadir ambas instrucciones incompatibles. Catálogo y política del local definen extras y sustituciones.
+- Catálogo: nombres similares, categorías sin contaminación, productos agotados, bebida incluida frente a adicional, consulta frente a compra; nunca inventar disponibilidad o equivalencias regionales.
+
+Consolidación incremental: normalizar lenguaje → identificar intención/alcance → resolver líneas → validar → preparar resultado → aplicar → responder. Evaluar el contrato de acciones del modelo para cantidad afectada, referencia, reemplazo y lista de operaciones; no atribuir capacidad general al contrato por un parser acotado. Extraer reglas compartidas protegidas por tests, evitando una reescritura masiva y nuevas excepciones por plato. Probar invariantes (cantidad conservada salvo orden explícita, consulta sin mutación, precios del catálogo, cambios completos o aclaración) además de frases.
+
+Salida: cada familia tiene positivos, negativos, ambigüedad, recuperación, contexto y payload final; funciona en al menos tres catálogos. No resolver una ambigüedad inventando la intención.
+
+### 3. Conversación completa y recuperación
+
+Cubrir desde saludo hasta recibo, incluyendo ráfagas («Natalia» / «voy»), preguntas intercaladas, nombre/barrio/dirección, pin+apartamento, dirección nueva, pago, total, espera, corrección en revisión, confirmación y pedido nuevo. El bot contesta la consulta y retoma el dato pendiente; la respuesta debe coincidir con el estado real. Una selección numérica pertenece a la última lista válida, no a una lista antigua.
+
+Después de registrar: seguimiento del pedido reciente, salsas/notas, cambio de dirección y cancelación. Comprobar lo que realmente permite el estado operativo; si requiere humano, entregar contexto y no prometer un cambio no aplicado. Probar errores de BD/transporte con mensaje comprensible, recuperación sin pedido duplicado y sin errores técnicos expuestos al cliente.
+
+Salida: recorridos completos verifican carrito, respuesta, estado, DTO/orden y recibo; ningún bucle conocido de «¿Algo más?», captura de conversación como dirección o confirmación no autorizada dentro del alcance.
+
+### 4. Evaluación independiente con el modelo real
+
+Crear una muestra nueva separada del desarrollo, con resultado esperado fijado antes de ejecutar. Propuesta inicial:50 conversaciones completas de texto, estratificadas por compra simple, consulta, edición, ráfaga, checkout y desistimiento; es un objetivo de evaluación, no evidencia existente ni garantía estadística. Variar catálogos y expresiones sin convertir cientos de combinaciones idénticas en supuestas conversaciones independientes.
+
+Ejecutar primero todos los casos gratuitos. Luego un subconjunto real priorizado con presupuesto explícito, una ejecución inicial y parada ante fallo crítico; capturar modelo/configuración, herramientas, salida, resultado comercial, latencia y costo por conversación. Saldo operativo registrado:11 solicitudes restantes (267/256/11); no alcanza por sí solo para prometer50 conversaciones con herramientas. Estimar solicitudes y costo antes de ampliar, respetar autorización/presupuesto y no gastar una cuota parcial presentándola como evaluación completa.
+
+Si una conversación se usa para corregir, pasa a desarrollo y se sustituye en la muestra independiente. Comparar el modelo actual con otra alternativa solo si la evidencia lo justifica; no aumentar modelo como sustituto de corregir estado, catálogo o persistencia.
+
+Salida: informe separado de muestra independiente y reensayos de desarrollo, con fallos por familia/gravedad y denominadores. Ningún defecto crítico conocido sin resolver o contención comprobada para el alcance del piloto.
+
+### 5. Audios, fotos, documentos y canal WhatsApp
+
+Medios: usar originales autorizados y resultado esperado. Separar fallo de transcripción/percepción del fallo de interpretación. Audio con ruido, pausas, negaciones, cantidades, acentos y correcciones; fotos de pedidos, comprobantes y contenido no pertinente. Un comprobante o «ya pagué» no acredita pago liquidado. PDF usado como fuente de ejemplos y PDF/recibo generado son trabajos distintos: auditar extracción de casos y correspondencia del recibo con la orden por separado.
+
+Canal: mensajes fragmentados, duplicados, retrasados, reacciones, evento no soportado, audio seguido de texto, reinicio/expiración, reintentos y concurrencia de un mismo cliente. Comprobar idempotencia en la creación real, aislamiento entre clientes/restaurantes y recuperación de caída del proveedor. No asumir que harness o health verde acreditan WhatsApp.
+
+Salida: muestra inicial de medios con cada familia cubierta y limitaciones explícitas, más recorrido controlado extremo a extremo con aislamiento verificado y sin avisos a clientes/cocina ajenos. Si una modalidad no pasa, mantenerla asistida; no bloquear un piloto limitado a texto por exigir cobertura universal de medios.
+
+### 6. Piloto medido y decisión comercial
+
+Propuesta: primera revisión tras100 conversaciones elegibles, reportando también duración del periodo y volumen por familia. Separar conversaciones observadas, intentos de compra, abandonos y pedidos registrados. No contar consultas sin intención de compra como pedidos fallidos.
+
+Medir: exactitud del pedido auditado, resolución de correcciones, repreguntas/bucles, cierres, intervención humana, abandono atribuible con evidencia, duplicados, p50/p95 de latencia, costo por conversación y pedido, errores de proveedor y problemas operativos. Línea base primero; fijar después objetivos económicos/latencia con el negocio. El antiguo p95≤15s es objetivo provisional, no medición actual.
+
+Puerta inicial propuesta:100% de casos críticos de regresión aprobados; cero incidentes críticos observados en la muestra independiente/piloto; ≥95% de recorridos de texto dentro de alcance correctos o aclarados correctamente, sin ocultar los fallos bajo derivaciones humanas. Reportar aparte éxito automático e intervención. Son criterios propuestos, no resultados ya alcanzados ni prueba de ausencia de fallos raros.
+
+Un error de pedido/precio, orden duplicada, confirmación indebida o mezcla entre restaurantes detiene la familia afectada y exige contención/corrección. Handoff debe llevar carrito, datos y duda al operador y permitir recuperación; no basta con mostrar un teléfono. Tras cumplir las puertas, ampliar restaurantes/modalidades gradualmente con seguimiento y reversión.
+
+## Cómo ejecutar las tandas sin desperdiciar recursos
+
+- Trabajar por familia de comportamiento. Usar300–500 variantes cuando aporten dimensiones distintas; no imponer un número ni generar1000 repeticiones de la misma regex.
+- Por cambio: reproducción roja, ajuste mínimo o consolidación, foco de vecinos, TypeScript y global si afecta reglas compartidas. Congelar fuentes durante la global; cambios posteriores invalidan esa evidencia. Documentación sola no requiere repetir24.785 tests.
+- Agrupar cambios coherentes antes de una global final; no volver a correrla por cada variante de fixture sin necesidad, ni saltarla al cerrar cambios compartidos. Reservar inferencia para diferencias que los mocks no pueden revelar.
+- Publicar evidencia y actualizar una sola hoja de ruta vigente. Migrar a Kamppo paquetes cerrados con contratos de integración; mantener un registro de desfase y priorizar incidentes críticos, sin acumular indefinidamente mejoras solo en staging.
+- Revisar chats nuevos con supervisión; nunca autoaprender ni cambiar producción a partir de una conversación sin evaluación. No crear seguimiento programado sin solicitud del usuario.
+
+## Próximas acciones concretas
+
+1. Preparar la matriz de pendientes reales de chats/PDF y el paquete de paridad283–287, con prioridad al bloqueo de confirmación287.
+2. Tanda288: cantidades de retirada y aclaración; después reparto y cambios compuestos mediante operaciones validadas.
+3. Seleccionar conversaciones independientes nuevas y presupuestar un ensayo real completo, sin consumirlas antes para desarrollo.
+4. Verificar canal y recuperación operativa; iniciar piloto de texto supervisado solo al cumplir las puertas anteriores.
+
+Este plan no certifica que el sistema esté listo para venta ni promete cubrir «todo» el lenguaje. Define qué evidencia falta y qué resultado permite avanzar. Fuentes: reportes283–287; `docs/whatsapp-regional-patterns-2810.md`; índices de chats/PDF mencionados; historial técnico conservado debajo.
+
+---
+
+## Historial de validaciones y planes anteriores
+
+Las etiquetas «VIGENTE» de las entradas antiguas describían su fecha. Para prioridades y estado actual, usar la hoja de ruta superior y la última evidencia de despliegue.
+
 
 
 ## VIGENTE — tanda287: «yes» y cierre en confirmación (29/10)
