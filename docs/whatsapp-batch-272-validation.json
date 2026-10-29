@@ -1,0 +1,70 @@
+{
+  "baseCommit": "a8cc67e497c3c01567ee5bf2b7d3184089fc5f3f",
+  "batches": [
+    272
+  ],
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 157.93,
+      "sourceUnchanged": true,
+      "tests": 4206,
+      "failed": 0
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 165.97,
+      "sourceUnchanged": true,
+      "tests": 3405,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 266.45,
+      "sourceUnchanged": true,
+      "tests": 13903,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.16,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 547,
+  "tests": 21530,
+  "suites": 336,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 54,
+  "focusTests": 258,
+  "focusSuites": 4,
+  "runtimeChanged": true,
+  "persistenceChanged": true,
+  "newOptionalSessionField": "pendingRecipientOrPlacePin",
+  "sqlMigration": false,
+  "productionChanged": false,
+  "deploymentStatus": "Validated locally; staging deployment pending",
+  "baseline": {
+    "failed": 18,
+    "passed": 18,
+    "additionalGuards": 18
+  },
+  "limits": [
+    "Derived variants of user-shared abandoned checkout; not new observed production conversations.",
+    "External services and models mocked; no real Meta, inference, PDF or audio evaluation.",
+    "Silence does not establish a bot-caused abandonment; no conversion gain measured."
+  ]
+}

@@ -268,6 +268,8 @@ export type WhatsappSessionData = {
   pendingRecipientOrPlace?: string;
   /** Full street supplied while the label role is pending; never a previously saved destination. */
   pendingRecipientOrPlaceAddress?: string;
+  /** Coordinates received during the current recipient/place clarification only. */
+  pendingRecipientOrPlacePin?: {lat: number; lng: number};
   /** Do not reoffer a saved destination after the customer requested a new one. */
   freshDeliveryAddressRequested?: boolean;
   /**

@@ -1122,6 +1122,7 @@ export class WhatsappOrchestratorService {
       sessionLoc = {
         ...sessionLoc,
         pendingRecipientOrPlaceAddress: undefined,
+        pendingRecipientOrPlacePin: undefined,
         orderType: 'delivery',
         address: addr,
         fulfillmentChosen: true,
@@ -1147,6 +1148,7 @@ export class WhatsappOrchestratorService {
         const readable = suppliedLabel || (routeLabel === 'Ubicación compartida' ? routeLabel : `Referencia de mapa: ${routeLabel}`);
         const access = pendingUnit ? ` — ${pendingUnit}` : '';
         sessionLoc.address = `${(readable + access).slice(0, 240)} — https://maps.google.com/?q=${msg.latitude},${msg.longitude}`;
+        if (sessionLoc.pendingRecipientOrPlace) sessionLoc.pendingRecipientOrPlacePin = {lat:msg.latitude!,lng:msg.longitude!};
       }
       await this.conversationService.saveSession(conv, sessionLoc, 'building_cart');
       const feeLine = feeResult.notice ? `\n${feeResult.notice}` : '';
@@ -1201,7 +1203,7 @@ export class WhatsappOrchestratorService {
         !closingSession.pendingAttribute && !closingSession.pendingMatch && !closingSession.pendingMultiOrder &&
         !CART_EDIT_SELECTION_KEYS.some(key => !!closingSession[key]) &&
         !this.repliesWithCatalogDishName(closingParts[1], await this.catalogService.getMenuProducts())) {
-      await this.conversationService.saveSession(conv, {...closingSession, pendingRecipientOrPlace:closingParts[1],pendingRecipientOrPlaceAddress:undefined}, 'awaiting_name');
+      await this.conversationService.saveSession(conv, {...closingSession, pendingRecipientOrPlace:closingParts[1],pendingRecipientOrPlaceAddress:undefined,pendingRecipientOrPlacePin:undefined}, 'awaiting_name');
       await this.reply(conv, msg.waId, `¿*${closingParts[1]}* es el nombre para el pedido o el barrio/conjunto de entrega? Necesito el nombre y la dirección completa para continuar.`);
       return;
     }
@@ -18076,6 +18078,7 @@ export class WhatsappOrchestratorService {
       pendingDeliveryPlace: undefined,
       pendingRecipientOrPlace: undefined,
       pendingRecipientOrPlaceAddress: undefined,
+      pendingRecipientOrPlacePin: undefined,
       freshDeliveryAddressRequested: undefined,
       address,
       fulfillmentChosen: true,
@@ -18171,6 +18174,7 @@ export class WhatsappOrchestratorService {
       addressConfirmed: !!session.addressConfirmed || strong,
       ...(addressChanged
         ? {
+            pendingRecipientOrPlacePin: undefined,
             deliveryFeeCalculated: undefined,
             deliveryDistanceKm: undefined,
             deliveryOutOfCoverage: false,
@@ -22625,8 +22629,21 @@ export class WhatsappOrchestratorService {
       return true;
     }
     if (nameRole || placeRole) {
-      const next = {...session, pendingRecipientOrPlace:undefined, pendingRecipientOrPlaceAddress:undefined};
+      const next = {...session, pendingRecipientOrPlace:undefined, pendingRecipientOrPlaceAddress:undefined,pendingRecipientOrPlacePin:undefined};
       if (placeRole) {
+        const pin = session.pendingRecipientOrPlacePin;
+        if (pin && validDeliveryCoordinates(pin.lat, pin.lng) && session.address &&
+            session.deliveryLat === pin.lat && session.deliveryLng === pin.lng &&
+            session.address.includes(`https://maps.google.com/?q=${pin.lat},${pin.lng}`)) {
+          // The clarification labels the newly supplied pin; it does not change
+          // its coordinates, quote or coverage result.
+          next.address = this.normalizeForMatch(session.address).includes(this.normalizeForMatch(label))
+            ? session.address : `${label} — ${session.address}`;
+          next.pendingDeliveryPlace = undefined;
+          await this.conversationService.saveSession(conv, next);
+          await this.tryConfirmOrder(conv, waId, next, {requireFinalReview:true, preface:`Anoté *${label}* junto con la ubicación que enviaste.`});
+          return true;
+        }
         const freshAddress = session.pendingRecipientOrPlaceAddress && this.isStrongExplicitAddress(session.pendingRecipientOrPlaceAddress)
           ? session.pendingRecipientOrPlaceAddress : undefined;
         Object.assign(next, {pendingDeliveryPlace:label, address:undefined, addressConfirmed:false,
@@ -22661,7 +22678,7 @@ export class WhatsappOrchestratorService {
         !this.looksLikePayment(text, cfg.paymentMethods) &&
         !this.repliesWithCatalogDishName(text, await this.catalogService.getMenuProducts())) {
       // A fresh name answers checkout without assigning the earlier ambiguous label to a place.
-      await this.conversationService.saveSession(conv, {...session,pendingRecipientOrPlace:undefined,pendingRecipientOrPlaceAddress:undefined});
+      await this.conversationService.saveSession(conv, {...session,pendingRecipientOrPlace:undefined,pendingRecipientOrPlaceAddress:undefined,pendingRecipientOrPlacePin:undefined});
     }
     return false;
   }

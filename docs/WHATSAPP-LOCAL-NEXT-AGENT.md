@@ -1,4 +1,13 @@
 
+## VIGENTE — tanda272: conservar pin al aclarar conjunto (28/10)
+
+Base `a8cc67e4`. Conserva ubicación enviada durante la duda nombre/conjunto, tarifa y apartamento al responder «es el conjunto». No modifica la cobertura ni permite confirmar fuera de ella. Distingue pin nuevo de uno guardado; segundo pin y calle nueva prevalecen. Campo JSON opcional `pendingRecipientOrPlacePin`, sin SQL. Coincidencia de coordenadas y enlace protege contra marcador antiguo; recogida/nombre/resolución limpian la marca. Antes de rollback resolver/cancelar normalmente borradores afectados.
+
+54 regresiones nuevas, tres cartas×agente simulado off/on; baseline válido18fallos/18aprobadas y18guardas posteriores. Foco258/4. Global21530/336 aprobada, inventario exacto y547fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-272-validation.json` e informe `whatsapp-role-pin-recovery-validation-2810.md`.
+
+Variantes derivadas, no chats nuevos de producción. Modelos/routing/servicios externos simulados; cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. No evalúa precisión geográfica real ni conversión. Despliegue staging pendiente de verificación. Producción continúa265. Delta266–272 pendiente de portar a Kamppo. Pendientes: recuperación «Dime?», arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
+
+
 ## VIGENTE — tanda271: consultas coloquiales en pedidos sin cierre (28/10)
 
 Base `7fb20775`. Derivadas del chat compartido de Estefani: «me regalas el Nequi», «me pasas tu Nequi», «a qué número transfiero», con cortesía y posesivos. Responde datos configurados y retoma el campo pendiente sin elegir pago, mutar carrito ni confirmar. Solicitudes mixtas siguen el router normal; «mi Nequi es…» no pregunta por la cuenta del comercio. No inventa datos ausentes. Sin persistencia ni migración nueva.

@@ -27,3 +27,7 @@ No mandar recordatorios ni reabrir pedidos expirados automáticamente a partir d
 ## Límites
 
 Servicios externos y modelos simulados. Cero inferencia pagada, Meta u órdenes externas. No certifica audio/PDF, comportamiento del modelo real, concurrencia del canal ni mejora de conversión. Producción sigue265; portar delta266–271 a Kamppo sigue pendiente.
+
+## Seguimiento272
+
+La ubicación enviada durante la aclaración del conjunto tiene54 regresiones nuevas en `whatsapp-role-pin-recovery-validation-2810.md`. Conserva pin, tarifa y apartamento; mantiene rechazo por cobertura y distingue una ubicación previa. La validación y despliegue de272 se registran en sus archivos de evidencia. Este seguimiento sustituye el límite de270 para el caso probado; no acredita geocodificación real ni todos los modos de envío de ubicación.
