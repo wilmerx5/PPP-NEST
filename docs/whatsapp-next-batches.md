@@ -1,3 +1,9 @@
+## VIGENTE — tanda293: recuperación mixta hasta cierre (29/10)
+
+Después de promover283–292 aMain, se añaden36 recorridos sintéticos con tres catálogos, agente simulado off/on y efectivo/transferencia. Una operación mixta inválida (destino inexistente, unidades insuficientes o condición) conserva el carrito; la corrección válida permite seguir por recogida, pago, revisión, confirmación y DTO correcto. Repetir confirmar no duplica la orden. Foco456/2, TypeScript general/build aprobados.
+
+Solo pruebas, sin cambios de runtime ni despliegue nuevo. PPP staging/producción siguen con código292 verificado; Kamppo282. Global final del runtime:26311/359 en292; no atribuir ese global al inventario ampliado293. Cero inferencia/Meta/órdenes externas; presupuesto267/256/11 intacto. Evidencia `whatsapp-batch-293-validation.json`. Siguiente: opciones/aclaración de operaciones mixtas y matriz trazable de fuentes/paridad; medios originales y prueba real del modelo permanecen aparte.
+
 ## VIGENTE — tanda292: incidentes de dirección y pedidos reportados (29/10)
 
 Base `0cb3ef0f`. Prioridad del usuario: incidentes reportados, similares, staging y luego Main. Conserva nomenclatura dictada frente a «número» confundido con teléfono, bloquea cierre de calle sin placa aunque haya tarifa, contiene corrección posterior sin reabrir compra ni prometer edición de orden registrada. Esta última requiere coordinación telefónica con restaurante. Opciones bebida/arepas juntas, sugerencia confirmable de broaster ante booster/boster, porción+dirección con agente activo, nota residual y despedida corregidas. Saludo sin llamada y minutos ya existentes revalidados; ETA general no se presenta como tiempo restante.

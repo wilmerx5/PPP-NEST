@@ -1,0 +1,19 @@
+{
+  "batch": 293,
+  "baseCommit": "6ae043bde4e2213590fe7b82e37ca055751cdb85",
+  "newTests": 36,
+  "focusPassed": 456,
+  "focusSuites": 2,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 292,
+    "tests": 26311,
+    "suites": 359
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "source": "Synthetic multi-turn recovery journeys, not new real customer chats",
+  "scope": "Three catalogs, simulated agent off/on, cash/transfer, unknown target/insufficient units/conditional edit, recovery through final DTO and repeat confirmation"
+}
