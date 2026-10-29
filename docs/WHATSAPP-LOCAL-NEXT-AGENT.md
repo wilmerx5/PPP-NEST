@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda291: retirada contada y adición atómica (29/10)
 
+Tanda291 desplegada en staging: código `97d628ba`, imagen `sha256:b0ad3228effa5bd53c8c4d588b0029a80f4784a04acc4ed772c94006463f9e4c`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica291 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-291-staging-deployment.json`. PPP producción y Kamppo conservan282.
+
 Base `e147c34b`. «Quita uno de los de pechuga y agrega dos Agua Mineral» valida una retirada y una adición antes de guardar. Prepara resultado en copia de sesión, reutiliza adición/límites existentes y conserva notas/opciones/precios de las demás unidades. Acumula en línea compatible; límites sobre resultado final. Cantidad inválida, referencia desconocida/ambigua/insuficiente, destino desconocido/ambiguo/agotado/con opciones, límites, pregunta/condición/tercera acción y selecciones/pagos pendientes conservan todo.
 
 420 pruebas nuevas (192 operaciones,216 guardas,12 recuperaciones), tres catálogos, compra/revisión y agente simulado off/on. Baseline inicial396:192 aprobadas/204 fallidas;24 guardas añadidas después. Foco1130/4. Global26237/358, inventario exacto y570 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-291-validation.json` y `whatsapp-batch-291-patterns.md`.
