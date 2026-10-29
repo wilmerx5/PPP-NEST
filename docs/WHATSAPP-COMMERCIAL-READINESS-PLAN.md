@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda291, código `97d628ba`; PPP producción y motor Kamppo hasta282. Delta pendiente:283–291. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 26.237 pruebas /358 suites aprobadas en291, con dependencias simuladas. No equivalen a26.237 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging y producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta pendiente para Kamppo:283–292. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 26.311 pruebas /359 suites aprobadas en292, con dependencias simuladas. No equivalen a26.311 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -14,9 +14,9 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ### 0. Igualar versiones y contener incidentes críticos
 
-Preparar el paquete283–291 con código, fixtures, contratos y límites. Priorizar el cierre287 si siguen apareciendo pedidos bloqueados. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
+Preparar el paquete283–292 con código, fixtures, contratos y límites. Priorizar el cierre287 si siguen apareciendo pedidos bloqueados. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
 
-Salida: el mismo caso reportado pasa en PPP y en la integración Kamppo; una prueba controlada confirma la versión realmente activa. Promover/desplegar con autorización aplicable; este plan no ejecuta una promoción a Main ni una migración. Mantener versión anterior y procedimiento de reversión. Una migración pendiente se muestra como pendiente, nunca como fallo nuevo de una corrección supuestamente activa.
+Salida: el mismo caso reportado pasa en PPP y en la integración Kamppo; una prueba controlada confirma la versión realmente activa. PromociónMain283–292 verificada el29/10 por autorización explícita; la migración aKamppo sigue pendiente. Mantener versión anterior y procedimiento de reversión. Una migración pendiente se muestra como pendiente, nunca como fallo nuevo de una corrección supuestamente activa.
 
 ### 1. Inventario trazable de chats, PDF, audio e investigación
 
@@ -86,7 +86,7 @@ Un error de pedido/precio, orden duplicada, confirmación indebida o mezcla entr
 
 ## Próximas acciones concretas
 
-1. Preparar la matriz de pendientes reales de chats/PDF y el paquete de paridad283–291, con prioridad al bloqueo de confirmación287.
+1. Preparar la matriz de pendientes reales de chats/PDF y el paquete de paridad283–292, con prioridad al bloqueo de confirmación287.
 2. Cantidades referenciadas288, retiradas compuestas289, aclaración290 y retirada+adición acotada291; siguiente: opciones/aclaración de operaciones mixtas y auditoría de fuentes.
 3. Seleccionar conversaciones independientes nuevas y presupuestar un ensayo real completo, sin consumirlas antes para desarrollo.
 4. Verificar canal y recuperación operativa; iniciar piloto de texto supervisado solo al cumplir las puertas anteriores.
@@ -136,6 +136,10 @@ Base `e147c34b`. «Quita uno de los de pechuga y agrega dos Agua Mineral» valid
 Sin SQL, campos de sesión ni modelos nuevos. Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Fixtures sintéticos; no nueva revisión de chats/PDF/audio. Gramática acotada, destino por nombre completo sin opciones requeridas. No orden inverso, alias, tres acciones, preparación ni aclaración persistente de esta mezcla. Siguiente: opciones/aclaración de operaciones mixtas y matriz trazable de fuentes/paridad. PPP producción y Kamppo mantienen282;283–291 son staging. Despliegue registrado aparte.
 
 ## VIGENTE — tanda292: incidentes de dirección y pedidos reportados (29/10)
+
+Tanda292 desplegada en producción/Main: código `df8e16c3`, imagen `sha256:8bb006a013aab47e811e3ce223ac9e5af12bd06195efe344d75394db84e8d29b`, contenedor activo, cero reinicios y API local/pública saludables (este compose no configura healthcheck Docker). Configuración/modelos preservados. Promoción283–292 autorizada por usuario, validada primero en staging. Evidencia `whatsapp-batch-292-production-deployment.json`. Kamppo sigue282.
+
+Tanda292 desplegada en staging: código `df8e16c3`, imagen `sha256:e8184267f4387291c03be4bce11e4f7af82f88efd67dc268911c851f6f1b6352`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; cuatro controles compilados292 de dirección aprobados y cobertura de router292 acreditada localmente. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-292-staging-deployment.json`. Después se verificó producción292; Kamppo conserva282.
 
 Base `0cb3ef0f`. Prioridad del usuario: incidentes reportados, similares, staging y luego Main. Conserva nomenclatura dictada frente a «número» confundido con teléfono, bloquea cierre de calle sin placa aunque haya tarifa, contiene corrección posterior sin reabrir compra ni prometer edición de orden registrada. Esta última requiere coordinación telefónica con restaurante. Opciones bebida/arepas juntas, sugerencia confirmable de broaster ante booster/boster, porción+dirección con agente activo, nota residual y despedida corregidas. Saludo sin llamada y minutos ya existentes revalidados; ETA general no se presenta como tiempo restante.
 

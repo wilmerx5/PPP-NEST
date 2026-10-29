@@ -2,6 +2,10 @@
 
 ## VIGENTE — tanda292: incidentes de dirección y pedidos reportados (29/10)
 
+Tanda292 desplegada en producción/Main: código `df8e16c3`, imagen `sha256:8bb006a013aab47e811e3ce223ac9e5af12bd06195efe344d75394db84e8d29b`, contenedor activo, cero reinicios y API local/pública saludables (este compose no configura healthcheck Docker). Configuración/modelos preservados. Promoción283–292 autorizada por usuario, validada primero en staging. Evidencia `whatsapp-batch-292-production-deployment.json`. Kamppo sigue282.
+
+Tanda292 desplegada en staging: código `df8e16c3`, imagen `sha256:e8184267f4387291c03be4bce11e4f7af82f88efd67dc268911c851f6f1b6352`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; cuatro controles compilados292 de dirección aprobados y cobertura de router292 acreditada localmente. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-292-staging-deployment.json`. Después se verificó producción292; Kamppo conserva282.
+
 Base `0cb3ef0f`. Prioridad del usuario: incidentes reportados, similares, staging y luego Main. Conserva nomenclatura dictada frente a «número» confundido con teléfono, bloquea cierre de calle sin placa aunque haya tarifa, contiene corrección posterior sin reabrir compra ni prometer edición de orden registrada. Esta última requiere coordinación telefónica con restaurante. Opciones bebida/arepas juntas, sugerencia confirmable de broaster ante booster/boster, porción+dirección con agente activo, nota residual y despedida corregidas. Saludo sin llamada y minutos ya existentes revalidados; ETA general no se presenta como tiempo restante.
 
 74 casos nuevos derivados de textos sanitizados y variantes; baseline inicial32:2 aprobados/30 fallidos, con corrección del campo DTO del fixture durante reparación. Foco218/6; global26311/359, inventario exacto y571 fuentes congeladas, TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-292-validation.json` y `whatsapp-batch-292-patterns.md`.
