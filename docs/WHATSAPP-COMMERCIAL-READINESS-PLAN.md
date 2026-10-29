@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda279: traslado inmediato de una nota recién aplicada (28/10)
 
+Tanda279 publicada y desplegada en staging: código `f0617753`, imagen `sha256:927016ab3cbed2a6b25978d14f1cf895f84f7df02e006b93260bdc5cc32be338`, healthy,0reinicios, APIlocal/pública200. Controles compilados de traslado de nota y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-279-staging-deployment.json`. Sin cambios en Kamppo durante esta tanda; delta lingüístico266–279 pendiente.
+
 Base `0ce5fb31`. Secuencia: dos platos → «uno sin cebolla» → «1» → «no, el otro» / «perdón, el otro» / «mejor el otro». Antes la nota permanecía en el primero. Ahora se restaura la nota anterior de origen y se añade solo la indicación recién elegida al segundo, conservando precios, cantidades y demás notas.
 
 Alcance deliberado: selección resuelta por `pendingSubsetKitchenNote.byUnits`, dos líneas elegibles de una unidad y un cambio efectivo. Nuevo campo JSON opcional `lastKitchenNoteSelection`: carrito anterior, firma posterior, índice, nota y fecha. Sin SQL. Se consume al siguiente texto procesado; enlaces de ubicación, medios y takeover lo invalidan (reacciones ignoradas no cuentan como nueva instrucción). Firma distinta, más de10min, fecha futura, selección/pago pendiente o estado cerrado impiden trasladar. Repetir no vuelve a alternar. Una nota previa «con cebolla» obliga a aclarar frente a «sin cebolla». No generalizar esta comprobación a toda contradicción posible de cocina. Próximas pruebas: poco/menos/frente a sin, notas compuestas y destino nombrado entre tres líneas.
