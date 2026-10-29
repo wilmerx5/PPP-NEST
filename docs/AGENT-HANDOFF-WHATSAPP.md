@@ -6,7 +6,7 @@ Base `a8cc67e4`. Conserva ubicación enviada durante la duda nombre/conjunto, ta
 
 54 regresiones nuevas, tres cartas×agente simulado off/on; baseline válido18fallos/18aprobadas y18guardas posteriores. Foco258/4. Global21530/336 aprobada, inventario exacto y547fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-272-validation.json` e informe `whatsapp-role-pin-recovery-validation-2810.md`.
 
-Variantes derivadas, no chats nuevos de producción. Modelos/routing/servicios externos simulados; cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. No evalúa precisión geográfica real ni conversión. Despliegue staging pendiente de verificación. Producción continúa265. Delta266–272 pendiente de portar a Kamppo. Pendientes: recuperación «Dime?», arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
+Variantes derivadas, no chats nuevos de producción. Modelos/routing/servicios externos simulados; cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. No evalúa precisión geográfica real ni conversión. Código `7e82b147` publicado y desplegado en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED. Tres controles compilados nuevos y40previos aprobados con dependencias aisladas; routing/modelos y guard central aprobados. Env/compose preservados y producción265 verificada sin cambios. Evidencia `whatsapp-batch-272-staging-deployment.json`; cierre documental posterior sin reconstrucción. Producción continúa265. Delta266–272 pendiente de portar a Kamppo. Pendientes: recuperación «Dime?», arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
 
 
 ## VIGENTE — tanda271: consultas coloquiales en pedidos sin cierre (28/10)
