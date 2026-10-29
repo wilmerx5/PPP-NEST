@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda276: variantes básicas de bebidas y total (28/10)
 
+Tanda276 publicada y desplegada en staging: código `d6d038de`, imagen `sha256:7e5f622467a84cb733cf1ad5426107eb75f431459801d5477f615c592217ede8`, healthy,0reinicios, APIlocal/pública200. Controles compilados de total/bebidas y previos aprobados; modelos, env/compose y producción PPP265 preservados. Evidencia `whatsapp-batch-276-staging-deployment.json`. Kamppo solo recibió la corrección del identificador (runtime973a072, healthy); delta lingüístico266–276 pendiente.
+
 Base59923820. Derivadas de los reportes275: «qué hay para tomar», «qué tienes de beber», «me regalas algo de tomar», «todo el pedido», «el total», «de todo» ante aclaración de precio y cierres «no más, cuánto te debo»/«solo eso veci, cuánto llevo». Separamos solicitudes completas del total y navegación genérica; reutilizamos cierre y resumen canónico. «Todo» suelto solo refiere al total cuando hay consulta de precio pendiente; producto concreto/modificador/cantidad conserva su ruta. Preguntas no confirman ni inventan dirección.
 
 75 regresiones nuevas: router completo con dos cartas sintéticas, agente simulado off/on, estados de carrito/dirección, controles de precio individual, compra concreta y revisión final; guardas puras adicionales. Baseline26fallos/34aprobadas en dos ejecuciones separadas (52total y8bebidas); 15guardas posteriores. Foco100/2. Global21738/339 aprobada, inventario exacto y551fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-276-validation.json`.
