@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging y producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta pendiente para Kamppo:283–292. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 26.311 pruebas /359 suites aprobadas en292, con dependencias simuladas. No equivalen a26.311 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda294, código `de3e16be`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294 (293 solo pruebas); para Kamppo:283–294. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 26.427 pruebas /361 suites aprobadas en294, con dependencias simuladas. No equivalen a26.427 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -148,6 +148,8 @@ Base `0cb3ef0f`. Prioridad del usuario: incidentes reportados, similares, stagin
 Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Sin SQL/campos/modelos nuevos. No prueba del audio original ni edición automática de órdenes ya enviadas. Usuario autorizó promoverMain después de validar; registrar evidencia de cada despliegue por separado. Kamppo permanece282, sin migración en esta tarea. Después de la promoción, retomar otras tandas.
 
 ## VIGENTE — tanda294: total intercalado y recuperación de opciones (29/10)
+
+Tanda294 desplegada en staging: código `de3e16be`, imagen `sha256:999bc03177539e9150ee810e58c334834626db362f5c15d9f90cae5eb3e0319d`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica294 en pruebas locales. Evidencia `whatsapp-batch-294-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
 
 Base `b4c1df2d`. «Cuánto va todo», «en cuánto va todo» y «cuánto va el pedido hasta ahora» leen el total del carrito sin acudir al modelo ni consumir la elección de sabor pendiente. Regla acotada y anclada; excluye producto específico, condiciones, adiciones, tiempo de entrega y futuras hipótesis. No suma productos pendientes de elección.
 

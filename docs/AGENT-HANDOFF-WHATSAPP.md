@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda294: total intercalado y recuperación de opciones (29/10)
 
+Tanda294 desplegada en staging: código `de3e16be`, imagen `sha256:999bc03177539e9150ee810e58c334834626db362f5c15d9f90cae5eb3e0319d`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica294 en pruebas locales. Evidencia `whatsapp-batch-294-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `b4c1df2d`. «Cuánto va todo», «en cuánto va todo» y «cuánto va el pedido hasta ahora» leen el total del carrito sin acudir al modelo ni consumir la elección de sabor pendiente. Regla acotada y anclada; excluye producto específico, condiciones, adiciones, tiempo de entrega y futuras hipótesis. No suma productos pendientes de elección.
 
 80 pruebas nuevas:72 recorridos de petición mixta rechazada por opciones faltantes, adición separada, selección por número/nombre o recuperación tras sabor inexistente y retirada explícita posterior; ocho límites de intención. Tres catálogos, agente simulado off/on, cantidades1/2 y total intercalado. Verifica que no se retire a medias ni se ejecute una operación antigua implícitamente. La aclaración atómica persistente de la mezcla sigue pendiente; estas pruebas acreditan recuperación mediante instrucciones separadas.
