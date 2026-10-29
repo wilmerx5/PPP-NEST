@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda285: preparación de una sola unidad (29/10)
 
+Tanda285 desplegada en staging: código `dd48c78e`, imagen `sha256:362043f7f0c3411f36f7e5239c20c009d5d1ce46a9c7b0e297f30b86f5c88bba`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica285 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-285-staging-deployment.json`. PPP producción y Kamppo conservan282.
+
 Base `57c93413`. «Cambia uno de los de pechuga a pollo broaster» separa una unidad de la línea identificada y conserva las demás, sus opciones y notas. Reutiliza el catálogo para encontrar la presentación equivalente; valida el resultado completo antes de guardar. Ambigüedad, incompatibilidad, pagos/selecciones pendientes y límites conservan el carrito.
 
 360 pruebas nuevas: 216 cambios y 144 guardas en tres familias, dos modos de agente y compra/revisión. Baseline inicial de 312 casos: 84 aprobados / 228 fallidos; después se añadieron 48 guardas. Foco final 458/2. Global 23981/352, inventario exacto y 564 fuentes congeladas; TypeScript general/build y scripts Node aprobados. Evidencia `whatsapp-batch-285-validation.json` y `whatsapp-batch-285-patterns.md`.
