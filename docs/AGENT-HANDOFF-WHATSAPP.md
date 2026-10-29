@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda290: aclaración de retiradas compuestas (29/10)
 
+Tanda290 desplegada en staging: código `d7babf8a`, imagen `sha256:6978a43d7b1502593df22a43e2f052dd53586bc577bf174caed3b0137e94fe42`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica290 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-290-staging-deployment.json`. PPP producción y Kamppo conservan282.
+
 Base `ee127315`. Aclara cada referencia ambigua conservando todas las cantidades; selección por número/nota, ninguna mutación hasta resolver todo. Reutiliza el flujo múltiple con `pendingCartRemoval.batchQuantities` opcional; retirar líneas completas conserva su contrato. Total intercalado, cancelación tras la primera selección, firma antigua, cantidades insuficientes, referencias superpuestas y selecciones/pagos pendientes protegidos. Recordatorios muestran cantidad; desconocidos/cantidades inválidas posteriores impiden crear la aclaración.
 
 276 pruebas nuevas (96 aclaraciones,120 guardas,48 recuperaciones,12 superposiciones), tres catálogos, compra/revisión y agente simulado off/on. Baseline inicial264:36 aprobadas/228 fallidas;12 casos añadidos después. Foco1260/7. Global25817/357, inventario exacto y569 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-290-validation.json` y `whatsapp-batch-290-patterns.md`.

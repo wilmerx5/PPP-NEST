@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda289, código `688f7f85`; PPP producción y motor Kamppo hasta282. Delta pendiente:283–289. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 25.541 pruebas /356 suites aprobadas en289, con dependencias simuladas. No equivalen a25.145 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda290, código `d7babf8a`; PPP producción y motor Kamppo hasta282. Delta pendiente:283–290. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 25.817 pruebas /357 suites aprobadas en290, con dependencias simuladas. No equivalen a25.817 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -14,7 +14,7 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ### 0. Igualar versiones y contener incidentes críticos
 
-Preparar el paquete283–289 con código, fixtures, contratos y límites. Priorizar el cierre287 si siguen apareciendo pedidos bloqueados. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
+Preparar el paquete283–290 con código, fixtures, contratos y límites. Priorizar el cierre287 si siguen apareciendo pedidos bloqueados. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
 
 Salida: el mismo caso reportado pasa en PPP y en la integración Kamppo; una prueba controlada confirma la versión realmente activa. Promover/desplegar con autorización aplicable; este plan no ejecuta una promoción a Main ni una migración. Mantener versión anterior y procedimiento de reversión. Una migración pendiente se muestra como pendiente, nunca como fallo nuevo de una corrección supuestamente activa.
 
@@ -86,8 +86,8 @@ Un error de pedido/precio, orden duplicada, confirmación indebida o mezcla entr
 
 ## Próximas acciones concretas
 
-1. Preparar la matriz de pendientes reales de chats/PDF y el paquete de paridad283–289, con prioridad al bloqueo de confirmación287.
-2. Cantidades referenciadas cubiertas en288 y retiradas compuestas atómicas en289; siguiente: aclaración compuesta y operaciones heterogéneas mediante validación completa.
+1. Preparar la matriz de pendientes reales de chats/PDF y el paquete de paridad283–290, con prioridad al bloqueo de confirmación287.
+2. Cantidades referenciadas cubiertas en288, retiradas compuestas en289 y aclaración atómica en290; siguiente: operaciones heterogéneas mediante validación completa y auditoría de fuentes.
 3. Seleccionar conversaciones independientes nuevas y presupuestar un ensayo real completo, sin consumirlas antes para desarrollo.
 4. Verificar canal y recuperación operativa; iniciar piloto de texto supervisado solo al cumplir las puertas anteriores.
 
@@ -116,6 +116,8 @@ Base `2b12373a`. «Quita dos de los de pechuga y uno de los de cubos» resuelve 
 Sin SQL, campos de sesión o modelos nuevos. Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Fixtures sintéticos derivados del plan; no son nueva revisión de chats/PDF/audio. Pruebas de dos cláusulas; parser acotado a2–5. No cubre añadir+cambiar+retirar ni distribución entre líneas. Siguiente: aclaración compuesta y matriz trazable de fuentes/paridad. PPP producción y Kamppo mantienen282;283–289 son trabajo de staging. Despliegue registrado aparte.
 
 ## VIGENTE — tanda290: aclaración de retiradas compuestas (29/10)
+
+Tanda290 desplegada en staging: código `d7babf8a`, imagen `sha256:6978a43d7b1502593df22a43e2f052dd53586bc577bf174caed3b0137e94fe42`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica290 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-290-staging-deployment.json`. PPP producción y Kamppo conservan282.
 
 Base `ee127315`. Aclara cada referencia ambigua conservando todas las cantidades; selección por número/nota, ninguna mutación hasta resolver todo. Reutiliza el flujo múltiple con `pendingCartRemoval.batchQuantities` opcional; retirar líneas completas conserva su contrato. Total intercalado, cancelación tras la primera selección, firma antigua, cantidades insuficientes, referencias superpuestas y selecciones/pagos pendientes protegidos. Recordatorios muestran cantidad; desconocidos/cantidades inválidas posteriores impiden crear la aclaración.
 
