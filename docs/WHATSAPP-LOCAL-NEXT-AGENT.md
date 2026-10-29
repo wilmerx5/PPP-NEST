@@ -5,7 +5,7 @@ Solicitud explícita del usuario: fomentar que prueben el chat quitando «Si qui
 
 Una regresión existente actualizada, sin aumentar el número de pruebas. Foco113/2. Global21638/337 aprobada, inventario exacto y548fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-274-validation.json`. La tanda273 de repetición contextual ya quedó desplegada antes de este ajuste.
 
-Cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. Despliegue staging pendiente de verificación. Producción continúa265. Delta266–274 pendiente de portar a Kamppo. Pendientes: arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
+Cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. Código `0d5cb438` publicado y desplegado en staging: healthy,0reinicios, APIlocal/pública200, DBconnected/circuitCLOSED. Tres controles compilados nuevos y46previos aprobados con dependencias aisladas; routing/modelos y guard central aprobados. Env/compose preservados y producción265 verificada sin cambios. Evidencia `whatsapp-batch-274-staging-deployment.json`; cierre documental posterior sin reconstrucción. Producción continúa265. Delta266–274 pendiente de portar a Kamppo. Pendientes: arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
 
 
 ## VIGENTE — tanda273: repetir la pregunta sin capturarla como nombre (28/10)

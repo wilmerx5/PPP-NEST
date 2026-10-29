@@ -56,10 +56,12 @@
   "persistenceChanged": false,
   "sqlMigration": false,
   "productionChanged": false,
-  "deploymentStatus": "Validated locally; staging deployment pending",
+  "deploymentStatus": "Deployed and verified in staging",
   "limits": [
     "Greeting-only copy change; existing legacy-copy regression updated.",
     "No live Meta messages or paid model inference.",
     "Production remains on batch265."
-  ]
+  ],
+  "runtimeCodeCommit": "0d5cb438c7b0521cfee1eaebba05c08c7c5ff202",
+  "deploymentEvidence": "whatsapp-batch-274-staging-deployment.json"
 }
