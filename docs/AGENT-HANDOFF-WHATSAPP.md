@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda289: retiradas compuestas con cantidades (29/10)
+
+Base `2b12373a`. «Quita dos de los de pechuga y uno de los de cubos» resuelve todas las referencias y valida cantidades antes de guardar. Conserva notas, opciones, precio y saldo de unidades. Ambigüedad, referencias repetidas/desconocidas, cantidades inválidas o insuficientes, preguntas, condiciones, acciones mezcladas y pagos/selecciones pendientes conservan el pedido completo. Se solicita repetir la instrucción completa; no hay aclaración compuesta por número ni aplicación parcial.
+
+396 pruebas nuevas (216 retiradas,168 guardas,12 recuperaciones), tres catálogos, compra/revisión y agente simulado off/on. Baseline168 aprobadas/228 fallidas; foco1176/3. Global25541/356, inventario exacto y568 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-289-validation.json` y `whatsapp-batch-289-patterns.md`.
+
+Sin SQL, campos de sesión o modelos nuevos. Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Fixtures sintéticos derivados del plan; no son nueva revisión de chats/PDF/audio. Pruebas de dos cláusulas; parser acotado a2–5. No cubre añadir+cambiar+retirar ni distribución entre líneas. Siguiente: aclaración compuesta y matriz trazable de fuentes/paridad. PPP producción y Kamppo mantienen282;283–289 son trabajo de staging. Despliegue registrado aparte.
+
+
 ## VIGENTE — tanda288: cantidades de retirada referenciada (29/10)
 
 Tanda288 desplegada en staging: código `3db03dde`, imagen `sha256:cab26a51896df63ec95518802e36105bb6322c6e95122db17d304afb30987c29`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica288 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-288-staging-deployment.json`. PPP producción y Kamppo conservan282.

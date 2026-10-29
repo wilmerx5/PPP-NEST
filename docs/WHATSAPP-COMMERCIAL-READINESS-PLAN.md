@@ -105,6 +105,14 @@ Base `ce2449aa`. «Quita dos de los de pechuga» conserva cantidad al aclarar po
 
 Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Carritos previos preparados como fixtures, no conversaciones nuevas ni audio. Cantidades nuevas principales2/3 y límites inválidos; gramática acotada, no reparto entre líneas ni cambios compuestos. Siguiente: operaciones compuestas y auditoría trazable de fuentes/paridad. Producción PPP y Kamppo mantienen282;283–288 son trabajo de staging. Despliegue se registra aparte.
 
+## VIGENTE — tanda289: retiradas compuestas con cantidades (29/10)
+
+Base `2b12373a`. «Quita dos de los de pechuga y uno de los de cubos» resuelve todas las referencias y valida cantidades antes de guardar. Conserva notas, opciones, precio y saldo de unidades. Ambigüedad, referencias repetidas/desconocidas, cantidades inválidas o insuficientes, preguntas, condiciones, acciones mezcladas y pagos/selecciones pendientes conservan el pedido completo. Se solicita repetir la instrucción completa; no hay aclaración compuesta por número ni aplicación parcial.
+
+396 pruebas nuevas (216 retiradas,168 guardas,12 recuperaciones), tres catálogos, compra/revisión y agente simulado off/on. Baseline168 aprobadas/228 fallidas; foco1176/3. Global25541/356, inventario exacto y568 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-289-validation.json` y `whatsapp-batch-289-patterns.md`.
+
+Sin SQL, campos de sesión o modelos nuevos. Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Fixtures sintéticos derivados del plan; no son nueva revisión de chats/PDF/audio. Pruebas de dos cláusulas; parser acotado a2–5. No cubre añadir+cambiar+retirar ni distribución entre líneas. Siguiente: aclaración compuesta y matriz trazable de fuentes/paridad. PPP producción y Kamppo mantienen282;283–289 son trabajo de staging. Despliegue registrado aparte.
+
 ## Historial de validaciones y planes anteriores
 
 Las etiquetas «VIGENTE» de las entradas antiguas describían su fecha. Para prioridades y estado actual, usar la hoja de ruta superior y la última evidencia de despliegue.

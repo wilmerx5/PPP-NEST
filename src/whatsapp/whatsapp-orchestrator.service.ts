@@ -15689,6 +15689,53 @@ export class WhatsappOrchestratorService {
   }
 
   /** A numbered clarification must preserve the original removal quantity. */
+  /** Resolve every counted removal before persisting; never apply a valid prefix. */
+  private async tryHandleCompoundCountedRemoval(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    raw: string, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const unchanged = async (reason: string) => {
+      await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;
+    };
+    if (/[¿?]/.test(text)) return unchanged('Para retirar unidades, envía la instrucción sin pregunta.');
+    if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+        session.pendingUnitDistribution || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
+      return unchanged('Hay una selección o pago pendiente; aclaremos eso antes de retirar las unidades.');
+    const parts=raw.replace(/^(?:quita|quitame|retira|retirame|saca|sacame|elimina) /,'').split(/\s+y\s+/);
+    if (parts.length<2 || parts.length>5) return unchanged('Indica entre dos y cinco retiradas con sus cantidades y opciones.');
+    const counts:Record<string,number>={uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+    const operations=new Map<number,number>();
+    for (const part of parts) {
+      const match=part.match(/^(uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[+-]?\d+(?:[.,]\d+)?) de (?:los|las) de (.+)$/);
+      if (!match) return unchanged('Repite la petición completa indicando cuántas unidades retiramos de cada opción.');
+      const amount=counts[match[1]]??Number(match[1]);
+      if (!Number.isSafeInteger(amount) || amount<1 || amount>99)
+        return unchanged('Cada retirada necesita una cantidad entera entre 1 y 99.');
+      const parsed=parseScopedCartRemoval(`quita uno de los de ${match[2]}`);
+      if (!parsed || parsed.quantity!==1 || parsed.target!==undefined || parsed.preserve.length ||
+          /\b(?:si|pero|sino|agrega|cambia|conserva|excepto)\b/.test(match[2]))
+        return unchanged('Aclara la petición completa sin mezclar retiradas con otras acciones o condiciones.');
+      const indices=session.cart.flatMap((line,index)=>correctionMatchesLine(line,parsed.query)?[index]:[]);
+      if (indices.length!==1)
+        return unchanged(`No identifiqué una sola línea para «${match[2]}». Repite todas las retiradas con el plato y la opción que distingue cada línea.`);
+      const index=indices[0];
+      if (operations.has(index)) return unchanged('Dos retiradas señalan la misma línea. Repite la petición completa con una cantidad total por línea.');
+      if (amount>session.cart[index].quantity)
+        return unchanged(`La línea «${match[2]}» tiene ${session.cart[index].quantity} unidades; no puedo retirar ${amount}. Repite la petición completa con las cantidades correctas.`);
+      operations.set(index,amount);
+    }
+    const cart=session.cart.flatMap((line,index)=>{
+      const amount=operations.get(index);
+      return amount===undefined?[line]:line.quantity>amount?[{...line,quantity:line.quantity-amount}]:[];
+    });
+    const next={...this.reconcileSubstitutionPending({...session,cart}),lastDrinkAddition:undefined};
+    await this.conversationService.saveSession(conv,next,cart.length?conv.state:'building_cart');
+    await this.reply(conv,waId,`Listo, quité ${[...operations.values()].reduce((a,b)=>a+b,0)} unidades de las líneas indicadas.\n\n`+
+      this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
+      (cart.length?this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next):'¿Qué te gustaría pedir?'));
+    return true;
+  }
+
   private async tryHandleReferencedUnitRemoval(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
@@ -15697,6 +15744,8 @@ export class WhatsappOrchestratorService {
     // Preserve signs and decimal punctuation until the quantity has been validated.
     const raw=text.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').replace(/^¿/,'');
     const request=raw.match(/^(?:quita|quitame|retira|retirame|saca|sacame|elimina) (uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[+-]?\d+(?:[.,]\d+)?) de (?:los|las) de (.+)$/);
+    if (request && /\sy\s/.test(request[2]))
+      return this.tryHandleCompoundCountedRemoval(conv,waId,session,raw,text,cfg);
     const counts:Record<string,number>={uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
     const pending = session.pendingCartRemoval?.quantity !== undefined ? session.pendingCartRemoval : undefined;
     if (!request && !pending) return false;
