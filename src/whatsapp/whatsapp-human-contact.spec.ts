@@ -75,8 +75,8 @@ describe('whatsapp-human-contact (ASESOR off)', () => {
   });
 });
 
-it('removes only the learning sentence from a stored greeting', () => {
+it('removes the learning sentence and call invitation from a stored greeting', () => {
   const before='Con gusto te atiendo. Aún estoy aprendiendo y a veces cometo errores. Si quieres, también puedes llamarnos al *3118866823*.';
-  expect(scrubAiDisclaimerCopy(before)).toBe('Con gusto te atiendo. Si quieres, también puedes llamarnos al *3118866823*.');
+  expect(scrubAiDisclaimerCopy(before)).toBe('Con gusto te atiendo.');
   expect(WHATSAPP_AI_DISCLAIMER_SAFE).not.toMatch(/aprendiendo|cometo errores/);
 });

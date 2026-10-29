@@ -1,4 +1,13 @@
 
+## VIGENTE — tanda274: saludo sin invitación a llamar (28/10)
+
+Solicitud explícita del usuario: fomentar que prueben el chat quitando «Si quieres, también puedes llamarnos al…» del saludo. El prefijo queda «Con gusto te atiendo.». Cambia valor por defecto y limpia esa frase de plantillas antiguas mediante la normalización exclusiva de bienvenida. Sin persistencia, SQL ni cambio de modelos.
+
+Una regresión existente actualizada, sin aumentar el número de pruebas. Foco113/2. Global21638/337 aprobada, inventario exacto y548fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-274-validation.json`. La tanda273 de repetición contextual ya quedó desplegada antes de este ajuste.
+
+Cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. Despliegue staging pendiente de verificación. Producción continúa265. Delta266–274 pendiente de portar a Kamppo. Pendientes: arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
+
+
 ## VIGENTE — tanda273: repetir la pregunta sin capturarla como nombre (28/10)
 
 Base `29868c3b`. Derivadas de «Dime?» en el chat compartido: «No entendi» y «Como asi veci» podían convertirse en nombre. Ahora las solicitudes completas de repetir muestran carrito/notas y siguiente pregunta; conservan nombre, sesión y pendientes sin confirmar. Duda nombre/conjunto y opciones mantienen prioridad. Preguntas concretas siguen su ruta normal; handler excluye cerradas/completadas. Sin nueva persistencia ni SQL.

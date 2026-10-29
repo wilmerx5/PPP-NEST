@@ -1,0 +1,65 @@
+{
+  "baseCommit": "3dc026bafd9ea8f3762b870d0c461e17ec3c0ef8",
+  "batches": [
+    274
+  ],
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 165.08,
+      "sourceUnchanged": true,
+      "tests": 4206,
+      "failed": 0
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 172.59,
+      "sourceUnchanged": true,
+      "tests": 3405,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 301.38,
+      "sourceUnchanged": true,
+      "tests": 14011,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.05,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 548,
+  "tests": 21638,
+  "suites": 337,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 0,
+  "updatedRegressions": 1,
+  "focusTests": 113,
+  "focusSuites": 2,
+  "runtimeChanged": true,
+  "persistenceChanged": false,
+  "sqlMigration": false,
+  "productionChanged": false,
+  "deploymentStatus": "Validated locally; staging deployment pending",
+  "limits": [
+    "Greeting-only copy change; existing legacy-copy regression updated.",
+    "No live Meta messages or paid model inference.",
+    "Production remains on batch265."
+  ]
+}
