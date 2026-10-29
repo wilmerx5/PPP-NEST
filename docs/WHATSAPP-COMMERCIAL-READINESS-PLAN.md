@@ -1,4 +1,13 @@
 
+## VIGENTE — tanda273: repetir la pregunta sin capturarla como nombre (28/10)
+
+Base `29868c3b`. Derivadas de «Dime?» en el chat compartido: «No entendi» y «Como asi veci» podían convertirse en nombre. Ahora las solicitudes completas de repetir muestran carrito/notas y siguiente pregunta; conservan nombre, sesión y pendientes sin confirmar. Duda nombre/conjunto y opciones mantienen prioridad. Preguntas concretas siguen su ruta normal; handler excluye cerradas/completadas. Sin nueva persistencia ni SQL.
+
+108 regresiones nuevas, tres cartas×agente simulado off/on; baseline78fallos/12aprobadas, no todos son corrupción de datos, y18guardas posteriores. Foco372/4. Global21638/337 aprobada, inventario exacto y548fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-273-validation.json` e informe `whatsapp-checkout-repeat-question-validation-2810.md`.
+
+Carrito preparado, no replay original integral; controles de cierre verifican exclusión del nuevo handler. Modelos/servicios externos simulados; cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. No se atribuye causalidad al silencio ni mejora de conversión. Despliegue staging pendiente de verificación. Producción continúa265. Delta266–273 pendiente de portar a Kamppo. Pendientes: arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
+
+
 ## VIGENTE — tanda272: conservar pin al aclarar conjunto (28/10)
 
 Base `a8cc67e4`. Conserva ubicación enviada durante la duda nombre/conjunto, tarifa y apartamento al responder «es el conjunto». No modifica la cobertura ni permite confirmar fuera de ella. Distingue pin nuevo de uno guardado; segundo pin y calle nueva prevalecen. Campo JSON opcional `pendingRecipientOrPlacePin`, sin SQL. Coincidencia de coordenadas y enlace protege contra marcador antiguo; recogida/nombre/resolución limpian la marca. Antes de rollback resolver/cancelar normalmente borradores afectados.

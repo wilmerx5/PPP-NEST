@@ -1191,6 +1191,7 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, 'Claro, te espero. Cuando estés listo seguimos con el pedido.');
       return;
     }
+    if (await this.tryRepeatCheckoutQuestion(conv, msg.waId, checkoutSession, text, cfg)) return;
     if (await this.tryResolveRecipientOrPlace(conv, msg.waId, checkoutSession, text, cfg)) return;
 
     // A bare label after closing a delivery cart can be either recipient or place.
@@ -17770,6 +17771,21 @@ export class WhatsappOrchestratorService {
       ? `Para pagar por transferencia escribe *transferencia* y te paso los datos.` : '';
     const reminder = transferHint || this.formatInterruptedStepReminder(conv, session);
     await this.reply(conv, waId, `${answer} El pedido sigue igual.${reminder ? `\n\n${reminder}` : ''}`);
+  }
+
+  /** A standalone request to repeat is neither a checkout answer nor approval. */
+  private async tryRepeatCheckoutQuestion(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm','awaiting_attribute'].includes(conv.state)) return false;
+    const request = this.normalizeForMatch(text).replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim()
+      .replace(/^(?:veci|vecino|vecina) /, '').replace(/ (?:veci|vecino|vecina|porfa|por favor)$/, '');
+    if (!/^(?:dime|no entendi|como asi|que me preguntaste|me repites)$/.test(request)) return false;
+    const reminder = session.pendingRecipientOrPlace
+      ? `¿*${session.pendingRecipientOrPlace}* es el nombre para el pedido o el barrio/conjunto de entrega?`
+      : this.formatInterruptedStepReminder(conv, session) || '¿Quieres agregar algo más? Si terminaste, escribe *solo eso* para seguir.';
+    await this.reply(conv, waId, `Te explico: esto es lo que llevas anotado.\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${reminder}`);
+    return true;
   }
 
   private formatInterruptedStepReminder(conv: WhatsappConversation, session: WhatsappSessionData): string {

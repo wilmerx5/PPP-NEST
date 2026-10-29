@@ -31,3 +31,7 @@ Servicios externos y modelos simulados. Cero inferencia pagada, Meta u órdenes 
 ## Seguimiento272
 
 La ubicación enviada durante la aclaración del conjunto tiene54 regresiones nuevas en `whatsapp-role-pin-recovery-validation-2810.md`. Conserva pin, tarifa y apartamento; mantiene rechazo por cobertura y distingue una ubicación previa. La validación y despliegue de272 se registran en sus archivos de evidencia. Este seguimiento sustituye el límite de270 para el caso probado; no acredita geocodificación real ni todos los modos de envío de ubicación.
+
+## Seguimiento273
+
+«Dime?», «No entendi» y «Como asi veci» tienen108 regresiones nuevas en `whatsapp-checkout-repeat-question-validation-2810.md`. Se reproduce también captura indebida como nombre. La respuesta muestra lo anotado y retoma la pregunta pendiente, sin confirmar ni mutar sesión. El alcance parte de carrito preparado; las pruebas de conversaciones cerradas verifican la exclusión del nuevo handler, no todo el flujo posterior. No se atribuye causalidad al silencio del chat original.
