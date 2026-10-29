@@ -175,6 +175,14 @@ Baseline48/48; foco480/3; TypeScript general/build aprobados. Solo pruebas, sin 
 
 PPP staging295, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Carritos preparados de una unidad por línea, no reproducción íntegra de chats nuevos ni prueba de audio. Esta tanda acredita notas; no generaliza «el otro» a cambios de SKU/preparación. Idiomas siguen aplazados. Próximo: referencias de preparación/variante hasta checkout y aclaración persistente de operaciones mixtas.
 
+## VIGENTE — tanda297: preparación parcial hasta confirmación (29/10)
+
+Base `250febb5`.72 recorridos nuevos: tres catálogos sintéticos, agente simulado off/on, grupos de2/3/4 unidades, posición de línea alternada y efectivo/transferencia. «Cámbiame uno de los de pechuga a pollo broaster» y referencias equivalentes de tofu/pescado. Separa exactamente una unidad, conserva notas y atributos compatibles, mantiene la otra línea con bebida/opciones distintas y aplica el precio del destino. Verifica carrito exacto, respuesta, estados de recogida/pago/confirmación, ausencia de creación anticipada, una sola creación, unidades del DTO con notas/atributos y recibo con total correcto.
+
+Baseline72/72; foco466/3; TypeScript general/build aprobados. Sin fallos nuevos ni cambios del motor; publicación de pruebas, sin despliegue. Último global de runtime:26514/362 en295, no reejecutado ni atribuido al inventario ampliado297. Evidencia `whatsapp-batch-297-validation.json` y `whatsapp-batch-297-patterns.md`.
+
+PPP staging295, producción292, Kamppo282 según última verificación registrada. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. No implica validación con modelo real. Idiomas aplazados. Próximo: recuperación de operaciones mixtas ambiguas y continuidad tras aclaraciones, conservando el pedido hasta resolver destino y cantidad.
+
 ## Historial de validaciones y planes anteriores
 
 Las etiquetas «VIGENTE» de las entradas antiguas describían su fecha. Para prioridades y estado actual, usar la hoja de ruta superior y la última evidencia de despliegue.

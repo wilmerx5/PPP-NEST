@@ -1,0 +1,25 @@
+{
+  "batch": 297,
+  "baseCommit": "250febb5bbc207e85c8ed9d72a27ac41b90ef3b3",
+  "newTests": 72,
+  "baselinePassed": 72,
+  "focusPassed": 466,
+  "focusSuites": 3,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 295,
+    "tests": 26514,
+    "suites": 362
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic seeded carts; no new original media or chat review",
+    "Agent simulated, no real inference or Meta",
+    "Only explicit partial preparation replacement covered",
+    "No new deployment: test-only change"
+  ]
+}
