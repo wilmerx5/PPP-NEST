@@ -5,7 +5,7 @@ import { whatsappProfileRecipient } from './whatsapp-profile-name';
 import {splitAccompanimentPurchase, includesAccompaniment} from './whatsapp-accompaniment-offer';
 import { drinkInclusion, sodaBrandIn } from './whatsapp-drink-inclusion';
 import {variantUnitScope} from './whatsapp-variant-unit-scope';
-import {canonicalStreetAddress, splitDeliveryAddressParts, splitAddressKitchenNote, mergeDeliveryUnitDetails, deliveryUnitConflict, resolveDeliveryUnitConflict} from './whatsapp-address-parts';
+import {normalizeDictatedStreet, canonicalStreetAddress, splitDeliveryAddressParts, splitAddressKitchenNote, mergeDeliveryUnitDetails, deliveryUnitConflict, resolveDeliveryUnitConflict} from './whatsapp-address-parts';
 import {checkoutEnvelope} from './whatsapp-checkout-envelope';
 import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
 import { customerLocationLabel, googleMapsPin, validDeliveryCoordinates } from './whatsapp-location-label';
@@ -1433,6 +1433,7 @@ export class WhatsappOrchestratorService {
         .replace(/\s+y\s+la\s+/gi, ' y una ');
     }
     text = foldAdditionalPortion(stripTrailingCourtesy(normalizeSpokenOrderCourtesy(text)));
+    if (conv.state==='building_cart' && !/[¿?]/.test(text)) text=text.replace(/^con\s+((?:un|una|dos|tres|\d+)\s+porci[oó]n(?:es)?\s+de\s+)/i,'Agrega $1');
     // "y agrégale / ponle una limonada" adds to the order, like "agrégame".
     if (!/\b(?:unidad(?:es)?|a\s+es[ea]s?|al\s+mismo|a\s+la\s+misma)\b/i.test(text)) text = text
       .replace(/^(?:y\s+)?a\s*parte\s+((?:un|una|unos|unas|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\s.+?)[.!\s]*$/i, 'agrégame $1 aparte')
@@ -1505,7 +1506,10 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandlePairedCatalogPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleUnresolvedUnitDistribution(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleSharedCatalogFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleSpokenPortionDelivery(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandlePairedIncludedLabels(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleIncludedDrinkFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleSpokenCookingTypo(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     const removalText = /^(?:elimina|qu[ií]ta|retira|saca|borra)(?:me)?\b/i.test(inboundText) ? inboundText : text;
     if (await this.tryHandleMultipleCartNegation(conv, msg.waId, this.conversationService.getSession(conv), removalText, cfg)) return;
     if (await this.tryHandleCountedKitchenSupply(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -1830,6 +1834,10 @@ export class WhatsappOrchestratorService {
       if (this.catalogService.isCourtesyOnlyMessage(originalText) || isFinalConfirmAffirmation(originalText) ||
           isNothingElseOrderIntent(originalText)) {
         await this.reply(conv,msg.waId,'¡Con gusto!');
+        return;
+      }
+      if (isAddressChangeIntent(originalText) || this.isAddressOnlyCustomerMessage(originalText) || this.extractAddressChangeTarget(originalText) || this.looksLikeUnitOrTowerDetailOnly(originalText)) {
+        await this.reply(conv,msg.waId,'Recibí una posible corrección de dirección para el pedido ya registrado. No modifiqué la dirección ni la tarifa de esa orden. Para verificar el cambio antes de la entrega, '+this.humanPhoneHint());
         return;
       }
       const postText = this.normalizeForMatch(originalText);
@@ -7903,6 +7911,9 @@ export class WhatsappOrchestratorService {
         },
       };
     }
+    if (this.hasIncompleteNumberedStreet(session) && !(coords?.lat!=null && coords?.lng!=null)) {
+      return {session:{...session,addressConfirmed:false,deliveryFeeCalculated:null,deliveryDistanceKm:null,deliveryLat:null,deliveryLng:null},blocked:'Falta completar la dirección con número y placa de la casa, o compartir la ubicación exacta.'};
+    }
     const address = (session.address || '').trim();
     if (!address) return { session };
 
@@ -8117,6 +8128,7 @@ export class WhatsappOrchestratorService {
     const answerNote = session.pendingAttribute?.productId === product.id ? session.pendingAttribute.answerNote : undefined;
     if (answerNote) note = [note, answerNote].filter(Boolean).join(', ');
     note = omitRedundantAttributeNote(dedupeKitchenNoteParts(note), selected);
+    if (/^(?:con )?(?:un|una|dos|tres|\d+) porcion(?:es)? de$/i.test(this.normalizeForMatch(note || ''))) note=undefined;
     const incomingKey = this.cartLineKey({
       productId: product.id,
       note,
@@ -11182,6 +11194,11 @@ export class WhatsappOrchestratorService {
       opts = { ...opts, preface: undefined };
     };
 
+    if (this.hasIncompleteNumberedStreet(session)) {
+      await this.conversationService.saveSession(conv,{...session,addressConfirmed:false,deliveryFeeCalculated:null,deliveryDistanceKm:null,deliveryLat:null,deliveryLng:null},'awaiting_address');
+      await say('Falta completar la dirección: escribe la calle o carrera con el número y la placa de la casa, o comparte la ubicación exacta. No registré el pedido.');return;
+    }
+
     if (session.pendingRecipientOrPlace) {
       await say(`Falta aclarar si *${session.pendingRecipientOrPlace}* es el nombre o el barrio/conjunto de entrega.`);return;
     }
@@ -12059,7 +12076,7 @@ export class WhatsappOrchestratorService {
           ? 'Si ya te llegó, ¡buen provecho! 🙌'
           : match.orderStatus === 'canceled'
             ? 'Esa orden aparece *cancelada*.'
-            : eta);
+            : eta+' Es una estimación general, no el tiempo restante confirmado de tu pedido.');
 
       if (
         !['completed', 'canceled'].includes(match.orderStatus) &&
@@ -20283,6 +20300,62 @@ export class WhatsappOrchestratorService {
   }
 
   /** A drink follow-up changes included options; an explicit extra remains a purchase. */
+  private async tryHandleSpokenPortionDelivery(conv:WhatsappConversation,waId:string,session:WhatsappSessionData,text:string,cfg:EffectiveWhatsappConfig):Promise<boolean> {
+    if(conv.state!=='building_cart'||/[¿?]/.test(text)||session.pendingAttribute||session.pendingMatch||session.pendingMultiOrder||session.mpPreferenceId||CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))return false;
+    const match=text.match(/^(?:con|agrega)\s+((?:un|una|dos|tres|\d+)\s+porci[oó]n(?:es)?\s+de\s+.+?)\s*,?\s+para\s+(?:la\s+|el\s+)?(.+)$/i);
+    if(!match)return false;
+    const address=this.extractDeliveryTail(text);if(!address)return false;
+    const purchase=match[1].replace(/,?\s*por favor,?\s*$/i,'').replace(/\ba la\s+/i,'');
+    const quantity=this.catalogService.extractQuantityFromSegment(purchase);
+    const name=this.normalizeForMatch(purchase).replace(/^(?:un|una|dos|tres|\d+) /,'').replace(/^porciones /,'porcion ');
+    const products=await this.catalogService.getMenuProducts();const candidates=products.filter(p=>this.normalizeForMatch(p.name)===name);
+    if(candidates.length!==1||candidates[0].availableNow===false)return false;
+    const result=this.tryAddProductToCart(session,candidates[0],quantity,cfg);
+    if(result.blocked||result.missingAttributes)return false;
+    const next=this.withDeliveryAddress(result.session,address);
+    await this.conversationService.saveSession(conv,next);
+    await this.tryConfirmOrder(conv,waId,next);return true;
+  }
+
+  private async tryHandlePairedIncludedLabels(conv: WhatsappConversation,waId:string,session:WhatsappSessionData,text:string,cfg:EffectiveWhatsappConfig):Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const parts=this.normalizeForMatch(text).split(' y ');
+    if (parts.length!==2) return false;
+    const products=await this.catalogService.getMenuProducts();
+    const labels=products.flatMap(p=>(p.attributes||[]).map(a=>this.normalizeForMatch(a.attributeName)));
+    if (!parts.every(part=>labels.some(label=>part.startsWith(label+' ')))) return false;
+    const unchanged=async()=>{await this.reply(conv,waId,'Indica el plato y las dos opciones que quieres cambiar. El pedido sigue igual.');return true;};
+    if (/[¿?]/.test(text) || session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return unchanged();
+    const candidates=session.cart.flatMap((line,index)=>{
+      const product=products.find(p=>p.id===line.productId);
+      const edits=parts.map(part=>{
+        const choices=(product?.attributes||[]).flatMap(a=>a.options.filter(value=>part===this.normalizeForMatch(a.attributeName+' '+value)).map(value=>({productId:line.productId,cartLineIndex:index,attributeName:a.attributeName,attributeValue:value})));
+        return choices.length===1?choices[0]:null;
+      });
+      return line.quantity===1 && edits.every(Boolean) && new Set(edits.map(e=>e!.attributeName)).size===2?[edits as NonNullable<typeof edits[number]>[]]:[];
+    });
+    if(candidates.length!==1)return unchanged();
+    const next={...session,cart:applyCartLineEdits(session.cart,{updateAttributes:candidates[0]})};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,'Listo, actualicé ambas opciones.\n\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));return true;
+  }
+
+  private async tryHandleSpokenCookingTypo(conv:WhatsappConversation,waId:string,session:WhatsappSessionData,text:string,cfg:EffectiveWhatsappConfig):Promise<boolean> {
+    if(conv.state!=='building_cart'||session.pendingMatch||session.pendingAttribute||session.pendingMultiOrder||CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])||/[¿?]/.test(text))return false;
+    const said=this.normalizeForMatch(text).replace(/^gracias /,'').replace(/ por favor$/,'');
+    if(!/^(?:me das|me regalas|quiero|dame) (?:un|uno|medio|cuarto|dos|tres|[1-9]) pollo (?:a la )?(?:booster|boster)$/.test(said))return false;
+    const products=await this.catalogService.getMenuProducts();
+    if(products.some(p=>/\b(?:booster|boster)\b/i.test(p.name)))return false;
+    const amount=said.match(/ (un|uno|medio|cuarto|dos|tres|[1-9]) pollo /)![1];
+    const wanted=(['medio','cuarto'].includes(amount)?amount+' ':'')+'pollo broaster';
+    const candidates=products.filter(p=>p.availableNow!==false && this.normalizeForMatch(p.name).replace(/^1 2 /,'medio ').replace(/^1 4 /,'cuarto ').replace(/^1 /,'')===wanted);
+    if(candidates.length!==1)return false;
+    const quantity=['medio','cuarto'].includes(amount)?1:this.catalogService.extractQuantityFromSegment(amount+' pollos');
+    const item={product:candidates[0]};
+    await this.conversationService.saveSession(conv,{...session,pendingMatch:{query:text,quantity,candidates,intent:'order'}});
+    await this.reply(conv,waId,`¿Te refieres a *${item.product.name}* ×${quantity}?\n1. ${item.product.name}\nEscribe 1 para elegirlo. Todavía no lo agregué.`);return true;
+  }
+
   private async tryHandleIncludedDrinkFollowup(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
     if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state)) return false;
     const said = normalizeCorrection(text).replace(/ (?:por f|por fa|porfa|por favor|gracias)$/, '');
@@ -21632,7 +21705,8 @@ export class WhatsappOrchestratorService {
     if (!t) return t;
 
     const cutPatterns = [
-      /[,;]\s*(?:mi\s+)?(?:cel(?:ular)?|tel\w*|whatsapp|wa|n[uú]mero)\b.*/is,
+      /[,;]\s*(?:mi\s+)?(?:cel(?:ular)?|tel\w*|whatsapp|wa)\b.*/is,
+      /[,;]\s*(?:mi\s+)?n[uú]mero\s*(?:es|:)?\s*(?:\+?57\s*)?3(?:[ \-]*\d){9}\b.*/is,
       /[,;]\s*(?:me\s+llamo|soy|mi\s+nombre\s+es|nombre\s*:)\b.*/is,
       /\s+(?:mi\s+)?(?:cel(?:ular)?|tel\w*|whatsapp|wa|n[uú]mero)\s*(?:es|:)\s*(?:este|el\s+de\s+(?:whatsapp|wa|aqu[ií])|este\s+n[uú]mero|el\s+mismo|el\s+que\s+(?:tengo|escribo|est[aá]\s+usando))\b.*/is,
       /\s+y\s+(?:mi\s+)?(?:cel(?:ular)?|tel\w*)\b.*/is,
@@ -21659,8 +21733,14 @@ export class WhatsappOrchestratorService {
       .trim();
   }
 
+  private hasIncompleteNumberedStreet(session: WhatsappSessionData): boolean {
+    if (session.orderType!=='delivery' || this.isPinnedDeliveryAddress(session)) return false;
+    const address=(session.address || '').replace(/\s*\(ref\..*$/i,'').trim();
+    return /^(?:calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv|avenida)\.?\s*\d{1,3}[a-z]?(?:\s+sur)?(?:\s*#?\s*\d{1,3}[a-z]?)?(?:\s*(?:,|de)\s*[\p{L} ]+)?[ .]*$/iu.test(address);
+  }
+
   private normalizeDeliveryAddress(raw: string): string {
-    let t = (raw || '')
+    let t = normalizeDictatedStreet(raw || '')
       .replace(/^(?:s[ií]|claro|correcto)[,\s]+(?:para|a)\s+/i, '')
       .replace(/\s+/g, ' ')
       .replace(/^[\s,.-]+|[\s,.-]+$/g, '')
@@ -22039,7 +22119,7 @@ export class WhatsappOrchestratorService {
 
   private extractDeliveryTail(text: string): string | null {
     // Normalizar typos de "para" antes de buscar domicilio
-    const raw = (text || '')
+    const raw = normalizeDictatedStreet(text || '')
       .trim()
       .replace(/\bpar\s+ale\b/gi, 'para el')
       .replace(/\bpar\s+a\s+la\b/gi, 'para la')
@@ -23280,7 +23360,7 @@ export class WhatsappOrchestratorService {
     session: WhatsappSessionData,
     thanksMessage?: string,
   ): string {
-    const custom = (thanksMessage || '').trim();
+    const custom = (thanksMessage || '').trim().replace(/que tengas? (?:un )?excelente d[ií]a/gi,'¡Buen provecho!');
     const looksLikePickupDefault =
       !custom || /te esperamos/i.test(custom);
 

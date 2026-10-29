@@ -1,3 +1,11 @@
+## VIGENTE — tanda292: incidentes de dirección y pedidos reportados (29/10)
+
+Base `0cb3ef0f`. Prioridad del usuario: incidentes reportados, similares, staging y luego Main. Conserva nomenclatura dictada frente a «número» confundido con teléfono, bloquea cierre de calle sin placa aunque haya tarifa, contiene corrección posterior sin reabrir compra ni prometer edición de orden registrada. Esta última requiere coordinación telefónica con restaurante. Opciones bebida/arepas juntas, sugerencia confirmable de broaster ante booster/boster, porción+dirección con agente activo, nota residual y despedida corregidas. Saludo sin llamada y minutos ya existentes revalidados; ETA general no se presenta como tiempo restante.
+
+74 casos nuevos derivados de textos sanitizados y variantes; baseline inicial32:2 aprobados/30 fallidos, con corrección del campo DTO del fixture durante reparación. Foco218/6; global26311/359, inventario exacto y571 fuentes congeladas, TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-292-validation.json` y `whatsapp-batch-292-patterns.md`.
+
+Cero inferencia pagada/Meta/órdenes externas; ledger267/256/11 intacto. Sin SQL/campos/modelos nuevos. No prueba del audio original ni edición automática de órdenes ya enviadas. Usuario autorizó promoverMain después de validar; registrar evidencia de cada despliegue por separado. Kamppo permanece282, sin migración en esta tarea. Después de la promoción, retomar otras tandas.
+
 ## VIGENTE — tanda291: retirada contada y adición atómica (29/10)
 
 Base `e147c34b`. «Quita uno de los de pechuga y agrega dos Agua Mineral» valida una retirada y una adición antes de guardar. Prepara resultado en copia de sesión, reutiliza adición/límites existentes y conserva notas/opciones/precios de las demás unidades. Acumula en línea compatible; límites sobre resultado final. Cantidad inválida, referencia desconocida/ambigua/insuficiente, destino desconocido/ambiguo/agotado/con opciones, límites, pregunta/condición/tercera acción y selecciones/pagos pendientes conservan todo.

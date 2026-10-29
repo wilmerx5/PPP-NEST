@@ -1,0 +1,69 @@
+{
+  "baseCommit": "0cb3ef0f74aa2ec19e84469986cebda9463ca84b",
+  "batches": [
+    292
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 361.96,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 486.56,
+      "sourceUnchanged": true,
+      "tests": 18684,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.35,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 571,
+  "tests": 26311,
+  "suites": 359,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 292,
+  "newRegressionTests": 74,
+  "newSuites": 1,
+  "focusPassed": 218,
+  "focusSuites": 6,
+  "baseline": {
+    "passed": 2,
+    "failed": 30,
+    "initialCases": 32,
+    "fixtureCorrection": "DTO field address, not deliveryAddress"
+  },
+  "additionalBaseline": {
+    "passed": 66,
+    "failed": 8,
+    "cases": 74,
+    "issue": "post-order address-change intent without replacement address"
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Sanitized reported text and synthetic variants; no original audio perception",
+    "Post-order address changes explicitly not applied; human phone coordination required",
+    "Bounded dictated street, two included labels, portion+address and cooking typo grammar",
+    "No Kamppo migration"
+  ]
+}

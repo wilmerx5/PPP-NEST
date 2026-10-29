@@ -155,3 +155,9 @@ export function resolveDeliveryUnitConflict(source: string, label: string, value
     return `${label} ${value}`;
   }).replace(/\s+/g, ' ').trim();
 }
+
+/** Preserve spoken street/door numbers before contact-clause extraction. */
+export function normalizeDictatedStreet(source: string): string {
+  return source.replace(/\b((?:calle|carrera|cra|cll?|transversal|diagonal|avenida)\s+\d{1,3}[a-z]?(?:\s+sur)?)(?:\s+de\s+([\p{L} ]+?))?\s*,?\s*n[uú]mero\s+(\d{1,3}[a-z]?)\s*(?:de\s+casa\s+|casa\s+|-|\s)(\d{1,3})(?!\d)/giu,
+    (_all,road,city,cross,door)=>`${road} #${cross}-${door}${city?`, ${city.trim()}`:''}`);
+}
