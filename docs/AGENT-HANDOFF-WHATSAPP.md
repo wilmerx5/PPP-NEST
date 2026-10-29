@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda282: traslado de notas entre tres o más platos (29/10)
 
+**Actualización de promoción:** PPP producción verificada en `981f290d` (código282), imagen `sha256:1a4e6b996b9a40ce7ba99103e73c95d63ce548ad19139d97ce89e0367a2dcb39`; API local/pública operativas,0reinicios, controles compilados y configuración preservada. Se usó el workflow manual de Kamppo porque el SSH local agotaba tiempo. Kamppo también ejecuta266–282: `d482cbc3628d`, imagen `sha256:5728183a360ae02938ac8809ff834585af740bd4bcf342436e00f13122d19df8`, workflow de deploy aprobado. Ver `whatsapp-main-promotion-282-2910.json`. El bloqueo descrito debajo es histórico; staging aún requiere su siguiente actualización.
+
 **Despliegue pendiente por conexión:** código `a4718b58` publicado en `origin/staging`. Tres conexiones SSH agotaron el tiempo antes de ejecutar el deploy; la API pública también agotó15s desde esta sesión. No se verificó runtime nuevo ni salud actual. Último runtime verificado:281 (`0a7e746e`). Reanudar despliegue y controles compilados al recuperar acceso. Evidencia `whatsapp-batch-282-staging-deployment.json`.
 
 Base `68dbb4a9`. Amplía la corrección inmediata de una nota ya seleccionada: «perdón, al tercero», «no, al [nombre completo]» y «mejor al 2» mueven solo esa indicación y conservan las previas. «No, el otro» entre varios destinos pregunta; permite responder por número/nombre, elegir otro destino tras un conflicto o dejar la nota donde estaba. Repetir una corrección reconocible sin contexto no añade productos.
