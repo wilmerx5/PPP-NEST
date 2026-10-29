@@ -2,6 +2,8 @@
 
 ## VIGENTE — tanda289: retiradas compuestas con cantidades (29/10)
 
+Tanda289 desplegada en staging: código `688f7f85`, imagen `sha256:ce3613aee13e03b1d02c708e704a4654081df5d00ad9cf491143f7dd4a7c52d4`, healthy,0reinicios, API local/pública operativas y controles compilados previos de «ni», conflicto y recuperación aprobados; la cobertura específica289 consta en la validación local. Modelos y configuración privada preservados. Evidencia `whatsapp-batch-289-staging-deployment.json`. PPP producción y Kamppo conservan282.
+
 Base `2b12373a`. «Quita dos de los de pechuga y uno de los de cubos» resuelve todas las referencias y valida cantidades antes de guardar. Conserva notas, opciones, precio y saldo de unidades. Ambigüedad, referencias repetidas/desconocidas, cantidades inválidas o insuficientes, preguntas, condiciones, acciones mezcladas y pagos/selecciones pendientes conservan el pedido completo. Se solicita repetir la instrucción completa; no hay aclaración compuesta por número ni aplicación parcial.
 
 396 pruebas nuevas (216 retiradas,168 guardas,12 recuperaciones), tres catálogos, compra/revisión y agente simulado off/on. Baseline168 aprobadas/228 fallidas; foco1176/3. Global25541/356, inventario exacto y568 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-289-validation.json` y `whatsapp-batch-289-patterns.md`.
