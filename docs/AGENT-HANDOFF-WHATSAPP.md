@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda271: consultas coloquiales en pedidos sin cierre (28/10)
+
+Base `7fb20775`. Derivadas del chat compartido de Estefani: «me regalas el Nequi», «me pasas tu Nequi», «a qué número transfiero», con cortesía y posesivos. Responde datos configurados y retoma el campo pendiente sin elegir pago, mutar carrito ni confirmar. Solicitudes mixtas siguen el router normal; «mi Nequi es…» no pregunta por la cuenta del comercio. No inventa datos ausentes. Sin persistencia ni migración nueva.
+
+72 regresiones nuevas, tres cartas×agente simulado off/on; baseline42fallos/30aprobadas. Foco318/4. Global21476/335 aprobada, inventario exacto y546fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-271-validation.json`; registro de fuente, hipótesis y siguientes casos en `whatsapp-unfinished-checkout-learning-2810.md`.
+
+Mejora supervisada por regresiones, no aprendizaje automático ni acceso nuevo a producción. No se atribuye el silencio al bot sin evidencia ni se mide mejora de conversión. Modelos/servicios externos simulados; cero llamadas pagadas, Meta y órdenes externas; ledger267/256/11 intacto. Despliegue staging pendiente de verificación. Producción continúa265. Delta266–271 pendiente de portar a Kamppo. Pendientes: recuperación «Dime?», ubicación durante duda de conjunto, arranque original de dos ejecutivos, muestra reservada, medios/canal y piloto.
+
+
 ## VIGENTE — tanda270: interrupciones de nombre y lugar (28/10)
 
 Base `fb0e2c6d`. Conserva calle y apartamento enviados antes de «es el conjunto»; recogida limpia la duda pendiente. Añadir un producto de catálogo durante la pregunta de nombre vuelve al flujo de compra; el nombre explícito posterior resuelve la duda. Las preguntas no compran ni deciden el rol. Campo JSON opcional `pendingRecipientOrPlaceAddress`, sin SQL; solo recuerda una calle aceptada durante la duda, nunca la dirección anterior guardada. Pin nuevo invalida la calle recordada; aclarar después el conjunto todavía puede requerir aportar de nuevo el destino. Antes de rollback, resolver/cancelar normalmente los borradores afectados.

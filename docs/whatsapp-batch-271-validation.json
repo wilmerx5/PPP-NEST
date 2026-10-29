@@ -1,0 +1,68 @@
+{
+  "baseCommit": "7fb207752a05a04960fdf1899a4f540aecfbf7a1",
+  "batches": [
+    271
+  ],
+  "phases": {
+    "accuracy-a": {
+      "exitCode": 0,
+      "seconds": 158.07,
+      "sourceUnchanged": true,
+      "tests": 4206,
+      "failed": 0
+    },
+    "accuracy-b": {
+      "exitCode": 0,
+      "seconds": 169.88,
+      "sourceUnchanged": true,
+      "tests": 3405,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 268.97,
+      "sourceUnchanged": true,
+      "tests": 13849,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 5.96,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 546,
+  "tests": 21476,
+  "suites": 335,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 72,
+  "focusTests": 318,
+  "focusSuites": 4,
+  "runtimeChanged": true,
+  "persistenceChanged": false,
+  "sqlMigration": false,
+  "productionChanged": false,
+  "deploymentStatus": "Validated locally; staging deployment pending",
+  "baseline": {
+    "failed": 42,
+    "passed": 30
+  },
+  "limits": [
+    "Derived variants of user-shared abandoned checkout; not new observed production conversations.",
+    "External services and models mocked; no real Meta, inference, PDF or audio evaluation.",
+    "Silence does not establish a bot-caused abandonment; no conversion gain measured."
+  ]
+}

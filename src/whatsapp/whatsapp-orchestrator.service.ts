@@ -22668,6 +22668,18 @@ export class WhatsappOrchestratorService {
 
   private isMerchantPaymentDetailsQuestion(text: string): boolean {
     const t = this.normalizeForMatch(text);
+    // Standalone colloquial account requests are read-only, even while checkout
+    // awaits another field. Anchoring prevents swallowing a second purchase.
+    const request = t.replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim()
+      .replace(/^(?:hola |buenas )?(?:veci |vecino |vecina )?/, '')
+      .replace(/\s+(?:porfa|por favor|gracias|veci)$/, '').trim();
+    const account = '(?:(?:el|tu|su) )?(?:nequi|daviplata|numero de (?:nequi|daviplata)|cuenta de (?:nequi|daviplata))';
+    if (new RegExp(`^(?:me )?(?:regalas|regala|pasas|pasa|compartes|comparte|das|envias) ${account}$`).test(request) ||
+        new RegExp(`^(?:cual|que) es ${account}$`).test(request) ||
+        /^(?:a que (?:numero|cuenta)|a donde) (?:te |les )?(?:transfiero|transferir|hago la transferencia)$/.test(request) ||
+        /^(?:me )?(?:compartes|pasas|regalas|indicas) (?:el )?(?:numero|cuenta) para transferir$/.test(request)) return true;
+    if (/\b(?:mi|nuestro) (?:nequi|daviplata|numero de cuenta)\b/.test(t)) return false;
+
     const paymentSubject = /\b(?:nequi|daviplata|transferencia|transferir|cuenta bancaria|datos de pago|titular|pago)\b/.test(t);
     const asksDetails = /\b(?:a nombre de quien|titular|datos (?:para|de)|(?:cual|que) (?:es )?(?:el |la )?(?:numero|cuenta|nequi|llave)|(?:este|ese) es|es este|es ese)\b/.test(t) ||
       /\b(?:nequi|daviplata) es\b/.test(t) ||
