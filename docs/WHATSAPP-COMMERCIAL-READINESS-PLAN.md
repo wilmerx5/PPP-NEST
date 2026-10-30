@@ -95,6 +95,15 @@ Este plan no certifica que el sistema esté listo para venta ni promete cubrir �
 
 ---
 
+## VIGENTE — tanda309: recuperación de restos hasta cierre (30/10)
+
+Base `049639cb`.384 recorridos sintéticos:3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo previo compartido ×destino nuevo/existente ×uno/varios atributos ×4 interrupciones (total, exceso de unidades, opción inexistente, dos restos). Conserva carrito y elección pendiente; el total no incluye adiciones pendientes. La corrección completa «uno de fresa en vaso y los demás de mango en botella» aplica la retirada y reparto juntos. Verifica respuesta, cantidades/opciones/notas por grupo, checkout efectivo/transferencia, ausencia de creación anticipada, una orden simulada al confirmar, DTO y recibo.
+
+384 nuevos +726 relacionados =1110 pruebas/3 suites aprobadas; TypeScript general/build aprobados. Sin fallo nuevo del motor en estos escenarios. Solo pruebas; último global del runtime30336/375 en308, no reejecutado ni atribuido al inventario ampliado309. Evidencia `whatsapp-batch-309-validation.json`.
+
+Sin despliegue nuevo: última verificación PPP staging308 (`93ae3647`), producción292 y Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. No revisión nueva de chats/PDF/audio. Pendientes: notas diferentes por grupo, opciones implícitas y planificación general de mensajes con varias operaciones. Idiomas aplazados.
+
+
 ## VIGENTE — tanda308: resto explícito en repartos pendientes (29/10)
 
 Tanda308 desplegada en staging: código `93ae3647`, imagen `sha256:43190997ffd18fafecd8f3815f9954790481466f9596a13654af2d780a7466b1`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica308 en pruebas locales. Evidencia `whatsapp-batch-308-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
