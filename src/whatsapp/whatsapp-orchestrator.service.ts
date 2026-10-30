@@ -1,3 +1,4 @@
+import { parseOptionDistribution } from './whatsapp-option-distribution';
 import {mealtimeAvailabilityQuery} from './whatsapp-mealtime-query';
 import { resolveDescribedSidePhrase } from './whatsapp-described-side';
 import { twoUnitServingPlan } from './whatsapp-two-unit-serving-plan';
@@ -15794,6 +15795,7 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, index: number,
     removed: number, product: MenuProduct, added: number, cfg: EffectiveWhatsappConfig,
     attributes?: {attributeName:string;attributeValue:string}[],
+    distribution?: Array<{quantity:number;attributes:{attributeName:string;attributeValue:string}[]}>,
   ): Promise<boolean> {
     const unchanged=async(reason:string)=>{await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;};
     const original=session.cart[index];
@@ -15802,10 +15804,17 @@ export class WhatsappOrchestratorService {
       return unchanged('Esa línea no permite la cantidad solicitada. Elige otra opción o cancela el cambio.');
     const draft=structuredClone({...session,pendingCartRemoval:undefined});
     draft.cart=draft.cart.flatMap((line,i)=>i!==index?[line]:line.quantity>removed?[{...line,quantity:line.quantity-removed}]:[]);
-    const result=this.tryAddProductToCart(draft,product,added,cfg,undefined,attributes);
-    if (result.blocked || result.missingAttributes || result.alreadyHad)
-      return unchanged('No pude completar ambos cambios dentro de los límites del pedido.');
-    const next={...this.reconcileSubstitutionPending(result.session),lastDrinkAddition:undefined};
+    const groups=distribution || [{quantity:added,attributes}];
+    if(groups.reduce((sum,group)=>sum+group.quantity,0)!==added || groups.some(group=>!Number.isSafeInteger(group.quantity)||group.quantity<1))
+      return unchanged('El reparto debe cubrir exactamente la cantidad que agregamos.');
+    let resultSession: WhatsappSessionData=draft;
+    for(const group of groups){
+      const result=this.tryAddProductToCart(resultSession,product,group.quantity,cfg,undefined,group.attributes);
+      if(result.blocked || result.missingAttributes || result.alreadyHad)
+        return unchanged('No pude completar ambos cambios dentro de los límites del pedido.');
+      resultSession=result.session;
+    }
+    const next={...this.reconcileSubstitutionPending(resultSession),lastDrinkAddition:undefined};
     await this.conversationService.saveSession(conv,next);
     await this.reply(conv,waId,`Listo, quité ${removed} ${removed===1?'unidad':'unidades'} de *${original.name}* y agregué ${added} de *${product.name}*.\n\n`+
       this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
@@ -15885,6 +15894,12 @@ export class WhatsappOrchestratorService {
     } else if(addition.attributes?.length) {
       const attribute=addition.attributes[selected.length];
       if(!attribute) return clear('La elección pendiente no es válida. Repite ambos cambios.');
+      if(selected.length===addition.attributes.length-1){
+        const groups=parseOptionDistribution(text,attribute.options,addition.quantity);
+        if(groups)return this.applyMixedRemovalAddition(conv,waId,session,index,pending.quantity ?? 0,product,addition.quantity,cfg,undefined,
+          groups.map(group=>({quantity:group.quantity,attributes:[...selected,{attributeName:attribute.attributeName,attributeValue:group.value}]})));
+      }
+
       const numeric=/^\d+$/.test(text.trim())?Number(text.trim()):null;
       const values=attribute.options.filter(option=>this.normalizeForMatch(option)===said);
       const value=numeric!==null?attribute.options[numeric-1]:values.length===1?values[0]:undefined;

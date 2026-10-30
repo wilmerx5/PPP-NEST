@@ -1,0 +1,69 @@
+{
+  "batch": 302,
+  "baseCommit": "36ad6aa4f37bac0b481744bca99aea2a153a0294",
+  "newTests": 328,
+  "baseline": {
+    "tests": 328,
+    "failed": 308,
+    "passed": 20
+  },
+  "focusPassed": 1662,
+  "focusSuites": 6,
+  "global": {
+    "baseCommit": "36ad6aa4f37bac0b481744bca99aea2a153a0294",
+    "batches": [
+      302
+    ],
+    "phases": {
+      "accuracy": {
+        "exitCode": 0,
+        "seconds": 340.71,
+        "sourceUnchanged": true,
+        "tests": 7611,
+        "failed": 0
+      },
+      "rest": {
+        "exitCode": 0,
+        "seconds": 492.8,
+        "sourceUnchanged": true,
+        "tests": 20553,
+        "failed": 0
+      },
+      "timers": {
+        "exitCode": 0,
+        "seconds": 6.97,
+        "sourceUnchanged": true,
+        "tests": 16,
+        "failed": 0
+      },
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "node": {
+        "exitCode": 0
+      }
+    },
+    "paidRequests": 0,
+    "sourceFiles": 583,
+    "nonTimerTestTimeoutMs": 20000,
+    "tests": 28180,
+    "suites": 369,
+    "inventoryExact": true,
+    "sourceUnchanged": true
+  },
+  "runtimeChanges": true,
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic seeded carts and simulated agents",
+    "Distribution applies only to the last pending attribute; earlier selected attributes are shared across all units",
+    "Explicit positive integer counts and exact catalog option names must cover the full pending quantity",
+    "No inferred remainder or cross-attribute per-unit distribution",
+    "No real model/media/Meta validation",
+    "Deployment recorded separately"
+  ]
+}
