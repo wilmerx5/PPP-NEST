@@ -1,0 +1,53 @@
+{
+  "batch": 316,
+  "runtimeCodeCommit": "32878e3309f2add74398824c2de6f846f333842a",
+  "workflowRun": "https://github.com/wilmerx5/kamppo/actions/runs/41073173463",
+  "verification": {
+    "environment": "staging",
+    "head": "32878e3309f2add74398824c2de6f846f333842a",
+    "image": "sha256:c453b0f4d3f7741e052da4867e1c8fe79727907fd72fd9d3ddea7d39cabf7fbe",
+    "restarts": 0,
+    "running": true,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 54.71,
+        "heapTotal": 63.24,
+        "rss": 125.23
+      },
+      "timestamp": "2026-10-30T14:38:00.424Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.13,
+        "heapTotal": 63.49,
+        "rss": 125.6
+      },
+      "timestamp": "2026-10-30T14:38:00.668Z"
+    },
+    "models": {
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": "4 compiled batch292 dictated-address and incomplete-street checks passed\n13 compiled context and note boundary checks passed\n3 compiled compound selection, unit split and conflict-recovery journeys passed\nCompiled batch283 ni-exclusion parsing, conflict and recovery passed\n4 compiled multi-line redirection, clarification, cancellation and expiry journeys passed\n6 compiled pending-note ordinal repair and negative guards passed\n6 compiled router note-conflict and repeat checks passed\n7 compiled note redirection, repetition, stale, expiry, interruption and conflict checks passed\n8 compiled regional payment and wait checks passed\n8 compiled basic total/drink intent checks passed\n4 compiled category-boundary and closing-typo checks passed\n3 compiled greeting checks passed: default, stored invitation, legacy stored invitation\n3 compiled repeat-question checks passed: role repeated without mutation, specific question not swallowed, closed conversation excluded\n3 compiled role-pin checks passed: quote preserved, rejection preserved, mismatched pin discarded\n9 compiled colloquial account-question and mixed-request guards passed\n3 compiled interruption checks passed: fresh street tracked, pickup clears role, clarification preserves street\n3 compiled role checks passed: direct confirmation block, question preserved, place resolved\n7 compiled checkout checks passed: merchant questions, choice/mixed-request guards, ETA units and burst boundaries\n18 compiled referenced preparation routing, negated removal, atomic multiple-removal, short clarification, stale cart, direct guard, paired-plan, negation, atomic split, combo, supply, idempotency, repeated substitution, labelled drink, receipt notes and central-confirmation checks passed; external services isolated\n",
+    "backup": "/***/ppp-manual-release/20261030T143716Z-staging",
+    "checkedAt": "2026-10-30T14:38:04.688384+00:00"
+  },
+  "specific316Coverage": "local full-router regression; deployment smoke covers prior controls through292",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "productionBatch": 292,
+  "kamppoBatch": 282
+}

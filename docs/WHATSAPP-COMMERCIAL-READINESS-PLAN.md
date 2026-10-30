@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda314, código `9cf6b5e0`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308/310/313–314 (293/296–298/303/305/307/309/311–312 solo pruebas); para Kamppo:283–314. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 32.349 pruebas /382 suites aprobadas en314, con dependencias simuladas. No equivalen a32.349 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda316, código `32878e33`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308/310/313–314/316 (293/296–298/303/305/307/309/311–312/315 solo pruebas); para Kamppo:283–316. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 32.409 pruebas /384 suites aprobadas en316, con dependencias simuladas. No equivalen a32.409 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -14,7 +14,7 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ### 0. Igualar versiones y contener incidentes críticos
 
-Preparar el delta vigente: producción292 → staging314; Kamppo282 → versión de staging finalmente acreditada. Incluir código, fixtures, contratos y límites. El paquete283–292 ya no representa todo el delta. Priorizar incidentes reales de cantidades, dirección y cierre. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
+Preparar el delta vigente: producción292 → staging316; Kamppo282 → versión de staging finalmente acreditada. Incluir código, fixtures, contratos y límites. El paquete283–292 ya no representa todo el delta. Priorizar incidentes reales de cantidades, dirección y cierre. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
 
 Salida: el mismo caso reportado pasa en PPP y en la integración Kamppo; una prueba controlada confirma la versión realmente activa. PromociónMain283–292 verificada el29/10 por autorización explícita; la migración aKamppo sigue pendiente. Mantener versión anterior y procedimiento de reversión. Una migración pendiente se muestra como pendiente, nunca como fallo nuevo de una corrección supuestamente activa.
 
@@ -97,11 +97,13 @@ Este plan no certifica que el sistema esté listo para venta ni promete cubrir �
 
 ## VIGENTE — tanda316: sobres de salsa sin intensificador y nota completa (30/10)
 
+Tanda316 desplegada en staging: código `32878e33`, imagen `sha256:c453b0f4d3f7741e052da4867e1c8fe79727907fd72fd9d3ddea7d39cabf7fbe`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica316 en pruebas locales. Evidencia `whatsapp-batch-316-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `a151e6d9`. Resuelve el pendiente315-FREEFORM-CONDIMENT en el router simulado: el reconocimiento exigía hartos/muchos/bastantes; ahora reconoce «con sobres de salsa de tomate porfa» sin intensificador. El analizador de producto separa esa nota terminal del plato y la extracción conserva «de tomate», que la ruta genérica recortaba. Conserva prioridad de nombre completo de catálogo, rechaza cantidades explícitas/preguntas/condiciones/compra coordinada y elimina cortesía terminal. No se han cambiado modelos ni reglas de precios de extras.
 
 36 nuevas pruebas:24 recorridos (2 platos ×3 condimentos ×agente simulado off/on ×mensaje separado/incluido) y12 límites del analizador. Baseline19 fallidas/17 aprobadas; foco95/3 aprobado. Los24 recorridos de315 ahora usan la frase libre original en lugar de la nota explícita artificial: comprueban conservación hasta DTO/recibo con barrio, Nequi y espera. Repetición no duplica producto ni nota en los casos nuevos. Global 32409 pruebas/384 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencias `whatsapp-batch-316-validation.json` y `whatsapp-batch-316-sources.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging314, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Corrección acreditada con dependencias simuladas, no lectura nueva de audios/PDF ni evaluación independiente. Alcance acotado a sobres sin cantidad explícita y nota sobre un solo plato en los recorridos nuevos; falta ampliar varios platos, política de sobres vendidos, cliente recurrente/opciones y dirección dictada. Idiomas aplazados.
+Staging316 desplegado y verificado: código `32878e33`. Evidencia `whatsapp-batch-316-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Corrección acreditada con dependencias simuladas, no lectura nueva de audios/PDF ni evaluación independiente. Alcance acotado a sobres sin cantidad explícita y nota sobre un solo plato en los recorridos nuevos; falta ampliar varios platos, política de sobres vendidos, cliente recurrente/opciones y dirección dictada. Idiomas aplazados.
 
 
 ## VIGENTE — tanda315: barrio, destinatario, Nequi y espera hasta el recibo (30/10)
