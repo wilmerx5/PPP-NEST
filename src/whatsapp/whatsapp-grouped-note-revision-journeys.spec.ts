@@ -8,6 +8,9 @@ for (const dish of ['Hamburguesa Clasica', 'Bowl Vegetal'])
       'repeat-remove',
       'total-before-choice',
       'cancel',
+      'cancel-retry',
+      'total-after-remove',
+      'repeat-confirm',
     ]) {
       it(`${dish}: ${scenario}, agent mock=${agent}`, async () => {
         const h = harness(
@@ -48,6 +51,16 @@ for (const dish of ['Hamburguesa Clasica', 'Bowl Vegetal'])
           await h.sendQueued('confirmar');
           expect(h.service.ordersService.create).not.toHaveBeenCalled();
         }
+        if (scenario === 'cancel-retry') {
+          await h.sendQueued('no apliques esa nota');
+          expect(h.conv.sessionData.cart).toEqual(original);
+          expect(h.conv.sessionData.pendingSubsetKitchenNote).toBeFalsy();
+          await h.sendQueued('para ambos sin cebolla');
+          expect(h.conv.sessionData.cart).toEqual(original);
+          expect(h.conv.sessionData.pendingSubsetKitchenNote).toMatchObject({
+            quantity: 2, note: 'sin cebolla',
+          });
+        }
         if (scenario === 'cancel') {
           await h.sendQueued('no apliques esa nota');
           expect(h.conv.sessionData.cart).toEqual(original);
@@ -78,6 +91,13 @@ for (const dish of ['Hamburguesa Clasica', 'Bowl Vegetal'])
             expect(h.conv.sessionData.cart).toEqual(stable);
           }
         }
+        if (scenario === 'total-after-remove') {
+          const stable = structuredClone(h.conv.sessionData.cart);
+          const total = await h.sendQueued('no mas, cuanto es todo lo que pedi');
+          expect(total).toContain('54.000');
+          expect(h.conv.sessionData.cart).toEqual(stable);
+          expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        }
         expect(h.conv.sessionData.pendingSubsetKitchenNote).toBeFalsy();
         expect(
           h.conv.sessionData.cart.reduce((n, x) => n + x.quantity, 0),
@@ -106,5 +126,10 @@ for (const dish of ['Hamburguesa Clasica', 'Bowl Vegetal'])
         expect(receipt).not.toContain('sin cebolla');
         if (scenario !== 'cancel') expect(receipt).toContain('salsa aparte');
         expect(h.conv.state).toBe('completed');
+        if (scenario === 'repeat-confirm') {
+          await h.sendQueued('Confirmo');
+          expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+          expect(h.conv.state).toBe('completed');
+        }
       });
     }

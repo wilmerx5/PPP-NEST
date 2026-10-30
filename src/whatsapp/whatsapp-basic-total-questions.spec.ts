@@ -45,7 +45,7 @@ for (const names of menus) for (const enabled of [false, true]) {
       expect(h.conv.sessionData.pendingPriceInquiry).toBeUndefined();
       expect(h.service.ordersService.create).not.toHaveBeenCalled();
     });
-    it.each(['no más, cuánto te debo?', 'solo eso veci, cuánto llevo?'])('closes with %s', async text => {
+    it.each(['no más, cuánto te debo?', 'solo eso veci, cuánto llevo?', 'no mas, cuanto es todo lo que pedi', 'solo eso, cuanto vale todo lo que he pedido', 'no mas cuanto cuesta todo lo que llevo'])('closes with %s', async text => {
       const h = setup(names, enabled);
       const reply = await h.sendQueued(text);
       expect(reply).toMatch(/16[.,]000/);
@@ -77,7 +77,7 @@ for (const enabled of [false, true]) {
 it.each(['quiero dos bebidas', 'quiero una bebida sin hielo', 'me regalas una limonada', 'quiero algo de tomar y una pizza', 'no quiero algo de tomar'])('keeps specific/mixed requests outside generic browsing: %s', text => {
   expect(isGenericDrinkBrowseIntent(text)).toBe(false);
 });
-it.each(['no mas, cuanto cuesta el arroz', 'no mas cerveza', 'el total es 16000', 'de todo sin cebolla', 'total calle 10', 'solo eso, cuanto tarda el domicilio'])('does not close or consume a specific request: %s', text => {
+it.each(['no mas, cuanto cuesta el arroz', 'no mas cerveza', 'el total es 16000', 'de todo sin cebolla', 'total calle 10', 'solo eso, cuanto tarda el domicilio', 'no mas cuanto es todo lo que pedi sin cebolla', 'no mas cuanto cuesta todo el arroz'])('does not close or consume a specific request: %s', text => {
   expect(cartTotalFollowupIntent(text, true)).toBeNull();
 });
 it('bare todo needs the product-price clarification context', () => {

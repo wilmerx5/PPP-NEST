@@ -1,0 +1,59 @@
+{
+  "baseCommit": "22678242376b6fe7b327055d21ebe3dcb7ef33e0",
+  "batches": [
+    323
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 308.14,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 519.28,
+      "sourceUnchanged": true,
+      "tests": 24984,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 9.97,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 607,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 32611,
+  "suites": 390,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 323,
+  "newTests": 26,
+  "focusPassed": 117,
+  "focusSuites": 2,
+  "baseline": {
+    "failed": 4,
+    "passed": 24
+  },
+  "externalOrders": 0,
+  "realModelEvaluation": {
+    "executed": false,
+    "reason": "Local API key unavailable; direct SSH staging preflight timed out"
+  },
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75"
+}

@@ -1,5 +1,13 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda323: cierre y total del pedido completo (30/10)
+
+Prioridad: impedir pedidos incorrectos/duplicados y contrastar luego con modelo/canal reales; ampliar pruebas por comportamiento, no por volumen. Inferencia real pendiente: no hay clave local disponible y la comprobación SSH a staging agotó8 segundos. No hubo solicitudes pagadas; presupuesto267/256/11 y espejo intactos.
+
+Fallo reproducido en4 controles: «no mas, cuanto es todo lo que pedi» se interpretaba como producto inexistente o llegaba al fallback del agente. Regla de cierre+total ampliada a «todo lo que pedí/he pedido/llevo», con límites para preguntas de productos y notas adicionales.26 pruebas nuevas:12 recorridos con cancelación/reintento, total tras revisar notas o confirmación repetida;12 variantes de total;2 límites. Foco117/2 aprobado. Global32611 pruebas/390 suites, inventario exacto y607 archivos congelados; TypeScript general/build y scripts aprobados.
+
+Solo staging. Evidencias whatsapp-batch-323-{patterns,validation,sources}. Modelo/Meta/DB simulados, cero órdenes externas; no acredita comprensión real ni canal. Producción y Kamppo conservan runtime321; pruebas322 y corrección323 pendientes de futura promoción/migración. Siguiente: desbloquear ensayo aislado Luna/Sol; después canal/persistencia y nuevos abandonos reales. Idiomas aplazados.
+
 ## VIGENTE — tanda322: revisión de notas después de dividir unidades (30/10)
 
 16 recorridos nuevos desde carrito vacío:4 escenarios ×2 catálogos ×agente simulado off/on. Tres unidades → «para ambos sin cebolla» → aclaración → elección divide dos con nota y una intacta. Añadir «salsa aparte» a la segunda línea y quitar solo «sin cebolla» conserva la otra nota; repetir la retirada no modifica carrito. Consulta de total y confirmación prematura conservan la selección pendiente; cancelación deja el pedido original. Cierre completo para recoger/contraentrega verifica tres unidades en DTO, nota solo en dos, total54000 y una única creación.
