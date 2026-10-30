@@ -4,11 +4,13 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## VIGENTE — tanda320: ambos/ambas en notas de dos unidades (30/10)
 
+Tanda320 desplegada en staging: código `33dd7e83`, imagen `sha256:efa58da5d226c9865656cfb399cf99a37e325aa693d025bf3084addf0b451180`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica320 en pruebas locales. Evidencia `whatsapp-batch-320-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `48ffb1b3`. Reproducción nueva: «ambos sin cebolla» no aplicaba nota en dos platos distintos, mientras «las dos sin cebolla» sí. Normalización acotada de ambos/ambas/para ambos/para ambas antes de sin/poco/poca al tratamiento existente de dos unidades. Conserva controles de selección, cantidades y conflictos; con tres unidades pregunta cuáles y una pregunta no modifica carrito.
 
 44 pruebas nuevas:32 recorridos completos en dos catálogos con agente simulado off/on (ambos, ambas, para ambos, las dos, selección, cancelación, confirmación prematura y exceso de cantidad), más12 controles con tres unidades/preguntas. Baseline4 fallidas/20 aprobadas de24; foco162/3 aprobado. Global 32541 pruebas/388 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencias `whatsapp-batch-320-validation.json` y `whatsapp-batch-320-sources.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging316, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Alcance: varias líneas de carrito y notas de exclusión/reducción; no se acredita una sola línea agrupada, «con salsa» genérico ni respuesta suelta «para ambos». Casos sintéticos de desarrollo, no lectura nueva de PDFs/audio ni evaluación independiente. Siguiente: preparar paridad de versiones y pruebas acotadas con modelo/canal reales; idiomas aplazados.
+Staging320 desplegado y verificado: código `33dd7e83`. Evidencia `whatsapp-batch-320-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Alcance: varias líneas de carrito y notas de exclusión/reducción; no se acredita una sola línea agrupada, «con salsa» genérico ni respuesta suelta «para ambos». Casos sintéticos de desarrollo, no lectura nueva de PDFs/audio ni evaluación independiente. Siguiente: preparar paridad de versiones y pruebas acotadas con modelo/canal reales; idiomas aplazados.
 
 
 ## VIGENTE — tanda319: notas entre dos platos y condimento vendido (30/10)
@@ -39,8 +41,8 @@ Perfil y dirección previa sembrados como fixtures: no acredita persistencia ent
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda316, código `32878e33`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308/310/313–314/316 (293/296–298/303/305/307/309/311–312/315 solo pruebas); para Kamppo:283–316. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 32.409 pruebas /384 suites aprobadas en316, con dependencias simuladas. No equivalen a32.409 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda320, código `33dd7e83`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308/310/313–314/316/320 (293/296–298/303/305/307/309/311–312/315/317–319 solo pruebas); para Kamppo:283–320. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 32.541 pruebas /388 suites aprobadas en320, con dependencias simuladas. No equivalen a32.541 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -49,7 +51,7 @@ Perfil y dirección previa sembrados como fixtures: no acredita persistencia ent
 
 ### 0. Igualar versiones y contener incidentes críticos
 
-Preparar el delta vigente: producción292 → staging316; Kamppo282 → versión de staging finalmente acreditada. Incluir código, fixtures, contratos y límites. El paquete283–292 ya no representa todo el delta. Priorizar incidentes reales de cantidades, dirección y cierre. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
+Preparar el delta vigente: producción292 → staging320; Kamppo282 → versión de staging finalmente acreditada. Incluir código, fixtures, contratos y límites. El paquete283–292 ya no representa todo el delta. Priorizar incidentes reales de cantidades, dirección y cierre. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
 
 Salida: el mismo caso reportado pasa en PPP y en la integración Kamppo; una prueba controlada confirma la versión realmente activa. PromociónMain283–292 verificada el29/10 por autorización explícita; la migración aKamppo sigue pendiente. Mantener versión anterior y procedimiento de reversión. Una migración pendiente se muestra como pendiente, nunca como fallo nuevo de una corrección supuestamente activa.
 
