@@ -1,0 +1,67 @@
+{
+  "batch": 299,
+  "baseCommit": "bd836a1483d2587a66e945d36edd103a09d2d5c4",
+  "newTests": 202,
+  "baseline": {
+    "tests": 160,
+    "failed": 160,
+    "note": "Measured against original orchestrator with the new type declaration available; later added42 continuity controls"
+  },
+  "focusPassed": 1042,
+  "focusSuites": 4,
+  "global": {
+    "baseCommit": "bd836a1483d2587a66e945d36edd103a09d2d5c4",
+    "batches": [
+      299
+    ],
+    "phases": {
+      "accuracy": {
+        "exitCode": 0,
+        "seconds": 345.2,
+        "sourceUnchanged": true,
+        "tests": 7611,
+        "failed": 0
+      },
+      "rest": {
+        "exitCode": 0,
+        "seconds": 497.7,
+        "sourceUnchanged": true,
+        "tests": 19593,
+        "failed": 0
+      },
+      "timers": {
+        "exitCode": 0,
+        "seconds": 6.47,
+        "sourceUnchanged": true,
+        "tests": 16,
+        "failed": 0
+      },
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "node": {
+        "exitCode": 0
+      }
+    },
+    "paidRequests": 0,
+    "sourceFiles": 579,
+    "nonTimerTestTimeoutMs": 20000,
+    "tests": 27220,
+    "suites": 366,
+    "inventoryExact": true,
+    "sourceUnchanged": true
+  },
+  "runtimeChanges": true,
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic carts and simulated agents; no new original media review",
+    "Only source ambiguity is clarified; addition must be a single exact available product without required attributes",
+    "No full mixed-operation planner or destination-attribute clarification",
+    "Deployment not yet verified by this record"
+  ]
+}

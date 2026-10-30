@@ -1,5 +1,14 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda299: aclaración corta de retirada y adición (29/10)
+
+Base `bd836a14`. Si «quita dos de los de pechuga y agrega tres Agua Mineral» tiene varias líneas de origen pero un destino exacto disponible sin opciones requeridas, conserva ambas acciones pendientes. Resuelve con número, «el segundo» o nota distintiva; aplica retirada y adición juntas después de volver a validar catálogo, cantidad y límites. Preguntar total conserva la elección. Precio/nombre/disponibilidad/opciones cambiados, carrito modificado o elección vencida no aplican media operación. Caducidad30min. Cancelar el cambio conserva el carrito; reiniciar sigue vaciándolo por el flujo existente. Confirmar/no más/pregunta no resuelven la elección por accidente.
+
+202 pruebas nuevas:144 recorridos (3 catálogos ×2 agentes simulados ×2 cantidades ×destino nuevo/existente ×6 formas de resolver/interrumpir);16 controles de cambio de catálogo/carrito, pago, límites, cantidad insuficiente y caducidad;42 controles en construcción/pago/confirmación. Baseline160 fallidos; corrección160 aprobados; ampliación detectó6 bloqueos de reinicio, corregidos. Foco1042/4; global27220/366, inventario exacto y579 fuentes congeladas. TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-299-validation.json`.
+
+Despliegue staging pendiente de verificación en este registro. Último runtime verificado:staging295, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. El destino ambiguo o con atributos sigue solicitando petición completa/elección; esta mejora no acredita un planificador general de operaciones combinadas.
+
+
 ## VIGENTE — tanda298: matriz de recuperación de operaciones mixtas (29/10)
 
 Base `bacddb3d`.384 recorridos sintéticos:8 rechazos (destino inexistente, retirada excesiva/negativa, adición decimal/cero, referencia inexistente, condición, tercera acción) ×3 catálogos ×agente simulado off/on ×efectivo/transferencia ×retirada parcial/completa ×destino nuevo/existente. Primero exige carrito intacto y respuesta explícita; después repite la instrucción completa corregida. Comprueba retirada y adición juntas, fusión de cantidades, notas/atributos del plato restante, ausencia de notas heredadas en el producto añadido, estados de checkout, creación única solo al confirmar, unidades exactas del DTO y total/nota en recibo.
