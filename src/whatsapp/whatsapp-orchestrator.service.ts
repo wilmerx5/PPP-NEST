@@ -15764,15 +15764,23 @@ export class WhatsappOrchestratorService {
     const indices=session.cart.flatMap((line,index)=>correctionMatchesLine(line,parsed.query)?[index]:[]);
     if (!indices.length) return unchanged('No identifiqué una sola línea para retirar. Repite ambos cambios con el plato y su opción.');
     const products=await this.catalogService.getMenuProducts();
-    const targets=products.filter(product=>this.normalizeForMatch(product.name)===this.normalizeForMatch(addition[2]));
-    if (targets.length!==1 || targets[0].availableNow===false)
+    const query=this.normalizeForMatch(addition[2]);
+    const exact=products.filter(product=>this.normalizeForMatch(product.name)===query);
+    // Only a literal leading catalog phrase opens this list; no fuzzy or substring substitution.
+    const alternatives=!exact.length && query.length>=3 && /^[a-z]{2,}(?: [a-z]{2,}){0,2}$/.test(query) && !/\b(?:si|sin|con|y|no|pero)\b/.test(query)
+      ? products.filter(product=>product.availableNow!==false && this.normalizeForMatch(product.name).startsWith(query+' ')) : [];
+    const candidates=alternatives.length>1 && alternatives.length<=8 &&
+      new Set(alternatives.map(p=>this.normalizeForMatch(p.name))).size===alternatives.length ? alternatives : undefined;
+    if (!candidates && (exact.length!==1 || exact[0].availableNow===false))
       return unchanged('No encontré un único producto disponible con ese nombre para añadir. Repite la petición con su nombre completo.');
-    const product=targets[0];
+    const product=candidates?.[0] || exact[0];
     if (indices.length===1 && removed>session.cart[indices[0]].quantity) return unchanged('Esa línea no tiene suficientes unidades para retirar.');
-    if (indices.length>1 || (product.hasAttributes && product.attributes?.length)) {
+    if (candidates || indices.length>1 || (product.hasAttributes && product.attributes?.length)) {
       const options=indices.map(cartIndex=>({cartIndex,label:this.formatCartLineLabel(session.cart[cartIndex])+(session.cart[cartIndex].note?` · ${session.cart[cartIndex].note}`:'')}));
       const next={...session,pendingCartRemoval:{quantity:removed,cartSignature:JSON.stringify(session.cart),options,
         mixedAddition:{productId:product.id,name:product.name,price:product.price,quantity:added,createdAt:Date.now(),
+          ...(candidates?{candidates:candidates.map(p=>({productId:p.id,name:p.name,price:p.price,
+            ...(p.hasAttributes && p.attributes?.length?{attributes:structuredClone(p.attributes)}:{})}))}:{}),
           ...(indices.length===1?{sourceIndex:indices[0]}:{}),
           ...(product.hasAttributes && product.attributes?.length?{attributes:structuredClone(product.attributes),selected:[]}: {})}}};
       await this.conversationService.saveSession(conv,next);
@@ -15832,13 +15840,32 @@ export class WhatsappOrchestratorService {
       return unchanged('Hay otra selección o pago pendiente; aclaremos eso antes de aplicar ambos cambios.');
     // An explicit standalone purchase replaces the unfinished mixed edit; it must not remove anything.
     const standalone=said.match(/^(?:agrega|agregame|anade|ponme) (?:un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[1-9]\d?) (.+)$/);
-    if (addition.attributes?.length && standalone && !/[¿?]/.test(text) &&
-        standalone[1]===this.normalizeForMatch(addition.name)) {
+    if ((addition.attributes?.length || addition.candidates?.length) && standalone && !/[¿?]/.test(text) &&
+        [addition.name,...(addition.candidates || []).map(p=>p.name)].some(name=>standalone[1]===this.normalizeForMatch(name))) {
       await this.conversationService.saveSession(conv,{...session,pendingCartRemoval:undefined});
       return false;
     }
     if (cartTotalFollowupIntent(text,true) || this.looksLikeOrderTotalQuestion(text)) {
       await this.reply(conv,waId,this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+this.formatPendingCartEditReminder(session));return true;
+    }
+    if(addition.candidates?.length) {
+      const candidates=addition.candidates;
+      const numeric=/^\d+$/.test(text.trim())?Number(text.trim()):null;
+      const ordinal=({ 'el primero':1,'la primera':1,'el segundo':2,'la segunda':2,'el tercero':3,'la tercera':3 } as Record<string,number>)[said];
+      const matches=candidates.filter(p=>this.normalizeForMatch(p.name)===said);
+      const choice=numeric!==null?candidates[numeric-1]:ordinal?candidates[ordinal-1]:matches.length===1?matches[0]:undefined;
+      if(!choice || /[¿?]/.test(text)){await this.reply(conv,waId,this.formatPendingCartEditReminder(session));return true;}
+      const products=await this.catalogService.getMenuProducts();
+      const current=products.filter(p=>p.id===choice.productId);
+      const product=current[0];
+      const attrs=product?.hasAttributes && product.attributes?.length?product.attributes:undefined;
+      if(current.length!==1 || product.availableNow===false || product.name!==choice.name || product.price!==choice.price || JSON.stringify(attrs)!==JSON.stringify(choice.attributes))
+        return clear('La oferta elegida cambió. Repite ambos cambios para revisar el catálogo actual.');
+      const next={...session,pendingCartRemoval:{...pending,mixedAddition:{...addition,...choice,candidates:undefined,attributes:choice.attributes,selected:[]}}};
+      if(addition.sourceIndex!==undefined && !choice.attributes?.length)
+        return this.applyMixedRemovalAddition(conv,waId,next,addition.sourceIndex,pending.quantity ?? 0,product,addition.quantity,cfg);
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,this.formatPendingCartEditReminder(next));return true;
     }
     const products=await this.catalogService.getMenuProducts();
     const matches=products.filter(product=>product.id===addition.productId);
@@ -18121,6 +18148,9 @@ export class WhatsappOrchestratorService {
     }
     const removal=session.pendingCartRemoval;
     const addition=removal?.mixedAddition;
+    if(addition?.candidates?.length) return `No cambié el pedido. ¿Cuál producto quieres agregar (${addition.quantity})?\n`+
+      addition.candidates.map((p,i)=>`${i+1}. ${p.name} · ${this.catalogService.formatMoney(p.price)}`).join('\n')+
+      '\nEscribe el número o el nombre completo. La retirada y la adición se aplicarán juntas. El pedido sigue igual.';
     if(addition?.sourceIndex!==undefined && addition.attributes?.length) {
       const attribute=addition.attributes[(addition.selected || []).length];
       if(attribute) return `No cambié el pedido. Para agregar ${addition.quantity} de *${addition.name}*, elige ${attribute.attributeName}:\n`+

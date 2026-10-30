@@ -215,6 +215,7 @@ export type WhatsappSessionData = {
     batchQuantities?: number[];
     /** The addition is committed together with a clarified counted removal. */
     mixedAddition?: { productId: number; name: string; price: number; quantity: number; createdAt: number;
+      candidates?: Array<{productId: number; name: string; price: number; attributes?: Array<{attributeName: string; options: string[]}>}>;
       sourceIndex?: number;
       attributes?: Array<{attributeName: string; options: string[]}>;
       selected?: Array<{attributeName: string; attributeValue: string}>;

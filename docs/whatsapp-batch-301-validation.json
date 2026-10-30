@@ -1,0 +1,69 @@
+{
+  "batch": 301,
+  "baseCommit": "2002bd3fb347ea6d4a5bd0f7ecb1fae1ffae630d",
+  "newTests": 324,
+  "baseline": {
+    "tests": 308,
+    "failed": 308,
+    "note": "Original orchestrator, new type declarations available; later added16 boundaries and standalone purchase controls"
+  },
+  "focusPassed": 1334,
+  "focusSuites": 5,
+  "global": {
+    "baseCommit": "2002bd3fb347ea6d4a5bd0f7ecb1fae1ffae630d",
+    "batches": [
+      301
+    ],
+    "phases": {
+      "accuracy": {
+        "exitCode": 0,
+        "seconds": 348.31,
+        "sourceUnchanged": true,
+        "tests": 7611,
+        "failed": 0
+      },
+      "rest": {
+        "exitCode": 0,
+        "seconds": 504.11,
+        "sourceUnchanged": true,
+        "tests": 20225,
+        "failed": 0
+      },
+      "timers": {
+        "exitCode": 0,
+        "seconds": 6.23,
+        "sourceUnchanged": true,
+        "tests": 16,
+        "failed": 0
+      },
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "node": {
+        "exitCode": 0
+      }
+    },
+    "paidRequests": 0,
+    "sourceFiles": 581,
+    "nonTimerTestTimeoutMs": 20000,
+    "tests": 27852,
+    "suites": 368,
+    "inventoryExact": true,
+    "sourceUnchanged": true
+  },
+  "runtimeChanges": true,
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic seeded carts and simulated agents",
+    "Only literal leading catalog phrases of up to3 words,2–8 distinct available names; no fuzzy matching or broad category semantics",
+    "Single exact product retains priority; duplicate indistinguishable names remain blocked",
+    "No multi-flavor quantity distribution or free-form multiple option interpretation",
+    "No new original media review or real model/Meta validation",
+    "Deployment recorded separately"
+  ]
+}
