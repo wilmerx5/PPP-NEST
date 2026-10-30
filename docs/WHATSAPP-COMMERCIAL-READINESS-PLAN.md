@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda306, código `fc2c64bb`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306 (293/296–298/303/305 solo pruebas); para Kamppo:283–306. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 29.610 pruebas /373 suites aprobadas en306, con dependencias simuladas. No equivalen a29.610 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda308, código `93ae3647`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308 (293/296–298/303/305/307 solo pruebas); para Kamppo:283–308. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 30.336 pruebas /375 suites aprobadas en308, con dependencias simuladas. No equivalen a30.336 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -97,11 +97,13 @@ Este plan no certifica que el sistema esté listo para venta ni promete cubrir �
 
 ## VIGENTE — tanda308: resto explícito en repartos pendientes (29/10)
 
+Tanda308 desplegada en staging: código `93ae3647`, imagen `sha256:43190997ffd18fafecd8f3815f9954790481466f9596a13654af2d780a7466b1`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica308 en pruebas locales. Evidencia `whatsapp-batch-308-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `e61c159c`. «Uno de fresa en vaso y el resto de mango en botella» calcula el último grupo con la cantidad pendiente de añadir, nunca con las unidades del carrito previo. Acepta el resto/los demás/los restantes y formas femeninas; una sola cláusula final, cantidades previas explícitas y residuo positivo. Resuelve tanto un atributo como varios; después valida todas las opciones por catálogo y usa la aplicación atómica existente. Cero/sobrantes negativos, dos restos, resto al principio, opción faltante/desconocida, preguntas y condiciones no cambian el carrito.
 
 342 pruebas nuevas:288 recorridos (3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo previo compartido ×destino nuevo/existente ×uno/varios atributos ×3 frases),20 rechazos con recuperación,22 controles y12 casos de totales2/4/7, formas femeninas y varios grupos previos. Baseline308 fallidos/22 aprobados; foco994/3. Dos negativos antiguos sobre restos completos pasan a cobertura positiva nueva; los negativos conservan restos con opciones faltantes. Global final 30336 pruebas/375 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-308-validation.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging306, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: notas diferentes por grupo, opciones implícitas y planificación general de mensajes con varias operaciones.
+Staging308 desplegado y verificado: código `93ae3647`. Evidencia `whatsapp-batch-308-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: notas diferentes por grupo, opciones implícitas y planificación general de mensajes con varias operaciones.
 
 
 ## VIGENTE — tanda307: recuperación de repartos por grupo hasta cierre (29/10)

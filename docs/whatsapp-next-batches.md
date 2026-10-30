@@ -4,7 +4,7 @@ Base `e61c159c`. «Uno de fresa en vaso y el resto de mango en botella» calcula
 
 342 pruebas nuevas:288 recorridos (3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo previo compartido ×destino nuevo/existente ×uno/varios atributos ×3 frases),20 rechazos con recuperación,22 controles y12 casos de totales2/4/7, formas femeninas y varios grupos previos. Baseline308 fallidos/22 aprobados; foco994/3. Dos negativos antiguos sobre restos completos pasan a cobertura positiva nueva; los negativos conservan restos con opciones faltantes. Global final 30336 pruebas/375 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-308-validation.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging306, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: notas diferentes por grupo, opciones implícitas y planificación general de mensajes con varias operaciones.
+Staging308 desplegado y verificado: código `93ae3647`. Evidencia `whatsapp-batch-308-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: notas diferentes por grupo, opciones implícitas y planificación general de mensajes con varias operaciones.
 
 
 ## VIGENTE — tanda307: recuperación de repartos por grupo hasta cierre (29/10)
