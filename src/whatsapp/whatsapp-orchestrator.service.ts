@@ -15797,7 +15797,7 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, index: number,
     removed: number, product: MenuProduct, added: number, cfg: EffectiveWhatsappConfig,
     attributes?: {attributeName:string;attributeValue:string}[],
-    distribution?: Array<{quantity:number;attributes:{attributeName:string;attributeValue:string}[]}>,
+    distribution?: Array<{quantity:number;attributes:{attributeName:string;attributeValue:string}[];note?:string}>,
   ): Promise<boolean> {
     const unchanged=async(reason:string)=>{await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;};
     const original=session.cart[index];
@@ -15806,12 +15806,12 @@ export class WhatsappOrchestratorService {
       return unchanged('Esa línea no permite la cantidad solicitada. Elige otra opción o cancela el cambio.');
     const draft=structuredClone({...session,pendingCartRemoval:undefined});
     draft.cart=draft.cart.flatMap((line,i)=>i!==index?[line]:line.quantity>removed?[{...line,quantity:line.quantity-removed}]:[]);
-    const groups=distribution || [{quantity:added,attributes}];
+    const groups=distribution || [{quantity:added,attributes,note:undefined}];
     if(groups.reduce((sum,group)=>sum+group.quantity,0)!==added || groups.some(group=>!Number.isSafeInteger(group.quantity)||group.quantity<1))
       return unchanged('El reparto debe cubrir exactamente la cantidad que agregamos.');
     let resultSession: WhatsappSessionData=draft;
     for(const group of groups){
-      const result=this.tryAddProductToCart(resultSession,product,group.quantity,cfg,undefined,group.attributes);
+      const result=this.tryAddProductToCart(resultSession,product,group.quantity,cfg,group.note,group.attributes);
       if(result.blocked || result.missingAttributes || result.alreadyHad)
         return unchanged('No pude completar ambos cambios dentro de los límites del pedido.');
       resultSession=result.session;
@@ -15898,7 +15898,7 @@ export class WhatsappOrchestratorService {
       if(!attribute) return clear('La elección pendiente no es válida. Repite ambos cambios.');
       const distributed=parseMultiAttributeDistribution(text,addition.attributes.slice(selected.length),addition.quantity);
       if(distributed)return this.applyMixedRemovalAddition(conv,waId,session,index,pending.quantity ?? 0,product,addition.quantity,cfg,undefined,
-        distributed.map(group=>({quantity:group.quantity,attributes:[...selected,...group.attributes]})));
+        distributed.map(group=>({quantity:group.quantity,attributes:[...selected,...group.attributes],...(group.note?{note:group.note}:{})})));
       const combined=parseCombinedOptions(text,addition.attributes.slice(selected.length));
       if(combined)return this.applyMixedRemovalAddition(conv,waId,session,index,pending.quantity ?? 0,product,addition.quantity,cfg,[...selected,...combined]);
       if(selected.length===addition.attributes.length-1){

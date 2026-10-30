@@ -1,0 +1,66 @@
+{
+  "baseCommit": "76b0ef489de0f7ea1b4a767ea9bf16e6cab6c1de",
+  "batches": [
+    313
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 328.86,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 564.04,
+      "sourceUnchanged": true,
+      "tests": 24627,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.47,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 597,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 32254,
+  "suites": 380,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 313,
+  "newTests": 338,
+  "baseline": {
+    "tests": 330,
+    "failed": 308,
+    "passed": 22
+  },
+  "focus": {
+    "initialPassed": 1008,
+    "initialSuites": 3,
+    "finalNewPassed": 338
+  },
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "externalOrders": 0,
+  "limits": [
+    "Simple terminal sin exclusions of one to four words only, with condition/action/connective filters",
+    "Existing multi-attribute pending mixed-edit route only (two to four remaining attributes)",
+    "Exact catalog options still required; remainder supported; not arbitrary free-form notes",
+    "Same options with different notes remain separate; note text normalized",
+    "Synthetic carts and mocked agent; no real inference/media/channel validation"
+  ]
+}
