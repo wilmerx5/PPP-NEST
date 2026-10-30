@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda299, código `6046e45b`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299 (293/296–298 solo pruebas); para Kamppo:283–299. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 27.220 pruebas /366 suites aprobadas en299, con dependencias simuladas. No equivalen a27.220 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda300, código `f7fc7ab3`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–300 (293/296–298 solo pruebas); para Kamppo:283–300. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 27.528 pruebas /367 suites aprobadas en300, con dependencias simuladas. No equivalen a27.528 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -203,11 +203,13 @@ Staging299 desplegado y verificado: código `6046e45b`; evidencia `whatsapp-batc
 
 ## VIGENTE — tanda300: opciones del producto añadido sin retirada parcial (29/10)
 
+Tanda300 desplegada en staging: código `f7fc7ab3`, imagen `sha256:64d37b7a7b587ced77e8f1e04b16abd3b2506ff416a0732029320b3c3be2db52`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica300 en pruebas locales. Evidencia `whatsapp-batch-300-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `8d0eb406`. La operación combinada conserva retirada y adición cuando el destino exacto requiere atributos. Resuelve primero la línea de origen si hay ambigüedad y después cada opción del destino por número o nombre exacto. El carrito no cambia hasta completar todas las opciones. Revalida firma del carrito, catálogo/opciones, precio, disponibilidad, cantidad y límites; utiliza la adición habitual con atributos completos. Una nueva instrucción completa de agregar el mismo producto sustituye el cambio pendiente y pasa al flujo habitual sin retirar nada. Consulta de total mantiene la elección; cancelar conserva el carrito y reiniciar usa el flujo existente. Las listas consecutivas no confunden el número de línea con el sabor o presentación.
 
 308 pruebas nuevas:288 recorridos (3 catálogos ×2 agentes simulados ×origen único/ambiguo ×uno/dos atributos ×destino nuevo/existente ×6 formas de selección/interrupción);20 controles de cambio de precio/stock/opciones/carrito, pago, límites, confirmación/pregunta, caducidad y reinicio tras primera opción. Baseline164 fallidos. Primer global interrumpido al detectar incompatibilidad con72 recorridos anteriores de compra independiente; corregida y validada junto a los8 límites de aquella suite. Global completo reiniciado después del ajuste; foco1394/5 aprobado. Global27528/367, inventario exacto y580 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-300-validation.json`.
 
-Despliegue staging pendiente de verificación en este registro. Último runtime verificado:staging299, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Pendiente: destino ambiguo, selección libre de varias opciones en un mensaje y reparto de sabores entre unidades. No es un planificador general de operaciones mixtas.
+Staging300 desplegado y verificado: código `f7fc7ab3`; evidencia `whatsapp-batch-300-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Pendiente: destino ambiguo, selección libre de varias opciones en un mensaje y reparto de sabores entre unidades. No es un planificador general de operaciones mixtas.
 
 ## Historial de validaciones y planes anteriores
 
