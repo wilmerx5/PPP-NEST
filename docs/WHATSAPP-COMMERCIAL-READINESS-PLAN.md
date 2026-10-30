@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda313, código `e11c810e`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308/310/313 (293/296–298/303/305/307/309/311–312 solo pruebas); para Kamppo:283–313. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 32.254 pruebas /380 suites aprobadas en313, con dependencias simuladas. No equivalen a32.254 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda314, código `9cf6b5e0`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308/310/313–314 (293/296–298/303/305/307/309/311–312 solo pruebas); para Kamppo:283–314. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 32.349 pruebas /382 suites aprobadas en314, con dependencias simuladas. No equivalen a32.349 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -14,7 +14,7 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ### 0. Igualar versiones y contener incidentes críticos
 
-Preparar el delta vigente: producción292 → staging313, más tanda314 en validación; Kamppo282 → versión de staging finalmente acreditada. Incluir código, fixtures, contratos y límites. El paquete283–292 ya no representa todo el delta. Priorizar incidentes reales de cantidades, dirección y cierre.  Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
+Preparar el delta vigente: producción292 → staging314; Kamppo282 → versión de staging finalmente acreditada. Incluir código, fixtures, contratos y límites. El paquete283–292 ya no representa todo el delta. Priorizar incidentes reales de cantidades, dirección y cierre. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
 
 Salida: el mismo caso reportado pasa en PPP y en la integración Kamppo; una prueba controlada confirma la versión realmente activa. PromociónMain283–292 verificada el29/10 por autorización explícita; la migración aKamppo sigue pendiente. Mantener versión anterior y procedimiento de reversión. Una migración pendiente se muestra como pendiente, nunca como fallo nuevo de una corrección supuestamente activa.
 
@@ -97,11 +97,13 @@ Este plan no certifica que el sistema esté listo para venta ni promete cubrir �
 
 ## VIGENTE — tanda314: recorridos de chats y nota frente a compra adicional (30/10)
 
+Tanda314 desplegada en staging: código `9cf6b5e0`, imagen `sha256:422da0c43bb26cf12ba7e0c04f8cf8df2343ca7adb13cfb8e858fb8d3208748b`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica314 en pruebas locales. Evidencia `whatsapp-batch-314-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `7d45676e`. Reproducciones: «Así veci» después de «¿Algo más?» no avanzaba al checkout (4/12 recorridos iniciales fallidos); «Dos churrascos los quiero sin arroz Mas ensalada» sumaba unidades sin aclarar (24/24 variantes iniciales fallidas). Ahora el cierre breve avanza solo en contexto de carrito; una pregunta o frase calificada no cierra ni autoriza la orden final. La petición contada sobre un plato existente pregunta cambiar/agregar, conserva carrito/total y bloquea confirmación pendiente. Cambiar divide las unidades de una línea conservando atributos/notas previas; agregar usa catálogo/disponibilidad/límites habituales. Firma del carrito protege contra elección obsoleta. Cancelación y cantidad contradictoria no aplican cambios.
 
 95 pruebas nuevas:35 en recorridos desde carrito vacío y límites del cierre;60 sobre ambigüedad contada, dos catálogos, agente simulado off/on y tres estados. Comprueba respuestas, estados, cantidades/notas, repetición, terceros intactos y DTO al cerrar. Foco234/4 aprobado. Global 32349 pruebas/382 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-314-validation.json`; procedencia/adaptaciones en `whatsapp-batch-314-sources.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging313, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Son regresiones de desarrollo con continuaciones sintéticas, no conversaciones reales recuperadas ni evaluación independiente. Sin nueva revisión de PDFs/audio. Alcance de ambigüedad: cantidad + plato + lo/la/los/las quiero + con/sin; varias líneas piden precisar, no se seleccionan automáticamente. Adiciones con atributos incompletos requieren cancelar y pedirlas completas. Pendiente ampliar redacciones y recorridos con barrio, cliente recurrente y dirección dictada.
+Staging314 desplegado y verificado: código `9cf6b5e0`. Evidencia `whatsapp-batch-314-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Son regresiones de desarrollo con continuaciones sintéticas, no conversaciones reales recuperadas ni evaluación independiente. Sin nueva revisión de PDFs/audio. Alcance de ambigüedad: cantidad + plato + lo/la/los/las quiero + con/sin; varias líneas piden precisar, no se seleccionan automáticamente. Adiciones con atributos incompletos requieren cancelar y pedirlas completas. Pendiente ampliar redacciones y recorridos con barrio, cliente recurrente y dirección dictada.
 
 
 ## VIGENTE — tanda313: notas dentro del reparto por grupo (30/10)
