@@ -1,0 +1,18 @@
+{
+  "batch": 316,
+  "source": "Petición de sobres de salsa en los chats aportados por el usuario; pendiente315-FREEFORM-CONDIMENT registrado en whatsapp-batch-315-sources.json.",
+  "observedSourceFragments": ["Ese si pues con los sobres de tomate", "La salsa", "Porfa"],
+  "developmentProbe": "con sobres de salsa de tomate porfa",
+  "adaptation": "Frase consolidada del patrón reportado, no transcripción literal de una sola burbuja. Dos platos, tres condimentos y continuaciones sintéticas. Los modelos, persistencia y canal están simulados.",
+  "newSuite": "src/whatsapp/whatsapp-plain-condiment-packets.spec.ts",
+  "upgradedSuite": "src/whatsapp/whatsapp-place-payment-complete-journeys.spec.ts",
+  "upgradedSuiteChange": "Los24 recorridos de315 ahora envían con sobres de salsa de tomate porfa; se elimina la instrucción artificial por posición. No cambia el resultado esperado de conservación de nota.",
+  "baseline": {"passed":17,"failed":19,"total":36},
+  "findings": [
+    "El reconocimiento de sobres requería intensificador como hartos",
+    "La nota terminal sin intensificador no se separaba del nombre del plato",
+    "Tras reconocer el mensaje separado, la extracción genérica recortaba de tomate"
+  ],
+  "invariants": ["Cantidad y precio del plato conservados", "Sin producto adicional por la nota", "Repetición sin nota duplicada", "Siguiente paso presente", "Nota completa en DTO y recibo", "Nombre exacto de catálogo tiene prioridad"],
+  "limits": ["No validación real del modelo, canal, entrega de salsas ni disponibilidad física", "No prueba temporización de las burbujas originales", "Preguntas, cantidades explícitas y peticiones compuestas quedan fuera del reconocimiento nuevo", "No evalúa exhaustivamente varios platos ni condimentos vendidos como productos"]
+}

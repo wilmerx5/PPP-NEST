@@ -23,7 +23,7 @@ for (const agent of [false,true]) describe(`place/payment journey ${dish}, agent
     expect(h.conv.sessionData.cart).toEqual([]);
     await h.sendQueued('Buenas tardes');
     await h.sendQueued(`Veci me envías un ${dish}`);
-    await h.sendQueued('a la primera ponle como nota sobres de salsa de tomate aparte');
+    await h.sendQueued('con sobres de salsa de tomate porfa');
     expect(h.conv.sessionData.cart).toHaveLength(1);
     expect(h.conv.sessionData.cart[0]).toMatchObject({productId:94160,quantity:1,note:expect.stringMatching(/salsa.*tomate/i)});
     expect(h.service.ordersService.create).not.toHaveBeenCalled();

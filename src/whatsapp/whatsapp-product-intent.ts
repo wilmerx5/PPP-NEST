@@ -78,6 +78,7 @@ export function interpretProductNote(source: string, products: NamedProduct[]):
     const tail = normalized.slice(match.index + match[0].length).trim()
       .replace(/[\s,]+(?:por favor|porfa|gracias)[.!]*$/, '').replace(/[.!]+$/, '').trim();
     if(!tail)return null; // An exact longer catalogue name owns its adjectives.
+    if (isCondimentPacketNote(tail)) return {productId:product.id,productText:prepared.slice(0,match.index+match[0].length).trim(),note:tail};
     const description=kitchenDescriptionNote(prepared.slice(match.index+match[0].length));
     if(description)return {productId:product.id,productText:prepared.slice(0,match.index+match[0].length).trim(),note:description};
     // A compact accompaniment substitution is a kitchen request, not a new SKU.
@@ -101,5 +102,5 @@ export function interpretProductNote(source: string, products: NamedProduct[]):
 
 /** An uncounted request for condiment packets modifies food, not the delivery address. */
 export function isCondimentPacketNote(text: string): boolean {
-  return /^(?:con\s+)?(?:h?art[oa]s?|much[oa]s?|bastantes?)\s+sobres?\s+de\s+(?:salsa(?:\s+de\s+\p{L}+)?|mostaza|mayonesa|aj[ií]|ketchup)(?:\s+por favor)?[.!]*$/iu.test(text.trim());
+  return /^(?:con\s+)?(?:(?:h?art[oa]s?|much[oa]s?|bastantes?)\s+)?sobres?\s+de\s+(?:salsa(?:\s+de\s+\p{L}+)?|mostaza|mayonesa|aj[ií]|ketchup)(?:\s+(?:por favor|porfa|gracias))?[.!]*$/iu.test(text.trim());
 }

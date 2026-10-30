@@ -4,7 +4,7 @@ import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import {splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { Injectable } from '@nestjs/common';
-import { condimentIntensityNote, interpretProductNote, joinKitchenNotes, stripNonDishKitchenWords } from './whatsapp-product-intent';
+import { isCondimentPacketNote, condimentIntensityNote, interpretProductNote, joinKitchenNotes, stripNonDishKitchenWords } from './whatsapp-product-intent';
 import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { productCategoryNames, productInCategory } from './whatsapp-product-categories';
@@ -4413,6 +4413,8 @@ export class WhatsappCatalogService {
    * preferencias del plato, no ítems nuevos.
    */
   extractProductModificationNote(text: string, product?: { name: string }): string | null {
+    // Preserve the complete packet condiment, including «de tomate», before generic clause extraction.
+    if (isCondimentPacketNote(text)) return text.trim().replace(/[.!]+$/, '').replace(/\s+(?:por favor|porfa|gracias)$/i, '').trim();
     if (product) text = this.productNoteSource(text, product);
     const ensureAji = (note: string) =>
       /\baj[ií]\b/i.test(note) || !/\bcon\s+aj[ií]\b/i.test(text || '') ? note : `${note}, con ají`;

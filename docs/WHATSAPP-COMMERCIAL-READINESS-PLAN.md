@@ -95,6 +95,15 @@ Este plan no certifica que el sistema esté listo para venta ni promete cubrir �
 
 ---
 
+## VIGENTE — tanda316: sobres de salsa sin intensificador y nota completa (30/10)
+
+Base `a151e6d9`. Resuelve el pendiente315-FREEFORM-CONDIMENT en el router simulado: el reconocimiento exigía hartos/muchos/bastantes; ahora reconoce «con sobres de salsa de tomate porfa» sin intensificador. El analizador de producto separa esa nota terminal del plato y la extracción conserva «de tomate», que la ruta genérica recortaba. Conserva prioridad de nombre completo de catálogo, rechaza cantidades explícitas/preguntas/condiciones/compra coordinada y elimina cortesía terminal. No se han cambiado modelos ni reglas de precios de extras.
+
+36 nuevas pruebas:24 recorridos (2 platos ×3 condimentos ×agente simulado off/on ×mensaje separado/incluido) y12 límites del analizador. Baseline19 fallidas/17 aprobadas; foco95/3 aprobado. Los24 recorridos de315 ahora usan la frase libre original en lugar de la nota explícita artificial: comprueban conservación hasta DTO/recibo con barrio, Nequi y espera. Repetición no duplica producto ni nota en los casos nuevos. Global 32409 pruebas/384 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencias `whatsapp-batch-316-validation.json` y `whatsapp-batch-316-sources.json`.
+
+Despliegue staging pendiente. Último runtime verificado: staging314, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Corrección acreditada con dependencias simuladas, no lectura nueva de audios/PDF ni evaluación independiente. Alcance acotado a sobres sin cantidad explícita y nota sobre un solo plato en los recorridos nuevos; falta ampliar varios platos, política de sobres vendidos, cliente recurrente/opciones y dirección dictada. Idiomas aplazados.
+
+
 ## VIGENTE — tanda315: barrio, destinatario, Nequi y espera hasta el recibo (30/10)
 
 Base `f2788798`.24 recorridos nuevos desde carrito vacío:6 comportamientos ×2 catálogos ×agente simulado off/on. Combina aclaración barrio/nombre, pregunta de Nequi, pregunta repetida sin confirmar rol, nombre y espera en mensajes separados, bloqueo de confirmación prematura, lugar no localizado, recuperación con dirección completa y reinicio seguido de nueva compra. Comprueba carrito, respuestas, estados, una única creación al confirmar, destinatario/dirección, nota y recibo final. Nota introducida mediante instrucción explícita sintética, no mediante la frase libre original.

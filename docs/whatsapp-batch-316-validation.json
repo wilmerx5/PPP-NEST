@@ -1,0 +1,65 @@
+{
+  "baseCommit": "a151e6d945d0530a8f85da3b76fdd2eb43d880c1",
+  "batches": [
+    316
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 338.43,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 569.14,
+      "sourceUnchanged": true,
+      "tests": 24782,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.25,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 601,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 32409,
+  "suites": 384,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 316,
+  "newTests": 36,
+  "upgradedJourneys": 24,
+  "baseline": {
+    "tests": 36,
+    "failed": 19,
+    "passed": 17
+  },
+  "focus": {
+    "passed": 95,
+    "suites": 3
+  },
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "externalOrders": 0,
+  "sourceManifest": "whatsapp-batch-316-sources.json",
+  "limits": [
+    "Bounded uncounted condiment packets only; explicit quantities, questions, conditions and coordinated purchases excluded",
+    "No new source-media review or real model/channel evaluation",
+    "Two single-product catalogs for new full journeys; not an exhaustive multi-line target or paid-condiment policy evaluation"
+  ]
+}
