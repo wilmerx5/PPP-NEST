@@ -1,0 +1,25 @@
+{
+  "batch": 322,
+  "baseCommit": "845bf79aa7d23611f659ba0b1c0251a3d4075d50",
+  "newTests": 16,
+  "newPassed": 16,
+  "focusPassed": 106,
+  "focusSuites": 4,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 321,
+    "tests": 32569,
+    "suites": 389
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "sourceManifest": "whatsapp-batch-322-sources.json",
+  "limits": [
+    "Synthetic development journeys, not new real chats or independent evaluation",
+    "Explicit ordinal revision wording, pickup/cash, external dependencies mocked",
+    "No new global or deployment for this test-only batch"
+  ]
+}

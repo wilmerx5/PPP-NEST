@@ -1,0 +1,23 @@
+{
+  "batch": 322,
+  "source": "Synthetic continuations of the counted kitchen-note incidents and321 grouped-line fix",
+  "spec": "src/whatsapp/whatsapp-grouped-note-revision-journeys.spec.ts",
+  "coverage": [
+    "Two catalogs and agent disabled/enabled with deterministic mocked output",
+    "Empty cart, three units, both-unit clarification, selection and split",
+    "Append salsa aparte then remove only sin cebolla",
+    "Repeated removal leaves cart unchanged",
+    "Total inquiry and premature confirmation while choice pending",
+    "Cancel pending note without cart mutation",
+    "Final DTO: three units, two retained notes or none after cancellation; correct receipt total"
+  ],
+  "limits": [
+    "No new real chat, audio or PDF inspection",
+    "Explicit ordinal note-revision wording; not all colloquial corrections",
+    "Pickup/cash with mocked external services, no real model or database"
+  ],
+  "remaining": [
+    "Controlled real-model/channel checks",
+    "Further colloquial corrections and delivery variants"
+  ]
+}
