@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda295, código `d4533407`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 (293 solo pruebas); para Kamppo:283–295. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 26.514 pruebas /362 suites aprobadas en295, con dependencias simuladas. No equivalen a26.514 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda299, código `6046e45b`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299 (293/296–298 solo pruebas); para Kamppo:283–299. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 27.220 pruebas /366 suites aprobadas en299, con dependencias simuladas. No equivalen a27.220 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -193,11 +193,13 @@ Base `bacddb3d`.384 recorridos sintéticos:8 rechazos (destino inexistente, reti
 
 ## VIGENTE — tanda299: aclaración corta de retirada y adición (29/10)
 
+Tanda299 desplegada en staging: código `6046e45b`, imagen `sha256:d03c77b89bbc0c4ca66f9e7a56e34555d7cb12e095a27420942e65a355096b5a`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica299 en pruebas locales. Evidencia `whatsapp-batch-299-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `bd836a14`. Si «quita dos de los de pechuga y agrega tres Agua Mineral» tiene varias líneas de origen pero un destino exacto disponible sin opciones requeridas, conserva ambas acciones pendientes. Resuelve con número, «el segundo» o nota distintiva; aplica retirada y adición juntas después de volver a validar catálogo, cantidad y límites. Preguntar total conserva la elección. Precio/nombre/disponibilidad/opciones cambiados, carrito modificado o elección vencida no aplican media operación. Caducidad30min. Cancelar el cambio conserva el carrito; reiniciar sigue vaciándolo por el flujo existente. Confirmar/no más/pregunta no resuelven la elección por accidente.
 
 202 pruebas nuevas:144 recorridos (3 catálogos ×2 agentes simulados ×2 cantidades ×destino nuevo/existente ×6 formas de resolver/interrumpir);16 controles de cambio de catálogo/carrito, pago, límites, cantidad insuficiente y caducidad;42 controles en construcción/pago/confirmación. Baseline160 fallidos; corrección160 aprobados; ampliación detectó6 bloqueos de reinicio, corregidos. Foco1042/4; global27220/366, inventario exacto y579 fuentes congeladas. TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-299-validation.json`.
 
-Despliegue staging pendiente de verificación en este registro. Último runtime verificado:staging295, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. El destino ambiguo o con atributos sigue solicitando petición completa/elección; esta mejora no acredita un planificador general de operaciones combinadas.
+Staging299 desplegado y verificado: código `6046e45b`; evidencia `whatsapp-batch-299-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. El destino ambiguo o con atributos sigue solicitando petición completa/elección; esta mejora no acredita un planificador general de operaciones combinadas.
 
 ## Historial de validaciones y planes anteriores
 

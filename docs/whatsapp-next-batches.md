@@ -4,7 +4,7 @@ Base `bd836a14`. Si «quita dos de los de pechuga y agrega tres Agua Mineral» t
 
 202 pruebas nuevas:144 recorridos (3 catálogos ×2 agentes simulados ×2 cantidades ×destino nuevo/existente ×6 formas de resolver/interrumpir);16 controles de cambio de catálogo/carrito, pago, límites, cantidad insuficiente y caducidad;42 controles en construcción/pago/confirmación. Baseline160 fallidos; corrección160 aprobados; ampliación detectó6 bloqueos de reinicio, corregidos. Foco1042/4; global27220/366, inventario exacto y579 fuentes congeladas. TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-299-validation.json`.
 
-Despliegue staging pendiente de verificación en este registro. Último runtime verificado:staging295, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. El destino ambiguo o con atributos sigue solicitando petición completa/elección; esta mejora no acredita un planificador general de operaciones combinadas.
+Staging299 desplegado y verificado: código `6046e45b`; evidencia `whatsapp-batch-299-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. El destino ambiguo o con atributos sigue solicitando petición completa/elección; esta mejora no acredita un planificador general de operaciones combinadas.
 
 ## VIGENTE — tanda298: matriz de recuperación de operaciones mixtas (29/10)
 
