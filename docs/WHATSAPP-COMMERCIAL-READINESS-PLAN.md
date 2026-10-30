@@ -4,11 +4,13 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## VIGENTE — tanda321: ambos en una línea agrupada (30/10)
 
+Tanda321 desplegada en staging: código `b4cbd3c7`, imagen `sha256:c267cf637a4c658fa21a2174f70e6744ce820174162324c657b47c026a78560e`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica321 en pruebas locales. Evidencia `whatsapp-batch-321-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `2aca874c`. Reproducción: con tres unidades agrupadas de un plato, «ambos sin cebolla» aplicaba la nota a las tres; con dos funcionaba. Ahora la línea única con ambos/ambas/para ambos/para ambas antes de sin/poco/poca usa los controles de cantidad y aclaración existentes. Con tres pregunta; elegir la línea divide dos unidades con nota y deja una intacta. Una unidad insuficiente y una pregunta conservan carrito.
 
 28 pruebas nuevas en dos catálogos y agente simulado off/on:12 recorridos de dos unidades hasta DTO/recibo,12 aclaraciones de tres unidades hasta división correcta y4 límites cantidad/pregunta. Baseline12 fallidas/12 aprobadas de24; foco266/4 aprobado. Global 32569 pruebas/389 suites con inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Fases no temporizadas con6 workers. Evidencias `whatsapp-batch-321-validation.json` y `whatsapp-batch-321-sources.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging320, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. No cubre con salsa genérico ni respuesta suelta para ambos. Casos de tres unidades acreditados hasta división, no hasta DTO. Fixtures sintéticos, no lectura nueva de PDFs/audio ni evaluación independiente. Siguiente: preparar paridad de versiones y pruebas acotadas con modelo/canal reales; idiomas aplazados.
+Staging321 desplegado y verificado: código `b4cbd3c7`. Evidencia `whatsapp-batch-321-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. No cubre con salsa genérico ni respuesta suelta para ambos. Casos de tres unidades acreditados hasta división, no hasta DTO. Fixtures sintéticos, no lectura nueva de PDFs/audio ni evaluación independiente. Siguiente: preparar paridad de versiones y pruebas acotadas con modelo/canal reales; idiomas aplazados.
 
 
 ## VIGENTE — tanda320: ambos/ambas en notas de dos unidades (30/10)
@@ -50,8 +52,8 @@ Perfil y dirección previa sembrados como fixtures: no acredita persistencia ent
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda320, código `33dd7e83`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308/310/313–314/316/320 (293/296–298/303/305/307/309/311–312/315/317–319 solo pruebas); para Kamppo:283–320. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 32.541 pruebas /388 suites aprobadas en320, con dependencias simuladas. No equivalen a32.541 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda321, código `b4cbd3c7`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308/310/313–314/316/320–321 (293/296–298/303/305/307/309/311–312/315/317–319 solo pruebas); para Kamppo:283–321. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 32.569 pruebas /389 suites aprobadas en321, con dependencias simuladas. No equivalen a32.569 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -60,7 +62,7 @@ Perfil y dirección previa sembrados como fixtures: no acredita persistencia ent
 
 ### 0. Igualar versiones y contener incidentes críticos
 
-Preparar el delta vigente: producción292 → staging320; Kamppo282 → versión de staging finalmente acreditada. Incluir código, fixtures, contratos y límites. El paquete283–292 ya no representa todo el delta. Priorizar incidentes reales de cantidades, dirección y cierre. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
+Preparar el delta vigente: producción292 → staging321; Kamppo282 → versión de staging finalmente acreditada. Incluir código, fixtures, contratos y límites. El paquete283–292 ya no representa todo el delta. Priorizar incidentes reales de cantidades, dirección y cierre. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
 
 Salida: el mismo caso reportado pasa en PPP y en la integración Kamppo; una prueba controlada confirma la versión realmente activa. PromociónMain283–292 verificada el29/10 por autorización explícita; la migración aKamppo sigue pendiente. Mantener versión anterior y procedimiento de reversión. Una migración pendiente se muestra como pendiente, nunca como fallo nuevo de una corrección supuestamente activa.
 
