@@ -1,3 +1,4 @@
+import { parseCombinedOptions } from './whatsapp-combined-options';
 import { parseOptionDistribution } from './whatsapp-option-distribution';
 import {mealtimeAvailabilityQuery} from './whatsapp-mealtime-query';
 import { resolveDescribedSidePhrase } from './whatsapp-described-side';
@@ -15894,6 +15895,8 @@ export class WhatsappOrchestratorService {
     } else if(addition.attributes?.length) {
       const attribute=addition.attributes[selected.length];
       if(!attribute) return clear('La elección pendiente no es válida. Repite ambos cambios.');
+      const combined=parseCombinedOptions(text,addition.attributes.slice(selected.length));
+      if(combined)return this.applyMixedRemovalAddition(conv,waId,session,index,pending.quantity ?? 0,product,addition.quantity,cfg,[...selected,...combined]);
       if(selected.length===addition.attributes.length-1){
         const groups=parseOptionDistribution(text,attribute.options,addition.quantity);
         if(groups)return this.applyMixedRemovalAddition(conv,waId,session,index,pending.quantity ?? 0,product,addition.quantity,cfg,undefined,
