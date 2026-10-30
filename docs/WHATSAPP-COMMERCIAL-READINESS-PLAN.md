@@ -2,6 +2,14 @@
 
 Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son evidencia histórica, no una lista acumulativa de tareas abiertas. Responsable de implementación y pruebas: agente en PPP staging; validación del servicio y decisiones comerciales: operador del restaurante con evidencia del agente.
 
+## VIGENTE — promoción Main y migración Kamppo hasta321 (30/10)
+
+Autorización explícita del usuario: desplegar Main y migrar tandas pendientes. PPP Main/producción promovido293–321: commit `79edb0fc`, imagen `sha256:819aaac04037849cede7e471c590291023f49fc0acb174719dbf1163eba740e0`, contenedor activo, cero reinicios y API local/pública saludables; este compose no define healthcheck Docker. Configuración privada preservada. Evidencia `whatsapp-batch-321-production-deployment.json`, workflow41083403225. Fuente de runtime idéntica a la validada en321:32569 pruebas/389 suites, TypeScript y scripts aprobados.
+
+Kamppo actualizado283–321 y desplegado: commit `de8dc7d97cde`, imagen `sha256:1514d7aefa2d51aae7e1498ae91c08a90c70f01d5686048fa2a4ab835213c939`, API ok yDB up, workflow41086031558 aprobado.55 archivos de delta, conservados precios de opciones, UUIDs, aislamiento por tenant, lock e IDs idempotentes. Validación local propia:32473 pruebas/371 suites del motor,454 API/63 suites,29 integración (9 nuevas),92 runners, build y tipos aprobados;15 live omitidas. Evidencias en Kamppo `docs/whatsapp-migration/ppp-batch-321-{validation,deployment}.json`. CI adicional41086031247: lock entre procesos aprobado; build/test y regresión general aún en curso al registrar.
+
+Sin tandas pendientes de migrar hasta321. Staging PPP conserva runtime `b4cbd3c7` de321; Main añade documentación, sin diferencias del motor. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. Validación de canal/modelo reales sigue pendiente y no se infiere de las pruebas simuladas. Siguiente: comprobar los casos reportados en canal aislado y auditar nuevas conversaciones; idiomas aplazados.
+
 ## VIGENTE — tanda321: ambos en una línea agrupada (30/10)
 
 Tanda321 desplegada en staging: código `b4cbd3c7`, imagen `sha256:c267cf637a4c658fa21a2174f70e6744ce820174162324c657b47c026a78560e`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica321 en pruebas locales. Evidencia `whatsapp-batch-321-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
@@ -52,7 +60,7 @@ Perfil y dirección previa sembrados como fixtures: no acredita persistencia ent
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda321, código `b4cbd3c7`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308/310/313–314/316/320–321 (293/296–298/303/305/307/309/311–312/315/317–319 solo pruebas); para Kamppo:283–321. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- Última evidencia: PPP staging y producción hasta321; motor Kamppo migrado y desplegado hasta321. No queda delta pendiente hasta esta tanda. Ver registros de promoción anteriores para commits, imágenes y límites.
 - 32.569 pruebas /389 suites aprobadas en321, con dependencias simuladas. No equivalen a32.569 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
