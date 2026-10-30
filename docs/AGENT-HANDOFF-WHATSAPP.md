@@ -2,11 +2,13 @@
 
 ## VIGENTE — tanda313: notas dentro del reparto por grupo (30/10)
 
+Tanda313 desplegada en staging: código `e11c810e`, imagen `sha256:d581a01f0ee1ca06300025926fc9a4e02c309c18e9f9c6029c6b0732f8078108`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica313 en pruebas locales. Evidencia `whatsapp-batch-313-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `76b0ef48`. «Uno de fresa en vaso sin hielo y dos de mango en botella sin azúcar» resuelve los atributos y la nota terminal de cada grupo en el flujo pendiente de retirada/adición. Primera versión acotada a exclusiones sin de1–4 palabras, sin condiciones/conjunciones/acciones; no admite notas libres generales. Las opciones se resuelven por catálogo antes de tomar el resto como nota; una nota igual a una opción del catálogo se rechaza. El agrupamiento incluye la nota, por lo que opciones iguales con notas distintas permanecen separadas. La aplicación atómica pasa la nota al alta habitual; un límite tardío conserva el carrito original. Compatible con resto final y atributos previos compartidos.
 
 338 pruebas nuevas:288 recorridos (3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo compartido ×destino existente con misma nota/nuevo ×6 frases),20 rechazos con recuperación,22 controles y8 casos de agrupamiento/nota opcional/ambigüedad con catálogo. Baseline308 fallidos/22 aprobados; foco inicial1008/3, suite nueva final338 aprobada. Global 32254 pruebas/380 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-313-validation.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging310, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: notas libres/compuestas dentro del reparto, un solo atributo restante con nota incluida, opciones implícitas y planificación general de varias operaciones.
+Staging313 desplegado y verificado: código `e11c810e`. Evidencia `whatsapp-batch-313-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: notas libres/compuestas dentro del reparto, un solo atributo restante con nota incluida, opciones implícitas y planificación general de varias operaciones.
 
 
 ## VIGENTE — tanda312: retirar una nota conservando las demás (30/10)
