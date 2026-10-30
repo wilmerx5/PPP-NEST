@@ -1,0 +1,18 @@
+{
+  "batch": 325,
+  "spec": "src/whatsapp/whatsapp-final-cart-revision-journeys.spec.ts",
+  "sha256": "e148b4087034ec59c08edc39eb2948658d1ea7f7bb7c37bd9dd65326dbdcce82",
+  "source": "Synthetic continuations of user-reported wrong quantities and stale checkout totals; existing removal/quantity phrases",
+  "coverage": [
+    "Empty cart to delivery final review with three dishes and one drink",
+    "Remove one, set two or remove the dish line after choosing payment",
+    "Keep unrelated drink, retained kitchen notes, address and payment",
+    "Recalculate total60000 to42000 or6000; total question cannot submit",
+    "Final DTO quantities and repeated confirmation creates exactly one order"
+  ],
+  "limits": [
+    "Mocked model, database, delivery quotation and transport",
+    "Known explicit product references; not all colloquial ambiguities",
+    "Cash and transfer only"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "batch": 325,
+  "baseCommit": "a66030458649f994711af31d5da6528cdf2c4a2a",
+  "newTests": 24,
+  "newPassed": 24,
+  "focusPassed": 150,
+  "focusSuites": 3,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 323,
+    "tests": 32611,
+    "suites": 390
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic explicit product-reference journeys with mocked agent and external dependencies",
+    "No new deployment or full global for test-only batch"
+  ]
+}
