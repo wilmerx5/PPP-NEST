@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda308, código `93ae3647`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308 (293/296–298/303/305/307 solo pruebas); para Kamppo:283–308. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 30.336 pruebas /375 suites aprobadas en308, con dependencias simuladas. No equivalen a30.336 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda310, código `1470d8e8`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306/308/310 (293/296–298/303/305/307/309 solo pruebas); para Kamppo:283–310. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 31.148 pruebas /377 suites aprobadas en310, con dependencias simuladas. No equivalen a31.148 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -97,11 +97,13 @@ Este plan no certifica que el sistema esté listo para venta ni promete cubrir �
 
 ## VIGENTE — tanda310: notas por grupo y posición inexistente (30/10)
 
+Tanda310 desplegada en staging: código `1470d8e8`, imagen `sha256:c5e0d238ca180dcbe30e24bb37d9d7351b724e0d6520f767c2f70c3534b94be4`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica310 en pruebas locales. Evidencia `whatsapp-batch-310-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `854b5859`. Reproducido: con4 líneas, «a la quinta ponle como nota sin sal» caía a la nota del último producto. El manejador de notas acotadas reconoce ordinales quinto–décimo y posiciones numéricas de1–3 dígitos (con número/sufijo ordinal opcional). Una posición fuera de rango, incluido0, pide aclaración sin cambiar el carrito. Las posiciones válidas usan las protecciones existentes de selección/pago y editan esa línea, no una unidad suelta.
 
 428 pruebas nuevas:384 recorridos tras reparto (3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo compartido ×destino nuevo/existente ×4 escenarios de notas ×efectivo/transferencia), más44 referencias válidas/fuera de rango. Notas separadas para cada grupo, orden invertido, total intercalado y quinta línea inexistente; comprueba carrito, respuesta, DTO/recibo con notas/opciones/cantidades. Baseline384:288 aprobados/96 fallidos; foco542/3 aprobado. Global 31148 pruebas/377 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-310-validation.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging308, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Las notas se añaden después del reparto en mensajes separados: siguen pendientes las notas distintas dentro de la misma frase del reparto, opciones implícitas y planificación general.
+Staging310 desplegado y verificado: código `1470d8e8`. Evidencia `whatsapp-batch-310-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Las notas se añaden después del reparto en mensajes separados: siguen pendientes las notas distintas dentro de la misma frase del reparto, opciones implícitas y planificación general.
 
 
 ## VIGENTE — tanda309: recuperación de restos hasta cierre (30/10)
