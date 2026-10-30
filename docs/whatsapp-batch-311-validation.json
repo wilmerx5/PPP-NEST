@@ -1,0 +1,26 @@
+{
+  "batch": 311,
+  "baseCommit": "234457c69552f2ca86bfbce718034e68c47a2db2",
+  "newTests": 384,
+  "newPassed": 384,
+  "relatedPassed": 476,
+  "focusTotalPassed": 860,
+  "focusSuites": 3,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 310,
+    "tests": 31148,
+    "suites": 377
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic seeded carts across three catalogs, not 384 real chats",
+    "Mocked agent enabled/disabled; no real inference/media/channel validation",
+    "Notes sent separately after distribution; not embedded notes or redirection from an already modified wrong line",
+    "No new deployment; staging310, production292, Kamppo282 remain last verified versions"
+  ]
+}
