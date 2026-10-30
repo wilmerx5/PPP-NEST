@@ -1,0 +1,26 @@
+{
+  "batch": 318,
+  "baseCommit": "4629eb56f97f6a4b1e56b5a7806938fa031a9511",
+  "newTests": 24,
+  "newPassed": 24,
+  "focusPassed": 220,
+  "focusSuites": 4,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 316,
+    "tests": 32409,
+    "suites": 384
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "sourceManifest": "whatsapp-batch-318-sources.json",
+  "limits": [
+    "Text-transcript derived journeys; no audio processing or new PDF review",
+    "Model, database, routing and Meta mocked; not independent real-world evaluation",
+    "Post-confirm correction is explicitly not applied; this does not implement order editing",
+    "No new global run or deployment for test-only batch"
+  ]
+}

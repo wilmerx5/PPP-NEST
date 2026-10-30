@@ -1,0 +1,26 @@
+{
+  "batch": 318,
+  "source": "User-shared order #52 transcript dated 29/10/2026, using supplied text transcription",
+  "observed": "Address truncated to street, boilerplate leaked into side note, post-confirm correction treated as new order inquiry",
+  "spec": "src/whatsapp/whatsapp-dictated-address-journeys.spec.ts",
+  "adaptations": [
+    "Synthetic customer, item IDs and mocked order",
+    "Six scenarios: inline address and side; separate address; incomplete address then recovery; contact number appended; replace before confirmation; correction after confirmation",
+    "Two side products, agent disabled/enabled with deterministic mock"
+  ],
+  "assertions": [
+    "Two correct products and quantities with no spurious notes",
+    "Street crossing and plate preserved in session and order DTO",
+    "Contact number not stored as address",
+    "Incomplete street cannot create order; full address recovers checkout",
+    "Changed destination recalculates fee and preserves cart",
+    "Exactly one order and correct receipt total",
+    "Post-confirm correction does not mutate session, reopen cart or claim successful modification"
+  ],
+  "remaining": [
+    "Real audio transcription and channel verification",
+    "Persistence and real geocoding accuracy",
+    "Multiple dishes and condiment ownership/pricing",
+    "Version parity with production and Kamppo"
+  ]
+}
