@@ -20225,7 +20225,9 @@ export class WhatsappOrchestratorService {
 
   /** "una sin cebolla" / "sin cebolla" with several cart lines and no dish named: ask which line, never the last one. */
   private async tryHandleUnscopedCartKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
-    if (session.cart.length < 2 || /[¿?]/.test(text) || text.length > 120 ||
+    const groupedBoth = session.cart.length === 1 &&
+      /^(?:para )?(?:ambos|ambas) (?:sin|poco|poca) /.test(this.normalizeForMatch(text));
+    if ((!groupedBoth && session.cart.length < 2) || /[¿?]/.test(text) || text.length > 120 ||
         !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
         session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
         CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;

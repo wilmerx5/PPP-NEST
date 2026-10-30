@@ -1,0 +1,23 @@
+{
+  "batch": 321,
+  "source": "Synthetic extension of both-unit notes from320 to one grouped cart line",
+  "baseline": {
+    "tests": 24,
+    "failed": 12,
+    "passed": 12
+  },
+  "observed": "Three grouped units all received the note when user requested ambos; two grouped units worked",
+  "spec": "src/whatsapp/whatsapp-grouped-both-note.spec.ts",
+  "runtimeChange": "Route a single grouped line with bounded ambos/ambas exclusion wording through existing unit-count clarification and conflict guards",
+  "coverage": [
+    "12 complete two-unit checkout journeys",
+    "12 three-unit clarification and selection checks: two noted, one unchanged",
+    "4 one-unit/question guards"
+  ],
+  "limits": [
+    "No new audio/PDF/chat source inspection",
+    "Synthetic fixtures; real model/database/Meta not exercised",
+    "Three-unit cases checked through split, not final order DTO",
+    "No arbitrary con salsa phrase or standalone para ambos reply support"
+  ]
+}
