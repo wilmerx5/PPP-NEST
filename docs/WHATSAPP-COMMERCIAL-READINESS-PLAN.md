@@ -4,8 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## Punto de partida y alcance
 
-- Última evidencia: PPP staging tanda304, código `f07b733f`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302 y304 (293/296–298/303 solo pruebas); para Kamppo:283–304. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
-- 28.890 pruebas /371 suites aprobadas en304, con dependencias simuladas. No equivalen a28.890 conversaciones reales ni a una tasa de éxito comercial.
+- Última evidencia: PPP staging tanda306, código `fc2c64bb`; producción tanda292, código `df8e16c3`; motor Kamppo hasta282. Delta para producción:294–295 y299–302/304/306 (293/296–298/303/305 solo pruebas); para Kamppo:283–306. Esto describe las verificaciones registradas, no una comprobación nueva del servidor en esta planificación.
+- 29.610 pruebas /373 suites aprobadas en306, con dependencias simuladas. No equivalen a29.610 conversaciones reales ni a una tasa de éxito comercial.
 - Hay patrones de chats y PDF, investigación regional documentada y algunos ensayos reales históricos. No está acreditada una revisión exhaustiva de todos los archivos ni una muestra representativa actual con modelo, medios y canal reales.
 - Objetivo inicial: pedidos de texto fiables, con efectivo/transferencia, intervención humana disponible y catálogo configurable. Audio/fotos se habilitan como alcance acreditado por separado. Mercado Pago y autonomía general quedan fuera de la primera puerta comercial.
 - El bot no aprende solo de producción: observar → anonimizar → clasificar → reproducir → corregir → evaluar → desplegar → verificar.
@@ -97,11 +97,13 @@ Este plan no certifica que el sistema esté listo para venta ni promete cubrir �
 
 ## VIGENTE — tanda306: reparto de varios atributos por grupo (29/10)
 
+Tanda306 desplegada en staging: código `fc2c64bb`, imagen `sha256:86ca122a89695fa2b6656d1648a77dd5752aa29ef4d6c6434911db2768e31a8b`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica306 en pruebas locales. Evidencia `whatsapp-batch-306-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
+
 Base `095cfe9b`. «Uno de fresa en vaso y dos de mango en botella» completa opciones pendientes de una retirada/adición mixta. Resuelve por valores exactos normalizados del catálogo, permite orden inverso y nombres de varias palabras, conserva atributos previos compartidos y agrupa combinaciones repetidas. Exige cantidades explícitas positivas cuya suma coincide con el total. Entre2–4 atributos restantes, hasta8 cláusulas y búsqueda acotada. Ambigüedad, opciones faltantes, condiciones, preguntas o límites no aplican una parte del cambio. Reutiliza la adición atómica y sus controles, incluidos límites que fallan al añadir el segundo grupo.
 
 336 pruebas nuevas:288 recorridos (3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo previo compartido ×destino nuevo/existente ×6 frases),20 rechazos con recuperación,22 controles y6 casos de opciones compuestas con2/3/4 atributos. Baseline308 fallidos/22 aprobados; foco inicial984/3; suite nueva final336 aprobada tras endurecer nombres que empiezan por conectores. Primer global interrumpido por ese ajuste; global final reiniciado: 29610 pruebas/373 suites, inventario exacto y fuentes congeladas. TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-306-validation.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging304, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: restos implícitos, notas diferentes por grupo y planificación general de mensajes con varias operaciones; no se infieren.
+Staging306 desplegado y verificado: código `fc2c64bb`. Evidencia `whatsapp-batch-306-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: restos implícitos, notas diferentes por grupo y planificación general de mensajes con varias operaciones; no se infieren.
 
 
 ## VIGENTE — tanda305: interrupciones de opciones conjuntas hasta cierre (29/10)

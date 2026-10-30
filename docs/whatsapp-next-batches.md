@@ -4,7 +4,7 @@ Base `095cfe9b`. «Uno de fresa en vaso y dos de mango en botella» completa opc
 
 336 pruebas nuevas:288 recorridos (3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo previo compartido ×destino nuevo/existente ×6 frases),20 rechazos con recuperación,22 controles y6 casos de opciones compuestas con2/3/4 atributos. Baseline308 fallidos/22 aprobados; foco inicial984/3; suite nueva final336 aprobada tras endurecer nombres que empiezan por conectores. Primer global interrumpido por ese ajuste; global final reiniciado: 29610 pruebas/373 suites, inventario exacto y fuentes congeladas. TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-306-validation.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging304, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: restos implícitos, notas diferentes por grupo y planificación general de mensajes con varias operaciones; no se infieren.
+Staging306 desplegado y verificado: código `fc2c64bb`. Evidencia `whatsapp-batch-306-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: restos implícitos, notas diferentes por grupo y planificación general de mensajes con varias operaciones; no se infieren.
 
 
 ## VIGENTE — tanda305: interrupciones de opciones conjuntas hasta cierre (29/10)
