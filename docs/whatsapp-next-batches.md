@@ -4,7 +4,7 @@ Base `08b17ed2`. Resuelve «fresa y vaso», orden inverso, coma/punto y coma, et
 
 326 pruebas nuevas:288 recorridos (3 catálogos ×agente simulado off/on ×origen único/ambiguo ×destino nuevo/existente ×cantidad1/3 ×6 frases),16 rechazos con recuperación,20 controles y2 casos tras atributo previo. Baseline304/304 fallidos; foco inicial940/3 aprobado. Los22 controles finales incluidos en global: 28890 pruebas/371 suites, inventario exacto y fuentes congeladas. TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-304-validation.json`.
 
-Despliegue staging pendiente. Último runtime verificado: staging302, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Pendiente: reparto de varios atributos por unidad y opciones sin separadores explícitos. Sin revisión nueva de medios originales.
+Staging304 desplegado y verificado: código `f07b733f`. Evidencia `whatsapp-batch-304-staging-deployment.json`. Producción292 y Kamppo282 sin promoción. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Pendiente: reparto de varios atributos por unidad y opciones sin separadores explícitos. Sin revisión nueva de medios originales.
 
 
 ## VIGENTE — tanda303: recuperación de repartos hasta cierre (29/10)
