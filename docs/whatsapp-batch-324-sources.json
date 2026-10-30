@@ -1,0 +1,12 @@
+{
+  "batch": 324,
+  "spec": "src/whatsapp/whatsapp-compound-total-checkout-journeys.spec.ts",
+  "sha256": "9cc5d233eea2b6aca411b4480a9f04799d5505689f7988cdb4242b1268e18504",
+  "source": "User-provided total-as-address incident; synthetic continuations of batch323 wording",
+  "coverage": [
+    "Total before name and while awaiting address, payment and final confirmation",
+    "Two catalogs, mocked agent on/off, cash/transfer",
+    "Cart and address preserved, delivery included once known",
+    "Final DTO two units and repeated confirmation does not duplicate creation"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "batch": 324,
+  "baseCommit": "cc4f913066f94bc0dfca45bd4bad795be52e064c",
+  "newTests": 24,
+  "newPassed": 24,
+  "focusPassed": 176,
+  "focusSuites": 4,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 323,
+    "tests": 32611,
+    "suites": 390
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Synthetic development journeys; external dependencies and agent mocked",
+    "Fixed synthetic delivery fee, not real geocoding",
+    "No new runtime deployment or full global needed for test-only batch"
+  ]
+}
