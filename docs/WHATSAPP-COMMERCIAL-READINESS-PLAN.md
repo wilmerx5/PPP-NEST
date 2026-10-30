@@ -95,6 +95,15 @@ Este plan no certifica que el sistema esté listo para venta ni promete cubrir �
 
 ---
 
+## VIGENTE — tanda306: reparto de varios atributos por grupo (29/10)
+
+Base `095cfe9b`. «Uno de fresa en vaso y dos de mango en botella» completa opciones pendientes de una retirada/adición mixta. Resuelve por valores exactos normalizados del catálogo, permite orden inverso y nombres de varias palabras, conserva atributos previos compartidos y agrupa combinaciones repetidas. Exige cantidades explícitas positivas cuya suma coincide con el total. Entre2–4 atributos restantes, hasta8 cláusulas y búsqueda acotada. Ambigüedad, opciones faltantes, condiciones, preguntas o límites no aplican una parte del cambio. Reutiliza la adición atómica y sus controles, incluidos límites que fallan al añadir el segundo grupo.
+
+336 pruebas nuevas:288 recorridos (3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo previo compartido ×destino nuevo/existente ×6 frases),20 rechazos con recuperación,22 controles y6 casos de opciones compuestas con2/3/4 atributos. Baseline308 fallidos/22 aprobados; foco inicial984/3; suite nueva final336 aprobada tras endurecer nombres que empiezan por conectores. Primer global interrumpido por ese ajuste; global final reiniciado: 29610 pruebas/373 suites, inventario exacto y fuentes congeladas. TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-306-validation.json`.
+
+Despliegue staging pendiente. Último runtime verificado: staging304, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: restos implícitos, notas diferentes por grupo y planificación general de mensajes con varias operaciones; no se infieren.
+
+
 ## VIGENTE — tanda305: interrupciones de opciones conjuntas hasta cierre (29/10)
 
 Base `069205b4`.384 recorridos sintéticos:3 catálogos ×agente simulado off/on ×origen único/ambiguo ×destino nuevo/existente ×con/sin atributo previo compartido ×efectivo/transferencia ×4 interrupciones (total, opción inexistente, condición y pregunta). Conserva carrito y selección pendiente antes de resolver «Presentacion: Vaso; Sabor: Fresa». La consulta de total no cuenta adiciones pendientes. Verifica respuesta, retirada exacta, fusión del destino, atributos previos, estados de checkout, ninguna orden anticipada, una creación al confirmar, unidades/atributos/notas por línea en el DTO y total/notas del recibo.

@@ -1,0 +1,68 @@
+{
+  "baseCommit": "095cfe9b12563130b70b774e1fa324774d40a349",
+  "batches": [
+    306
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 341.36,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 510.29,
+      "sourceUnchanged": true,
+      "tests": 21983,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.01,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 589,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 29610,
+  "suites": 373,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 306,
+  "newTests": 336,
+  "baseline": {
+    "tests": 330,
+    "failed": 308,
+    "passed": 22
+  },
+  "focus": {
+    "initialPassed": 984,
+    "initialSuites": 3,
+    "finalNewPassed": 336,
+    "scope": "Initial focus before connector-prefix hardening; final336 plus all related suites validated by final global"
+  },
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "externalOrders": 0,
+  "limits": [
+    "Explicit full quantities and exact normalized catalog options, no implicit remainder",
+    "Two to four remaining attributes per group; prior selected attributes shared",
+    "At most eight clauses, 400 input characters, 32 options per attribute and2048 search steps; ambiguity or limit returns no interpretation",
+    "Not a general planner; only pending mixed removal/addition follow-up",
+    "Synthetic seeded carts and mocked agent, not real model/media/channel validation"
+  ],
+  "validationNote": "First global stopped early for option names starting con/en/de/y; final global restarted on frozen corrected sources."
+}
