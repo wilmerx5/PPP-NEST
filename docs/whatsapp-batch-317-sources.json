@@ -1,0 +1,33 @@
+{
+  "batch": 317,
+  "source": "User-shared returning customer combo transcript, 29/10/2026",
+  "turns": [
+    "Un combo de pollo frito",
+    "Bebida ginger y arepas fritas",
+    "No",
+    "Si esa misma dirección",
+    "Contraentrega",
+    "Confirmar"
+  ],
+  "observed": "Unnecessary clarification of the target combo; subsequent correction and checkout succeeded.",
+  "spec": "src/whatsapp/whatsapp-returning-combo-checkout.spec.ts",
+  "adaptations": [
+    "Anonymized synthetic customer and addresses",
+    "Second synthetic catalog: Combo Vegetal",
+    "Cash and transfer payments",
+    "Same address, typo, replacement, payment inquiry before reuse, out-of-coverage recovery and return to saved address",
+    "Agent disabled/enabled with deterministic mocked output"
+  ],
+  "assertions": [
+    "One item with Ginger and Fritas",
+    "Cart unchanged during address and payment steps",
+    "No order before final confirmation or while destination unresolved",
+    "Exactly one order with correct address, fee, attributes and receipt"
+  ],
+  "remaining": [
+    "Database persistence of returning profile across days",
+    "Real model and channel verification",
+    "Dictated address complete journeys",
+    "Multiple dishes and sold condiment packet policy"
+  ]
+}

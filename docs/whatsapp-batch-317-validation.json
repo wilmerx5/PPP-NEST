@@ -1,0 +1,26 @@
+{
+  "batch": 317,
+  "baseCommit": "d9a7fcc7d2c4593c81dc409bc2e62cfed9cec822",
+  "newTests": 48,
+  "newPassed": 48,
+  "focusPassed": 157,
+  "focusSuites": 4,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 316,
+    "tests": 32409,
+    "suites": 384
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "sourceManifest": "whatsapp-batch-317-sources.json",
+  "limits": [
+    "Synthetic development journeys derived from the returning customer transcript, not 48 real chats",
+    "Model, Meta, database and routing simulated; saved profile is seeded, persistence across days is not tested",
+    "Initial failures were an incorrect address assertion: the existing order DTO appends payment with slash; no runtime fix required",
+    "No new global run or deployment for this test-only batch"
+  ]
+}
