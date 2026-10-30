@@ -1,5 +1,14 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda320: ambos/ambas en notas de dos unidades (30/10)
+
+Base `48ffb1b3`. Reproducción nueva: «ambos sin cebolla» no aplicaba nota en dos platos distintos, mientras «las dos sin cebolla» sí. Normalización acotada de ambos/ambas/para ambos/para ambas antes de sin/poco/poca al tratamiento existente de dos unidades. Conserva controles de selección, cantidades y conflictos; con tres unidades pregunta cuáles y una pregunta no modifica carrito.
+
+44 pruebas nuevas:32 recorridos completos en dos catálogos con agente simulado off/on (ambos, ambas, para ambos, las dos, selección, cancelación, confirmación prematura y exceso de cantidad), más12 controles con tres unidades/preguntas. Baseline4 fallidas/20 aprobadas de24; foco162/3 aprobado. Global 32541 pruebas/388 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencias `whatsapp-batch-320-validation.json` y `whatsapp-batch-320-sources.json`.
+
+Despliegue staging pendiente. Último runtime verificado: staging316, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Alcance: varias líneas de carrito y notas de exclusión/reducción; no se acredita una sola línea agrupada, «con salsa» genérico ni respuesta suelta «para ambos». Casos sintéticos de desarrollo, no lectura nueva de PDFs/audio ni evaluación independiente. Siguiente: preparar paridad de versiones y pruebas acotadas con modelo/canal reales; idiomas aplazados.
+
+
 ## VIGENTE — tanda319: notas entre dos platos y condimento vendido (30/10)
 
 16 recorridos nuevos desde carrito vacío:4 escenarios ×2 catálogos ×agente simulado off/on. Notas explícitas a primera/segunda línea conservan la otra; petición general «Y dos ajíes me puedes enviar porfi» queda a nivel de pedido y llega al DTO/recibo. Repetición conserva carrito y nota. Si Ají Casero está en catálogo, esa petición no se aplica como nota gratuita; después «Dos Ají Casero» añade dos unidades con precio de catálogo y el total cambia de38000 a42000. Cierre para recoger/contraentrega crea exactamente una orden.

@@ -20229,7 +20229,9 @@ export class WhatsappOrchestratorService {
         !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
         session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
         CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
-    const said = this.normalizeForMatch(text).replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '').trim();
+    const said = this.normalizeForMatch(text).replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '').trim()
+      // Both means two units; the existing quantity guard asks when the cart has more.
+      .replace(/^(?:para )?(?:ambos|ambas) (?=(?:sin|poco|poca) )/, 'dos ');
     const compound = said.match(/^(?:y\s+)?(?:(un[oa]?|dos|tres|cuatro|cinco|\d{1,2})\s+)?(sin\s+.+)$/);
     const parsed = compound && isCompoundExclusionNote(compound[2]) ? compound :
       said.match(/^(?:y\s+)?(?:(?:las|los)\s+)?(?:(un[oa]?|dos|tres|cuatro|cinco|\d{1,2})\s+)?(?:de\s+(?:ellas|ellos|esas|esos)\s+)?((?:sin|poco|poca)\s+[a-zñ]+(?:\s+[a-zñ]+){0,3})$/);

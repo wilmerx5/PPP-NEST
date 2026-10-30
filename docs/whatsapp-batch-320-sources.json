@@ -1,0 +1,28 @@
+{
+  "batch": 320,
+  "source": "Synthetic extensions of user-shared multi-dish note incidents; continuation of319",
+  "observed": "New reproduction: ambos sin cebolla did not add line notes to two distinct dishes; las dos sin cebolla worked",
+  "baseline": {
+    "tests": 24,
+    "failed": 4,
+    "passed": 20
+  },
+  "spec": "src/whatsapp/whatsapp-shared-note-journeys.spec.ts",
+  "adaptations": [
+    "Two catalogs with two distinct dishes",
+    "Ambos, ambas, para ambos and las dos exclusions",
+    "Ambiguous one-unit note resolved by choice, canceled, or interrupted by premature confirmation",
+    "Too-high quantity clarified then resolved",
+    "Three units require a target; questions preserve cart"
+  ],
+  "runtimeChange": "Bounded prefix normalization of ambos/ambas/para ambos/para ambas before sin/poco/poca to existing two-unit note handling; existing quantity, conflict and selection guards retained",
+  "limits": [
+    "Multiple cart lines only; no claim for a single grouped line",
+    "No generic con salsa or standalone para ambos response support added",
+    "Mocked agent/Meta/database; no new audio/PDF reading or real-model evaluation"
+  ],
+  "remaining": [
+    "Version parity and independent real model/channel evaluation",
+    "Grouped single-line and further ambiguous wording coverage"
+  ]
+}

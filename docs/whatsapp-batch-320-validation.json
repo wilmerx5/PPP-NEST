@@ -1,0 +1,64 @@
+{
+  "baseCommit": "48ffb1b3a03da6f6b4dcbdf28e5c7547ac9467d7",
+  "batches": [
+    320
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 432.63,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 924.98,
+      "sourceUnchanged": true,
+      "tests": 24914,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.18,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 605,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 32541,
+  "suites": 388,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 320,
+  "newTests": 44,
+  "baseline": {
+    "tests": 24,
+    "failed": 4,
+    "passed": 20
+  },
+  "focus": {
+    "passed": 162,
+    "suites": 3
+  },
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "externalOrders": 0,
+  "sourceManifest": "whatsapp-batch-320-sources.json",
+  "limits": [
+    "Bounded ambos/ambas/para ambos/para ambas prefix before sin/poco/poca, multiple cart lines only",
+    "No generic con salsa or standalone para ambos answer support added",
+    "Synthetic development journeys with mocked dependencies; no independent real model/channel/audio evaluation"
+  ]
+}
