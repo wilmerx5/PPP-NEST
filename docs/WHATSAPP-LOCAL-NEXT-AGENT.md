@@ -1,5 +1,14 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda308: resto explícito en repartos pendientes (29/10)
+
+Base `e61c159c`. «Uno de fresa en vaso y el resto de mango en botella» calcula el último grupo con la cantidad pendiente de añadir, nunca con las unidades del carrito previo. Acepta el resto/los demás/los restantes y formas femeninas; una sola cláusula final, cantidades previas explícitas y residuo positivo. Resuelve tanto un atributo como varios; después valida todas las opciones por catálogo y usa la aplicación atómica existente. Cero/sobrantes negativos, dos restos, resto al principio, opción faltante/desconocida, preguntas y condiciones no cambian el carrito.
+
+342 pruebas nuevas:288 recorridos (3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo previo compartido ×destino nuevo/existente ×uno/varios atributos ×3 frases),20 rechazos con recuperación,22 controles y12 casos de totales2/4/7, formas femeninas y varios grupos previos. Baseline308 fallidos/22 aprobados; foco994/3. Dos negativos antiguos sobre restos completos pasan a cobertura positiva nueva; los negativos conservan restos con opciones faltantes. Global final 30336 pruebas/375 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-308-validation.json`.
+
+Despliegue staging pendiente. Último runtime verificado: staging306, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Pendientes: notas diferentes por grupo, opciones implícitas y planificación general de mensajes con varias operaciones.
+
+
 ## VIGENTE — tanda307: recuperación de repartos por grupo hasta cierre (29/10)
 
 Base `19abecd4`.384 recorridos sintéticos:3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo previo compartido ×destino nuevo/existente ×efectivo/transferencia ×4 interrupciones (total, suma insuficiente, presentación faltante, condición). Conserva carrito y selección pendiente; el total no incluye productos sin resolver. La corrección completa «dos en botella de mango y uno en vaso de fresa» retira la cantidad exacta y conserva cada combinación. Verifica respuesta, cantidades, atributos, notas, checkout, ausencia de orden anticipada, una creación al confirmar, DTO por grupo y recibo con total/notas.

@@ -40,7 +40,7 @@ it(`mixed distribution ${names[0]} ${agent} ${ambiguous} ${shared} ${merge} ${ph
  expect(receipt).toContain((144000+(3+(merge?1:0))*7000).toLocaleString('es-CO'));
  for(const line of expectedSource)expect(receipt).toContain(line.note!);
 });
-for(const agent of [false,true])for(const phrase of ['uno de mango y uno de fresa','tres de mango y uno de fresa','dos de mango y uno de mora','-1 de mango y cuatro de fresa','1.5 mango y 1.5 fresa','dos de mango y uno de fresa si hay','¿dos de mango y uno de fresa?','dos de mango y el resto de fresa','dos de mango y uno de fresa y agrega sopa','0 mango y tres de fresa'])
+for(const agent of [false,true])for(const phrase of ['uno de mango y uno de fresa','tres de mango y uno de fresa','dos de mango y uno de mora','-1 de mango y cuatro de fresa','1.5 mango y 1.5 fresa','dos de mango y uno de fresa si hay','¿dos de mango y uno de fresa?','dos de mango y el resto','dos de mango y uno de fresa y agrega sopa','0 mango y tres de fresa'])
 it(`invalid mixed distribution recovers ${agent} ${phrase}`,async()=>{
  const {h,cart,request}=setup(catalogs[0],agent,false,false,false);await h.sendQueued(request);await h.sendQueued(phrase);
  expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.sessionData.pendingCartRemoval).toBeTruthy();expect(h.service.ordersService.create).not.toHaveBeenCalled();

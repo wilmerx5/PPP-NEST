@@ -1,3 +1,4 @@
+import { expandDistributionRemainder } from './whatsapp-distribution-remainder';
 type Attribute = {attributeName:string;options:string[]};
 type Selection = {attributeName:string;attributeValue:string};
 
@@ -7,7 +8,9 @@ export function parseMultiAttributeDistribution(text:string, attributes:Attribut
  if(attributes.length<2 || attributes.length>4 || !Number.isSafeInteger(total) || total<2 || total>99 || text.length>400 || /[¿?]/.test(text))return null;
  if(attributes.some(a=>!a.options.length || a.options.length>32))return null;
  const counts:Record<string,number>={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
- const raw=normalize(text).replace(/[.!]+$/,'').replace(/(?:,?\s+(?:porfa|por favor|gracias))$/,'');
+ const normalized=normalize(text).replace(/[.!]+$/,'').replace(/(?:,?\s+(?:porfa|por favor|gracias))$/,'');
+ const raw=expandDistributionRemainder(normalized,total);
+ if(raw===null)return null;
  const parts=raw.split(/\s*(?:,|;|\by\b)\s*(?=(?:un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[1-9]\d?)\s)/);
  if(parts.length<2 || parts.length>8)return null;
  const groups=new Map<string,{quantity:number;attributes:Selection[]}>();
