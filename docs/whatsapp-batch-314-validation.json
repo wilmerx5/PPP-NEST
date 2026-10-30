@@ -1,0 +1,71 @@
+{
+  "baseCommit": "7d45676eddbaf7a51853a3662959d06f764c2378",
+  "batches": [
+    314
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 335.74,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 555.07,
+      "sourceUnchanged": true,
+      "tests": 24722,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.21,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 599,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 32349,
+  "suites": 382,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 314,
+  "newTests": 95,
+  "baseline": {
+    "completeJourneys": {
+      "failed": 4,
+      "passed": 8
+    },
+    "countedNote": {
+      "failed": 24,
+      "passed": 0
+    }
+  },
+  "focus": {
+    "passed": 234,
+    "suites": 4
+  },
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "externalOrders": 0,
+  "sourceManifest": "whatsapp-batch-314-sources.json",
+  "limits": [
+    "95 development tests derived from known user reports, not 95 real conversations or independent holdout",
+    "Counted-note ambiguity recognizes quantity + named dish + lo/la/los/las quiero + con/sin note; not all ambiguous purchase syntax",
+    "Unique existing line permits add/edit clarification; multiple lines or quantity exceeding the row only asks for a clearer instruction",
+    "Adding a product that still needs attributes preserves the cart and asks for a complete explicit addition after cancellation",
+    "Mocked models, persistence and delivery; no new media, real channel or Kamppo validation"
+  ]
+}

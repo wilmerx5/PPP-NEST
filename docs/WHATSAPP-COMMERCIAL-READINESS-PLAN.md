@@ -14,7 +14,7 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ### 0. Igualar versiones y contener incidentes críticos
 
-Preparar el paquete283–292 con código, fixtures, contratos y límites. Priorizar el cierre287 si siguen apareciendo pedidos bloqueados. Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
+Preparar el delta vigente: producción292 → staging313, más tanda314 en validación; Kamppo282 → versión de staging finalmente acreditada. Incluir código, fixtures, contratos y límites. El paquete283–292 ya no representa todo el delta. Priorizar incidentes reales de cantidades, dirección y cierre.  Verificar paridad en el adaptador de Kamppo, no copiar únicamente el motor ni asumir que un fallo del canal existe en ambos productos. Registrar por ambiente commit, modelo/configuración, imagen y resultados. Revalidar aislamiento entre restaurantes, precios de opciones y persistencia propios de Kamppo.
 
 Salida: el mismo caso reportado pasa en PPP y en la integración Kamppo; una prueba controlada confirma la versión realmente activa. PromociónMain283–292 verificada el29/10 por autorización explícita; la migración aKamppo sigue pendiente. Mantener versión anterior y procedimiento de reversión. Una migración pendiente se muestra como pendiente, nunca como fallo nuevo de una corrección supuestamente activa.
 
@@ -94,6 +94,15 @@ Un error de pedido/precio, orden duplicada, confirmación indebida o mezcla entr
 Este plan no certifica que el sistema esté listo para venta ni promete cubrir «todo» el lenguaje. Define qué evidencia falta y qué resultado permite avanzar. Fuentes: reportes283–287; `docs/whatsapp-regional-patterns-2810.md`; índices de chats/PDF mencionados; historial técnico conservado debajo.
 
 ---
+
+## VIGENTE — tanda314: recorridos de chats y nota frente a compra adicional (30/10)
+
+Base `7d45676e`. Reproducciones: «Así veci» después de «¿Algo más?» no avanzaba al checkout (4/12 recorridos iniciales fallidos); «Dos churrascos los quiero sin arroz Mas ensalada» sumaba unidades sin aclarar (24/24 variantes iniciales fallidas). Ahora el cierre breve avanza solo en contexto de carrito; una pregunta o frase calificada no cierra ni autoriza la orden final. La petición contada sobre un plato existente pregunta cambiar/agregar, conserva carrito/total y bloquea confirmación pendiente. Cambiar divide las unidades de una línea conservando atributos/notas previas; agregar usa catálogo/disponibilidad/límites habituales. Firma del carrito protege contra elección obsoleta. Cancelación y cantidad contradictoria no aplican cambios.
+
+95 pruebas nuevas:35 en recorridos desde carrito vacío y límites del cierre;60 sobre ambigüedad contada, dos catálogos, agente simulado off/on y tres estados. Comprueba respuestas, estados, cantidades/notas, repetición, terceros intactos y DTO al cerrar. Foco234/4 aprobado. Global 32349 pruebas/382 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-314-validation.json`; procedencia/adaptaciones en `whatsapp-batch-314-sources.json`.
+
+Despliegue staging pendiente. Último runtime verificado: staging313, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Son regresiones de desarrollo con continuaciones sintéticas, no conversaciones reales recuperadas ni evaluación independiente. Sin nueva revisión de PDFs/audio. Alcance de ambigüedad: cantidad + plato + lo/la/los/las quiero + con/sin; varias líneas piden precisar, no se seleccionan automáticamente. Adiciones con atributos incompletos requieren cancelar y pedirlas completas. Pendiente ampliar redacciones y recorridos con barrio, cliente recurrente y dirección dictada.
+
 
 ## VIGENTE — tanda313: notas dentro del reparto por grupo (30/10)
 

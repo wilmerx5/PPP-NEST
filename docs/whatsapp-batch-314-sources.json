@@ -1,0 +1,44 @@
+{
+  "batch": 314,
+  "source": "Mensajes y transcripciones pegados por el usuario en este chat; no se volvieron a abrir audios ni PDFs originales.",
+  "privacy": "Identidades, teléfonos, dirección y números de orden de las pruebas son sintéticos.",
+  "evaluation": "Casos de desarrollo derivados de incidentes conocidos, no holdout independiente ni muestra representativa de clientes.",
+  "cases": [
+    {
+      "id": "CHAT-NAME-WAIT",
+      "observed": ["Así veci", "Natalia", "Voy"],
+      "historicalOutcome": "Pedido confirmado; nombre contaminado con Voy. No fue abandono.",
+      "currentReproduction": "Desde carrito vacío: Así veci no avanzaba al cierre. El manejo aislado de Voy ya tenía cobertura.",
+      "test": "src/whatsapp/whatsapp-real-chat-complete-journeys.spec.ts",
+      "adaptation": "Nombre anonimizado, omite el barrio para aislar el cierre y la espera; dirección, catálogo alternativo y continuación son sintéticos. No prueba ráfagas simultáneas."
+    },
+    {
+      "id": "CHAT-PAYMENT-INTERRUPTION",
+      "observed": ["Solo eso porfa", "Me indicas el nequi"],
+      "historicalOutcome": "El bot ignoró la consulta de Nequi y luego expiró el pedido. La causa de abandono no está demostrada.",
+      "test": "src/whatsapp/whatsapp-real-chat-complete-journeys.spec.ts",
+      "adaptation": "Camino desde compra vacía hasta recibo; la continuación después de preguntar Nequi es sintética, no una compra histórica recuperada. Barrio y ambigüedad de destinatario quedan en suites previas."
+    },
+    {
+      "id": "CHAT-TOTAL-AS-ADDRESS",
+      "observed": ["no mas, cuanto es?", "de todo lo que pedi"],
+      "historicalOutcome": "Reporte de Kamppo: consulta de total registrada como dirección y falsa salida de cobertura.",
+      "test": "src/whatsapp/whatsapp-real-chat-complete-journeys.spec.ts",
+      "adaptation": "Un producto, identidad y dirección sintéticas; comprueba el motor PPP. No acredita el despliegue ni adaptadores de Kamppo."
+    },
+    {
+      "id": "CHAT-COUNTED-NOTE-3010",
+      "observed": ["Dos churrascos los quiero sin arroz Mas ensalada"],
+      "historicalOutcome": "PPP sumó dos unidades a las tres existentes y aumentó el total sin aclarar intención.",
+      "test": "src/whatsapp/whatsapp-counted-note-clarification.spec.ts",
+      "adaptation": "Carrito sembrado con tres platos y tres sopas; omite hamburguesa/datos personales del original. Catálogo alternativo, estados, elecciones y continuación son sintéticos.",
+      "expected": "Aclarar agregar frente a cambiar; bloquear confirmación mientras esté pendiente; cambiar conserva tres unidades y anota dos; agregar produce cinco; conservar las sopas y trasladar las cantidades/notas al DTO."
+    }
+  ],
+  "nextPriority": [
+    "Recorrido completo con barrio ambiguo, nombre fragmentado y preguntas de pago juntas",
+    "Cliente recurrente, opciones incluidas y reutilización de dirección",
+    "Dirección dictada incompleta y corrección después de confirmar",
+    "Paridad de versiones PPP/Kamppo y evaluación independiente con presupuesto explícito"
+  ]
+}

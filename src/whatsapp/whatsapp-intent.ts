@@ -372,6 +372,8 @@ export function isDeclineMoreItemsIntent(text: string): boolean {
   if (isNothingElseOrderIntent(text)) return true;
   const t = said && said.length <= 24 ? withoutVocatives(said) : '';
   if (!t || t.length > 12) return false;
+  // Bare «así, veci» answers «¿Algo más?»; callers scope this to cart building.
+  if (t === 'asi') return !/[¿?]/.test(text);
   return /^(no|nop|nel|nope|no\s+mas|nomas)$/.test(t);
 }
 

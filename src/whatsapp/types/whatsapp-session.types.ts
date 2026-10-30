@@ -84,7 +84,7 @@ export type WhatsappSessionData = {
   };
   /** Subset instruction awaits recipients; an empty note awaits preparation for named products.
    * byUnits counts individual portions rather than rows; quantity 0 permits any explicit selection. */
-  pendingSubsetKitchenNote?: { quantity: number; note: string; productIds: number[]; byProduct?: boolean; byUnits?: boolean; sourceText?: string; substitution?: { removed: string; choices: [string, string]; hostNote?: string } };
+  pendingSubsetKitchenNote?: { quantity: number; note: string; productIds: number[]; byProduct?: boolean; byUnits?: boolean; sourceText?: string; addOrEdit?: { cartSignature: string; cartIndex: number }; substitution?: { removed: string; choices: [string, string]; hostNote?: string } };
   cart: WhatsappCartItem[];
   orderType: 'delivery' | 'pickup';
   address?: string;

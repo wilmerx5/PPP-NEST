@@ -2338,7 +2338,8 @@ export class WhatsappOrchestratorService {
         text = originalText;
       }
     }
-    if (await this.tryUndoLastUnitOptionEdit(conv,msg.waId,session,originalText,cfg) ||
+    if (await this.tryClarifyCountedKitchenNote(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryUndoLastUnitOptionEdit(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleStandardPortionPreference(conv,msg.waId,session,originalText,cfg,turn) ||
         await this.tryHandleUnavailableCountedPurchase(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
@@ -19173,6 +19174,72 @@ export class WhatsappOrchestratorService {
     );
   }
 
+  /** Counted preparation without an explicit add/edit verb can refer to units already ordered. */
+  private async tryClarifyCountedKitchenNote(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const pending = session.pendingSubsetKitchenNote;
+    const said = this.normalizeForMatch(text).replace(/\s+(?:porfa|por favor|gracias)$/, '').trim();
+    const ask = async () => { await this.reply(conv,waId,this.formatSubsetKitchenNoteQuestion(session)); return true; };
+    if (pending?.addOrEdit) {
+      if (/^(?:no apliques esa nota|olvida esa nota|cancela esa indicacion)$/.test(said)) {
+        await this.conversationService.saveSession(conv,{...session,pendingSubsetKitchenNote:undefined});
+        await this.reply(conv,waId,'Retiré esa indicación pendiente. Tu carrito sigue igual.');return true;
+      }
+      const edit = /^(?:cambiar|cambia|modificar|modifica)(?: (?:dos|tres|cuatro|\d+))?(?: de)? (?:los|las) que ya tengo$/.test(said);
+      const add = /^(?:agregar|agrega|anadir|anade)(?: (?:dos|tres|cuatro|\d+))? mas$/.test(said);
+      if (!edit && !add || /[¿?]/.test(text)) return ask();
+      const amount = said.match(/\b(dos|tres|cuatro|\d+)\b/)?.[1];
+      const quantities: Record<string,number> = {dos:2,tres:3,cuatro:4};
+      if (amount && (quantities[amount] ?? Number(amount)) !== pending.quantity) return ask();
+      if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return ask();
+      if (JSON.stringify(session.cart) !== pending.addOrEdit.cartSignature) {
+        await this.conversationService.saveSession(conv,{...session,pendingSubsetKitchenNote:undefined});
+        await this.reply(conv,waId,'El carrito cambió mientras aclarabas. Dime de nuevo cuántas unidades y de cuál plato; no apliqué la indicación.');return true;
+      }
+      const index = pending.addOrEdit.cartIndex;
+      const line = session.cart[index];
+      let next: WhatsappSessionData = {...session,pendingSubsetKitchenNote:undefined};
+      if (edit) {
+        if (pending.quantity > line.quantity || await this.tryBlockKitchenNoteConflict(conv,waId,[line],pending.note)) return true;
+        const revised = editScopedCartNote(line.note,{kind:'append',query:'',note:pending.note,preserve:[]});
+        if (revised.blocked) return ask();
+        next.cart = session.cart.flatMap((item,pos)=>pos!==index ? [item] : [
+          ...(line.quantity>pending.quantity ? [{...line,quantity:line.quantity-pending.quantity}] : []),
+          {...line,quantity:pending.quantity,note:revised.note},
+        ]);
+      } else {
+        const product = (await this.catalogService.getMenuProducts()).find(p=>p.id===line.productId);
+        const open = await this.businessService.getStatus();
+        if (!product || product.availableNow===false || (!open.isOpen && !cfg.ignoreBusinessHours)) return ask();
+        const added = this.tryAddProductToCart(next,product,pending.quantity,cfg,pending.note,[]);
+        if (added.blocked || added.missingAttributes) {
+          await this.reply(conv,waId,'No agregué productos: necesito una selección completa y disponible. Cancela esta indicación y pide la adición con sus opciones.');return true;
+        }
+        next=added.session;
+      }
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,`Listo, ${edit?'cambié la nota de':'agregué'} ${pending.quantity} *${line.name}*.\n\n`+
+        this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+      return true;
+    }
+    if (pending || session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]) || /[¿?;]/.test(text)) return false;
+    const match = said.match(/^(\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) (.+?) (?:los|las|lo|la) quiero ((?:sin|con) .+)$/);
+    if (!match || /\b(?:si|pero|agrega|anade|quita|cambia)\b/.test(match[3])) return false;
+    const counts: Record<string,number> = {un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+    const quantity = counts[match[1]] ?? Number(match[1]);
+    if (!Number.isInteger(quantity) || quantity<1 || quantity>30) return false;
+    const targets = session.cart.flatMap((line,index)=>correctionMatchesLine(line,match[2]) ? [index] : []);
+    if (!targets.length) return false;
+    if (targets.length!==1 || quantity > session.cart[targets[0]].quantity) {
+      await this.reply(conv,waId,'¿Quieres agregar unidades o cambiar la nota de las que ya tienes? Dime cuál línea y cuántas; el carrito sigue igual.');return true;
+    }
+    const cartIndex=targets[0];
+    session={...session,pendingSubsetKitchenNote:{quantity,note:match[3],productIds:[session.cart[cartIndex].productId],byUnits:true,
+      sourceText:said,addOrEdit:{cartSignature:JSON.stringify(session.cart),cartIndex}}};
+    await this.conversationService.saveSession(conv,session);
+    return ask();
+  }
+
   /** A new counted purchase must not disappear behind cart/payment prompts. */
   private async tryHandleUnavailableCountedPurchase(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
     if (/[¿?]/.test(text) || text.length>220 || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
@@ -20678,6 +20745,7 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingSubsetKitchenNote;
     if (!pending) return '';
     const lines = session.cart.filter(line=>pending.productIds.includes(line.productId));
+    if (pending.addOrEdit) return `¿Quieres cambiar ${pending.quantity} de los ${lines.reduce((n,line)=>n+line.quantity,0)} *${lines[0]?.name || 'productos'}* que ya tienes o agregar ${pending.quantity} más con la nota «${pending.note}»?\nResponde «cambiar los que ya tengo» o «agregar más». Para cancelar, escribe «no apliques esa nota». Tu carrito y total siguen iguales.`;
     if (pending.substitution) {
       const hosted = pending.substitution.hostNote ? lines.filter(line => this.normalizeForMatch(line.note || '') === pending.substitution!.hostNote) : lines;
       const ids = new Set(hosted.map(line => line.productId));
@@ -20783,7 +20851,7 @@ export class WhatsappOrchestratorService {
 
   private async tryHandleSubsetKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
     const pending = session.pendingSubsetKitchenNote;
-    if (!pending || conv.state==='awaiting_mp_payment') return false;
+    if (!pending || pending.addOrEdit || conv.state==='awaiting_mp_payment') return false;
     if (pending.sourceText === this.normalizeForMatch(text)) {
       await this.reply(conv,waId,this.formatSubsetKitchenNoteQuestion(session));
       return true;

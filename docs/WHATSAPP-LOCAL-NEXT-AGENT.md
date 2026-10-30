@@ -1,5 +1,14 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda314: recorridos de chats y nota frente a compra adicional (30/10)
+
+Base `7d45676e`. Reproducciones: «Así veci» después de «¿Algo más?» no avanzaba al checkout (4/12 recorridos iniciales fallidos); «Dos churrascos los quiero sin arroz Mas ensalada» sumaba unidades sin aclarar (24/24 variantes iniciales fallidas). Ahora el cierre breve avanza solo en contexto de carrito; una pregunta o frase calificada no cierra ni autoriza la orden final. La petición contada sobre un plato existente pregunta cambiar/agregar, conserva carrito/total y bloquea confirmación pendiente. Cambiar divide las unidades de una línea conservando atributos/notas previas; agregar usa catálogo/disponibilidad/límites habituales. Firma del carrito protege contra elección obsoleta. Cancelación y cantidad contradictoria no aplican cambios.
+
+95 pruebas nuevas:35 en recorridos desde carrito vacío y límites del cierre;60 sobre ambigüedad contada, dos catálogos, agente simulado off/on y tres estados. Comprueba respuestas, estados, cantidades/notas, repetición, terceros intactos y DTO al cerrar. Foco234/4 aprobado. Global 32349 pruebas/382 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-314-validation.json`; procedencia/adaptaciones en `whatsapp-batch-314-sources.json`.
+
+Despliegue staging pendiente. Último runtime verificado: staging313, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Son regresiones de desarrollo con continuaciones sintéticas, no conversaciones reales recuperadas ni evaluación independiente. Sin nueva revisión de PDFs/audio. Alcance de ambigüedad: cantidad + plato + lo/la/los/las quiero + con/sin; varias líneas piden precisar, no se seleccionan automáticamente. Adiciones con atributos incompletos requieren cancelar y pedirlas completas. Pendiente ampliar redacciones y recorridos con barrio, cliente recurrente y dirección dictada.
+
+
 ## VIGENTE — tanda313: notas dentro del reparto por grupo (30/10)
 
 Tanda313 desplegada en staging: código `e11c810e`, imagen `sha256:d581a01f0ee1ca06300025926fc9a4e02c309c18e9f9c6029c6b0732f8078108`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica313 en pruebas locales. Evidencia `whatsapp-batch-313-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
