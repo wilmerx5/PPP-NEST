@@ -16840,8 +16840,11 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const edit = parseScopedCartNote(text);
     if (!edit) return false;
-    const positions: Record<string,number> = {primero:0,primera:0,segundo:1,segunda:1,tercero:2,tercera:2,cuarto:3,cuarta:3};
-    const position = positions[this.normalizeForMatch(edit.query)];
+    const positions: Record<string,number> = {primero:0,primera:0,segundo:1,segunda:1,tercero:2,tercera:2,cuarto:3,cuarta:3,
+      quinto:4,quinta:4,sexto:5,sexta:5,septimo:6,septima:6,octavo:7,octava:7,noveno:8,novena:8,decimo:9,decima:9};
+    const query = this.normalizeForMatch(edit.query);
+    const numericPosition = query.match(/^(?:numero )?(\d{1,3})(?:o|a|º|ª)?$/);
+    const position = numericPosition ? Number(numericPosition[1])-1 : positions[query];
     if (position !== undefined && (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
         session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key => !!session[key]))) {
       await this.reply(conv, waId, 'Hay una selección pendiente. Dime el nombre y la nota actual del plato que quieres cambiar. El pedido sigue igual.');

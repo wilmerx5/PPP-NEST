@@ -1,0 +1,65 @@
+{
+  "baseCommit": "854b585907a260ebebf6f72ac398ad77540be9dc",
+  "batches": [
+    310
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 338.69,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 531.9,
+      "sourceUnchanged": true,
+      "tests": 23521,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 9.99,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 594,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 31148,
+  "suites": 377,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 310,
+  "newTests": 428,
+  "baseline": {
+    "tests": 384,
+    "failed": 96,
+    "passed": 288
+  },
+  "focus": {
+    "passed": 542,
+    "suites": 3
+  },
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "externalOrders": 0,
+  "limits": [
+    "Notes added in separate ordinal messages after distribution, not embedded notes in the distribution sentence",
+    "Existing scoped-note parser only; word ordinals through tenth and numeric positions of one to three digits",
+    "One-based cart lines, not individual units",
+    "Synthetic carts and mocked agent; no real inference/media/channel validation"
+  ],
+  "fixtureRepair": "Initial spec did not compile because nullable reply values lacked optional chaining; corrected before baseline384 execution."
+}

@@ -1,0 +1,8 @@
+## VIGENTE — tanda310: notas por grupo y posición inexistente (30/10)
+
+Base `854b5859`. Reproducido: con4 líneas, «a la quinta ponle como nota sin sal» caía a la nota del último producto. El manejador de notas acotadas reconoce ordinales quinto–décimo y posiciones numéricas de1–3 dígitos (con número/sufijo ordinal opcional). Una posición fuera de rango, incluido0, pide aclaración sin cambiar el carrito. Las posiciones válidas usan las protecciones existentes de selección/pago y editan esa línea, no una unidad suelta.
+
+428 pruebas nuevas:384 recorridos tras reparto (3 catálogos ×agente simulado off/on ×origen único/ambiguo ×atributo compartido ×destino nuevo/existente ×4 escenarios de notas ×efectivo/transferencia), más44 referencias válidas/fuera de rango. Notas separadas para cada grupo, orden invertido, total intercalado y quinta línea inexistente; comprueba carrito, respuesta, DTO/recibo con notas/opciones/cantidades. Baseline384:288 aprobados/96 fallidos; foco542/3 aprobado. Global 31148 pruebas/377 suites, inventario exacto y fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-310-validation.json`.
+
+Despliegue staging pendiente. Último runtime verificado: staging308, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Sin revisión nueva de medios originales. Las notas se añaden después del reparto en mensajes separados: siguen pendientes las notas distintas dentro de la misma frase del reparto, opciones implícitas y planificación general.
+
