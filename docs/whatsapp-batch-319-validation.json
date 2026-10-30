@@ -1,0 +1,26 @@
+{
+  "batch": 319,
+  "baseCommit": "f3a0ce9c117411abd7d0ff5a4138e12d450c8886",
+  "newTests": 16,
+  "newPassed": 16,
+  "focusPassed": 150,
+  "focusSuites": 4,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 316,
+    "tests": 32409,
+    "suites": 384
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "sourceManifest": "whatsapp-batch-319-sources.json",
+  "limits": [
+    "Synthetic multi-dish extensions of real condiment requests; not new real chats",
+    "Targeted notes use explicit ordinal wording, not proof of all natural or ambiguous references",
+    "Sold condiment guard rejects free-note interpretation; explicit purchase tested separately",
+    "No real model, channel, audio or database; no new global or deployment"
+  ]
+}

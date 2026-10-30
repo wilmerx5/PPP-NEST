@@ -1,0 +1,24 @@
+{
+  "batch": 319,
+  "source": "User-shared arroz con pollo / sobres de salsa requests; synthetic extensions to two dishes",
+  "spec": "src/whatsapp/whatsapp-multi-dish-supplies-journeys.spec.ts",
+  "adaptations": [
+    "Two catalogs, mocked agent disabled/enabled",
+    "Explicit first/second line notes with mustard packets",
+    "General counted condiment request preserved at order level",
+    "Catalog Ají Casero prevents free condiment note; subsequent explicit purchase of two units",
+    "Repeated requests and complete pickup/cash checkout"
+  ],
+  "assertions": [
+    "Target line only modified",
+    "No duplicate products or repeated notes",
+    "Order-level note reaches DTO and receipt",
+    "Sold condiment explicitly purchased adds two units at catalog price",
+    "Exactly one order at final confirmation, correct 38000 or 42000 total"
+  ],
+  "remaining": [
+    "Natural ambiguous references and both/all wording",
+    "Actual condiment pricing policy and merchant catalog aliases",
+    "Real model/channel and version parity"
+  ]
+}
