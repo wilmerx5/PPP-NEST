@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda305: interrupciones de opciones conjuntas hasta cierre (29/10)
+
+Base `069205b4`.384 recorridos sintéticos:3 catálogos ×agente simulado off/on ×origen único/ambiguo ×destino nuevo/existente ×con/sin atributo previo compartido ×efectivo/transferencia ×4 interrupciones (total, opción inexistente, condición y pregunta). Conserva carrito y selección pendiente antes de resolver «Presentacion: Vaso; Sabor: Fresa». La consulta de total no cuenta adiciones pendientes. Verifica respuesta, retirada exacta, fusión del destino, atributos previos, estados de checkout, ninguna orden anticipada, una creación al confirmar, unidades/atributos/notas por línea en el DTO y total/notas del recibo.
+
+384 nuevos +710 relacionados =1094 pruebas/3 suites aprobadas; TypeScript general/build aprobados. Sin fallo nuevo del motor en estos escenarios. Solo pruebas; último global del runtime28890/371 en304, no reejecutado ni atribuido al inventario ampliado305. Evidencia `whatsapp-batch-305-validation.json`.
+
+Sin despliegue nuevo: última verificación PPP staging304 (`f07b733f`), producción292 y Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. No revisión nueva de chats/PDF/audio. Pendientes: varias opciones diferentes por unidad y opciones conjuntas sin separadores explícitos. Idiomas aplazados.
+
+
 ## VIGENTE — tanda304: opciones conjuntas en cambios mixtos (29/10)
 
 Tanda304 desplegada en staging: código `f07b733f`, imagen `sha256:b1b8e4e5c5ea5cda97cd90b242867fe1d88646c6fb6fa8d4d8580b6bb28f6c71`, healthy, cero reinicios, API local/pública operativas y modelos/configuración preservados. Controles compilados previos aprobados; cobertura específica304 en pruebas locales. Evidencia `whatsapp-batch-304-staging-deployment.json`. Producción292 y Kamppo282 permanecen sin promoción.
