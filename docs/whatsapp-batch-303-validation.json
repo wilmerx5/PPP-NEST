@@ -1,0 +1,28 @@
+{
+  "batch": 303,
+  "baseCommit": "1501a8fda8b110a0e76c130a5e9c61b7587b2114",
+  "newTests": 384,
+  "newPassed": 384,
+  "relatedPassed": 364,
+  "focusTotalPassed": 748,
+  "focusSuites": 3,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 302,
+    "tests": 28180,
+    "suites": 369
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "fixtureRepair": "Initial run reached repeated confirmation then failed because local conversation-service mock lacked reopenForNewOrder. Added same mock contract used by existing recovery suite; reran all 748 successfully. Not a runtime defect.",
+  "limits": [
+    "Synthetic seeded carts across three catalogs, not 384 real chats",
+    "Mocked agent off/on, no real inference or audio",
+    "Complete distribution of last pending attribute only; prior attributes shared",
+    "Repeated confirmation asserts no second order; does not assert conversation stays completed",
+    "No runtime change or new deployment; staging302, production292, Kamppo282 remain last verified versions"
+  ]
+}
