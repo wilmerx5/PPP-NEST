@@ -4,6 +4,8 @@ Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son
 
 ## VIGENTE — tanda323: cierre y total del pedido completo (30/10)
 
+Staging323 desplegado y verificado: código `06cfcb08`, healthy, cero reinicios, API local/pública y DB operativas; configuración/modelos preservados. Workflow41090722171. Evidencia `whatsapp-batch-323-staging-deployment.json`; controles compilados previos aprobados, cobertura específica323 verificada localmente. Producción/Kamppo sin cambios.
+
 Prioridad: impedir pedidos incorrectos/duplicados y contrastar luego con modelo/canal reales; ampliar pruebas por comportamiento, no por volumen. Inferencia real pendiente: no hay clave local disponible y la comprobación SSH a staging agotó8 segundos. No hubo solicitudes pagadas; presupuesto267/256/11 y espejo intactos.
 
 Fallo reproducido en4 controles: «no mas, cuanto es todo lo que pedi» se interpretaba como producto inexistente o llegaba al fallback del agente. Regla de cierre+total ampliada a «todo lo que pedí/he pedido/llevo», con límites para preguntas de productos y notas adicionales.26 pruebas nuevas:12 recorridos con cancelación/reintento, total tras revisar notas o confirmación repetida;12 variantes de total;2 límites. Foco117/2 aprobado. Global32611 pruebas/390 suites, inventario exacto y607 archivos congelados; TypeScript general/build y scripts aprobados.

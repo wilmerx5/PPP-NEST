@@ -15,4 +15,6 @@ Se amplía exclusivamente la pregunta de total detrás de un cierre reconocido p
 
 26 pruebas nuevas:12 recorridos (cancelar y volver a solicitar, total tras revisar nota, repetir confirmación),12 combinaciones de cierre/total en dos catálogos con agente simulado off/on,2 límites de parser. Foco117/117 en2 suites. Los recorridos verifican tres unidades, notas dirigidas, total54000 y una creación; la confirmación repetida no duplica.
 
-Global32611/390 aprobada con inventario exacto y fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencia: whatsapp-batch-323-validation.json. Sin llamadas a OpenAI/Meta ni órdenes externas. Presupuesto267/256/11 intacto. No se afirma validación de modelos reales ni despliegue.
+Global32611/390 aprobada con inventario exacto y fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencia: whatsapp-batch-323-validation.json. Sin llamadas a OpenAI/Meta ni órdenes externas. Presupuesto267/256/11 intacto. No se afirma validación de modelos reales.
+
+Staging323 desplegado y verificado: código `06cfcb08`, healthy, cero reinicios, API local/pública y DB operativas; configuración/modelos preservados. Workflow41090722171. Evidencia `whatsapp-batch-323-staging-deployment.json`; controles compilados previos aprobados, cobertura específica323 verificada localmente. Producción/Kamppo sin cambios.
