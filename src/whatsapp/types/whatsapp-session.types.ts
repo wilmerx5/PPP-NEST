@@ -214,7 +214,11 @@ export type WhatsappSessionData = {
     /** Parallel amounts for counted removal; absent means remove whole lines. */
     batchQuantities?: number[];
     /** The addition is committed together with a clarified counted removal. */
-    mixedAddition?: { productId: number; name: string; price: number; quantity: number; createdAt: number };
+    mixedAddition?: { productId: number; name: string; price: number; quantity: number; createdAt: number;
+      sourceIndex?: number;
+      attributes?: Array<{attributeName: string; options: string[]}>;
+      selected?: Array<{attributeName: string; attributeValue: string}>;
+    };
   };
   /**
    * Tras cotizar precio (“¿Te lo agrego?”): si responde *sí*, agregar este SKU.

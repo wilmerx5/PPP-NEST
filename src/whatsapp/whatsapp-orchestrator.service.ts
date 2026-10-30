@@ -15768,12 +15768,13 @@ export class WhatsappOrchestratorService {
     if (targets.length!==1 || targets[0].availableNow===false)
       return unchanged('No encontré un único producto disponible con ese nombre para añadir. Repite la petición con su nombre completo.');
     const product=targets[0];
-    if (product.hasAttributes && product.attributes?.length)
-      return unchanged('El producto que quieres añadir necesita opciones. Aclaremos esa elección antes de aplicar ambos cambios.');
-    if (indices.length>1) {
+    if (indices.length===1 && removed>session.cart[indices[0]].quantity) return unchanged('Esa línea no tiene suficientes unidades para retirar.');
+    if (indices.length>1 || (product.hasAttributes && product.attributes?.length)) {
       const options=indices.map(cartIndex=>({cartIndex,label:this.formatCartLineLabel(session.cart[cartIndex])+(session.cart[cartIndex].note?` · ${session.cart[cartIndex].note}`:'')}));
       const next={...session,pendingCartRemoval:{quantity:removed,cartSignature:JSON.stringify(session.cart),options,
-        mixedAddition:{productId:product.id,name:product.name,price:product.price,quantity:added,createdAt:Date.now()}}};
+        mixedAddition:{productId:product.id,name:product.name,price:product.price,quantity:added,createdAt:Date.now(),
+          ...(indices.length===1?{sourceIndex:indices[0]}:{}),
+          ...(product.hasAttributes && product.attributes?.length?{attributes:structuredClone(product.attributes),selected:[]}: {})}}};
       await this.conversationService.saveSession(conv,next);
       await this.reply(conv,waId,this.formatPendingCartEditReminder(next));
       return true;
@@ -15784,6 +15785,7 @@ export class WhatsappOrchestratorService {
   private async applyMixedRemovalAddition(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, index: number,
     removed: number, product: MenuProduct, added: number, cfg: EffectiveWhatsappConfig,
+    attributes?: {attributeName:string;attributeValue:string}[],
   ): Promise<boolean> {
     const unchanged=async(reason:string)=>{await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;};
     const original=session.cart[index];
@@ -15792,7 +15794,7 @@ export class WhatsappOrchestratorService {
       return unchanged('Esa línea no permite la cantidad solicitada. Elige otra opción o cancela el cambio.');
     const draft=structuredClone({...session,pendingCartRemoval:undefined});
     draft.cart=draft.cart.flatMap((line,i)=>i!==index?[line]:line.quantity>removed?[{...line,quantity:line.quantity-removed}]:[]);
-    const result=this.tryAddProductToCart(draft,product,added,cfg);
+    const result=this.tryAddProductToCart(draft,product,added,cfg,undefined,attributes);
     if (result.blocked || result.missingAttributes || result.alreadyHad)
       return unchanged('No pude completar ambos cambios dentro de los límites del pedido.');
     const next={...this.reconcileSubstitutionPending(result.session),lastDrinkAddition:undefined};
@@ -15828,20 +15830,47 @@ export class WhatsappOrchestratorService {
         session.pendingUnitDistribution || session.pendingSubsetKitchenNote || session.pendingPriceInquiry || session.pendingCompositionAsk ||
         CART_EDIT_SELECTION_KEYS.some(key=>key!=='pendingCartRemoval' && !!session[key]))
       return unchanged('Hay otra selección o pago pendiente; aclaremos eso antes de aplicar ambos cambios.');
+    // An explicit standalone purchase replaces the unfinished mixed edit; it must not remove anything.
+    const standalone=said.match(/^(?:agrega|agregame|anade|ponme) (?:un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[1-9]\d?) (.+)$/);
+    if (addition.attributes?.length && standalone && !/[¿?]/.test(text) &&
+        standalone[1]===this.normalizeForMatch(addition.name)) {
+      await this.conversationService.saveSession(conv,{...session,pendingCartRemoval:undefined});
+      return false;
+    }
     if (cartTotalFollowupIntent(text,true) || this.looksLikeOrderTotalQuestion(text)) {
       await this.reply(conv,waId,this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+this.formatPendingCartEditReminder(session));return true;
     }
-    const numeric=/^\d+$/.test(text.trim())?Number(text.trim()):null;
-    const named=numeric===null?this.uniqueClarificationLine(session,pending.options,text):null;
-    const index=numeric!==null?pending.options[numeric-1]?.cartIndex:named && named!=='ambiguous'?named.index:undefined;
-    if(index===undefined){await this.reply(conv,waId,this.formatPendingCartEditReminder(session));return true;}
     const products=await this.catalogService.getMenuProducts();
     const matches=products.filter(product=>product.id===addition.productId);
     const product=matches[0];
+    const currentAttributes=product?.hasAttributes && product.attributes?.length ? product.attributes : undefined;
     if(matches.length!==1 || product.availableNow===false || product.name!==addition.name || product.price!==addition.price ||
-       (product.hasAttributes && product.attributes?.length))
+       JSON.stringify(currentAttributes)!==JSON.stringify(addition.attributes))
       return clear('La disponibilidad, opciones o precio del producto cambió. Repite ambos cambios para revisar la nueva oferta.');
-    return this.applyMixedRemovalAddition(conv,waId,session,index,pending.quantity ?? 0,product,addition.quantity,cfg);
+    let index=addition.sourceIndex;
+    let selected=addition.selected || [];
+    if(index===undefined) {
+      const numeric=/^\d+$/.test(text.trim())?Number(text.trim()):null;
+      const named=numeric===null?this.uniqueClarificationLine(session,pending.options,text):null;
+      index=numeric!==null?pending.options[numeric-1]?.cartIndex:named && named!=='ambiguous'?named.index:undefined;
+      if(index===undefined){await this.reply(conv,waId,this.formatPendingCartEditReminder(session));return true;}
+      if ((pending.quantity ?? 0)>session.cart[index].quantity) return unchanged('Esa línea no tiene suficientes unidades. Elige otra o cancela el cambio.');
+    } else if(addition.attributes?.length) {
+      const attribute=addition.attributes[selected.length];
+      if(!attribute) return clear('La elección pendiente no es válida. Repite ambos cambios.');
+      const numeric=/^\d+$/.test(text.trim())?Number(text.trim()):null;
+      const values=attribute.options.filter(option=>this.normalizeForMatch(option)===said);
+      const value=numeric!==null?attribute.options[numeric-1]:values.length===1?values[0]:undefined;
+      if(!value || /[¿?]/.test(text)){await this.reply(conv,waId,this.formatPendingCartEditReminder(session));return true;}
+      selected=[...selected,{attributeName:attribute.attributeName,attributeValue:value}];
+    }
+    if(addition.attributes && selected.length<addition.attributes.length) {
+      const next={...session,pendingCartRemoval:{...pending,mixedAddition:{...addition,sourceIndex:index,selected}}};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,this.formatPendingCartEditReminder(next));return true;
+    }
+    return this.applyMixedRemovalAddition(conv,waId,session,index,pending.quantity ?? 0,product,addition.quantity,cfg,selected);
+
   }
 
   /** Resolve every counted removal before persisting; never apply a valid prefix. */
@@ -18091,6 +18120,14 @@ export class WhatsappOrchestratorService {
       return 'El carrito cambió. Dime otra vez cuál plato y qué cambio hacemos antes de confirmar.';
     }
     const removal=session.pendingCartRemoval;
+    const addition=removal?.mixedAddition;
+    if(addition?.sourceIndex!==undefined && addition.attributes?.length) {
+      const attribute=addition.attributes[(addition.selected || []).length];
+      if(attribute) return `No cambié el pedido. Para agregar ${addition.quantity} de *${addition.name}*, elige ${attribute.attributeName}:\n`+
+        attribute.options.map((option,index)=>`${index+1}. ${option}`).join('\n')+
+        '\nEscribe el número o la opción. Aplicaré la retirada y la adición juntas al completar las opciones. El pedido sigue igual.';
+    }
+
     const removalAmount=removal?.quantity ?? removal?.batchQuantities?.[removal.batchGroups?.findIndex(group=>group.length>1) ?? -1];
     const question = {
       pendingCartRemoval: removalAmount ? `Para continuar, ¿de cuál línea retiramos ${removalAmount===1 ? 'una unidad' : `${removalAmount} unidades`}?` : 'Para continuar, ¿cuál línea quitamos?',

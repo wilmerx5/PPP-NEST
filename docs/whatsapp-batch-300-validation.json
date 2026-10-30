@@ -1,0 +1,68 @@
+{
+  "batch": 300,
+  "baseCommit": "8d0eb4062410cc0bd0fed58f198dc2785f2f6ef0",
+  "newTests": 308,
+  "baseline": {
+    "tests": 164,
+    "failed": 164,
+    "note": "Original orchestrator with new type fields available; matrix later extended with existing matching addition"
+  },
+  "focusPassed": 1394,
+  "focusSuites": 5,
+  "global": {
+    "baseCommit": "8d0eb4062410cc0bd0fed58f198dc2785f2f6ef0",
+    "batches": [
+      300
+    ],
+    "phases": {
+      "accuracy": {
+        "exitCode": 0,
+        "seconds": 344.64,
+        "sourceUnchanged": true,
+        "tests": 7611,
+        "failed": 0
+      },
+      "rest": {
+        "exitCode": 0,
+        "seconds": 500.26,
+        "sourceUnchanged": true,
+        "tests": 19901,
+        "failed": 0
+      },
+      "timers": {
+        "exitCode": 0,
+        "seconds": 6.3,
+        "sourceUnchanged": true,
+        "tests": 16,
+        "failed": 0
+      },
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "node": {
+        "exitCode": 0
+      }
+    },
+    "paidRequests": 0,
+    "sourceFiles": 580,
+    "nonTimerTestTimeoutMs": 20000,
+    "tests": 27528,
+    "suites": 367,
+    "inventoryExact": true,
+    "sourceUnchanged": true
+  },
+  "runtimeChanges": true,
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "limits": [
+    "Seeded synthetic carts and simulated agents",
+    "Addition needs an exact unique catalog product; ambiguous destination still not resolved",
+    "Options chosen one by one with exact name or number; no mixed-flavor quantity distribution",
+    "No real model, media or Meta validation",
+    "Deployment recorded separately"
+  ]
+}

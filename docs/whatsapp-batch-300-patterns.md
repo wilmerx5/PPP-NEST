@@ -1,0 +1,11 @@
+# Tanda300 — opciones en adiciones combinadas
+
+## VIGENTE — tanda300: opciones del producto añadido sin retirada parcial (29/10)
+
+Base `8d0eb406`. La operación combinada conserva retirada y adición cuando el destino exacto requiere atributos. Resuelve primero la línea de origen si hay ambigüedad y después cada opción del destino por número o nombre exacto. El carrito no cambia hasta completar todas las opciones. Revalida firma del carrito, catálogo/opciones, precio, disponibilidad, cantidad y límites; utiliza la adición habitual con atributos completos. Una nueva instrucción completa de agregar el mismo producto sustituye el cambio pendiente y pasa al flujo habitual sin retirar nada. Consulta de total mantiene la elección; cancelar conserva el carrito y reiniciar usa el flujo existente. Las listas consecutivas no confunden el número de línea con el sabor o presentación.
+
+308 pruebas nuevas:288 recorridos (3 catálogos ×2 agentes simulados ×origen único/ambiguo ×uno/dos atributos ×destino nuevo/existente ×6 formas de selección/interrupción);20 controles de cambio de precio/stock/opciones/carrito, pago, límites, confirmación/pregunta, caducidad y reinicio tras primera opción. Baseline164 fallidos. Primer global interrumpido al detectar incompatibilidad con72 recorridos anteriores de compra independiente; corregida y validada junto a los8 límites de aquella suite. Global completo reiniciado después del ajuste; foco1394/5 aprobado. Global27528/367, inventario exacto y580 fuentes congeladas; TypeScript general/build y Node aprobados. Evidencia `whatsapp-batch-300-validation.json`.
+
+Despliegue staging pendiente de verificación en este registro. Último runtime verificado:staging299, producción292, Kamppo282. Cero inferencia/Meta/órdenes externas; ledger267/256/11 intacto. Idiomas aplazados. Pendiente: destino ambiguo, selección libre de varias opciones en un mensaje y reparto de sabores entre unidades. No es un planificador general de operaciones mixtas.
+
+Fuente conceptual: pedidos y correcciones con bebidas del hilo, más el límite registrado en299. Nuevas pruebas sintéticas; no se revisaron nuevos chats/PDF/audio. El catálogo de cada prueba es controlado y el agente simulado: no demuestra comprensión con modelo real ni extracción inicial de un pedido libre.
