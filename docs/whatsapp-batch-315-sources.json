@@ -1,0 +1,32 @@
+{
+  "batch": 315,
+  "source": "Transcripciones aportadas por el usuario: nombre seguido de Voy; Solo eso/Rosaleda/consulta de Nequi; arroz con sobres de salsa.",
+  "test": "src/whatsapp/whatsapp-place-payment-complete-journeys.spec.ts",
+  "classification": "Regresiones de desarrollo derivadas de chats conocidos; no holdout ni conversaciones originales completas.",
+  "privacy": "Nombre, barrio, dirección, cuenta de pruebas y número de orden sintéticos.",
+  "matrix": {"behaviors": 6, "catalogs": 2, "agentMockModes": 2, "tests": 24},
+  "behaviors": [
+    "Barrio/nombre ambiguo, consulta Nequi, pregunta que no confirma el rol, aclaración, nombre, espera, dirección y cierre",
+    "Etiqueta ambigua aclarada como destinatario tras consultar Nequi",
+    "Nombre explícito nuevo descarta la etiqueta ambigua sin inventar barrio",
+    "Lugar no localizado, nombre, confirmación prematura bloqueada, espera, consulta Nequi y dirección completa",
+    "Sí/confirmar no omiten aclaración del rol; recuperación y cierre",
+    "Reinicio elimina etiqueta pendiente, nota y carrito; una compra nueva llega al cierre sin arrastrar el barrio"
+  ],
+  "adaptations": [
+    "Inicio desde carrito vacío; no se siembran artículos ni datos de checkout",
+    "Solo eso y el lugar se entregan como texto con salto de línea: prueba el texto fusionado, no temporización real de ráfagas",
+    "La nota se establece con la instrucción sintética explícita a la primera ponle como nota sobres de salsa de tomate aparte",
+    "Continuaciones hasta Confirmo son sintéticas; no prueban que un cliente histórico haya retomado su pedido",
+    "Geocodificación, persistencia, agente y respuestas de IA están simuladas"
+  ],
+  "pendingProbe": {
+    "id": "315-FREEFORM-CONDIMENT",
+    "messages": ["Veci me envías un Arroz Con Pollo", "con sobres de salsa de tomate porfa"],
+    "observedWithMocks": "Artículo presente pero la nota no se aplicó; la respuesta simulada de IA no emitía acciones de edición. La variante con compra y nota en un único mensaje tampoco añadió el artículo en ese montaje.",
+    "status": "No corregido ni acreditado. Investigar rutas deterministas y contrato de acciones del modelo en una tanda específica; no atribuirlo a un fallo observado en producción.",
+    "expected": "Conservar cantidad, anotar o pedir aclaración explícita y mantener el siguiente paso; no afirmar éxito sin cambio persistido."
+  },
+  "testDesignCorrection": "addressConfirmed por sí solo no acredita una cotización válida; la prueba exige que confirmar no cree orden con lugar sin localizar y que solo una dirección resoluble permita llegar al resumen final.",
+  "historicalOutcomeCaution": "La expiración del chat de Nequi prueba que no se cerró, pero no demuestra la causa del abandono. El chat de Natalia sí llegó a una orden."
+}

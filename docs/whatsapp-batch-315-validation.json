@@ -1,0 +1,26 @@
+{
+  "batch": 315,
+  "baseCommit": "f2788798eecbaf693fe7a7104ac7f6ec85b6dfcf",
+  "newTests": 24,
+  "newPassed": 24,
+  "focusPassed": 197,
+  "focusSuites": 4,
+  "typeScriptGeneral": true,
+  "typeScriptBuild": true,
+  "runtimeChanges": false,
+  "lastFullGlobal": {
+    "batch": 314,
+    "tests": 32349,
+    "suites": 382
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75",
+  "sourceManifest": "whatsapp-batch-315-sources.json",
+  "limits": [
+    "Known-source development journeys with synthetic continuations, not real or independent conversations",
+    "Model/Meta/database/routing simulated; no new audio or PDF inspection",
+    "Note preservation uses an explicit scoped note with aparte; original freeform condiment wording remains unvalidated",
+    "No new global run or deployment for this test-only batch"
+  ]
+}
