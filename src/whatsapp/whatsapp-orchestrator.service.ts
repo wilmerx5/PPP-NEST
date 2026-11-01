@@ -2058,9 +2058,9 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, `Veo dos datos distintos para ${addressConflict.label}: ${addressConflict.values.join(' y ')}. ¿Cuál es el correcto? Puedes responder con el dato correcto o enviar la dirección completa. Tu pedido sigue igual.`);
       return;
     }
-    // Repeating the same unresolved street is a retry, not a request to erase
+    // Repeating the same street is a retry, not a request to erase
     // the apartment/reference. A different street or explicit replacement is not merged.
-    if (session.address && session.deliveryFeeCalculated === null &&
+    if (session.address &&
         !['completed','closed','human_takeover'].includes(conv.state)) {
       const street = canonicalStreetAddress(originalText);
       const previousStreet = canonicalStreetAddress(session.address);
@@ -21281,7 +21281,7 @@ export class WhatsappOrchestratorService {
     waId: string,
     session: WhatsappSessionData,
     originalText: string,
-    compound: { productText: string; address: string | null },
+    compound: { productText: string; address: string | null; phone?: string | null },
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     // A plausible name answering the name prompt wins over a broad landmark guess.
@@ -21465,6 +21465,8 @@ export class WhatsappOrchestratorService {
         ...session,
         fulfillmentChosen: true,
         orderType: 'delivery',
+        // This early address route must also retain a phone parsed from the same burst.
+        ...(compound.phone ? { contactPhone: compound.phone, phoneConfirmed: true } : {}),
         // Keep genuine product choices; discard selections caused by address numbers.
         pendingAttribute,
         pendingMatch,

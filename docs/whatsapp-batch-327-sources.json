@@ -1,0 +1,26 @@
+{
+  "batch": 327,
+  "source": "31/10 incidents12:54 and13:02; synthetic contact continuations",
+  "spec": "src/whatsapp/whatsapp-contact-cart-integrity-3110.spec.ts",
+  "specSha256": "5ee8a6c802bca62804146e38c08101fdf7012421091da6883923edd0f173b7bd",
+  "newTests": 20,
+  "baseline": {
+    "tests": 12,
+    "passed": 4,
+    "failed": 8,
+    "phoneLoss": 4,
+    "apartmentLoss": 4
+  },
+  "originalUnexpectedPurchaseReproduced": false,
+  "coverage": [
+    "Two catalogs; agent off or configured with unsolicited additions",
+    "Separate contacts, actual handleIncoming coalesced contacts, repeated contact",
+    "Different street and different apartment replace old details",
+    "Exactly one original dish, contact and address preserved through DTO and receipt"
+  ],
+  "limits": [
+    "Mock agent proposals need not be invoked on deterministic contact routes",
+    "Does not prove root cause of historical duplicate purchases",
+    "No live Meta, model, maps or persistent database"
+  ]
+}
