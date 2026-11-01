@@ -54,3 +54,7 @@ Hay fallos importantes del bot; no se explica por clientes que dejaron de respon
 326: reproducir/corregir aceptación de cotización con dirección guardada y ejecutar regresión completa por cambio del router. Siguientes: compra duplicada por mensajes de contacto; ejecutivo+adicional/bebida y conservación de variantes; reparto uno y uno; cortesía/consulta/personas; coherencia de stock; recuperación de direcciones. Cada grupo requiere reproducir sobre estado inicial y comprobar carrito, respuesta y DTO. Quedan pendientes las demás incidencias; no se declaran corregidas por pasar las pruebas de326.
 
 No se publican los chats crudos ni datos personales en Git. Las pruebas usan identidades y direcciones sintéticas. Este análisis es diagnóstico de desarrollo, no certificación comercial ni medición de abandono de clientes independientes.
+
+## Cierre de la tanda326
+
+Corrección desplegada y verificada solo en staging (`e1352ee2`).12 pruebas nuevas; foco144/4 y global32671/393 aprobados, TypeScript general/build y scripts aprobados. Las incidencias restantes de esta revisión siguen pendientes. No se realizaron llamadas pagadas ni órdenes externas.
