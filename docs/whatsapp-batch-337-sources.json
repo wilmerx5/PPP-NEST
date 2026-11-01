@@ -1,0 +1,29 @@
+{
+  "batch": 337,
+  "source": "Chat31/10 20:48, mensajes454–459: Buenas noches veci me regalas un domicilio",
+  "spec": "src/whatsapp/whatsapp-new-delivery-after-order-337.spec.ts",
+  "specSha256": "9332786c2206721a67c5720e01a3d3f0703bced751286bbe68c9bd6059682f38",
+  "newTests": 54,
+  "baseline": {
+    "failed": 4,
+    "passed": 12
+  },
+  "findings": [
+    "No se reprodujo exactamente la respuesta histórica de seguimiento",
+    "Con agente simulado activo, la petición coloquial reabría el pedido pero no fijaba domicilio: conservaba pickup y respondía cuál prefieres",
+    "La frase logística completa se resuelve determinísticamente antes del modelo; no usa productos/IDs de PPP"
+  ],
+  "coverage": [
+    "Dos catálogos, agente off/mock y estado completed/closed",
+    "Cuatro formas de iniciar domicilio después de orden confirmada",
+    "Dos cierres completos simulados; segundo DTO contiene solo el nuevo producto y recibo correcto",
+    "Seguimiento/cortesía/salsas conservan la orden anterior",
+    "No consume destino, comida, negación, condicional, fecha o recogida en mensajes mixtos"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "focus": {
+    "passed": 74,
+    "suites": 2
+  }
+}
