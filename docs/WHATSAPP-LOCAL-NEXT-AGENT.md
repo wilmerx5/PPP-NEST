@@ -6,7 +6,7 @@ Reproducido el incidente31/10:8/8 controles iniciales fallaban. El limpiador qui
 
 20 recorridos nuevos,2 catálogos × agente desactivado/simulado × pedido conjunto/separado/dos adicionales/cambio de incluida/sin adicional. Mondongo y limonada preservados, cantidades correctas, creación única, DTO y recibo. Foco120/3 aprobado. Global32711 pruebas/395 suites,612 fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-328-{sources,global-sources,validation,patterns}.
 
-Despliegue de staging pendiente de verificación. Producción/Main y Kamppo sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. Pruebas simuladas no acreditan modelo/canal real. Siguiente: grupoC, ejecutivo por mensajes fragmentados y cambio de preparación conservando opciones. Los incidentes originales de compras inesperadas del grupoB siguen abiertos.
+Staging328 desplegado y verificado: código `e9a5dd45`, healthy, cero reinicios, API local/pública operativas y configuración/modelos preservados. Workflow41315663950; evidencia `whatsapp-batch-328-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica328 local. Producción/Main y Kamppo sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. Pruebas simuladas no acreditan modelo/canal real. Siguiente: grupoC, ejecutivo por mensajes fragmentados y cambio de preparación conservando opciones. Los incidentes originales de compras inesperadas del grupoB siguen abiertos.
 
 ## VIGENTE — tanda327: plan31/10 y datos de contacto (01/11)
 
