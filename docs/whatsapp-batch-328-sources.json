@@ -1,0 +1,25 @@
+{
+  "batch": 328,
+  "source": "31/10 messages269–286; synthetic meal and additional soup journeys",
+  "spec": "src/whatsapp/whatsapp-executive-additional-soup-3110.spec.ts",
+  "specSha256": "66ce21ad82e3124e15c06a7f6ec61ded49887a0b9f9b20cc8a0438fe936ceec2",
+  "newTests": 20,
+  "baseline": {
+    "tests": 8,
+    "failed": 8,
+    "passed": 0
+  },
+  "coverage": [
+    "Two catalogs, agent disabled or mocked",
+    "Included Mondongo and Limonada with separately purchased soup in one message or next turn",
+    "One or two extra soup units",
+    "Explicit change of included soup and meal without extra",
+    "Full pickup/payment/confirmation, cart, DTO and receipt"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "No real model, Meta or database persistence",
+    "Fragmented meal creation and preparation substitution incident remain open"
+  ]
+}

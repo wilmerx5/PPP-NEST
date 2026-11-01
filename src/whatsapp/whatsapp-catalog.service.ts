@@ -10515,7 +10515,8 @@ export class WhatsappCatalogService {
       const existingMenu = [...confident, ...needsAttributes].find((item) =>
         productLooksLikeNamedMenuDish(item.product.name),
       );
-      if (existingMenu && this.segmentContinuesMenuDish(segment, existingMenu.product, products, text)) {
+      // Keep the spoken quantity: cleaning "una sopa" first turns a purchase into an included option.
+      if (existingMenu && this.segmentContinuesMenuDish(rawSegment, existingMenu.product, products, text)) {
         existingMenu.segment = `${existingMenu.segment} ${segment}`.replace(/\s+/g, ' ').trim();
         const extra = this.extractProductModificationNote(segment);
         if (extra) existingMenu.note = [existingMenu.note, extra].filter(Boolean).join(', ');

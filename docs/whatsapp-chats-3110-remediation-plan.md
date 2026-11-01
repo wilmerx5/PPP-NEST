@@ -16,7 +16,9 @@ Resultado327: no se reprodujeron productos duplicados en estos recorridos. Sí s
 
 Si no se reproduce: conservar controles y mantener incidente abierto; obtener trazas de turnos, messageId, coalescencia, propuesta del modelo y sesión persistida. No corregir por intuición ni afirmar resuelto con un mock que nunca ejerció el fallo. Revisar además lugar ambiguo, historial de pedido anterior y reintento de webhook con el mismo ID.
 
-## C. Ejecutivo, variantes y adicionales
+## C. Ejecutivo, variantes y adicionales — tanda328, avance parcial
+
+328 reproduce y corrige la confusión entre sopa adicional e incluida, junto con la bebida perdida en mensaje conjunto.8 fallos iniciales,20 controles nuevos completos en dos catálogos, foco120/3 y global32711/395 aprobados. Despliegue de staging pendiente de verificación. Pendientes: reproducir el pedido fragmentado y la sustitución de preparación del incidente16:20; no se dan por resueltos por las suites previas. Evidencia whatsapp-batch-328-patterns.md.
 
 Casos16:03/16:20: mondongo+limonada y sopa adicional; pedido fragmentado; cambiar frito por broaster. Reproducir con catálogo sintético de ejecutivo y otro restaurante. Comprobar que bebida explícita prevalezca sobre predeterminada, sopa adicional no reemplace incluida y sustitución conserve opciones compatibles sin copiar valores contradictorios a notas. Mensajes juntos y separados. DTO y recibo deben coincidir; si falta una opción, preguntar sin inventarla.
 

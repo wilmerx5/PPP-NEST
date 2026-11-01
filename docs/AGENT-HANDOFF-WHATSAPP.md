@@ -1,5 +1,13 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda328: sopa incluida y adicional (01/11)
+
+Reproducido el incidente31/10:8/8 controles iniciales fallaban. El limpiador quitaba «una» antes de distinguir compra adicional frente a opción incluida; el editor de atributos interceptaba productos contados sin verbo. Corrección genérica conserva el segmento original al resolver continuidad y deja pasar compras explícitamente contadas.
+
+20 recorridos nuevos,2 catálogos × agente desactivado/simulado × pedido conjunto/separado/dos adicionales/cambio de incluida/sin adicional. Mondongo y limonada preservados, cantidades correctas, creación única, DTO y recibo. Foco120/3 aprobado. Global32711 pruebas/395 suites,612 fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-328-{sources,global-sources,validation,patterns}.
+
+Despliegue de staging pendiente de verificación. Producción/Main y Kamppo sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. Pruebas simuladas no acreditan modelo/canal real. Siguiente: grupoC, ejecutivo por mensajes fragmentados y cambio de preparación conservando opciones. Los incidentes originales de compras inesperadas del grupoB siguen abiertos.
+
 ## VIGENTE — tanda327: plan31/10 y datos de contacto (01/11)
 
 Staging327 desplegado y verificado: código `6ef524b5`, healthy, cero reinicios, API local/pública operativas y configuración/modelos preservados. Workflow41313777704. Evidencia `whatsapp-batch-327-staging-deployment.json`; controles compilados previos aprobados y cobertura específica327 local. Producción/Kamppo sin cambios.

@@ -25634,7 +25634,8 @@ export class WhatsappOrchestratorService {
     deferAck?: (ack: string) => void,
   ): Promise<boolean> {
     if (!session.cart.length) return false;
-    const explicitAddition = this.normalizeForMatch(text).match(/^(?:agrega|anade|adiciona|quiero|dame)\s+(?:un|una|dos|tres|\d+)\s+(.+)$/);
+    // A counted catalog product is an addition even without a purchase verb.
+    const explicitAddition = this.normalizeForMatch(text).match(/^(?:(?:agrega|anade|adiciona|quiero|dame)\s+)?(?:un|una|dos|tres|\d+)\s+(.+)$/);
     if (explicitAddition && products.some(product =>
       (` ${explicitAddition[1]} `).startsWith(` ${this.normalizeForMatch(product.name)} `))) return false;
 
