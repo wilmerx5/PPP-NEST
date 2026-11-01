@@ -6,7 +6,7 @@ Chat31/10 mensajes302–308:4/4 controles iniciales reproducen que «o hay combo
 
 40 casos nuevos en dos catálogos × agente off/mock; foco58/2 aprobado. Global32911 pruebas/401 suites, inventario exacto y618 fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-334-{sources,global-sources,validation,patterns}. Se corrigió una aserción prematura de aceptación que esperaba compra antes de elegir la bebida incluida.
 
-Publicación y despliegue staging pendientes; verificar SHA y salud antes de acreditar despliegue. Alcance explícito: solo staging. Main/producción permanece333 y Kamppo321. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: grupoE, consultas de raciones/personas y total+demora; mantener abiertas incidencias no reproducidas del grupoB y notas ambiguas.
+Staging334 desplegado y verificado: código `cdf6c483`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41338052957; evidencia `whatsapp-batch-334-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica334 local. Alcance explícito: solo staging. Main/producción permanece333 y Kamppo321. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: grupoE, consultas de raciones/personas y total+demora; mantener abiertas incidencias no reproducidas del grupoB y notas ambiguas.
 
 ## VIGENTE — tanda333: plato+bebida a combo y promoción autorizada (01/11)
 

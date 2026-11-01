@@ -8,4 +8,4 @@ La ampliación reprodujo otro fallo: «no gracias» ante la oferta al final del 
 
 Alcance pedido: staging solamente. PPP producción permanece333 y Kamppo321. Siguiente: consultas sobre raciones/personas, total+demora y lenguaje informal que no debe comprar productos. Ambigüedad de varios combos y equivalencias no literales siguen por aclaración; no declarar cerrado todo el plan31/10.
 
-Publicación y despliegue staging pendientes; verificar SHA y salud antes de acreditar despliegue.
+Staging334 desplegado y verificado: código `cdf6c483`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41338052957; evidencia `whatsapp-batch-334-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica334 local.
