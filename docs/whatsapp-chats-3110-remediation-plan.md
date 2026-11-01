@@ -40,7 +40,7 @@ Casos17:31/16:19/13:10: «dos, uno frito y uno broaster», cambio de ambos a com
 
 ## E. Consultar no es comprar
 
-335: corregida conversión automática de «somos dos/para dos» en dos unidades.32 controles nuevos, dos catálogos y agente off/mock; conserva opciones pendientes y confirmación, DTO/recibo verificados. Global32943 pruebas/402 suites, inventario exacto y619 fuentes congeladas. TypeScript general/build y scripts aprobados. Evidencia whatsapp-batch-335-{sources,global-sources,validation,patterns}. Pendiente desplegar staging335; runtime anterior334. Total+demora y demás casos del grupoE siguen pendientes.
+335: corregida conversión automática de «somos dos/para dos» en dos unidades.32 controles nuevos, dos catálogos y agente off/mock; conserva opciones pendientes y confirmación, DTO/recibo verificados. Global32943 pruebas/402 suites, inventario exacto y619 fuentes congeladas. TypeScript general/build y scripts aprobados. Evidencia whatsapp-batch-335-{sources,global-sources,validation,patterns}. Staging335 desplegado y verificado: código `ddec9540`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41346772368; evidencia `whatsapp-batch-335-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica335 local. Total+demora y demás casos del grupoE siguen pendientes.
 
 Casos12:29/17:38/12:34/20:48: gracias como producto, para dos personas como dos unidades, «le queda», total+demora, inicio de domicilio tratado como seguimiento. Consultas no mutan carrito; contestar las partes de la pregunta y retomar paso. Quejas no autorizan una nueva compra. Aclarar número de porciones cuando no se conoce rendimiento del plato.
 
