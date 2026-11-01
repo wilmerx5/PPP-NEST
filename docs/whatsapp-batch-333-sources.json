@@ -1,0 +1,32 @@
+{
+  "batch": 333,
+  "source": "31/10 messages302\u2013312; explicit remove food + agseosa and buy matching combo",
+  "spec": "src/whatsapp/whatsapp-explicit-food-drink-combo-3110.spec.ts",
+  "specSha256": "c1a02b77b789c5c0c7b1cf427d1e04a53e1c5ce0403c25363414df1215da2863",
+  "newTests": 56,
+  "baseline": {
+    "failed": 4,
+    "passed": 0
+  },
+  "focus": {
+    "tests": 56,
+    "suites": 1,
+    "passed": true
+  },
+  "related": {
+    "tests": 78,
+    "suites": 2,
+    "passed": true
+  },
+  "coverage": [
+    "Two synthetic catalogs \u00d7 agent off/mock",
+    "Explicit two-line removal and single combo addition",
+    "Notes, compatible options, unrelated sides and named extra drink preserved",
+    "Repetition and checkout step",
+    "Atomic guards for unavailable/ambiguous combo, multiple drinks, quantity, drink note, size, incompatible option and unknown beverage",
+    "Final-cart amount limit, simulated DTO and receipt"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "interruption": "Prior full validation interrupted; partial results not credited; rerun with persistent evidence under git metadata"
+}

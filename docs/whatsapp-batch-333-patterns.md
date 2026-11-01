@@ -1,0 +1,13 @@
+# Tanda333 — sustituir plato y bebida por combo
+
+Fuente31/10 mensajes302–312. La instrucción de retirar plato+bebida y añadir combo se interpretaba como una única búsqueda de retirada.4/4 controles iniciales fallaron. Se corrige la instrucción explícita, incluyendo «agseosa», sin afirmar reparada la consulta histórica previa sobre disponibilidad de combo.
+
+La nueva ruta identifica dos líneas únicas (un plato y una bebida, una unidad cada una), un combo único del mismo plato, stock, volumen solicitado y opciones compatibles. Construye el reemplazo en memoria; solo guarda cuando está completo. Conserva notas del plato y productos ajenos. Una bebida con nota propia o una referencia ambigua exige aclaración. La solicitud repetida conserva el carrito. El límite se calcula sin cobrar temporalmente bebida antigua y combo juntos.
+
+56 regresiones nuevas: dos catálogos, agente off/mock, normal/repetición/checkout/agotado/combo ambiguo/bebidas ambiguas/bebida identificada/cantidad extra/nota propia/tamaño incompatible/opciones incompatibles/otro plato/límite/bebida desconocida. Cobertura de carrito, respuesta, estado, creación única, DTO y recibo. Foco56/1 y relacionadas78/2 aprobados. Error de tipo del fixture de límite corregido antes del foco final. Global final aprobada: 32871 pruebas/400 suites, inventario exacto y 617 fuentes congeladas; TypeScript general/build y scripts aprobados. Primera ejecución interrumpida; cifra final de la repetición completa. Cero inferencia, Meta y órdenes externas.
+
+Pendientes: consulta histórica «o hay combo con gaseosa?», cantidades ambiguas, equivalencias de combos no literales y reparación de líneas con diferentes notas/opciones. No declarar cerrado todo el grupoD ni acreditado el modelo real.
+
+Usuario autorizó terminar333 y desplegar producción. Pendiente validar, desplegar staging, promover Main y verificar producción. Kamppo sin migración nueva.
+
+Staging y producción pendientes de despliegue y verificación. Usuario autorizó producción al terminar333; Kamppo sin migración nueva.

@@ -1,0 +1,60 @@
+{
+  "baseCommit": "4208c37a2f83e1714206ff3643a724b0527de43a",
+  "batches": [
+    333
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 716.41,
+      "sourceUnchanged": true,
+      "tests": 32855,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.01,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 617,
+  "workers": 8,
+  "nonTimerTestTimeoutMs": 20000,
+  "previousAttempt": "Interrupted before completing rest suites; temporary logs lost; rerun full inventory",
+  "tests": 32871,
+  "suites": 400,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 56,
+  "focus": {
+    "tests": 56,
+    "suites": 1,
+    "passed": true
+  },
+  "related": {
+    "tests": 78,
+    "suites": 2,
+    "passed": true
+  },
+  "initialBaseline": {
+    "failed": 4,
+    "passed": 0
+  },
+  "externalOrders": 0,
+  "limitations": [
+    "External services mocked; not live model/channel certification",
+    "Only explicit one-dish plus one-drink replacement; ambiguous quantities and drink notes require clarification"
+  ]
+}

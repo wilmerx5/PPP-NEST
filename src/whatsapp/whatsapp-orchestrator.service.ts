@@ -1505,6 +1505,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleMixedRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleMultipleRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleMealtimeAvailability(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleFoodDrinkComboReplacement(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleCountedRemovalAddition(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleReferencedUnitRemoval(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandlePairedPreparationCorrection(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -16073,6 +16074,57 @@ export class WhatsappOrchestratorService {
     await this.conversationService.saveSession(conv,next,next.cart.length?conv.state:'building_cart');
     await this.reply(conv,waId,`Listo, quité ${units} de *${original.name}*.\n\n`+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
       (next.cart.length ? this.formatInterruptedStepReminder(conv,next) || this.formatContinueShoppingPrompt(next) : '¿Qué te gustaría pedir?'));
+    return true;
+  }
+
+  /** A named dish and drink explicitly removed together are replaced atomically by one combo. */
+  private async tryHandleFoodDrinkComboReplacement(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state)) return false;
+    const said=this.normalizeForMatch(text).replace(/\s+/g,' ').trim().replace(/ (?:porfa|por favor)[.!]*$/,'').replace(/[.!]$/,'');
+    const request=said.match(/^(?:elimina|quita|quitame|retira|retirame) (.+?) y (?:dame|ponme|agrega|agregame|anade) un (combo .+)$/);
+    if (!request) return false;
+    const references=request[1].split(' y ').map(part=>part.replace(/^(?:el|la) /,''));
+    if(references.length!==2) return false;
+    const unchanged=async(reason:string)=>{await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;};
+    if (/[¿?]/.test(text) || /\b(?:si|pero|excepto|ademas|aparte|adicional|extra)\b/.test(said)) return unchanged('Aclara la sustitución del plato y la bebida por un combo, sin otras condiciones.');
+    if(session.mpPreferenceId || session.pendingAddOffer || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote || session.pendingPriceInquiry || session.pendingCompositionAsk || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return unchanged('Primero debemos aclarar la selección o pago pendiente.');
+    const products=await this.catalogService.getMenuProducts();
+    const matches=references.map(reference=>session.cart.flatMap((line,index)=>{
+      const product=products.find(p=>p.id===line.productId);
+      if(!product || this.catalogService.productImpliesCombo(product)) return [];
+      const genericDrink=/^(?:bebida|gaseosa|agseosa|refresco|soda)$/.test(reference);
+      return (genericDrink ? this.catalogService.isLikelyDrinkProduct(product) : correctionMatchesLine(line,reference)) ? [index] : [];
+    }));
+    if(matches.some(indices=>indices.length!==1) || matches[0][0]===matches[1][0]) return unchanged('Indica el nombre completo del plato y de la bebida que retiramos.');
+    const originals=matches.map(indices=>session.cart[indices[0]]);
+    const foods=originals.filter(line=>!this.catalogService.isLikelyDrinkProduct(products.find(p=>p.id===line.productId)!));
+    const drinks=originals.filter(line=>this.catalogService.isLikelyDrinkProduct(products.find(p=>p.id===line.productId)!));
+    if(foods.length!==1 || drinks.length!==1 || originals.some(line=>line.quantity!==1)) return unchanged('Necesito una sola unidad del plato y de la bebida; indica las cantidades si quieres otro reparto.');
+    if(drinks[0].note) return unchanged('La bebida tiene una nota propia; aclara cómo conservarla al cambiarla por el combo.');
+    const title=(value:string)=>this.normalizeForMatch(value).replace(/^combo de /,'combo ');
+    const query=title(request[2]);
+    const hits=products.filter(product=>this.catalogService.productImpliesCombo(product) && (query===title(product.name) || query.startsWith(title(product.name)+' ')));
+    const longest=hits.filter(product=>!hits.some(other=>title(other.name).length>title(product.name).length));
+    if(longest.length!==1 || longest[0].availableNow===false) return unchanged('No encontré un único combo disponible con ese nombre.');
+    const combo=longest[0],original=foods[0];
+    const identity=(name:string)=>title(name).replace(/^combo /,'').replace(/^1 /,'');
+    if(identity(combo.name)!==identity(original.name)) return unchanged('Ese combo no corresponde al plato que retiramos; aclara la sustitución completa.');
+    const volume=this.catalogService.extractRequestedDrinkVolumeMl(request[2]);
+    const included=this.catalogService.productDrinkVolumeMl({...combo,name:combo.description || ''});
+    if(volume && volume!==included) return unchanged('El tamaño de bebida solicitado no coincide con el incluido en ese combo.');
+    if((original.attributes || []).some(selected=>!combo.attributes?.some(attr=>attr.attributeName===selected.attributeName && attr.options.includes(selected.attributeValue)))) return unchanged('El combo no admite todas las opciones actuales; dime cuáles quieres cambiar.');
+    const step=this.catalogService.resolveAttributesFromMessage(combo,request[2],original.attributes || []);
+    if(step.status==='invalid') return unchanged('Aclara las opciones del combo antes de retirar los productos.');
+    const selected=this.catalogService.fillDefaultAttributes(combo,step.attributes);
+    if(!this.catalogService.isAttributeSelectionComplete(combo,selected)) return unchanged('Faltan opciones del combo; dime cómo lo quieres antes de sustituirlo.');
+    const draft={...session,cart:session.cart.filter(line=>line!==drinks[0])};
+    const added=this.tryAddProductToCart(draft,combo,1,cfg,undefined,selected,{sourceText:request[2],replacement:{originalLine:structuredClone(original)}});
+    if(added.blocked || added.missingAttributes) return unchanged('No pude completar la sustitución conservando el pedido.');
+    const next={...added.session,lastDrinkAddition:undefined,pendingQuantityHint:undefined};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,'Listo, sustituí el plato y la bebida por el combo ✅\n\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
     return true;
   }
 

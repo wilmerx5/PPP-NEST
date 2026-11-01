@@ -2,6 +2,14 @@
 
 Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son evidencia histórica, no una lista acumulativa de tareas abiertas. Responsable de implementación y pruebas: agente en PPP staging; validación del servicio y decisiones comerciales: operador del restaurante con evidencia del agente.
 
+## VIGENTE — tanda333: plato+bebida a combo y promoción autorizada (01/11)
+
+Chat31/10 mensajes302–312: «elimina el pollo y la agseosa y dame un combo…».4/4 controles iniciales fallaron. Retirada explícita de un plato y una bebida y compra de su combo único. Sustitución atómica, conservación de notas/opciones del plato y productos ajenos; no cobra la bebida retirada. Cantidades ambiguas, notas propias de bebida, stock, tamaño u opciones incompatibles se aclaran sin mutación. Límite de importe evaluado sobre el resultado final.
+
+56 casos nuevos en dos catálogos × agente off/mock; foco56/1 y relacionadas78/2 aprobados. Global32871 pruebas/400 suites, inventario exacto y617 fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-333-{sources,global-sources,validation,patterns}. Ejecución anterior interrumpida; la cifra global corresponde a la repetición completa con evidencia persistente.
+
+Staging y producción pendientes de despliegue y verificación. Usuario autorizó producción al terminar333; Kamppo sin migración nueva. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: consultas y raciones del grupoE; mantener abiertos casos no reproducidos del grupoB, consulta histórica de combo y notas ambiguas.
+
 ## VIGENTE — tanda332: reparación de reparto y ambos en combo (01/11)
 
 Chat31/10 mensajes401–407:8/8 controles iniciales fallaron. Corrección anticipada por catálogo para dos unidades de la misma familia: reparar una línea cantidad dos a una unidad por preparación nombrada; sustituir ambos por sus combos únicos. Cambios atómicos, preservación de notas/opciones compatibles, stock y límites; repeticiones no agregan y checkout conserva su paso. Si el propietario, combo u opciones son ambiguos se aclara sin mutación parcial.
