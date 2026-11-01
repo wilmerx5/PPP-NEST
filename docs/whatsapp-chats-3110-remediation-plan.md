@@ -22,11 +22,11 @@ Si no se reproduce: conservar controles y mantener incidente abierto; obtener tr
 
 Casos16:03/16:20: mondongo+limonada y sopa adicional; pedido fragmentado; cambiar frito por broaster. Reproducir con catálogo sintético de ejecutivo y otro restaurante. Comprobar que bebida explícita prevalezca sobre predeterminada, sopa adicional no reemplace incluida y sustitución conserve opciones compatibles sin copiar valores contradictorios a notas. Mensajes juntos y separados. DTO y recibo deben coincidir; si falta una opción, preguntar sin inventarla.
 
-329: reproducidos y corregidos ejecutivo por mensajes separados/ráfaga y cambio de preparación;28 controles, foco243/5, global32739/396 aprobados. Despliegue pendiente junto con330. Evidencia whatsapp-batch-329-patterns.md. No declarar cerrado todo el espacio de variantes del grupoC.
+329: reproducidos y corregidos ejecutivo por mensajes separados/ráfaga y cambio de preparación;28 controles, foco243/5, global32739/396 aprobados. Desplegado junto con330 en staging1528b08c; workflow41321467542 verificado. Evidencia whatsapp-batch-329-patterns.md. No declarar cerrado todo el espacio de variantes del grupoC.
 
 ## D. Reparto y sustitución de combos
 
-330 corregido en presentación, pendiente de despliegue conjunto329–330: chat31/10 18:54, «Para un pollo y medio», dos listas con numeración repetida mientras se acepta una elección por turno. Ahora se muestra solo la lista activa y se indica lo pendiente.12 recorridos completos nuevos;180/5 y TypeScript general/build aprobados. Números/nombres y recuperación de elección inválida conservan cantidades, total y confirmación.
+330 corregido en presentación y desplegado con329 en staging1528b08c: chat31/10 18:54, «Para un pollo y medio», dos listas con numeración repetida mientras se acepta una elección por turno. Ahora se muestra solo la lista activa y se indica lo pendiente.12 recorridos completos nuevos;180/5 y TypeScript general/build aprobados. Números/nombres y recuperación de elección inválida conservan cantidades, total y confirmación.
 
 Casos17:31/16:19/13:10: «dos, uno frito y uno broaster», cambio de ambos a combo, retirar pollo+bebida y añadir combo, bebida/arepa incluidas frente a extras. Probar selección numérica después de aclaración, errores de escritura, cancelación y pregunta de precio/demora intermedia. Mantener total de unidades; resolver cambios completos o pedir aclaración sin cambios parciales.
 
@@ -50,6 +50,6 @@ Casos17:25/16:24/17:23/18:55: sin gaseosa frente a atributo Colombiana, intercam
 
 Por grupo: reproducir antes de editar, añadir controles en al menos dos catálogos y recorridos completos, verificar respuesta/carrito/estado/DTO. Ejecutar suites afectadas y TypeScript; si cambia motor compartido, global con inventario exacto y fuente congelada. Desplegar staging y verificar SHA, salud y configuración. Registrar límites y pendientes.
 
-La promoción a Main y migración Kamppo son pasos separados, no suceden por publicar staging. Mantener un inventario explícito del delta; actualmente producción/Kamppo321 y staging328; consultar el relevo para nuevos avances.
+La promoción a Main y migración Kamppo son pasos separados, no suceden por publicar staging. Mantener un inventario explícito del delta; actualmente producción/Kamppo321 y staging330; consultar el relevo para nuevos avances.
 
 Aceptación final pendiente: ensayo aislado con Luna/Sol reales, mensajes fragmentados, catálogo vigente y trazas; luego canal controlado sin órdenes a cocina. Presupuesto operativo267/256/11 a fecha de este plan; ninguna llamada sin contador previo, límite y parada al primer fallo. No certificar venta ni todas las incidencias por sumar pruebas. Idiomas y variantes cosméticas quedan al final.
