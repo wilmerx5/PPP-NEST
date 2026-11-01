@@ -1,3 +1,11 @@
+## VIGENTE — tanda332: reparación de reparto y ambos en combo (01/11)
+
+Chat31/10 mensajes401–407:8/8 controles iniciales fallaron. Corrección anticipada por catálogo para dos unidades de la misma familia: reparar una línea cantidad dos a una unidad por preparación nombrada; sustituir ambos por sus combos únicos. Cambios atómicos, preservación de notas/opciones compatibles, stock y límites; repeticiones no agregan y checkout conserva su paso. Si el propietario, combo u opciones son ambiguos se aclara sin mutación parcial.
+
+48 controles nuevos en dos catálogos × agente off/mock; foco48/1 y relacionadas610/2 aprobados. Global final32815 pruebas/399 suites, inventario exacto y616 fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-332-{sources,global-sources,validation,patterns}. Un error de tipo opcional en una aserción nueva se corrigió antes del foco final y global.
+
+Publicación y despliegue staging pendientes; verificar SHA y salud antes de acreditar despliegue. Main/producción y Kamppo sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Pendientes: reemplazar pollo+bebida por combo sin extras sobrantes; reparar dos líneas con opciones distintas cuando el propietario sea ambiguo; completar incidencias de consultas, stock, datos y notas del plan31/10. GrupoB no se declara cerrado.
+
 ## VIGENTE — tanda331: conservar reparto entre preparaciones (01/11)
 
 Reproducidos4/4 fallos iniciales del chat31/10 mensajes396–401: «Para pedir dos pollos» → «Uno frito y uno broaster». Se conserva una unidad por preparación cuando son la misma familia y los defaults del catálogo completan las opciones. Protecciones de listas mixtas, opciones pendientes, reemplazos y stock conservadas. También se evita destino falso en «Para pedir dos pescados» y duplicación al reafirmar exactamente las dos preparaciones existentes. La pregunta activa de330 ahora dice «¿Cuál prefieres para …?».

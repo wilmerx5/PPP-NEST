@@ -1,0 +1,37 @@
+{
+  "batch": 332,
+  "source": "31/10 messages401\u2013407: incorrect two-fried cart; explicit one-fried/one-broaster correction; both to combo",
+  "spec": "src/whatsapp/whatsapp-collective-combo-3110.spec.ts",
+  "specSha256": "6f41912a90d3bf03beafc49ea26b3d7aacab7b449fb374755770e7fd924ba99e",
+  "newTests": 48,
+  "initialBaseline": {
+    "failed": 8,
+    "passed": 0
+  },
+  "finalFocus": {
+    "tests": 48,
+    "suites": 1,
+    "passed": true
+  },
+  "relatedSuites": {
+    "tests": 610,
+    "suites": 2,
+    "passed": true
+  },
+  "coverage": [
+    "Two synthetic catalogs; agent off/mock",
+    "Exact two-unit same-family correction",
+    "Both products to unique corresponding combos",
+    "Atomic rejection for unavailable, ambiguous or incompatible destination",
+    "Per-line notes and attributes preserved",
+    "Repeated correction/conversion does not add units",
+    "Checkout step retained; simulated DTO and receipt"
+  ],
+  "limitations": [
+    "Repair applies to one existing quantity-two line; ambiguous existing separate lines still require clarification",
+    "Exact combo identity; does not guess ambiguous catalog mappings",
+    "No real model, Meta channel or database persistence"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0
+}

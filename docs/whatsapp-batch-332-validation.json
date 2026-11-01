@@ -1,0 +1,65 @@
+{
+  "baseCommit": "348060e2ad5398bc6aa06fd656e35681cbad1cd4",
+  "batches": [
+    332
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 293.33,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 491.68,
+      "sourceUnchanged": true,
+      "tests": 25188,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.61,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 616,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 32815,
+  "suites": 399,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 48,
+  "focus": {
+    "tests": 48,
+    "suites": 1,
+    "passed": true
+  },
+  "related": {
+    "tests": 610,
+    "suites": 2,
+    "passed": true
+  },
+  "initialBaseline": {
+    "failed": 8,
+    "passed": 0
+  },
+  "externalOrders": 0,
+  "limitations": [
+    "Mocked external services; not live model or channel",
+    "Wrong-split repair limited to one two-unit line; ambiguous separate lines still need clarification"
+  ]
+}
