@@ -6,7 +6,7 @@ Chat31/10 mensajes302–312: «elimina el pollo y la agseosa y dame un combo…�
 
 56 casos nuevos en dos catálogos × agente off/mock; foco56/1 y relacionadas78/2 aprobados. Global32871 pruebas/400 suites, inventario exacto y617 fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-333-{sources,global-sources,validation,patterns}. Ejecución anterior interrumpida; la cifra global corresponde a la repetición completa con evidencia persistente.
 
-Staging y producción pendientes de despliegue y verificación. Usuario autorizó producción al terminar333; Kamppo sin migración nueva. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: consultas y raciones del grupoE; mantener abiertos casos no reproducidos del grupoB, consulta histórica de combo y notas ambiguas.
+Staging333 desplegado y verificado: código `2976b957`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41333409029; evidencia `whatsapp-batch-333-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica333 local. Producción autorizada pendiente de promover y verificar; Kamppo sin migración nueva. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: consultas y raciones del grupoE; mantener abiertos casos no reproducidos del grupoB, consulta histórica de combo y notas ambiguas.
 
 ## VIGENTE — tanda332: reparación de reparto y ambos en combo (01/11)
 

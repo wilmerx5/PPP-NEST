@@ -10,4 +10,4 @@ Pendientes: consulta histórica «o hay combo con gaseosa?», cantidades ambigua
 
 Usuario autorizó terminar333 y desplegar producción. Pendiente validar, desplegar staging, promover Main y verificar producción. Kamppo sin migración nueva.
 
-Staging y producción pendientes de despliegue y verificación. Usuario autorizó producción al terminar333; Kamppo sin migración nueva.
+Staging333 desplegado y verificado: código `2976b957`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41333409029; evidencia `whatsapp-batch-333-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica333 local. Producción autorizada pendiente de promover y verificar; Kamppo sin migración nueva.
