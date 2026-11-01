@@ -27745,6 +27745,28 @@ export class WhatsappOrchestratorService {
   }
 
   private formatMultiOrderProposal(multi: MultiProductResolveResult): string {
+    // Numeric replies resolve only the first ambiguous group. Display exactly
+    // that choice, rather than several lists whose numbering starts at one.
+    if (multi.ambiguous.length) {
+      const active = multi.ambiguous[0];
+      const label = (segment: string) => segment.replace(/^para\s+/i,'').trim();
+      const lines = [`Ahora elige para *${label(active.segment)}*:`];
+      active.candidates.forEach((product,index)=>lines.push(
+        `${index+1}. *${product.name}* · ${this.catalogService.formatMoney(product.price)}`));
+      lines.push(`\nEscribe el número o el nombre para *${label(active.segment)}*.`);
+      const later = multi.ambiguous.slice(1).map(group=>label(group.segment));
+      if (later.length) lines.push(`\nDespués elegimos: ${later.join('; ')}.`);
+      if (multi.confident.length) {
+        lines.push('\nTambién identificados:');
+        for (const item of multi.confident) {
+          const quantity = this.catalogService.extractQuantityFromSegment(item.segment);
+          lines.push(`- ${item.product.name}${quantity>=2 ? ` ×${quantity}` : ''}${item.note ? ` (${item.note})` : ''}`);
+        }
+      }
+      if (multi.needsAttributes.length) lines.push('\nOpciones pendientes: '+multi.needsAttributes.map(item=>item.product.name).join('; ')+'.');
+      for (const miss of multi.unresolved) lines.push(`\nPor ahora no manejamos: ${miss}.`);
+      return lines.join('\n');
+    }
     const hasOptions = multi.confident.length + multi.ambiguous.length + multi.needsAttributes.length > 0;
     const lines: string[] = [hasOptions ? '📝 *Entendí varios platos en tu mensaje:*\n' : 'No tenemos esos productos en la carta.\n'];
     let idx = 1;

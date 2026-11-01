@@ -1,0 +1,19 @@
+{
+  "batch": 330,
+  "focusPassed": 180,
+  "focusSuites": 5,
+  "tsc": 0,
+  "tscBuild": 0,
+  "newTests": 12,
+  "baselineFailed": 12,
+  "scope": "Presentation only in formatMultiOrderProposal; no routing/state/catalog rule change",
+  "globalRunThisBatch": false,
+  "lastFullGlobal": {
+    "batch": 329,
+    "tests": 32739,
+    "suites": 396,
+    "evidence": "whatsapp-batch-329-validation.json"
+  },
+  "paidRequests": 0,
+  "externalOrders": 0
+}

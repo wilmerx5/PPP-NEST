@@ -1,0 +1,20 @@
+{
+  "batch": 330,
+  "source": "31/10 18:54 messages423–428; explicit user priority during batch329",
+  "spec": "src/whatsapp/whatsapp-multi-choice-clarity-3110.spec.ts",
+  "specSha256": "4840429bc2687ba93f68eb287cff581d198c17d8d8dd85943caa223e4db9b0d6",
+  "runtimeSha256": "413e7ad6b220ae3e177164673850101213beda9e7f27ffe501a7f6e9a4b56b72",
+  "newTests": 12,
+  "baseline": {
+    "failed": 12,
+    "passed": 0
+  },
+  "coverage": [
+    "Two catalogs, agent disabled/mocked",
+    "Only active numbered choice displayed; later groups mentioned without candidate lists",
+    "Number selection read from displayed list, name selection, invalid number recovery",
+    "Each selection adds exactly its dish, both selections complete checkout with correct DTO and total"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0
+}
