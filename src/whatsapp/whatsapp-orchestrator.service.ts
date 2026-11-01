@@ -2690,6 +2690,12 @@ export class WhatsappOrchestratorService {
       await this.replyOrderProgressOrAskNumber(conv,msg.waId,originalText,cfg);
       return;
     }
+    // A party size does not authorize adding portions or changing quantities.
+    if (/^(?:somos|para)\s+(?:\d{1,2}|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)(?:\s+personas?)?[.!?]*$/.test(this.normalizeForMatch(originalText))) {
+      await this.reply(conv, msg.waId,
+        '¿Quieres saber si alcanza para esas personas o pedir esa cantidad de unidades? El pedido sigue igual.');
+      return;
+    }
     // Serving yield and deposits are business facts, never inferred from order size.
     const inquiryText = this.normalizeForMatch(originalText);
     if (
@@ -2940,13 +2946,10 @@ export class WhatsappOrchestratorService {
       const sameAgain =
         /^(?:otro|otra|uno|una)\s+igual$/.test(followUp) ||
         /^(?:otro|otra)\s+de\s+lo\s+mismo$/.test(followUp);
-      const forTwo = /^(?:para|somos)\s+dos$/.test(followUp);
       const line = session.cart[0];
       const nextQty = sameAgain
         ? Math.min(30, line.quantity + 1)
-        : forTwo && line.quantity === 1
-          ? 2
-          : line.quantity;
+        : line.quantity;
       if (nextQty !== line.quantity) {
         session = { ...session, cart: [{ ...line, quantity: nextQty }] };
         await this.conversationService.saveSession(conv, session);

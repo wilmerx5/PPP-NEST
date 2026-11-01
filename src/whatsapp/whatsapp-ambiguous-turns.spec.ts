@@ -510,17 +510,19 @@ describe('Short follow-ups must not invent a dish', () => {
     expect(rows).toEqual(['922:1', '923:1']);
   });
 
-  it('para dos after one steak becomes quantity 2', async () => {
+  it('para dos after one steak asks without adding units', async () => {
     const h = harness(products);
     await h.send('Quiero un churrasco');
-    await h.send('Para dos');
-    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 17, qty: 2 })]);
+    const reply = await h.send('Para dos');
+    expect(reply).toMatch(/personas.*unidades/);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 17, qty: 1 })]);
   });
 
-  it('para dos after one bowl becomes quantity 2', async () => {
+  it('para dos after one bowl asks without adding units', async () => {
     const h = harness(andes);
     await h.send('Quiero un Bowl Andino');
-    await h.send('Para dos');
-    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 914, qty: 2 })]);
+    const reply = await h.send('Para dos');
+    expect(reply).toMatch(/personas.*unidades/);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 914, qty: 1 })]);
   });
 });
