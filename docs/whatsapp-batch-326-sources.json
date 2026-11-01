@@ -1,0 +1,46 @@
+{
+  "batch": 326,
+  "reviewedAt": "2026-11-01",
+  "archiveName": "chats 31-10.zip",
+  "archiveSha256": "05d5a5fa907ec87441e6e80ee0e86b08a2b5b99cf339128f74c36f5b08ad4f94",
+  "reviewedMember": "chat.md",
+  "messages": 467,
+  "receiptMessages": 28,
+  "resetRequests": 7,
+  "imageMarkers": 3,
+  "imagesIncluded": false,
+  "sourceIncidents": [
+    {
+      "time": "12:23–12:24",
+      "messageRange": [
+        3,
+        10
+      ]
+    },
+    {
+      "time": "13:11",
+      "messageRange": [
+        136,
+        141
+      ]
+    }
+  ],
+  "spec": "src/whatsapp/whatsapp-quote-saved-address-3110.spec.ts",
+  "specSha256": "fe7a9a51b46e7e3d45e101bc140b9def8de044610ba051bc514be793a72fdf2e",
+  "baseline": {
+    "failed": 8,
+    "passed": 4
+  },
+  "newTests": 12,
+  "coverage": [
+    "Two catalogs, deterministic mocked agent off/on, si/sí/no",
+    "Product quote with empty cart and saved address",
+    "Accept product without confirming address; reject without mutation",
+    "Then explicitly accept saved address and create exactly one synthetic order"
+  ],
+  "limitations": [
+    "Historical quote/additional-product and ETA parsing not fixed by this guard",
+    "Saved profile seeded, not real cross-day persistence",
+    "Only acceptance conflict reproduced; other review incidents remain pending"
+  ]
+}

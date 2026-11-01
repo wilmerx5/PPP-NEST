@@ -1,0 +1,55 @@
+{
+  "baseCommit": "b9e768b8364a6387da2543a3ea4caf4fbcf3e13b",
+  "batches": [
+    326
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 283.08,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 500.84,
+      "sourceUnchanged": true,
+      "tests": 25044,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.0,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 610,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 32671,
+  "suites": 393,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 326,
+  "newTests": 12,
+  "focusPassed": 144,
+  "focusSuites": 4,
+  "baseline": {
+    "failed": 8,
+    "passed": 4
+  },
+  "externalOrders": 0,
+  "ledgerSha256": "22b14689d77cb7c024ced2d08a90db130902ff3e585c358f4f0e49e887dc5f75"
+}

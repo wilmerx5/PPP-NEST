@@ -21346,6 +21346,8 @@ export class WhatsappOrchestratorService {
     // “acá” / “la misma” con dirección guardada del pedido anterior
     if (
       isReuseLastAddressIntent(originalText) &&
+      // A quote's pending purchase decision owns "sí" before saved-address reuse.
+      !session.pendingAddOffer &&
       !session.freshDeliveryAddressRequested &&
       session.lastDeliveryAddress?.trim() &&
       !session.addressConfirmed
