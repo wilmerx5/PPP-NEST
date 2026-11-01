@@ -1,5 +1,13 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda334: consultar combo sin reabrir bebida (01/11)
+
+Chat31/10 mensajes302–308:4/4 controles iniciales reproducen que «o hay combo con gaseosa?» reabre sabores de una bebida resuelta. Consulta ahora toma el plato nombrado o el único plato si el foco era bebida; con varios pide identificarlo. No muta carrito. La ampliación reprodujo vaciado al rechazar oferta en confirmación: se identifica el destino solo si hay un combo único y las rutas existentes conservan el pedido al rechazar. Aceptar requiere completar bebida incluida; la bebida separada se conserva y se informa.
+
+40 casos nuevos en dos catálogos × agente off/mock; foco58/2 aprobado. Global32911 pruebas/401 suites, inventario exacto y618 fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-334-{sources,global-sources,validation,patterns}. Se corrigió una aserción prematura de aceptación que esperaba compra antes de elegir la bebida incluida.
+
+Publicación y despliegue staging pendientes; verificar SHA y salud antes de acreditar despliegue. Alcance explícito: solo staging. Main/producción permanece333 y Kamppo321. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: grupoE, consultas de raciones/personas y total+demora; mantener abiertas incidencias no reproducidas del grupoB y notas ambiguas.
+
 ## VIGENTE — tanda333: plato+bebida a combo y promoción autorizada (01/11)
 
 Chat31/10 mensajes302–312: «elimina el pollo y la agseosa y dame un combo…».4/4 controles iniciales fallaron. Retirada explícita de un plato y una bebida y compra de su combo único. Sustitución atómica, conservación de notas/opciones del plato y productos ajenos; no cobra la bebida retirada. Cantidades ambiguas, notas propias de bebida, stock, tamaño u opciones incompatibles se aclaran sin mutación. Límite de importe evaluado sobre el resultado final.

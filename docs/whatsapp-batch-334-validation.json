@@ -1,0 +1,54 @@
+{
+  "baseCommit": "0b57d8f6177f199e644634fec33b9517e865eeaa",
+  "batches": [
+    334
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 664.46,
+      "sourceUnchanged": true,
+      "tests": 32895,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 9.91,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 618,
+  "workers": 8,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 32911,
+  "suites": 401,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 40,
+  "focus": {
+    "tests": 58,
+    "suites": 2,
+    "passed": true
+  },
+  "initialBaseline": {
+    "failed": 4,
+    "passed": 0
+  },
+  "externalOrders": 0,
+  "limitations": [
+    "External services mocked; not live model/channel certification",
+    "Inquiry does not remove a separately purchased beverage; ambiguous dish owner requires clarification"
+  ]
+}

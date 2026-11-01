@@ -12618,7 +12618,18 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     if (!this.catalogService.isComboAvailabilityQuestion(text)) return false;
 
-    const product = this.resolveDiscussedProduct(session, text, products);
+    let product = this.resolveDiscussedProduct(session, text, products);
+    // A completed drink often holds the focus after a dish + drink order.
+    // An unnamed combo question concerns the unique dish, not another drink choice.
+    if (product && this.catalogService.isLikelyDrinkProduct(product)) {
+      const foods = products.filter(item => session.cart.some(line => line.productId === item.id) &&
+        !this.catalogService.isLikelyDrinkProduct(item));
+      const named = foods.filter(item => this.catalogService.isCartProductNamedInText(item.name, text));
+      if (named.length === 1) product = named[0];
+      else if (!this.catalogService.isCartProductNamedInText(product.name, text)) {
+        product = foods.length === 1 ? foods[0] : null;
+      }
+    }
     if (!product) {
       await this.reply(
         conv,
@@ -12642,8 +12653,10 @@ export class WhatsappOrchestratorService {
       const matchingLines = session.cart.filter(line => line.productId === product.id);
       if (matchingLines.length === 1 && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
         const originalLine = matchingLines[0];
+        const combos = family.variants.filter(item => this.catalogService.productImpliesCombo(item));
         session = { ...session, pendingMatch: { query: family.baseLabel, candidates: family.variants,
-          intent: 'order', quantity: originalLine.quantity, replacement: { originalLine: structuredClone(originalLine) } } };
+          intent: 'order', quantity: originalLine.quantity, replacement: { originalLine: structuredClone(originalLine),
+            ...(combos.length === 1 ? {preferredId: combos[0].id} : {}) } } };
       }
       await this.conversationService.saveSession(conv, session);
       await this.reply(
@@ -12651,6 +12664,9 @@ export class WhatsappOrchestratorService {
         waId,
         `Sí 👍 Para *${family.baseLabel}* manejamos estas versiones:\n\n` +
           this.catalogService.formatVariantFamilyPrompt(family) +
+          (session.pendingMatch?.replacement && session.cart.some(line => products.some(item =>
+            item.id === line.productId && this.catalogService.isLikelyDrinkProduct(item)))
+            ? '\n\nLa bebida que ya pediste sigue aparte; esta elección cambia solo el plato.' : '') +
           (session.cart.length ? `\n\n${session.pendingMatch?.replacement ? 'Elige una versión para cambiar ese plato conservando su cantidad y notas.' : 'El pedido sigue igual.'}${this.formatInterruptedStepReminder(conv, session) ? '\n\n' + this.formatInterruptedStepReminder(conv, session) : ''}` : `\n\n_Si quieres el combo, dime *en combo* o el número._`),
       );
       return true;
