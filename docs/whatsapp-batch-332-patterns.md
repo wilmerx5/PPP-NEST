@@ -8,4 +8,4 @@ Se añade una corrección anticipada, delimitada por gramática explícita y cat
 
 Límites: no repara automáticamente dos líneas existentes con opciones diferentes cuando el propietario es ambiguo; no adivina equivalencias de combos con nombres distintos ni aplica opciones nuevas escritas fuera de esta gramática. Esos casos siguen por las rutas de aclaración. Cero inferencia, Meta y órdenes externas. Trabajo solo staging; Main/producción y Kamppo sin cambios.
 
-Publicación y despliegue staging pendientes; verificar SHA y salud antes de acreditar despliegue.
+Staging332 desplegado y verificado: código `a63e00b9`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41326043773; evidencia `whatsapp-batch-332-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica332 verificada localmente.

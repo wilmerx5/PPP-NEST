@@ -6,7 +6,7 @@ Chat31/10 mensajes401–407:8/8 controles iniciales fallaron. Corrección antici
 
 48 controles nuevos en dos catálogos × agente off/mock; foco48/1 y relacionadas610/2 aprobados. Global final32815 pruebas/399 suites, inventario exacto y616 fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-332-{sources,global-sources,validation,patterns}. Un error de tipo opcional en una aserción nueva se corrigió antes del foco final y global.
 
-Publicación y despliegue staging pendientes; verificar SHA y salud antes de acreditar despliegue. Main/producción y Kamppo sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Pendientes: reemplazar pollo+bebida por combo sin extras sobrantes; reparar dos líneas con opciones distintas cuando el propietario sea ambiguo; completar incidencias de consultas, stock, datos y notas del plan31/10. GrupoB no se declara cerrado.
+Staging332 desplegado y verificado: código `a63e00b9`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41326043773; evidencia `whatsapp-batch-332-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica332 verificada localmente. Main/producción y Kamppo sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Pendientes: reemplazar pollo+bebida por combo sin extras sobrantes; reparar dos líneas con opciones distintas cuando el propietario sea ambiguo; completar incidencias de consultas, stock, datos y notas del plan31/10. GrupoB no se declara cerrado.
 
 ## VIGENTE — tanda331: conservar reparto entre preparaciones (01/11)
 
