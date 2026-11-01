@@ -1,0 +1,29 @@
+{
+  "batch": 329,
+  "source": "31/10 messages315–324; synthetic meal fragmentation and preparation substitution",
+  "spec": "src/whatsapp/whatsapp-fragmented-meal-3110.spec.ts",
+  "specSha256": "530b178a6ea2016061de55848ffa0e24bb8811337ff2ec8587bac0cf9e450314",
+  "newTests": 28,
+  "baseline": {
+    "tests": 8,
+    "failed": 7,
+    "passed": 1
+  },
+  "additionalReproduction": "All four coalesced burst controls failed before family-fragment handling was added",
+  "coverage": [
+    "Two synthetic catalogs, agent disabled/mocked",
+    "Sequential fragments and real handleIncoming coalescence of three text messages",
+    "Change preparation preserving options, notes and quantity",
+    "Unavailable target and ambiguous owner preserve whole cart",
+    "Repeated preparation change does not add units",
+    "Checkout, unique mocked order, DTO, receipt and total"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "No real model, Meta or database persistence",
+    "Narrow family/preparation/option-only burst; arbitrary fragmented purchases remain broader work",
+    "Original unsolicited products during contact entry (group B) remain open"
+  ],
+  "intermediateRegression": "First global run stopped after pending-option-extras exposed premature default drink completion; replaced resolver change with existing pending-option absorption route"
+}

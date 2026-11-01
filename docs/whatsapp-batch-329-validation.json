@@ -1,0 +1,56 @@
+{
+  "baseCommit": "827708d7937baf4bab8d1913e0f97809055e9352",
+  "batches": [
+    329
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 289.68,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 479.01,
+      "sourceUnchanged": true,
+      "tests": 25112,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.5,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 613,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 32739,
+  "suites": 396,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 329,
+  "newTests": 28,
+  "focusPassed": 243,
+  "focusSuites": 5,
+  "finalSpecPassed": 28,
+  "baseline": {
+    "failed": 7,
+    "passed": 1
+  },
+  "firstGlobalStopped": "pending-option-extras regression; corrected before final global",
+  "externalOrders": 0
+}

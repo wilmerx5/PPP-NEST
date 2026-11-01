@@ -2,6 +2,14 @@
 
 Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son evidencia histórica, no una lista acumulativa de tareas abiertas. Responsable de implementación y pruebas: agente en PPP staging; validación del servicio y decisiones comerciales: operador del restaurante con evidencia del agente.
 
+## VIGENTE — tanda329: ejecutivo fragmentado y preparación (01/11)
+
+28 casos nuevos en2 catálogos × agente off/mock: secuencia, ráfaga handleIncoming, sustitución, agotado, propietario ambiguo, repetición y notas. Reproducidos7/8 fallos iniciales y4/4 de ráfaga. Corregida elección de plato en ráfaga, abreviatura de opción con paréntesis y referencia de preparación dentro de la familia existente. Conserva opciones compatibles, notas y cantidad; no vende preparación agotada.
+
+Foco243/5 y spec final28 aprobados. Primera global detenida por completar bebida prematuramente al corregir sopa; retirado el cambio del resolvedor y ampliada ruta existente de opciones pendientes. Global final32739/396,613 fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-329-{sources,global-sources,validation,patterns}.
+
+Aún no desplegado: se publicará junto con la corrección prioritaria pedida por el usuario para «pollo y medio», listas ambiguas simultáneas del31/10 18:54. Staging activo328; Main/producción y Kamppo sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. GrupoB sigue abierto; no acreditar modelo/canal/persistencia con mocks.
+
 ## VIGENTE — tanda328: sopa incluida y adicional (01/11)
 
 Reproducido el incidente31/10:8/8 controles iniciales fallaban. El limpiador quitaba «una» antes de distinguir compra adicional frente a opción incluida; el editor de atributos interceptaba productos contados sin verbo. Corrección genérica conserva el segmento original al resolver continuidad y deja pasar compras explícitamente contadas.

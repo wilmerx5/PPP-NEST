@@ -22,7 +22,11 @@ Si no se reproduce: conservar controles y mantener incidente abierto; obtener tr
 
 Casos16:03/16:20: mondongo+limonada y sopa adicional; pedido fragmentado; cambiar frito por broaster. Reproducir con catálogo sintético de ejecutivo y otro restaurante. Comprobar que bebida explícita prevalezca sobre predeterminada, sopa adicional no reemplace incluida y sustitución conserve opciones compatibles sin copiar valores contradictorios a notas. Mensajes juntos y separados. DTO y recibo deben coincidir; si falta una opción, preguntar sin inventarla.
 
+329: reproducidos y corregidos ejecutivo por mensajes separados/ráfaga y cambio de preparación;28 controles, foco243/5, global32739/396 aprobados. Despliegue pendiente junto con330. Evidencia whatsapp-batch-329-patterns.md. No declarar cerrado todo el espacio de variantes del grupoC.
+
 ## D. Reparto y sustitución de combos
+
+Prioridad explícita nueva: chat31/10 18:54, «Para un pollo y medio», dos listas con numeración repetida mientras se acepta una elección por turno. Mostrar solo la lista activa e indicar lo pendiente; verificar números, nombres, total y confirmación.
 
 Casos17:31/16:19/13:10: «dos, uno frito y uno broaster», cambio de ambos a combo, retirar pollo+bebida y añadir combo, bebida/arepa incluidas frente a extras. Probar selección numérica después de aclaración, errores de escritura, cancelación y pregunta de precio/demora intermedia. Mantener total de unidades; resolver cambios completos o pedir aclaración sin cambios parciales.
 

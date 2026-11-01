@@ -3772,6 +3772,25 @@ export class WhatsappOrchestratorService {
     }
     if (businessOpenForBot && await this.tryOfferExactDishCombo(conv, msg.waId, session, originalText, products, cfg)) return;
 
+    // A meal family, its preparation and its options may arrive as separate
+    // bubbles. Only collapse a unique catalog meal with option-only tails.
+    const mealFragments = originalText.split(/\r?\n/).map(part=>part.trim()).filter(Boolean);
+    if (businessOpenForBot && !session.cart.length && !session.pendingMatch && !session.pendingAttribute &&
+        !session.pendingMultiOrder && mealFragments.length >= 2 && !/[¿?]/.test(originalText)) {
+      const familyRequest = this.normalizeForMatch(mealFragments[0]).match(/^(?:(?:buenas tardes|buenas noches|buenos dias|hola) )?(?:me regalas?|me das|quiero|dame) (?:un |una )?([a-zñ ]+)$/);
+      const preparation = this.normalizeForMatch(mealFragments[1]);
+      const candidates = familyRequest ? products.filter(product => product.availableNow !== false && product.hasAttributes &&
+        this.normalizeForMatch(product.name).startsWith(familyRequest[1]+' ') &&
+        this.normalizeForMatch(product.name).endsWith(' '+preparation) &&
+        this.catalogService.stripCookingStyleTokens(product.name) !== this.normalizeForMatch(product.name)) : [];
+      if (candidates.length === 1 && mealFragments.slice(2).every(part => candidates[0].attributes?.some(attribute =>
+        attribute.options.some(option => this.normalizeForMatch(option) === this.normalizeForMatch(part) ||
+          this.normalizeForMatch(option.replace(/\([^)]*\)/g,'')) === this.normalizeForMatch(part))))) {
+        const source = `${candidates[0].name} ${mealFragments.slice(2).join(' ')}`;
+        if (await this.handleProductWithVariants(conv,msg.waId,session,candidates[0],source,cfg)) return;
+      }
+    }
+
     const multiplePurchaseLines = /[;\n]/.test(text) && this.catalogService.splitMultiProductSegments(text, products).length > 1;
     // One explicit purchase plus a bounded two-way substitution is still a purchase, not a menu browse.
     const substitutedPurchase = !/[¿?]/.test(text) && !!parseSubstitutionChoice(text) &&
@@ -16135,6 +16154,36 @@ export class WhatsappOrchestratorService {
       'awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state) ||
       session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
       CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    // A definite reference plus a preparation modifies an existing family;
+    // resolve against that family before a generic order route can add a dish.
+    const requested = this.normalizeForMatch(text).match(/^(?:el|la) (.+?) (?:lo|la) quiero con (.+)$/);
+    if (requested && !/[¿?]/.test(text) && !/\b(?:y|o|no|otro|otra|sin|para)\b/.test(requested[1]+' '+requested[2])) {
+      const menu = await this.catalogService.getMenuProducts();
+      const owners = session.cart.filter(line => {
+        const name = this.normalizeForMatch(line.name);
+        return name === requested[1] || name.startsWith(requested[1]+' ');
+      });
+      if (owners.length) {
+        const bases = new Set(owners.map(line => this.catalogService.stripCookingStyleTokens(line.name)));
+        const targets = menu.filter(product => bases.has(this.catalogService.stripCookingStyleTokens(product.name)) &&
+          this.catalogService.stripCookingStyleTokens(product.name) !== this.normalizeForMatch(product.name) &&
+          this.normalizeForMatch(product.name).endsWith(' '+requested[2]));
+        if (owners.length !== 1 || targets.length !== 1) {
+          await this.reply(conv,waId,'¿Cuál plato quieres cambiar y por cuál preparación? El pedido sigue igual.');
+          return true;
+        }
+        if (targets[0].availableNow === false) {
+          await this.reply(conv,waId,'Esa preparación no está disponible. El pedido sigue igual.');
+          return true;
+        }
+        if (owners[0].productId === targets[0].id) {
+          await this.reply(conv,waId,'Ese plato ya tiene esa preparación. El pedido sigue igual.');
+          return true;
+        }
+        return this.tryHandleAtomicCartReplacement(conv,waId,session,
+          `cambia ${owners[0].name} por ${targets[0].name}`,menu,cfg,{sourceIsCatalogTitle:true});
+      }
+    }
     const title = text.trim().replace(/^[¿]+|[?!.]+$/g,'').match(/^(?:el|la)\s+([\p{L} ]+)$/iu)?.[1];
     if (!title || /\b(?:no|si|y|o|sin|quiero|agrega|otro|otra|para)\b/i.test(title)) return false;
     const menu = await this.catalogService.getMenuProducts();
@@ -25639,6 +25688,23 @@ export class WhatsappOrchestratorService {
     if (explicitAddition && products.some(product =>
       (` ${explicitAddition[1]} `).startsWith(` ${this.normalizeForMatch(product.name)} `))) return false;
 
+    // Expand only a whole, unique abbreviated option; keep ownership handling
+    // below so multiple cart lines still require clarification.
+    const bareChoice = this.normalizeForMatch(text);
+    const abbreviated = new Map<string,{attributeName:string;attributeValue:string}>();
+    for (const line of session.cart) for (const attr of products.find(product=>product.id===line.productId)?.attributes || []) {
+      for (const option of attr.options) if (/\([^)]*\)/.test(option) &&
+          this.normalizeForMatch(option.replace(/\([^)]*\)/g,'')) === bareChoice) {
+        abbreviated.set(attr.attributeName+'|'+option,{attributeName:attr.attributeName,attributeValue:option});
+      }
+    }
+    const exactChoice = session.cart.some(line=>products.find(product=>product.id===line.productId)?.attributes?.some(attr=>
+      attr.options.some(option=>this.normalizeForMatch(option)===bareChoice)));
+    if (!/[¿?]/.test(text) && !exactChoice && abbreviated.size===1) {
+      const option=[...abbreviated.values()][0];
+      text=`cambia ${option.attributeName} por ${option.attributeValue}`;
+    }
+
     const negativeOption = !/[¿?]/.test(text) && text.match(/^no\s+(?:con\s+)?(.+?),?\s+(?:mejor|sino)\s+(?:con\s+)?(.+)$/i);
     const rejectedWithoutChoice = !negativeOption && /^no\s+con\s+/i.test(text);
     const negativeAlternative = negativeOption && /^(?:no|sin)\b/i.test(negativeOption[2]);
@@ -27982,7 +28048,10 @@ export class WhatsappOrchestratorService {
     if (!pa || !product?.attributes?.length || session.pendingMultiOrder || /[¿?]/.test(text) || text.length > 160) return { session, answers: false };
     const said = this.normalizeForMatch(text).replace(/[^a-z0-9ñ ]+/g, ' ').replace(/\s+/g, ' ').trim();
     const key = (value: string) => this.normalizeForMatch(value).replace(/[^a-z0-9ñ ]+/g, ' ').replace(/\s+/g, ' ').trim();
-    const names = (value: string) => !!key(value) && ` ${said} `.includes(` ${key(value)} `);
+    const shortName = (value: string) => key(value.replace(/\([^)]*\)/g,''));
+    const abbreviated = product.attributes.flatMap(attr=>attr.options).filter(option=>shortName(option)===said);
+    const names = (value: string) => !!key(value) && (` ${said} `.includes(` ${key(value)} `) ||
+      /\([^)]*\)/.test(value) && shortName(value)===said && abbreviated.length===1);
     const separate = /^(?:(?:y|quiero|dame|agrega|anade|ponme|tambien)\s+)*(?:unos?|unas?|dos|tres|\d+|otr[oa]s?)\s/.test(said) ||
       /\b(?:aparte|adicional|extra)\b/.test(said);
     const opts = this.attributeFlowOpts(pa);
