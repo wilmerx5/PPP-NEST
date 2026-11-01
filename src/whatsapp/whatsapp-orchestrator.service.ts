@@ -115,6 +115,7 @@ import {
   parseQtyMenuCodeLines,
   parseQtyDishCorrection,
   isCartChargeQuestion,
+  isCartTotalAndEtaInquiry,
   isDeliveryFeeChangeQuestion,
   parsePaymentAmountQuestion,
   replyClaimsCartChange,
@@ -2887,6 +2888,17 @@ export class WhatsappOrchestratorService {
     }
     if (session.cart.length > 1 && /^(?:esas|esos|estas|estos)\s+(?:\d+|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|quince|veinte)(?:\s+por\s+favor)?[.!?\s]*$/i.test(originalText)) {
       await this.reply(conv, msg.waId, '¿De cuál producto quieres esa cantidad? El pedido sigue igual mientras lo aclaramos.');
+      return;
+    }
+    if (session.cart.length && isCartTotalAndEtaInquiry(originalText) &&
+        !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state)) {
+      const reminder = this.formatInterruptedStepReminder(conv, session);
+      const eta = cfg.localContext?.deliveryTimeNote?.trim()
+        ? this.formatDeliveryEtaSentence(cfg)
+        : 'El equipo debe confirmar el tiempo estimado de entrega.';
+      await this.reply(conv, msg.waId,
+        `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${eta}` +
+        `\n\n${reminder || this.formatContinueShoppingPrompt(session)}`);
       return;
     }
     if (isOrderBillRequest(originalText)) {
