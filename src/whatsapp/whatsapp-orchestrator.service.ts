@@ -3638,6 +3638,25 @@ export class WhatsappOrchestratorService {
     text = this.dropServingContainer(text, products);
     originalText = this.dropServingContainer(originalText, products);
 
+    if (businessOpenForBot && this.catalogService.isGeneralMenuOptionsInquiry(originalText)) {
+      const overview = this.catalogService.formatMenuCategoryOverview(products, {
+        intro: this.catalogService.buildMenuExploreIntro(originalText), menuUrl: cfg.menuUrl,
+      });
+      const freeBrowse = conv.state === 'building_cart' && !session.pendingAttribute &&
+        !session.pendingMatch && !session.pendingMultiOrder && !session.pendingPriceInquiry &&
+        !session.pendingCompositionAsk && !CART_EDIT_SELECTION_KEYS.some(key => !!session[key]);
+      if (freeBrowse) {
+        session = { ...session, pendingCategoryBrowse: { categories: overview.categories } };
+        await this.conversationService.saveSession(conv, session);
+      }
+      const body = freeBrowse ? overview.text : overview.text
+        .replace(/^\*\d+\.\* /gm, '• ')
+        .replace('Escribe el *número* de categoría o el *plato*.', 'Para explorar, escribe el nombre de una categoría o un plato.');
+      const reminder = freeBrowse ? '' : this.formatInterruptedStepReminder(conv, session);
+      await this.reply(conv, msg.waId, body + (reminder ? `\n\n${reminder}` : ''));
+      return;
+    }
+
     if (businessOpenForBot && await this.tryHandleEachCategoryPurchase(conv,msg.waId,session,originalText,products,cfg)) return;
     if (businessOpenForBot && await this.tryHandleOfferedOptionPurchase(conv, msg.waId, session, originalText, products, cfg)) return;
 

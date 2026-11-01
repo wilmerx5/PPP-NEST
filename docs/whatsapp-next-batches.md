@@ -1,5 +1,13 @@
 ## VIGENTE — tanda334: consultar combo sin reabrir bebida (01/11)
 
+## VIGENTE — tanda338: consulta general de opciones con cortesía (01/11)
+
+Chat31/10 12:29–12:33, mensajes21–24: «Qué opciones tienen. Gracias». No se reprodujo exactamente «productos de gracias»; sí respuesta sin opciones con agente simulado y pérdida de awaiting_final_confirm en browse sin agente. Ruta acotada de consulta general anterior al modelo muestra categorías del catálogo y conserva estado/carrito. Cortesía inicial/final no se interpreta como un producto. Restricciones, categorías concretas, pago y compras mixtas siguen sus rutas existentes.
+
+60 controles nuevos (52 recorridos/controles del router y8 guardas), dos catálogos × agente off/mock. Baseline16 fallos/8 aprobados. Foco135/2 aprobado. Selección posterior de categoría, cierre simulado con DTO/recibo y sabor pendiente conservado. En checkout/opciones pendientes el menú evita una segunda numeración y recuerda el paso previo. Global33099 pruebas/405 suites, inventario exacto y622 fuentes congeladas. TypeScript general/build y scripts aprobados. Evidencia whatsapp-batch-338-{sources,global-sources,validation,patterns}.
+
+Pendiente desplegar staging338; runtime anterior337. Alcance solo staging; producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real ni causalidad exacta del fallo histórico. Siguiente: grupoF, selecciones vencidas/stock y opciones inválidas; grupoB conserva compras inesperadas no reproducidas. GrupoE no se declara cerrado en su totalidad.
+
 ## VIGENTE — tanda337: domicilio nuevo tras pedido confirmado (01/11)
 
 Chat31/10 20:48, mensajes454–459: «Buenas noches veci me regalas un domicilio». La respuesta histórica de seguimiento no se reprodujo exactamente; sí se reprodujo que con agente simulado la solicitud reabría sin fijar domicilio y contestaba «cuál prefieres». Corrección acotada del reconocimiento de frase logística completa: responde antes del modelo y conserva los flujos existentes de inicio/checkout. Mensajes con dirección, comida, negación, condición o recogida no se reducen a una petición vacía.

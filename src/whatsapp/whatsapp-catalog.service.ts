@@ -682,6 +682,14 @@ export class WhatsappCatalogService {
     return `Por *${brand}* solo tomo pedidos 🍗 Escribe el *plato* o contáctanos al *3118866823*.`;
   }
 
+  /** A complete general menu question; boundary courtesy is not a product. */
+  isGeneralMenuOptionsInquiry(text: string): boolean {
+    const q = normalizeText(text).replace(/[¿?¡!.,;]/g, ' ').replace(/\s+/g, ' ').trim()
+      .replace(/^(?:(?:hola|buenas(?: tardes| noches)?|veci|gracias|muchas gracias|por favor|porfa)\s+)+/, '')
+      .replace(/(?:\s+(?:muchas gracias|gracias|por favor|porfa))+$/, '');
+    return /^(?:que opciones (?:hay|tienen|tienes|manejan|ofrecen)|cuales son (?:las|sus) opciones|(?:me )?(?:muestras|muestra|muestrame) (?:las|sus) opciones)$/.test(q);
+  }
+
   /** Pregunta abierta sobre el menú (almuerzo, qué hay, recomiendan…). */
   isMenuExploreIntent(text: string, products: WhatsappCatalogProduct[] = []): boolean {
     const q = normalizeText(text);
