@@ -12,7 +12,7 @@ Cobertura actual: cotización de un producto, carrito vacío, dirección previa,
 
 Casos12:54 y13:02: bandeja inesperada y medio pollo duplicado. Probar mensajes separados, ráfaga real por handleIncoming, repetición de contacto y propuestas simuladas del agente que intentan agregar productos anteriores/ajenos. El carrito debe permanecer idéntico en cada mensaje de contacto; el DTO debe contener solo lo comprado.
 
-Resultado327: no se reprodujeron productos duplicados en estos recorridos. Sí se reprodujeron8 fallos de datos:4 pérdidas de teléfono en ráfaga y4 pérdidas de apartamento al repetir calle. Corregidos; foco116/4 y global32691/394 aprobados, TypeScript general/build y scripts aprobados. Despliegue staging registrado en evidencia327 al finalizar.20 controles nuevos incluyen dos catálogos, agente simulado con propuestas no solicitadas y cambios legítimos de domicilio/unidad. El incidente original de compra inesperada sigue abierto.
+Resultado327: no se reprodujeron productos duplicados en estos recorridos. Sí se reprodujeron8 fallos de datos:4 pérdidas de teléfono en ráfaga y4 pérdidas de apartamento al repetir calle. Corregidos; foco116/4 y global32691/394 aprobados, TypeScript general/build y scripts aprobados. Desplegado y verificado en staging (`6ef524b5`), evidencia whatsapp-batch-327-staging-deployment.json.20 controles nuevos incluyen dos catálogos, agente simulado con propuestas no solicitadas y cambios legítimos de domicilio/unidad. El incidente original de compra inesperada sigue abierto.
 
 Si no se reproduce: conservar controles y mantener incidente abierto; obtener trazas de turnos, messageId, coalescencia, propuesta del modelo y sesión persistida. No corregir por intuición ni afirmar resuelto con un mock que nunca ejerció el fallo. Revisar además lugar ambiguo, historial de pedido anterior y reintento de webhook con el mismo ID.
 
@@ -44,6 +44,6 @@ Casos17:25/16:24/17:23/18:55: sin gaseosa frente a atributo Colombiana, intercam
 
 Por grupo: reproducir antes de editar, añadir controles en al menos dos catálogos y recorridos completos, verificar respuesta/carrito/estado/DTO. Ejecutar suites afectadas y TypeScript; si cambia motor compartido, global con inventario exacto y fuente congelada. Desplegar staging y verificar SHA, salud y configuración. Registrar límites y pendientes.
 
-La promoción a Main y migración Kamppo son pasos separados, no suceden por publicar staging. Mantener un inventario explícito del delta; actualmente producción/Kamppo321, staging326 y pruebas posteriores según relevo.
+La promoción a Main y migración Kamppo son pasos separados, no suceden por publicar staging. Mantener un inventario explícito del delta; actualmente producción/Kamppo321 y staging327; consultar el relevo para nuevos avances.
 
 Aceptación final pendiente: ensayo aislado con Luna/Sol reales, mensajes fragmentados, catálogo vigente y trazas; luego canal controlado sin órdenes a cocina. Presupuesto operativo267/256/11 a fecha de este plan; ninguna llamada sin contador previo, límite y parada al primer fallo. No certificar venta ni todas las incidencias por sumar pruebas. Idiomas y variantes cosméticas quedan al final.
