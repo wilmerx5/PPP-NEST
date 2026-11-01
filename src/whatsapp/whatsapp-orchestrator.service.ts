@@ -9677,7 +9677,12 @@ export class WhatsappOrchestratorService {
         return true;
       }
     }
-    const needsChoice = chosen.filter(item => item.product!.hasAttributes && item.product!.attributes?.length);
+    // Having attributes does not mean a choice is still missing: preserve the
+    // explicit per-product quantities when configured defaults complete them.
+    const samePreparationFamily = !pending.replacement && !pending.includesRequestedAccompaniment && target > 1 && total === target &&
+      new Set(chosen.map(item=>this.catalogService.stripCookingStyleTokens(item.product!.name))).size === 1;
+    const needsChoice = chosen.filter(item => item.product!.hasAttributes && item.product!.attributes?.length &&
+      (!samePreparationFamily || !this.catalogService.isAttributeSelectionComplete(item.product!, this.catalogService.fillDefaultAttributes(item.product!, []))));
     if (needsChoice.length) {
       await this.reply(conv, waId, `${needsChoice.map(item => `*${item.product!.name}*`).join(', ')} ${needsChoice.length === 1 ? 'tiene' : 'tienen'} opciones por elegir. Pídelos uno a la vez: dime primero el número de uno.\n${listed(picks.map(pick => pick.row))}\n\nEl pedido sigue igual.`);
       return true;
@@ -22355,6 +22360,9 @@ export class WhatsappOrchestratorService {
         t,
       );
 
+    // "Para pedir dos …" introduces a purchase, never an unnamed destination.
+    if (!hasStreetCue && /^(?:para\s+)?(?:pedir|ordenar|comprar)\b/i.test(t)) return true;
+
     // "Las mojarras fritas" / "pillos fritos" / plurales (FOOD_ORDER ya trae mojarras)
     if (FOOD_ORDER_SIGNAL_RE.test(t) && !hasStreetCue) {
       return true;
@@ -25400,6 +25408,17 @@ export class WhatsappOrchestratorService {
     text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (/[¿?]/.test(text) || this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isAvailabilityInquiry(text) || /\bno\s+(?:quiero|me|dame|env[ií]es)\b/i.test(text) || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder) return false;
+    // Restating the two existing preparations is not another purchase.
+    const restated = text.trim().match(/^es uno con (.+?) y otro con (.+?)[.!]*$/i);
+    if (restated && session.cart.length===2 && session.cart.every(line=>line.quantity===1)) {
+      const identity=(value:string)=>this.normalizeForMatch(value).replace(/^\d+\s+/,'');
+      const requested=[identity(restated[1]),identity(restated[2])].sort();
+      const current=session.cart.map(line=>identity(line.name)).sort();
+      if (requested.every((value,index)=>value===current[index])) {
+        await this.reply(conv,waId,'Así está tu pedido: una unidad de cada preparación.\n\n'+this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,session)||this.formatContinueShoppingPrompt(session)));
+        return true;
+      }
+    }
     const followupMatch = text.match(/\r?\n([^\r\n]+[.:]\s*(?:1\s*|un[oa]?\s+).+)$/i);
     const followup = followupMatch?.[1];
     const purchase = followupMatch ? text.slice(0,followupMatch.index) : text;
@@ -27750,7 +27769,7 @@ export class WhatsappOrchestratorService {
     if (multi.ambiguous.length) {
       const active = multi.ambiguous[0];
       const label = (segment: string) => segment.replace(/^para\s+/i,'').trim();
-      const lines = [`Ahora elige para *${label(active.segment)}*:`];
+      const lines = [`¿Cuál prefieres para *${label(active.segment)}*?`];
       active.candidates.forEach((product,index)=>lines.push(
         `${index+1}. *${product.name}* · ${this.catalogService.formatMoney(product.price)}`));
       lines.push(`\nEscribe el número o el nombre para *${label(active.segment)}*.`);

@@ -1,0 +1,27 @@
+{
+  "batch": 331,
+  "source": "31/10 messages396–401; synthetic two-preparation family split and checkout",
+  "spec": "src/whatsapp/whatsapp-counted-family-split-3110.spec.ts",
+  "specSha256": "2c09f4bc98a76915f6a7e269c28e33f0e1d1e641a4396b4ff6ae74a6837798d0",
+  "newTests": 16,
+  "baseline": {
+    "failed": 4,
+    "passed": 0
+  },
+  "coverage": [
+    "Two catalogs with named cooking preparations; agent off/mock",
+    "Explicit one-and-one split after quantity-two family request",
+    "Price question before split preserves purchase",
+    "Withdrawn preparation preserves empty cart with business-hours override disabled",
+    "Exact restatement of existing two preparations does not add units",
+    "No purchase wording saved as destination",
+    "Full pickup/payment/confirmation DTO and total"
+  ],
+  "limitations": [
+    "Not yet repairing a historical cart containing two fried units",
+    "Conversion of both dishes to combos remains pending",
+    "No real model, Meta or database persistence"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0
+}

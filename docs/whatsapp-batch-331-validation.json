@@ -1,0 +1,61 @@
+{
+  "baseCommit": "ffe4fa7929926e8f29b76b95646c9e41f5db5ece",
+  "batches": [
+    331
+  ],
+  "phases": {
+    "accuracy": {
+      "exitCode": 0,
+      "seconds": 315.98,
+      "sourceUnchanged": true,
+      "tests": 7611,
+      "failed": 0
+    },
+    "rest": {
+      "exitCode": 0,
+      "seconds": 483.05,
+      "sourceUnchanged": true,
+      "tests": 25140,
+      "failed": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 13.0,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 615,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 32767,
+  "suites": 398,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 16,
+  "focus": {
+    "tests": 118,
+    "suites": 3,
+    "passed": true
+  },
+  "initialBaseline": {
+    "failed": 4,
+    "passed": 0
+  },
+  "interruptedAttempt": "First global stopped after four presentation assertions from batch330; active question now says \u00bfCu\u00e1l prefieres\u2026?; final global reruns full inventory.",
+  "externalOrders": 0,
+  "limitations": [
+    "External services and model mocked; no live channel or persistence certification",
+    "Historical wrong-cart repair and conversion of both dishes to combos remain pending"
+  ]
+}

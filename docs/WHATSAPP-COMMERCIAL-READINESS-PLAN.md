@@ -2,6 +2,14 @@
 
 Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son evidencia histórica, no una lista acumulativa de tareas abiertas. Responsable de implementación y pruebas: agente en PPP staging; validación del servicio y decisiones comerciales: operador del restaurante con evidencia del agente.
 
+## VIGENTE — tanda331: conservar reparto entre preparaciones (01/11)
+
+Reproducidos4/4 fallos iniciales del chat31/10 mensajes396–401: «Para pedir dos pollos» → «Uno frito y uno broaster». Se conserva una unidad por preparación cuando son la misma familia y los defaults del catálogo completan las opciones. Protecciones de listas mixtas, opciones pendientes, reemplazos y stock conservadas. También se evita destino falso en «Para pedir dos pescados» y duplicación al reafirmar exactamente las dos preparaciones existentes. La pregunta activa de330 ahora dice «¿Cuál prefieres para …?».
+
+16 controles nuevos en dos catálogos × agente off/mock × normal/precio/agotado/reafirmación;12 recorridos completos y4 guardas de stock. Foco118/3 aprobado. Global final32767 pruebas/398 suites, inventario exacto y615 fuentes congeladas; TypeScript general/build y scripts aprobados. Primera global interrumpida por cuatro expectativas de redacción de330; corregidas sin debilitar pruebas y repetido inventario completo. Evidencias whatsapp-batch-331-{sources,global-sources,validation,patterns}.
+
+Publicación y despliegue staging pendientes; no acreditar deploy hasta verificar SHA y salud. Main/producción y Kamppo sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: reparar carrito con reparto ya equivocado y convertir ambos a combo conservando opciones; siguen pendientes, igual que incidentes no reproducidos del grupoB.
+
 ## VIGENTE — tanda330: una lista activa en pollo y medio (01/11)
 
 Prioridad explícita del usuario: chat31/10 18:54. «Para un pollo y medio» mostraba dos listas1/2 aunque la respuesta solo resolvía la primera.12/12 controles iniciales reprodujeron la confusión. El formato ahora muestra únicamente la elección activa, identifica el producto en la pregunta/instrucción y menciona los pendientes sin otra numeración. No cambia el orden de resolución, las reglas del catálogo ni el estado.
