@@ -1,6 +1,6 @@
 # Plan de corrección — incidentes31/10
 
-Actualizado01/11/2026. Fuente y análisis: whatsapp-chats-3110-review.md. Trabajo en staging; producción y Kamppo permanecen sin promoción hasta solicitud. La tanda326 está desplegada solo en staging. No confundir pruebas simuladas con aceptación del modelo/canal real.
+Actualizado01/11/2026. Fuente y análisis: whatsapp-chats-3110-review.md. Trabajo de pruebas en staging; PPP producción actualizado hasta333 por solicitud del usuario. Kamppo permanece hasta321, pendiente de migración322–333. No confundir pruebas simuladas con aceptación del modelo/canal real.
 
 ## A. Aceptación de ofertas — prioridad inmediata
 
@@ -26,7 +26,7 @@ Casos16:03/16:20: mondongo+limonada y sopa adicional; pedido fragmentado; cambia
 
 ## D. Reparto y sustitución de combos
 
-333: corregida retirada explícita de plato+bebida y sustitución por combo único del mismo plato, incluso «agseosa».56 regresiones nuevas, foco56/1, relacionadas78/2 y global aprobados. Preserva extras no señalados y no modifica parcialmente ante ambigüedad. Consulta previa de disponibilidad del incidente16:19 sigue pendiente. Staging333 desplegado y verificado: código `2976b957`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41333409029; evidencia `whatsapp-batch-333-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica333 local. Producción autorizada pendiente de promover y verificar; Kamppo sin migración nueva. Evidencia whatsapp-batch-333-patterns.md.
+333: corregida retirada explícita de plato+bebida y sustitución por combo único del mismo plato, incluso «agseosa».56 regresiones nuevas, foco56/1, relacionadas78/2 y global aprobados. Preserva extras no señalados y no modifica parcialmente ante ambigüedad. Consulta previa de disponibilidad del incidente16:19 sigue pendiente. Staging333 desplegado y verificado: código `2976b957`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41333409029; evidencia `whatsapp-batch-333-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica333 local. Main/producción promovidos322–333 y verificados: HEAD `8f033001`, runtime `2976b957`, contenedor activo, cero reinicios y API local/pública ok; compose de producción sin healthcheck Docker. Configuración privada y modelos preservados. Workflow41333562844; evidencia `whatsapp-batch-333-production-deployment.json`. Kamppo continúa hasta321; migración322–333 pendiente, no solicitada en esta promoción. Evidencia whatsapp-batch-333-patterns.md.
 
 332: reproducida y corregida reparación de una línea de dos unidades y conversión de ambos a sus combos únicos.48 controles nuevos, foco48/1, relacionadas610/2 y global completa aprobados. Stock/ambigüedad/incompatibilidad dejan todo intacto; notas y opciones se conservan. Staging332 desplegado y verificado: código `a63e00b9`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41326043773; evidencia `whatsapp-batch-332-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica332 verificada localmente. Sigue pendiente pollo+bebida a combo y reparación de líneas de propietario ambiguo. Evidencia whatsapp-batch-332-patterns.md.
 
@@ -56,6 +56,6 @@ Casos17:25/16:24/17:23/18:55: sin gaseosa frente a atributo Colombiana, intercam
 
 Por grupo: reproducir antes de editar, añadir controles en al menos dos catálogos y recorridos completos, verificar respuesta/carrito/estado/DTO. Ejecutar suites afectadas y TypeScript; si cambia motor compartido, global con inventario exacto y fuente congelada. Desplegar staging y verificar SHA, salud y configuración. Registrar límites y pendientes.
 
-La promoción a Main y migración Kamppo son pasos separados, no suceden por publicar staging. Mantener un inventario explícito del delta; actualmente producción/Kamppo321 y staging333 (promoción autorizada pendiente); consultar el relevo para nuevos avances.
+La promoción a Main y migración Kamppo son pasos separados, no suceden por publicar staging. Mantener un inventario explícito del delta; actualmente PPP producción333, staging333 y Kamppo321 (migración322–333 pendiente); consultar el relevo para nuevos avances.
 
 Aceptación final pendiente: ensayo aislado con Luna/Sol reales, mensajes fragmentados, catálogo vigente y trazas; luego canal controlado sin órdenes a cocina. Presupuesto operativo267/256/11 a fecha de este plan; ninguna llamada sin contador previo, límite y parada al primer fallo. No certificar venta ni todas las incidencias por sumar pruebas. Idiomas y variantes cosméticas quedan al final.

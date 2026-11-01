@@ -8,6 +8,6 @@ La nueva ruta identifica dos líneas únicas (un plato y una bebida, una unidad 
 
 Pendientes: consulta histórica «o hay combo con gaseosa?», cantidades ambiguas, equivalencias de combos no literales y reparación de líneas con diferentes notas/opciones. No declarar cerrado todo el grupoD ni acreditado el modelo real.
 
-Usuario autorizó terminar333 y desplegar producción. Pendiente validar, desplegar staging, promover Main y verificar producción. Kamppo sin migración nueva.
+Usuario autorizó terminar333 y desplegar producción. Validación global, despliegue staging y promoción Main/producción completados y verificados. Kamppo sin migración nueva.
 
-Staging333 desplegado y verificado: código `2976b957`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41333409029; evidencia `whatsapp-batch-333-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica333 local. Producción autorizada pendiente de promover y verificar; Kamppo sin migración nueva.
+Staging333 desplegado y verificado: código `2976b957`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41333409029; evidencia `whatsapp-batch-333-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica333 local. Main/producción promovidos322–333 y verificados: HEAD `8f033001`, runtime `2976b957`, contenedor activo, cero reinicios y API local/pública ok; compose de producción sin healthcheck Docker. Configuración privada y modelos preservados. Workflow41333562844; evidencia `whatsapp-batch-333-production-deployment.json`. Kamppo continúa hasta321; migración322–333 pendiente, no solicitada en esta promoción.

@@ -1,0 +1,69 @@
+{
+  "batch": 333,
+  "authorization": "User requested finishing the combo replacement batch and deploying production",
+  "workflowRun": "https://github.com/wilmerx5/kamppo/actions/runs/41333562844",
+  "runtimeCodeCommit": "2976b9579e6c6e7b1c4dcc193b936d3cd4eae2b0",
+  "promotedBatches": [
+    322,
+    323,
+    324,
+    325,
+    326,
+    327,
+    328,
+    329,
+    330,
+    331,
+    332,
+    333
+  ],
+  "validation": "32871 tests / 400 suites, TypeScript general/build and scripts; exact source inventory preserved",
+  "verification": {
+    "environment": "production",
+    "head": "8f033001fd3fc82004cf8810353ad6f2591711eb",
+    "image": "sha256:cdada164a9b8ee4fe62f1742156826fa3acda4955787be0255b1ebabd1f8080f",
+    "restarts": 0,
+    "running": true,
+    "health": null,
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 64.53,
+        "heapTotal": 88.4,
+        "rss": 149
+      },
+      "timestamp": "2026-11-01T17:52:11.354Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 64.65,
+        "heapTotal": 88.4,
+        "rss": 149.12
+      },
+      "timestamp": "2026-11-01T17:52:11.683Z"
+    },
+    "models": {
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": "4 compiled batch292 dictated-address and incomplete-street checks passed\n13 compiled context and note boundary checks passed\n3 compiled compound selection, unit split and conflict-recovery journeys passed\nCompiled batch283 ni-exclusion parsing, conflict and recovery passed\n4 compiled multi-line redirection, clarification, cancellation and expiry journeys passed\n6 compiled pending-note ordinal repair and negative guards passed\n6 compiled router note-conflict and repeat checks passed\n7 compiled note redirection, repetition, stale, expiry, interruption and conflict checks passed\n8 compiled regional payment and wait checks passed\n8 compiled basic total/drink intent checks passed\n4 compiled category-boundary and closing-typo checks passed\n3 compiled greeting checks passed: default, stored invitation, legacy stored invitation\n3 compiled repeat-question checks passed: role repeated without mutation, specific question not swallowed, closed conversation excluded\n3 compiled role-pin checks passed: quote preserved, rejection preserved, mismatched pin discarded\n9 compiled colloquial account-question and mixed-request guards passed\n3 compiled interruption checks passed: fresh street tracked, pickup clears role, clarification preserves street\n3 compiled role checks passed: direct confirmation block, question preserved, place resolved\n7 compiled checkout checks passed: merchant questions, choice/mixed-request guards, ETA units and burst boundaries\n18 compiled referenced preparation routing, negated removal, atomic multiple-removal, short clarification, stale cart, direct guard, paired-plan, negation, atomic split, combo, supply, idempotency, repeated substitution, labelled drink, receipt notes and central-confirmation checks passed; external services isolated\n",
+    "backup": "/***/ppp-manual-release/20261101T175114Z-production",
+    "checkedAt": "2026-11-01T17:52:14.260083+00:00"
+  },
+  "limitations": [
+    "Compiled smoke covers previous cases; batch333-specific journeys validated locally with external services mocked",
+    "No real model/channel or external order test",
+    "Kamppo engine remains through batch321; no migration requested this turn"
+  ]
+}
