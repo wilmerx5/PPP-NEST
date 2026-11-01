@@ -26,7 +26,7 @@ Casos16:03/16:20: mondongo+limonada y sopa adicional; pedido fragmentado; cambia
 
 ## D. Reparto y sustitución de combos
 
-331: reparto inicial entre preparaciones corregido;16 controles nuevos, foco118/3 y global completa aprobados. Intención de compra no se guarda como destino y reafirmación exacta no duplica. Publicación y despliegue staging pendientes; no acreditar deploy hasta verificar SHA y salud. Reparar reparto ya incorrecto y convertir ambos a combo siguen pendientes. Evidencia whatsapp-batch-331-patterns.md.
+331: reparto inicial entre preparaciones corregido;16 controles nuevos, foco118/3 y global completa aprobados. Intención de compra no se guarda como destino y reafirmación exacta no duplica. Staging331 desplegado y verificado: código `89fdb3e0`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41323950754; evidencia `whatsapp-batch-331-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica331 verificada localmente. Reparar reparto ya incorrecto y convertir ambos a combo siguen pendientes. Evidencia whatsapp-batch-331-patterns.md.
 
 330 corregido en presentación y desplegado con329 en staging1528b08c: chat31/10 18:54, «Para un pollo y medio», dos listas con numeración repetida mientras se acepta una elección por turno. Ahora se muestra solo la lista activa y se indica lo pendiente.12 recorridos completos nuevos;180/5 y TypeScript general/build aprobados. Números/nombres y recuperación de elección inválida conservan cantidades, total y confirmación.
 
@@ -52,6 +52,6 @@ Casos17:25/16:24/17:23/18:55: sin gaseosa frente a atributo Colombiana, intercam
 
 Por grupo: reproducir antes de editar, añadir controles en al menos dos catálogos y recorridos completos, verificar respuesta/carrito/estado/DTO. Ejecutar suites afectadas y TypeScript; si cambia motor compartido, global con inventario exacto y fuente congelada. Desplegar staging y verificar SHA, salud y configuración. Registrar límites y pendientes.
 
-La promoción a Main y migración Kamppo son pasos separados, no suceden por publicar staging. Mantener un inventario explícito del delta; actualmente producción/Kamppo321 y staging331 (despliegue pendiente); consultar el relevo para nuevos avances.
+La promoción a Main y migración Kamppo son pasos separados, no suceden por publicar staging. Mantener un inventario explícito del delta; actualmente producción/Kamppo321 y staging331; consultar el relevo para nuevos avances.
 
 Aceptación final pendiente: ensayo aislado con Luna/Sol reales, mensajes fragmentados, catálogo vigente y trazas; luego canal controlado sin órdenes a cocina. Presupuesto operativo267/256/11 a fecha de este plan; ninguna llamada sin contador previo, límite y parada al primer fallo. No certificar venta ni todas las incidencias por sumar pruebas. Idiomas y variantes cosméticas quedan al final.

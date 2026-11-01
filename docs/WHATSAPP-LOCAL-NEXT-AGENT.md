@@ -6,7 +6,7 @@ Reproducidos4/4 fallos iniciales del chat31/10 mensajes396–401: «Para pedir d
 
 16 controles nuevos en dos catálogos × agente off/mock × normal/precio/agotado/reafirmación;12 recorridos completos y4 guardas de stock. Foco118/3 aprobado. Global final32767 pruebas/398 suites, inventario exacto y615 fuentes congeladas; TypeScript general/build y scripts aprobados. Primera global interrumpida por cuatro expectativas de redacción de330; corregidas sin debilitar pruebas y repetido inventario completo. Evidencias whatsapp-batch-331-{sources,global-sources,validation,patterns}.
 
-Publicación y despliegue staging pendientes; no acreditar deploy hasta verificar SHA y salud. Main/producción y Kamppo sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: reparar carrito con reparto ya equivocado y convertir ambos a combo conservando opciones; siguen pendientes, igual que incidentes no reproducidos del grupoB.
+Staging331 desplegado y verificado: código `89fdb3e0`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41323950754; evidencia `whatsapp-batch-331-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica331 verificada localmente. Main/producción y Kamppo sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: reparar carrito con reparto ya equivocado y convertir ambos a combo conservando opciones; siguen pendientes, igual que incidentes no reproducidos del grupoB.
 
 ## VIGENTE — tanda330: una lista activa en pollo y medio (01/11)
 

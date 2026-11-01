@@ -10,4 +10,4 @@ La ampliación encontró además una dirección falsa en «Para pedir dos pescad
 
 Pendiente del grupoD: reparación cuando ya hay cantidades equivocadas, «ambos en combo» y sustitución de pollo+bebida por combo conservando opciones. No declarar resueltos esos recorridos por corregir el origen del reparto. Cero inferencia pagada, Meta y órdenes externas. Solo staging; producción/Kamppo sin cambios.
 
-Publicación y despliegue staging pendientes; no acreditar deploy hasta verificar SHA y salud.
+Staging331 desplegado y verificado: código `89fdb3e0`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41323950754; evidencia `whatsapp-batch-331-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica331 verificada localmente.
