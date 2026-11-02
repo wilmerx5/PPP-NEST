@@ -16308,7 +16308,12 @@ export class WhatsappOrchestratorService {
       return clear('La indicación afecta una opción del plato; dime explícitamente qué opción quieres cambiar.');
     const edited = editScopedCartNote(line.note,{kind:'append',query:'',note:pending.note,preserve:[]});
     if (edited.blocked) return ask('La nota es demasiado larga; retírala y envíala más corta.\n');
-    const next = {...session,pendingSubsetKitchenNote:undefined,cart:session.cart.map((item,i)=>i===index?{...item,note:edited.note}:item)};
+    const cart = session.cart.map((item,i)=>i===index?{...item,note:edited.note}:item);
+    const next = {...session,pendingSubsetKitchenNote:undefined,cart,
+      lastKitchenNoteSelection: JSON.stringify(cart) !== JSON.stringify(session.cart) ? {
+        beforeCart:structuredClone(session.cart),cartSignature:JSON.stringify(cart),sourceIndex:index,
+        note:pending.note,createdAt:Date.now(),lineIndices:scope.indices,
+      } : undefined};
     await this.conversationService.saveSession(conv,next);
     await this.reply(conv,waId,'Listo, actualicé la nota de '+this.formatCartLineLabel(line)+' ✅\n\n'+
       this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
@@ -21293,6 +21298,10 @@ export class WhatsappOrchestratorService {
     const reference = normalizeCorrection(raw).replace(/^(?:al|el|la|a la)\s+/, '');
     if (/^(?:\d{1,2}|otr[oa]|primer[oa]|segund[oa]|tercer[oa]|cuart[oa]|quint[oa])$/.test(reference) ||
       session.cart.some(line=>normalizeCorrection(line.name).replace(/^(?:el|la)\s+/, '') === reference)) return reference;
+    if (session.lastKitchenNoteSelection.lineIndices) {
+      const match = this.uniqueClarificationLine(session,session.lastKitchenNoteSelection.lineIndices.map(cartIndex=>({cartIndex})),raw);
+      if (match) return reference;
+    }
     return null;
   }
 
@@ -21321,7 +21330,9 @@ export class WhatsappOrchestratorService {
     if (reference === null) return false;
     if (!available || !last.createdAt || Date.now() - last.createdAt < 0 || Date.now() - last.createdAt > 10 * 60 * 1000 ||
       last.cartSignature !== JSON.stringify(session.cart) || last.beforeCart.length !== session.cart.length ||
-      session.cart.length < 2 || session.cart.some(line=>line.quantity !== 1) ||
+      session.cart.length < 2 || !last.lineIndices && session.cart.some(line=>line.quantity !== 1) ||
+      last.lineIndices && (last.lineIndices.length < 2 || new Set(last.lineIndices).size !== last.lineIndices.length ||
+        !last.lineIndices.includes(last.sourceIndex) || last.lineIndices.some(index=>!Number.isInteger(index) || index<0 || index>=session.cart.length)) ||
       !Number.isInteger(last.sourceIndex) || last.sourceIndex < 0 || last.sourceIndex >= session.cart.length) return clarify();
     if (reference === '__cancel_redirect__') {
       await this.reply(conv,waId,`Dejé la nota en *${session.cart[last.sourceIndex].name}*. Tu pedido sigue igual.`);
@@ -21329,14 +21340,19 @@ export class WhatsappOrchestratorService {
     }
     const positions: Record<string,number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3,cuarto:4,cuarta:4,quinto:5,quinta:5};
     const ordinal = positions[reference] || (/^\d{1,2}$/.test(reference) ? Number(reference) : 0);
-    const targets = /^(?:otro|otra)$/.test(reference) ? session.cart.flatMap((_,i)=>i !== last.sourceIndex ? [i] : []) :
-      ordinal ? (ordinal >= 1 && ordinal <= session.cart.length ? [ordinal-1] : []) :
-      session.cart.flatMap((line,i)=>normalizeCorrection(line.name).replace(/^(?:el|la)\s+/, '') === reference ? [i] : []);
+    const eligible = last.lineIndices || session.cart.map((_,index)=>index);
+    let targets = /^(?:otro|otra)$/.test(reference) ? eligible.filter(index=>index !== last.sourceIndex) :
+      ordinal ? (ordinal >= 1 && ordinal <= eligible.length ? [eligible[ordinal-1]] : []) :
+      eligible.filter(index=>normalizeCorrection(session.cart[index].name).replace(/^(?:el|la)\s+/, '') === reference);
+    if (last.lineIndices && !targets.length && !ordinal && !/^(?:otro|otra)$/.test(reference)) {
+      const match = this.uniqueClarificationLine(session,eligible.map(cartIndex=>({cartIndex})),reference);
+      if (match && match !== 'ambiguous') targets = [match.index];
+    }
     const askDestination = async (reason = '') => {
       // Retain the original timestamp and cart fingerprint, never renew an old selection.
       await this.conversationService.saveSession(conv,{...session,lastKitchenNoteSelection:{...last,awaitingDestination:true}});
       await this.reply(conv,waId,`${reason ? reason+'\n\n' : ''}¿A cuál plato paso la nota «${last.note}»? Sigue en *${session.cart[last.sourceIndex].name}*.\n`+
-        session.cart.map((line,i)=>`${i+1}. ${this.formatCartLineLabel(line)}${line.note ? ` — ${line.note}` : ''}`).join('\n')+
+        eligible.map((index,position)=>`${position+1}. ${this.formatCartLineLabel(session.cart[index])}${session.cart[index].note ? ` — ${session.cart[index].note}` : ''}`).join('\n')+
         '\nEscribe el número o el nombre completo. Para dejarla donde está, escribe «no muevas la nota».');
       return true;
     };
