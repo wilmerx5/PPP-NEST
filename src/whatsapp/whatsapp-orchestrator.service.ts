@@ -96,6 +96,7 @@ import {
   isReachSavedAddressQuestion,
   extractCoverageAddressProbe,
   isDeliveryEtaInquiry,
+  isStandaloneDeliveryEtaInquiry,
   isDeliveryAvailabilityFaq,
   isDeliveryRangeQuestion,
   isUnansweredHumanComplaint,
@@ -16295,6 +16296,12 @@ export class WhatsappOrchestratorService {
     if (session.mpPreferenceId || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
       session.pendingUnitDistribution || session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
       return ask('Hay otra selección o un pago pendiente; acláralo antes de aplicar la nota.\n');
+    if (isStandaloneDeliveryEtaInquiry(text)) {
+      const eta = cfg.localContext?.deliveryTimeNote?.trim()
+        ? this.formatDeliveryEtaSentence(cfg)
+        : 'El equipo debe confirmar el tiempo estimado de entrega.';
+      return ask(eta+'\n\n');
+    }
     // A price interruption is read-only: keep the original choice and its expiry.
     if (cartTotalFollowupIntent(text) || isCartChargeQuestion(text) || isOrderBillRequest(text))
       return ask(this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n');
