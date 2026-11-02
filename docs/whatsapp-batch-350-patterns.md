@@ -12,7 +12,7 @@ El resolvedor de notas por preparación responde consultas de cuenta reconocidas
 
 68 controles nuevos:48 recorridos en dos catálogos × agente desactivado/simulado × carrito/confirmación ×6 expresiones;16 guardas de vencimiento, cambio de carrito, repetición, cancelación, confirmación prematura, consulta condicional, precio de producto y mensaje mixto;4 controles de domicilio pendiente/cotizado. Los48 recorridos verifican creación simulada, DTO y recibo:3 unidades, nota nueva solo en una, opciones y notas anteriores preservadas. Sin pedidos externos.
 
-Foco inicial265/4 aprobado; foco final68/1 aprobado tras añadir domicilio. Global33633/418 aprobada,636 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. El despliegue se registra aparte tras verificarlo.
+Foco inicial265/4 aprobado; foco final68/1 aprobado tras añadir domicilio. Global33633/418 aprobada,636 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging desplegado/verificado: `d12dd080`, workflow41493753247; healthy, cero reinicios, API local/pública ok, configuración/modelos preservados. Controles compilados existentes aprobados; cobertura350 local.
 
 ## Límites y siguiente paso
 
