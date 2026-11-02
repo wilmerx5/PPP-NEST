@@ -1,5 +1,12 @@
 # Plan unificado de corrección de pedidos
 
+## VIGENTE — tanda350: total durante aclaración de nota
+
+Baseline50/64 fallan: al preguntar el total durante selección348, el bot repetía candidatos sin precio. Ahora responde con resumen y retoma la misma aclaración sin cambiar carrito, estado ni caducidad.68 controles nuevos:48 recorridos con DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación ×6 frases;16 guardas y4 controles de domicilio. Foco inicial265/4 y final68/1 aprobados.
+
+Global aislada33633/418 aprobada,636 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Runtime `ae23d1e6`. Publicación/despliegue de staging pendientes de verificación al escribir este bloque; consultar evidencia350 de despliegue cuando exista. Producción349 `932f60b7` y Kamppo321 sin cambios. Documentación del merge de producción sincronizada; Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni cierra U3/U4. Próximo: tiempo de entrega durante aclaración y retomarla.
+
+
 ## VIGENTE — producción349: merge de staging a Main (02/11/2026)
 
 Solicitud explícita del usuario: merge con Main y despliegue. Runtime producción `932f60b7d31957378d054295a9bd154742171621`: incorpora tandas334–349 y preserva íntegros los cambios Bold/auth de Main `b4647a9e`. Merge sin conflictos, validado en worktree aislado; cambios locales ajenos de staging preservados.
