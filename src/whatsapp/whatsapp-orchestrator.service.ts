@@ -16295,6 +16295,9 @@ export class WhatsappOrchestratorService {
     if (session.mpPreferenceId || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
       session.pendingUnitDistribution || session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
       return ask('Hay otra selección o un pago pendiente; acláralo antes de aplicar la nota.\n');
+    // A price interruption is read-only: keep the original choice and its expiry.
+    if (cartTotalFollowupIntent(text) || isCartChargeQuestion(text) || isOrderBillRequest(text))
+      return ask(this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n');
     if (/[¿?]/.test(text) || /\b(?:si|no|confirmar|confirmo|ambos|todos|agrega|quita|cambia|quiero|dame)\b/.test(said)) return ask();
     const numeric = /^\d{1,2}$/.test(said);
     const match = numeric ? null : this.uniqueClarificationLine(session,scope.indices.map(cartIndex=>({cartIndex})),text);
