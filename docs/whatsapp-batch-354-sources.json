@@ -1,0 +1,32 @@
+{
+  "batch": 354,
+  "runtimeCommit": "3d0aca67",
+  "source": "User-shared chat 2026-11-02 13:18\u201313:23: trailing celular retained in address after phone extraction. Fixtures anonymized.",
+  "baseline": {
+    "failed": 28,
+    "passed": 12,
+    "tests": 40
+  },
+  "focusedRelated": {
+    "tests": 258,
+    "suites": 5
+  },
+  "finalFocused": {
+    "tests": 44,
+    "suites": 1
+  },
+  "newTests": 44,
+  "testFile": "src/whatsapp/whatsapp-address-phone-label-354.spec.ts",
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "limitations": [
+    "No model/channel test",
+    "No historical address migration",
+    "Incomplete phones not treated as valid contacts"
+  ]
+}

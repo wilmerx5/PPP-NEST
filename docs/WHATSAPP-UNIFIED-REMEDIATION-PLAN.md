@@ -1,5 +1,12 @@
 # Plan unificado de corrección de pedidos
 
+## VIGENTE — tanda354: teléfono y etiqueta fuera de dirección
+
+Chat02/11: etiqueta «celular» posterior al número quedaba en dirección/recibo. Reconocimiento acotado extrae móvil validado y etiqueta juntos, incluyendo +57/espacios, sin borrar referencias con esas palabras. Conserva conjunto, torre, apto y contacto al recibir la calle después. Baseline28/40 fallan;44 controles nuevos,32 cierres DTO/recibo simulado en dos catálogos × agente off/mock × calle presente/pendiente ×4 formatos. Foco258/5 y44/1 aprobados. Código `3d0aca67`.
+
+Global aislada33919/422 aprobada,640 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Primer intento interrumpido por SIGTERM/143 tras11 suites sin fallos registrados; descartado, repetición completa con4 workers aprobada. Publicación/despliegue de staging pendientes de verificación. Producción349 `932f60b7` y Kamppo321 sin cambios; Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No sanea órdenes históricas ni acredita modelo/canal real. Próximo: cambios/retiradas de productos durante aclaración de nota, evitando selección sobre carrito desactualizado. U3/U4 siguen abiertos.
+
+
 ## VIGENTE — tandas352–353: total+demora y cierre que no es nombre
 
 352:84 controles nuevos; consulta combinada de total/ETA durante aclaración, selección y «no, el otro» conservan notas, opciones y cantidades. Baseline66/80 fallan; foco334/5 y84/1; global propia33805/420 aprobada. Código `6a5c9d7f`.
