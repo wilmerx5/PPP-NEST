@@ -4,7 +4,7 @@
 
 Chat02/11: elección anticipada de transferencia omitía datos de cuenta al completar nombre/dirección; también al cambiar desde efectivo en revisión final. Baseline20/20 fallan. Ahora revisión final muestra datos configurados o aviso explícito de cuenta ausente, sin duplicar el prefacio del mismo turno.28 controles nuevos en dos catálogos × agente off/mock;16 cierres DTO simulados. Foco28/1 y124 controles relacionados aprobados. Código `8a02d021`. Incluye despedida de domicilio `f692d43e`: «Te lo enviaremos lo más pronto posible».
 
-Global33991/424 aprobada;642 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue356 pendiente; staging runtime355 y producción349 siguen vigentes. Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni pago realizado. Próximo: «manejan datáfono», distinguir equipo físico de enlace usando configuración; luego sustituciones durante aclaración de notas.
+Global33991/424 aprobada;642 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging356 desplegado/verificado: `b648c6e1`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41522483566; evidencia356-staging-deployment. Controles compilados existentes aprobados; cobertura356 local. Producción349 sin cambios. Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni pago realizado. Próximo: «manejan datáfono», distinguir equipo físico de enlace usando configuración; luego sustituciones durante aclaración de notas.
 
 
 ## VIGENTE — tanda355: retirada/cantidad durante aclaración de nota
