@@ -14,6 +14,7 @@ export class BoldReceipt {
   @Column({ length: 3 }) currency: string;
   @Column({ length: 24 }) status: 'approved' | 'rejected' | 'voided';
   @Column({ length: 40 }) method: string;
+  @Column({ length: 24, default: 'webhook' }) confirmationSource: string;
   @Column({ type: 'datetime', precision: 3 }) paidAt: Date;
   @CreateDateColumn({ precision: 3 }) receivedAt: Date;
   @Column({ type: 'varchar', length: 255, nullable: true }) payerEmail:

@@ -127,10 +127,6 @@ export class BoldService {
     };
   }
   async claim(id: string, dto: ClaimBoldDto, actor: User) {
-    if (!this.configuration().qrVerified)
-      throw new ConflictException(
-        'Falta validar la recepción del QR estático con Bold',
-      );
     try {
       return await this.db.transaction(async (manager) => {
         const rows = manager.getRepository(BoldReceipt);
@@ -141,16 +137,21 @@ export class BoldService {
         if (!row) throw new NotFoundException('Pago no encontrado');
         if (row.merchantId !== this.setting('BOLD_MERCHANT_ID'))
           throw new ConflictException('El pago pertenece a otra cuenta Bold');
+        if (
+          !this.configuration().qrVerified &&
+          row.confirmationSource !== 'online_api'
+        )
+          throw new ConflictException(
+            'Falta validar el QR fijo; este recibo aún no tiene confirmación por API online',
+          );
         if (row.status !== 'approved')
           throw new ConflictException('El pago no está aprobado');
         if (row.claimedBy)
           throw new ConflictException('Este pago ya fue utilizado');
-        const order = await manager
-          .getRepository(Order)
-          .findOne({
-            where: { id: dto.orderId },
-            lock: { mode: 'pessimistic_write' },
-          });
+        const order = await manager.getRepository(Order).findOne({
+          where: { id: dto.orderId },
+          lock: { mode: 'pessimistic_write' },
+        });
         if (
           !order ||
           order.orderType !== 'delivery' ||

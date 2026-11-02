@@ -12,5 +12,6 @@ for attempt in {1..60}; do
 done
 if [ "$ready" != true ]; then echo 'Isolated MariaDB did not become ready'; exit 1; fi
 docker exec -i "$container" mariadb -uroot -pbold-isolated-test bold_isolated < migrations/042_bold_receipts.sql
+docker exec -i "$container" mariadb -uroot -pbold-isolated-test bold_isolated < migrations/043_bold_dynamic_qr.sql
 docker exec "$container" mariadb -uroot -pbold-isolated-test bold_isolated -e 'CREATE TABLE ppp_orders (id INT PRIMARY KEY, orderType VARCHAR(20), orderStatus VARCHAR(30))'
-BOLD_TEST_DB_PORT="$(docker port "$container" 3306 | sed 's/.*://')" npx jest --runInBand --testPathPattern=bold
+BOLD_TEST_DB_PORT="$(docker port "$container" 3306 | sed 's/.*://')" npx jest --runInBand --testPathPattern=/src/bold/

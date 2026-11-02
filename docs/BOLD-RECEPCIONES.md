@@ -72,3 +72,23 @@ Fuentes: https://developers.bold.co/webhook y https://bold.co/cf/legal/terminos-
 ## QR recibido el 2 de noviembre de 2026
 
 El QR oficial aportado por el usuario se incorporó sin modificar a `ppp-admin-front/public/payments/qr-bold.png`. El panel lo muestra por defecto y permite reemplazarlo mediante `BOLD_STATIC_QR_IMAGE_URL`. Ya no es necesario configurar una URL para mostrar este QR. Su incorporación no acredita el destinatario ni la cobertura del webhook: ambos deben verificarse en el piloto.
+
+## Prueba de QR dinámico por API (2 de noviembre de 2026)
+
+El panel añade una sección **Prueba de QR dinámico**, exclusiva de administrador durante el piloto. No crea órdenes, no llama a cocina y no modifica puntos. Se crea una intención de cobro real de producción que solo se paga si el pagador escanea el QR y autoriza en su banco.
+
+1. Abrir `https://api.prontopolloportal.com/recepciones` con una sesión de administrador.
+2. Guardar la **llave de identidad de producción de API Pagos en línea**. No es la llave secreta del webhook. La llave se cifra con AES-256-GCM en `ppp_bold_online_settings`, usando una clave derivada de `ENCRYPTION_KEY` o `JWT_SECRET` del servidor. No se devuelve en respuestas ni se guarda en localStorage. Si se rota la clave de cifrado, hay que volver a guardar la identidad.
+3. Comprobar acceso API: hace un GET a `/v1/payment/pse/banks`. Esto comprueba acceso general, no garantiza habilitación de QR; la generación posterior lo comprueba. Si Bold responde 401/403, la UI muestra el error y no finge un QR funcional.
+4. Escribir importe (mínimo $1.000), nombre real del pagador y duración solicitada. Por defecto 60 minutos; permite 10, 30, 60 o 120. Teléfono, correo y cédula son opcionales en el formulario y deben ser reales si se suministran.
+5. Se crea `POST /v1/payment-intent` con `expiration_date` explícita y después `POST /v1/payment` usando QR `PLAIN_BASE64`. No se inventan datos de huella digital ni identidad. Si Bold exige más datos, se muestra el rechazo y deben completarse antes de preparar otro cobro.
+6. La duración de la intención NO demuestra la duración del QR. La interfaz respeta el menor vencimiento entre lo solicitado, la intención devuelta y `next_actions.expires_at`, con conversión exacta de nanosegundos. No se envían parámetros de duración QR no documentados. Si Bold limita el QR a 10 minutos, la cuenta regresiva muestra 10 minutos aunque se hayan solicitado 60 para la intención.
+7. Escanear desde el banco, comprobar destinatario y valor y autorizar el pago pequeño. La UI consulta el estado de ese intento cada 10 segundos. El servidor limita las consultas a Bold a una por intento cada 10 segundos.
+8. Solo `APPROVED`, con referencia, ID de transacción, método QR, importe COP y fecha coherentes, crea un recibo confirmado por API. `PROCESSING` no confirma dinero. Un recibo anulado no se revive. El panel distingue **Pago confirmado por API** de **webhook recibido** usando los eventos almacenados: no se fabrica una notificación para ocultar fallos.
+9. Los recibos confirmados por API pueden asociarse sin activar `BOLD_STATIC_QR_VERIFIED`. Ese indicador sigue reservado al QR fijo original, cuya cobertura no está comprobada.
+
+Los intentos se guardan para recuperarlos al recargar. Reenviar el mismo requestId no vuelve a crear un cobro. Una respuesta de generación ambigua queda como tal y requiere consultar antes de preparar otro cobro; crear otro no cancela el primero. La clave guardada en la UI tiene prioridad sobre las variables privadas opcionales `BOLD_ONLINE_IDENTITY_KEY` o `BOLD_IDENTITY_KEY`.
+
+Endpoints administrativos: `GET /api/bold/online`, `PUT /api/bold/online/key`, `POST /api/bold/online/check`, `POST /api/bold/online/qr` y `POST /api/bold/online/qr/:id/status`. Aplicar migración `043_bold_dynamic_qr.sql` antes de usar.
+
+Documentación técnica: https://developers.bold.co/pagos-en-linea/api-de-pagos-en-linea/integracion y https://developers.bold.co/pagos-en-linea/api-de-pagos-en-linea/esquema-de-datos . No se afirma que la cuenta del usuario ya tenga autorizada esta API; se comprueba con su llave y se informa el resultado.
