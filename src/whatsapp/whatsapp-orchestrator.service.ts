@@ -16296,6 +16296,26 @@ export class WhatsappOrchestratorService {
     if (session.mpPreferenceId || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
       session.pendingUnitDistribution || session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
       return ask('Hay otra selección o un pago pendiente; acláralo antes de aplicar la nota.\n');
+    const removal = parseScopedCartRemoval(text);
+    const quantity = parseCartQuantityCorrection(text);
+    if (removal || quantity) {
+      const query = (removal || quantity)!.query;
+      // Numbers belong to the note's candidate list; require a named, unique line.
+      const indices = session.cart.flatMap((line,index)=>correctionMatchesLine(line,query)?[index]:[]);
+      if (cartRowReference(query) !== null || indices.length !== 1 || /\b(?:si|cuando|pero|excepto)\b/.test(said))
+        return ask('Para cambiar el carrito, indica el plato y una opción que lo distinga.\n');
+      if (quantity && quantity.quantity === session.cart[indices[0]].quantity)
+        return ask('Esa línea ya tiene esa cantidad.\n');
+      const editable = {...session,pendingSubsetKitchenNote:undefined,lastKitchenNoteSelection:undefined};
+      const handled = removal
+        ? await this.tryHandleScopedCartRemoval(conv,waId,editable,text,cfg)
+        : await this.tryHandleCartQuantityCorrection(conv,waId,editable,text,cfg);
+      if (JSON.stringify(this.conversationService.getSession(conv).cart) !== scope.cartSignature) {
+        await this.reply(conv,waId,'Dejé sin aplicar la nota pendiente porque cambió el carrito. Si todavía la necesitas, dime de nuevo el plato y la nota.');
+        return true;
+      }
+      return handled || ask();
+    }
     const totalAndEta = isCartTotalAndEtaInquiry(text);
     if (totalAndEta || isStandaloneDeliveryEtaInquiry(text)) {
       const eta = cfg.localContext?.deliveryTimeNote?.trim()
