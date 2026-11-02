@@ -1,0 +1,40 @@
+{
+  "batch": 340,
+  "sources": [
+    "01/11 mensajes438–447: total4 ejecutivos, preparación3+1, sopas3+1",
+    "31/10 gruposC/D: identidad de ejecutivo y reparto; consolidación de planes en WHATSAPP-UNIFIED-REMEDIATION-PLAN.md"
+  ],
+  "spec": "src/whatsapp/whatsapp-counted-header-340.spec.ts",
+  "specSha256": "0d372b1b78e1c83a52414f0dc095943a12302aa5549e08fcf29120a283f8252e",
+  "newTests": 68,
+  "baseline": {
+    "failed": 2,
+    "passed": 0,
+    "observed": "4 ejecutivos fritos +1 pollo completo +3 sopas ajiaco +1 menudencia; distinto resumen exacto al histórico, mismas clases de fallo"
+  },
+  "scope": [
+    "Encabezado multilínea de3–30 unidades y familia de catálogo con variantes",
+    "Opciones contadas incluidas, reparto pendiente por propietario y commit completo",
+    "Conserva notas compartidas, estado de checkout y carrito previo",
+    "Respuesta por número, nombre o preparación distintiva; repetición exacta no suma",
+    "Firma/stock/opciones inválidas, cantidades incongruentes, cancelación y guardas de interrupción",
+    "Dos catálogos × agente off/mock;8 cierres con DTO/recibo"
+  ],
+  "limitations": [
+    "No certifica todas las formas de reparto ni reparaciones de carritos históricos",
+    "Asignar una opción a varias preparaciones a la vez queda fuera de esta selección por fila",
+    "Repartos de dos unidades conservan sus rutas previas",
+    "Los otros grupos del plan unificado siguen pendientes",
+    "No inferencia real, Meta ni persistencia externa"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "focus": {
+    "passed": 68,
+    "suites": 1,
+    "relatedPreviousFocus": {
+      "passed": 70,
+      "suites": 3
+    }
+  }
+}

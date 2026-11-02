@@ -1503,6 +1503,7 @@ export class WhatsappOrchestratorService {
     if (/\b\d{1,2}\s+[a-z]{2,}\b/i.test(text)) {
       text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
     }
+    if (await this.tryHandleCountedHeaderOrder(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleMixedRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleMultipleRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleMealtimeAvailability(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -11270,6 +11271,8 @@ export class WhatsappOrchestratorService {
     if (session.pendingRecipientOrPlace) {
       await say(`Falta aclarar si *${session.pendingRecipientOrPlace}* es el nombre o el barrio/conjunto de entrega.`);return;
     }
+
+    if (session.pendingCountedHeaderOrder) { await say('Falta completar el reparto de opciones antes de confirmar.');return; }
 
     if (session.pendingMatch?.unitAttributeGroups) {
       await say('Falta elegir la preparación del reparto de dos unidades antes de confirmar.');return;
@@ -25622,6 +25625,133 @@ export class WhatsappOrchestratorService {
       return {...line,attributes:[...(line.attributes || []).filter(choice=>choice.attributeName!==attribute.attributeName),choices[0]]};
     });
     return changes.every(Boolean) ? {...session,cart:changes as WhatsappSessionData['cart']} : null;
+  }
+
+  /** A total heading describes the following rows; it is never an extra purchase. */
+  private async tryHandleCountedHeaderOrder(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const normalize = (value: string) => this.normalizeForMatch(value);
+    const number = (value: string) => ({un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10}[value] ?? Number(value));
+    const counted = /^(\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(.+)$/;
+    let pending = session.pendingCountedHeaderOrder;
+    if (!pending && !text.includes('\n')) return false;
+    const menu = await this.catalogService.getMenuProducts();
+    const unchanged = async (message: string) => { await this.reply(conv,waId,message+' El pedido sigue igual.'); return true; };
+    if (pending) {
+      if (/^(reiniciar|cancelar|cancelar pedido|vaciar|borrar todo)$/.test(normalize(text))) return false;
+      if (pending.cartSignature !== JSON.stringify(session.cart)) {
+        await this.conversationService.saveSession(conv,{...session,pendingCountedHeaderOrder:undefined});
+        return unchanged('El carrito cambió. Repite el reparto completo para revisarlo.');
+      }
+      pending = structuredClone(pending);
+      const allocation = pending.allocations[0];
+      const choice = allocation?.counts[0];
+      const available = allocation ? pending.units.filter(unit => !unit.attributes.some(attr => attr.attributeName===allocation.attributeName)) : [];
+      const ids = [...new Set(available.map(unit=>unit.productId))];
+      const words=normalize(text).replace(/^(?:el|la) /,'').split(' ');
+      const named=menu.filter(product=>ids.includes(product.id) && words.length>0 && words.every(word=>normalize(product.name).split(' ').includes(word)));
+      const selected = /^\d{1,2}$/.test(normalize(text)) ? ids[Number(normalize(text))-1] :
+        !/[¿?]/.test(text) && !/\b(?:no|si|sin|agrega|quita|cambia|quiero|dame|otro|otra|mas|ademas|enviame|regalame)\b/.test(normalize(text))
+          ? (named.length===1 ? named[0].id : this.catalogService.resolveSpokenDish(text,menu.filter(product=>ids.includes(product.id)))?.id) : undefined;
+      const note = /^(?:todos |todas |para todos )?sin\s+/.test(normalize(text)) ? this.catalogService.extractProductModificationNote(text) : undefined;
+      if (note) {
+        for (const unit of pending.units) {
+          const edited=editScopedCartNote(unit.note,{kind:'append',query:'',note,preserve:[]});
+          if (edited.blocked) return unchanged('Resume la nota para poder conservarla.');
+          unit.note=edited.note;
+        }
+      } else if (selected && choice) {
+        const targets = available.filter(unit=>unit.productId===selected);
+        if (targets.length < choice.quantity) return unchanged('Esa línea no tiene suficientes unidades para esa opción. Elige otra línea o cancela el reparto.');
+        for (const unit of targets.slice(0,choice.quantity)) unit.attributes.push({attributeName:allocation.attributeName,attributeValue:choice.value});
+        allocation.counts.shift();
+      }
+    } else {
+      if (/[¿?]/.test(text)) return false;
+      const lines = text.split(/\r?\n/).map(value=>value.trim()).filter(Boolean);
+      if (lines.length<3 || lines.length>15) return false;
+      const head = normalize(lines[0]).replace(/^(?:(?:por favor|quiero|dame|me das|me regalas|enviame)\s+)+/,'').match(counted);
+      if (!head || number(head[1])<3 || number(head[1])>30) return false;
+      const variants = this.catalogService.findCatalogPrefixCandidates(head[2],menu.map(product=>({...product,availableNow:true})));
+      if (variants.length<2) return false;
+      if (session.lastCountedHeaderOrder?.sourceText===normalize(text) && session.lastCountedHeaderOrder.cartSignature===JSON.stringify(session.cart)) {
+        await this.reply(conv,waId,'Ese reparto ya está en el pedido; no añadí más unidades.\n\n'+this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,session)||this.formatContinueShoppingPrompt(session)));return true;
+      }
+      if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingUnitDistribution || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return unchanged('Termina o cancela la selección anterior antes de añadir este reparto.');
+      const family = this.catalogService.findProductVariantFamily(head[2],variants);
+      const units: NonNullable<WhatsappSessionData['pendingCountedHeaderOrder']>['units'] = [];
+      const allocations: NonNullable<WhatsappSessionData['pendingCountedHeaderOrder']>['allocations'] = [];
+      const shared: string[]=[];
+      for (const raw of lines.slice(1)) {
+        const row=normalize(raw).match(counted);
+        if (!row) { shared.push(raw); continue; }
+        const quantity=number(row[1]);
+        if (!quantity || quantity>30) return unchanged('Revisa las cantidades del reparto.');
+        // Restrict every shorthand to the heading's catalog family.
+        const product=this.catalogService.resolveSpokenDish(row[2],variants) ||
+          (family ? this.catalogService.pickVariantFromFamilyText(row[2],family) : null) ||
+          this.catalogService.resolveSpokenDish(head[2]+' '+row[2],variants);
+        const attributeHits=variants.flatMap(product=>(product.attributes || []).flatMap(attr=>attr.options
+          .filter(option=>[normalize(option),normalize(option)+'s',normalize(option).replace(/s$/,'')].includes(row[2]))
+          .map(option=>({attributeName:attr.attributeName,value:option}))));
+        const unique=[...new Map(attributeHits.map(hit=>[hit.attributeName+'|'+hit.value,hit])).values()];
+        if (unique.length===1) {
+          const hit=unique[0];let allocation=allocations.find(item=>item.attributeName===hit.attributeName);
+          if (!allocation) {allocation={attributeName:hit.attributeName,counts:[]};allocations.push(allocation);}
+          allocation.counts.push({value:hit.value,quantity});
+        } else if (product && variants.some(item=>item.id===product.id)) {
+          const parsed=this.catalogService.resolveAttributesFromMessage(product,row[2],[]);
+          if (this.catalogService.uncoveredWordsAgainstOffers(row[2],[product]).length) return unchanged('Hay una opción que necesito aclarar antes de añadir el reparto.');
+          for(let i=0;i<quantity;i++) units.push({productId:product.id,attributes:parsed.status==='invalid' ? [] : structuredClone(parsed.attributes)});
+        } else return unchanged('No identifiqué una preparación u opción dentro del reparto. Escríbela con el nombre de la carta.');
+      }
+      const total=number(head[1]);
+      if (units.length!==total) return unchanged(`Pediste ${total} en total, pero las preparaciones suman ${units.length}. Indica las cantidades correctas.`);
+      for (const allocation of allocations) {
+        if (allocation.counts.reduce((sum,item)=>sum+item.quantity,0)!==total || new Set(allocation.counts.map(item=>item.value)).size!==allocation.counts.length) return unchanged(`El reparto de ${allocation.attributeName} debe sumar ${total}.`);
+        allocation.counts.sort((a,b)=>a.quantity-b.quantity);
+      }
+      for (const unit of units) {
+        const product=menu.find(item=>item.id===unit.productId)!;
+        const sharedText=shared.join(' ');
+        const parsed=this.catalogService.resolveAttributesFromMessage(product,sharedText,unit.attributes);
+        unit.attributes=(parsed.status==='invalid' ? unit.attributes : parsed.attributes).filter(attr=>!allocations.some(item=>item.attributeName===attr.attributeName));
+        unit.note=this.catalogService.extractProductModificationNote(sharedText) || undefined;
+        if (this.catalogService.uncoveredWordsAgainstOffers(`${product.name} ${sharedText.replace(/\b(?:todos|todas)\b/gi,'')}`,[product]).length) return unchanged('Necesito aclarar las opciones compartidas antes de añadir el reparto.');
+      }
+      pending={sourceText:normalize(text),cartSignature:JSON.stringify(session.cart),units,allocations};
+    }
+    // Complete the final option only when its count exactly matches the remaining units.
+    while (pending.allocations.length) {
+      const allocation=pending.allocations[0];
+      const remaining=pending.units.filter(unit=>!unit.attributes.some(attr=>attr.attributeName===allocation.attributeName));
+      if (allocation.counts.length!==1) break;
+      const last=allocation.counts[0];
+      if (last.quantity!==remaining.length) return unchanged('Falta aclarar las cantidades de las opciones.');
+      for(const unit of remaining) unit.attributes.push({attributeName:allocation.attributeName,attributeValue:last.value});
+      pending.allocations.shift();
+    }
+    if (pending.allocations.length) {
+      const allocation=pending.allocations[0];const choice=allocation.counts[0];
+      const ids=[...new Set(pending.units.filter(unit=>!unit.attributes.some(attr=>attr.attributeName===allocation.attributeName)).map(unit=>unit.productId))];
+      await this.conversationService.saveSession(conv,{...session,pendingCountedHeaderOrder:pending});
+      await this.reply(conv,waId,`Son ${pending.units.length} platos en total. ¿Cuál lleva ${choice.quantity} ${allocation.attributeName}: ${choice.value}?\n`+
+        ids.map((id,index)=>`${index+1}. ${menu.find(product=>product.id===id)?.name} (${pending!.units.filter(unit=>unit.productId===id).length} unidades)`).join('\n')+'\nEscribe el número. Conservo el reparto; todavía no lo agregué.');
+      return true;
+    }
+    if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) return unchanged('El restaurante está cerrado; no añadí el reparto.');
+    let next: WhatsappSessionData={...session,pendingCountedHeaderOrder:undefined,pendingAddOffer:undefined};
+    for (const unit of pending.units) {
+      const product=menu.find(item=>item.id===unit.productId);
+      if (!product || product.availableNow===false || unit.attributes.some(attr=>!product.attributes?.some(item=>item.attributeName===attr.attributeName && item.options.includes(attr.attributeValue)))) return unchanged('Una preparación u opción ya no está disponible. No añadí el reparto.');
+      const added=this.tryAddProductToCart(next,product,1,cfg,unit.note,unit.attributes,{sourceText:`quiero ${product.name}`});
+      if (added.blocked || added.missingAttributes) return unchanged('Faltan opciones para completar el reparto; indícalas junto con cada plato.');
+      next=added.session;
+    }
+    next={...next,lastCountedHeaderOrder:{sourceText:pending.sourceText,cartSignature:JSON.stringify(next.cart)}};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,'Listo ✅\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
   }
 
   private async tryHandleTwoUnitFamilyPurchase(

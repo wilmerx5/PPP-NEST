@@ -1,5 +1,7 @@
 # Plan de corrección — incidentes31/10
 
+Priorización consolidada vigente: `WHATSAPP-UNIFIED-REMEDIATION-PLAN.md`. Las tandas parciales no cierran todos los incidentes de su grupo.
+
 Actualizado01/11/2026. Fuente y análisis: whatsapp-chats-3110-review.md. Trabajo de pruebas en staging; PPP producción actualizado hasta333 por solicitud del usuario. Kamppo permanece hasta321, pendiente de migración322–333. No confundir pruebas simuladas con aceptación del modelo/canal real.
 
 ## A. Aceptación de ofertas — prioridad inmediata

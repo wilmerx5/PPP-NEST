@@ -1,5 +1,7 @@
 # Plan ejecutable a partir del chat del01/11
 
+Priorización consolidada vigente: `WHATSAPP-UNIFIED-REMEDIATION-PLAN.md`. Las tandas parciales no cierran todos los incidentes de su grupo.
+
 Fuente y diagnóstico: `whatsapp-chats-0111-review.md`. Corpus de diseño: `whatsapp-chats-0111-regressions.json` (51 escenarios, no51 pruebas aprobadas). No asumir que el servidor del export ejecutaba la versión actual de staging.
 
 ## 339: resolución colectiva de una selección de opciones
@@ -39,3 +41,7 @@ Prioridad1/2;1–19,79–112,283–292,488–500. Distinguir teléfono de unidad
 ## Cierre de cada grupo
 
 Antes/después reproducible; dos catálogos; dependencias aisladas; ninguna orden externa ni inferencia pagada por defecto. Cantidades, atributos, notas, estado, respuesta y creación única. Suite global cuando cambien reglas compartidas. Distinguir aprobado local, desplegado staging, producción y Kamppo. Los grupos anteriores siguen abiertos hasta su propia evidencia; un corpus grande no certifica el motor.
+
+## Avance340 del reparto inicial
+
+Encabezado4, preparaciones3+1 y sopa3+1 conservados; aclaración por número/nombre antes de compra completa.68 controles nuevos; Global33218 pruebas/407 suites, inventario exacto y624 fuentes congeladas. TypeScript general/build y scripts aprobados. Evidencia whatsapp-batch-340-{sources,global-sources,validation,patterns}. Pendiente desplegar staging340; runtime anterior339. No se declaran cerradas las reparaciones de pedidos ya incorrectos.

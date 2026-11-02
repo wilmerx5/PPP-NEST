@@ -139,6 +139,13 @@ export type WhatsappSessionData = {
   pendingUnitSplit?: string;
   /** An unresolved two-unit distribution must be completed before checkout. */
   pendingUnitDistribution?: {productId: number; quantity: number; sourceText: string};
+  lastCountedHeaderOrder?: {sourceText:string;cartSignature:string};
+  pendingCountedHeaderOrder?: {
+    sourceText: string;
+    cartSignature: string;
+    units: Array<{productId:number;attributes:Array<{attributeName:string;attributeValue:string}>;note?:string}>;
+    allocations: Array<{attributeName:string;counts:Array<{value:string;quantity:number}>}>;
+  };
   /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
   /** Read-only context for a follow-up about unavailable items; never a purchase draft. */
   recentUnavailableOrder?: { items: string[]; expiresAt: number };

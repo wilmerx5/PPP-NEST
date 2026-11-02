@@ -90,8 +90,8 @@
       "priority": "P0",
       "utterance": "4 ejecutivos: 3 fritos y 1 broster",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_340",
+      "note": "68 controles del encabezado multilínea y reparto inicial; formas en una sola línea y correcciones del carrito erróneo siguen pendientes."
     },
     {
       "id": "0111-executive-distribution-02",
