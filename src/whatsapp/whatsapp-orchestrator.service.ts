@@ -23185,6 +23185,9 @@ export class WhatsappOrchestratorService {
     }
 
     const phonePatterns = [
+      // A trailing contact label belongs to the validated phone, not the address.
+      // Require a clause boundary or delivery detail so landmarks remain intact.
+      /(?:^|[,\s])((?:\+?57[\s.-]*)?3(?:[\s().-]*\d){9})\s*(?:[,;:]\s*)?(?:cel(?:ular)?|tel(?:[eé]fono)?|whatsapp|wa)\b(?=\s*(?:$|[,;.]|(?:torre|apto|apartamento|casa|bloque|interior)\b))/i,
       /\b(?:cel(?:ular)?|tel(?:[eé]fono)?|whatsapp|wa|n[uú]mero)\s*(?:es|:)?\s*([+]?\d[\d\s().-]{6,16}\d)\b/i,
       /\b(?:al|llamar\s+al)\s*([+]?\d[\d\s().-]{6,16}\d)\b/i,
       /(?:^|[,\s])([3](?:\d[\s().-]*){9})(?=$|[,\s.])/i,
