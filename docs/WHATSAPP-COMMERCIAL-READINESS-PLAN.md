@@ -1,5 +1,12 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda346: notas parciales y conservación de opciones
+
+Prioridad U3/U4: reparto explícito de notas sobre unidades existentes y conservación al cambiar preparación.40 controles nuevos; foco433/4 aprobado. Baseline8/16 fallan por nota parcial;8 cambios de preparación ya pasan. «De los tres churrascos, dos sin arroz más ensalada» conserva3 unidades y modifica solo2; catálogos pollo/res y tofu/vegetal. Cantidades inválidas, preguntas, condiciones y versiones ambiguas no mutan carrito.16 cierres verifican DTO/recibo simulado.
+
+Global aislada33413/414 aprobada;632 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Primera ejecución invalidada por cambios ajenos simultáneos, sin fallos de pruebas. Publicación y despliegue346 pendientes. Runtime sigue345 `b3eb716f`; producción333 y Kamppo321 sin cambios. Evidencias whatsapp-batch-346-sources.json y patterns.md. Cero llamadas pagadas/Meta/órdenes externas; presupuesto267/256/11 intacto. Próximo: variaciones de reparto con notas previas y cambios de grupo durante checkout; no declarar cerrado U3/U4.
+
+
 ## VIGENTE — tanda345: cancelar y recuperar el carrito dividido
 
 Chat01/11 20:49–20:56. Baseline12/20 falla: «Cancelar.»/«¡Cancelar!» no vacían y «En combo.» solo atiende costillas;8 frases completas ya pasan. Cancelación tolera puntuación y conserva tratamiento de preguntas/negaciones/condiciones. Borrador cancelado se vacía; orden registrada anterior no se cancela.

@@ -1569,6 +1569,7 @@ export class WhatsappOrchestratorService {
     let originalText = text;
     if (await this.tryHandleDefinitePreparationChange(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleTwoUnitServingPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleCountedGroupNote(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleBinaryUnitSubset(conv,msg.waId,this.conversationService.getSession(conv),originalText,cfg)) return;
     // Resolve explicit one/other family plans before generic quantity/option
     // grouping can turn the second preparation into an independent dish.
@@ -16226,7 +16227,49 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
-  /** A named dish and drink explicitly removed together are replaced atomically by one combo. */
+  /** Apply a kitchen note to a counted subset without adding purchased units. */
+  private async tryHandleCountedGroupNote(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const raw=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/^¿/,'').replace(/[.!?]+$/,'').replace(/\s+/g,' ').trim();
+    const words:Record<string,number>={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+    const count=String.raw`(un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[+-]?\d+(?:[.,]\d+)?)`;
+    const match=raw.match(new RegExp('^de (?:los|las) '+count+' (.+?),? '+count+' (sin .+)$'));
+    if(!match)return false;
+    const unchanged=async(reason:string)=>{await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;};
+    if(/[¿?]/.test(text) || /\b(?:si|pero|agrega|anade|dame|quita|cambia|excepto)\b/.test(match[4]) || match[4].length>160)
+      return unchanged('Aclara el reparto y la nota sin otras acciones o condiciones.');
+    const total=words[match[1]]??Number(match[1]),selected=words[match[3]]??Number(match[3]);
+    if(!Number.isSafeInteger(total)||!Number.isSafeInteger(selected)||total<1||total>30||selected<1||selected>total)
+      return unchanged('Indica cuántas unidades del grupo llevan esa nota.');
+    if(session.mpPreferenceId||session.pendingAddOffer||session.pendingPriceInquiry||session.pendingCompositionAsk||session.pendingMatch||session.pendingAttribute||session.pendingMultiOrder||session.pendingUnitDistribution||
+      session.pendingSubsetKitchenNote||session.pendingComposedDishRecovery||CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
+      return unchanged('Primero aclaremos la selección o pago pendiente.');
+    const query=match[2].replace(/,$/,'');
+    const indices=session.cart.flatMap((line,index)=>correctionMatchesLine(line,query)?[index]:[]);
+    if(!indices.length||new Set(indices.map(i=>session.cart[i].productId)).size!==1||
+      indices.reduce((sum,i)=>sum+session.cart[i].quantity,0)!==total)
+      return unchanged('El grupo no coincide con las unidades del carrito; dime el plato y la cantidad.');
+    const note=match[4],already=indices.filter(i=>this.normalizeForMatch(session.cart[i].note||'')===note);
+    if(already.reduce((sum,i)=>sum+session.cart[i].quantity,0)===selected){
+      await this.reply(conv,waId,'Esa nota ya está aplicada a '+selected+' unidades.\n\n'+this.formatCartOnly(session,this.deliveryFeeFor(session,cfg)));
+      return true;
+    }
+    if(indices.length!==1)return unchanged('Hay varias versiones de ese plato; dime a cuáles les aplicamos la nota.');
+    const index=indices[0],original=session.cart[index];
+    if(kitchenNotesConflict(original.note,note))return unchanged('La nota contradice una indicación anterior; aclara cuál conservamos.');
+    const combined=joinKitchenNotes(original.note,note);
+    if((combined||'').length>200)return unchanged('La nota es demasiado larga; resúmela para esas unidades.');
+    const draft={...session,cart:session.cart.flatMap((line,i)=>i!==index?[line]:
+      [...(total>selected?[{...line,quantity:total-selected}]:[]),{...line,quantity:selected,note:combined}])};
+    if(cfg.maxCartLines && draft.cart.length>cfg.maxCartLines)return unchanged('El reparto supera el límite de líneas del carrito.');
+    await this.conversationService.saveSession(conv,draft);
+    await this.reply(conv,waId,'Listo, dejé '+selected+' de los '+total+' *'+original.name+'* '+note+'.\n\n'+
+      this.formatCartOnly(draft,this.deliveryFeeFor(draft,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,draft)||this.formatContinueShoppingPrompt(draft)));
+    return true;
+  }
+
   private async tryHandleFoodDrinkComboReplacement(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
