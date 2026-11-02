@@ -1,3 +1,4 @@
+import { canonicalCompoundDishRequest } from './whatsapp-compound-dish-request';
 import { parseMultiAttributeDistribution } from './whatsapp-multi-attribute-distribution';
 import { parseCombinedOptions } from './whatsapp-combined-options';
 import { parseOptionDistribution } from './whatsapp-option-distribution';
@@ -115,6 +116,7 @@ import {
   parseQtyMenuCodeLines,
   parseQtyDishCorrection,
   isCartChargeQuestion,
+  isCartTotalAndEtaInquiry,
   isDeliveryFeeChangeQuestion,
   parsePaymentAmountQuestion,
   replyClaimsCartChange,
@@ -1386,6 +1388,29 @@ export class WhatsappOrchestratorService {
     text = /\b(?:en\s+(?:vez|ves|lugar)|envez)\s+de\b/i.test(text)
       ? this.glossaryKeepingDishNames(text, await this.catalogService.getMenuProducts())
       : applyLocalGlossary(text);
+    if (['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state || '') &&
+        /\bsin\s+(?:gaseosa|bebida|refresco)\b/i.test(text)) {
+      const compoundMenu = await this.catalogService.getMenuProducts();
+      const lines = text.split(/\r?\n/);
+      const canonical = lines.map(line => canonicalCompoundDishRequest(line, compoundMenu));
+      if (canonical.some(Boolean)) {
+        const paymentLines = lines.map((line, index) => {
+          const match = line.trim().match(/^pago\s+(?:con|por|en)\s+(.+?)[.!]*$/i);
+          const method = match && getEnabledPaymentMethods(cfg.paymentMethods).find(candidate =>
+            [candidate.label, ...candidate.keywords].some(word =>
+              this.normalizeForMatch(word) === this.normalizeForMatch(match[1])));
+          return method ? { index, method } : null;
+        }).filter((entry): entry is NonNullable<typeof entry> => !!entry);
+        // Keep an independent payment bubble as checkout data, not as a command
+        // that consumes the composed dish before the purchase route sees it.
+        if (paymentLines.length === 1) {
+          const current = this.conversationService.getSession(conv);
+          await this.conversationService.saveSession(conv, { ...current, paymentMethod: paymentLines[0].method.id });
+        }
+        text = lines.flatMap((line, index) =>
+          paymentLines.length === 1 && paymentLines[0].index === index ? [] : [canonical[index] || line]).join('\n');
+      }
+    }
     if (!['awaiting_name', 'awaiting_address', 'awaiting_phone'].includes(conv.state || '')) {
       text = this.catalogService.dropRedundantReminders(
         this.catalogService.alignMenuSpelling(text, await this.catalogService.getMenuProducts()),
@@ -1453,6 +1478,9 @@ export class WhatsappOrchestratorService {
         return;
       }
     }
+    const composedRecovery = this.conversationService.getSession(conv);
+    if (composedRecovery.pendingComposedDishRecovery && !this.isCancelIntent(text) &&
+        await this.tryRecoverComposedDish(conv, msg.waId, composedRecovery, text, cfg)) return;
     if (conv.state === 'awaiting_final_confirm' && await this.tryAnswerRecalledPick(conv, msg.waId, text, cfg)) return;
     // A negative answer at the approval step is not consent and must not reopen shopping.
     if (conv.state === 'awaiting_final_confirm' && /^(?:no(?: mas)?|solo eso)(?: gracias| porfa| veci)?$/.test(this.normalizeForMatch(text))) {
@@ -1502,6 +1530,7 @@ export class WhatsappOrchestratorService {
     if (/\b\d{1,2}\s+[a-z]{2,}\b/i.test(text)) {
       text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
     }
+    if (await this.tryHandleCountedHeaderOrder(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleMixedRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleMultipleRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleMealtimeAvailability(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -1540,6 +1569,8 @@ export class WhatsappOrchestratorService {
     let originalText = text;
     if (await this.tryHandleDefinitePreparationChange(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleTwoUnitServingPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandlePreparationScopedNote(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleCountedGroupNote(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleBinaryUnitSubset(conv,msg.waId,this.conversationService.getSession(conv),originalText,cfg)) return;
     // Resolve explicit one/other family plans before generic quantity/option
     // grouping can turn the second preparation into an independent dish.
@@ -2016,6 +2047,8 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    if (await this.tryRecoverComposedDish(conv, msg.waId, session, originalText, cfg)) return;
+
     // An explicitly named unavailable addition must not be swallowed by the pending option.
     if (session.pendingAttribute && !cfg.ignoreBusinessHours && !/[¿?]/.test(originalText) &&
         /^(?:agrega|agregame|anade|anademe|quiero|dame)\b/.test(this.normalizeForMatch(originalText))) {
@@ -2690,6 +2723,12 @@ export class WhatsappOrchestratorService {
       await this.replyOrderProgressOrAskNumber(conv,msg.waId,originalText,cfg);
       return;
     }
+    // A party size does not authorize adding portions or changing quantities.
+    if (/^(?:somos|para)\s+(?:\d{1,2}|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)(?:\s+personas?)?[.!?]*$/.test(this.normalizeForMatch(originalText))) {
+      await this.reply(conv, msg.waId,
+        '¿Quieres saber si alcanza para esas personas o pedir esa cantidad de unidades? El pedido sigue igual.');
+      return;
+    }
     // Serving yield and deposits are business facts, never inferred from order size.
     const inquiryText = this.normalizeForMatch(originalText);
     if (
@@ -2883,6 +2922,17 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, '¿De cuál producto quieres esa cantidad? El pedido sigue igual mientras lo aclaramos.');
       return;
     }
+    if (session.cart.length && isCartTotalAndEtaInquiry(originalText) &&
+        !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state)) {
+      const reminder = this.formatInterruptedStepReminder(conv, session);
+      const eta = cfg.localContext?.deliveryTimeNote?.trim()
+        ? this.formatDeliveryEtaSentence(cfg)
+        : 'El equipo debe confirmar el tiempo estimado de entrega.';
+      await this.reply(conv, msg.waId,
+        `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${eta}` +
+        `\n\n${reminder || this.formatContinueShoppingPrompt(session)}`);
+      return;
+    }
     if (isOrderBillRequest(originalText)) {
       if (!session.cart.length) {
         await this.reply(conv, msg.waId, 'Todavía no hay platos, así que no hay total. El pedido sigue igual.');
@@ -2940,13 +2990,10 @@ export class WhatsappOrchestratorService {
       const sameAgain =
         /^(?:otro|otra|uno|una)\s+igual$/.test(followUp) ||
         /^(?:otro|otra)\s+de\s+lo\s+mismo$/.test(followUp);
-      const forTwo = /^(?:para|somos)\s+dos$/.test(followUp);
       const line = session.cart[0];
       const nextQty = sameAgain
         ? Math.min(30, line.quantity + 1)
-        : forTwo && line.quantity === 1
-          ? 2
-          : line.quantity;
+        : line.quantity;
       if (nextQty !== line.quantity) {
         session = { ...session, cart: [{ ...line, quantity: nextQty }] };
         await this.conversationService.saveSession(conv, session);
@@ -3282,7 +3329,8 @@ export class WhatsappOrchestratorService {
     if (session.pendingCartAttributeEdit && !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state) && !/[¿?]/.test(originalText)) {
       const answer = this.normalizeForMatch(originalText);
       const namedLine = this.uniqueClarificationLine(session, session.pendingCartAttributeEdit.candidates, originalText);
-      const selection = /^(?:(?:el|la)\s+)?(?:primero|primera|segundo|segunda|tercero|tercera|\d{1,2})$/.test(answer) ||
+      const selection = this.pendingAttributeGroupChoice(originalText) !== undefined ||
+        /^(?:(?:el|la)\s+)?(?:primero|primera|segundo|segunda|tercero|tercera|\d{1,2})$/.test(answer) ||
         session.pendingCartAttributeEdit.candidates.some(candidate => this.normalizeForMatch(candidate.name) === answer.replace(/^(?:el|la)\s+/, '')) ||
         (!!namedLine && namedLine !== 'ambiguous');
       if ((selection || namedLine === 'ambiguous') && await this.tryHandleCartAttributeOptionChange(conv, msg.waId, session, originalText,
@@ -3544,7 +3592,7 @@ export class WhatsappOrchestratorService {
     }
     const earlyMenu = session.cart.length ? await this.catalogService.getMenuProducts() : [];
     const namesLoadedDish = earlyMenu.some((product) => this.normalizeForMatch(product.name) === this.normalizeForMatch(originalText));
-    const namesOrderDish = /^(?:quiero|quisiera|dame|reg[aá]lame|me\s+env[ií]as|un|una|dos|tres|cuatro|cinco|\d+)\b/i.test(compound.productText.trim()) &&
+    const namesOrderDish = /^(?:y\s+)?(?:quiero|quisiera|dame|reg[aá]lame|me\s+env[ií]as|un|una|dos|tres|cuatro|cinco|\d+)\b/i.test(compound.productText.trim()) &&
       !!this.catalogService.findProductEmbeddedInMessage(compound.productText, earlyMenu);
     if (
       session.cart.length > 1 &&
@@ -3622,6 +3670,25 @@ export class WhatsappOrchestratorService {
       : productsRaw;
     text = this.dropServingContainer(text, products);
     originalText = this.dropServingContainer(originalText, products);
+
+    if (businessOpenForBot && this.catalogService.isGeneralMenuOptionsInquiry(originalText)) {
+      const overview = this.catalogService.formatMenuCategoryOverview(products, {
+        intro: this.catalogService.buildMenuExploreIntro(originalText), menuUrl: cfg.menuUrl,
+      });
+      const freeBrowse = conv.state === 'building_cart' && !session.pendingAttribute &&
+        !session.pendingMatch && !session.pendingMultiOrder && !session.pendingPriceInquiry &&
+        !session.pendingCompositionAsk && !CART_EDIT_SELECTION_KEYS.some(key => !!session[key]);
+      if (freeBrowse) {
+        session = { ...session, pendingCategoryBrowse: { categories: overview.categories } };
+        await this.conversationService.saveSession(conv, session);
+      }
+      const body = freeBrowse ? overview.text : overview.text
+        .replace(/^\*\d+\.\* /gm, '• ')
+        .replace('Escribe el *número* de categoría o el *plato*.', 'Para explorar, escribe el nombre de una categoría o un plato.');
+      const reminder = freeBrowse ? '' : this.formatInterruptedStepReminder(conv, session);
+      await this.reply(conv, msg.waId, body + (reminder ? `\n\n${reminder}` : ''));
+      return;
+    }
 
     if (businessOpenForBot && await this.tryHandleEachCategoryPurchase(conv,msg.waId,session,originalText,products,cfg)) return;
     if (businessOpenForBot && await this.tryHandleOfferedOptionPurchase(conv, msg.waId, session, originalText, products, cfg)) return;
@@ -11028,7 +11095,9 @@ export class WhatsappOrchestratorService {
     if (this.resolvePaymentChoice(raw, cfg)) return false;
     if (this.looksLikePaymentMethodQuestion(raw)) return false;
     if (this.looksLikePhoneNumber(raw)) return false;
-    if (looksLikeAddressOnlyMessage(raw) || this.isAddressOnlyCustomerMessage(raw)) return false;
+    const namedPurchase = /^(?:y\s+)?(?:quiero|quisiera|dame|un|una|dos|tres|cuatro|cinco|\d+)\b/i.test(raw) &&
+      !!this.catalogService.findProductEmbeddedInMessage(raw, products);
+    if (looksLikeAddressOnlyMessage(raw) || (!namedPurchase && this.isAddressOnlyCustomerMessage(raw))) return false;
     if (isCourtesyAffirmation(raw) || this.isConfirmKeyword(raw)) return false;
     if (/^(?:el|la|un|una)?\s*(?:medio|media|cuarto|entero)\s*$/i.test(raw)) return false;
 
@@ -11235,6 +11304,8 @@ export class WhatsappOrchestratorService {
     if (session.pendingRecipientOrPlace) {
       await say(`Falta aclarar si *${session.pendingRecipientOrPlace}* es el nombre o el barrio/conjunto de entrega.`);return;
     }
+
+    if (session.pendingCountedHeaderOrder) { await say('Falta completar el reparto de opciones antes de confirmar.');return; }
 
     if (session.pendingMatch?.unitAttributeGroups) {
       await say('Falta elegir la preparación del reparto de dos unidades antes de confirmar.');return;
@@ -12618,7 +12689,18 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     if (!this.catalogService.isComboAvailabilityQuestion(text)) return false;
 
-    const product = this.resolveDiscussedProduct(session, text, products);
+    let product = this.resolveDiscussedProduct(session, text, products);
+    // A completed drink often holds the focus after a dish + drink order.
+    // An unnamed combo question concerns the unique dish, not another drink choice.
+    if (product && this.catalogService.isLikelyDrinkProduct(product)) {
+      const foods = products.filter(item => session.cart.some(line => line.productId === item.id) &&
+        !this.catalogService.isLikelyDrinkProduct(item));
+      const named = foods.filter(item => this.catalogService.isCartProductNamedInText(item.name, text));
+      if (named.length === 1) product = named[0];
+      else if (!this.catalogService.isCartProductNamedInText(product.name, text)) {
+        product = foods.length === 1 ? foods[0] : null;
+      }
+    }
     if (!product) {
       await this.reply(
         conv,
@@ -12642,8 +12724,10 @@ export class WhatsappOrchestratorService {
       const matchingLines = session.cart.filter(line => line.productId === product.id);
       if (matchingLines.length === 1 && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
         const originalLine = matchingLines[0];
+        const combos = family.variants.filter(item => this.catalogService.productImpliesCombo(item));
         session = { ...session, pendingMatch: { query: family.baseLabel, candidates: family.variants,
-          intent: 'order', quantity: originalLine.quantity, replacement: { originalLine: structuredClone(originalLine) } } };
+          intent: 'order', quantity: originalLine.quantity, replacement: { originalLine: structuredClone(originalLine),
+            ...(combos.length === 1 ? {preferredId: combos[0].id} : {}) } } };
       }
       await this.conversationService.saveSession(conv, session);
       await this.reply(
@@ -12651,6 +12735,9 @@ export class WhatsappOrchestratorService {
         waId,
         `Sí 👍 Para *${family.baseLabel}* manejamos estas versiones:\n\n` +
           this.catalogService.formatVariantFamilyPrompt(family) +
+          (session.pendingMatch?.replacement && session.cart.some(line => products.some(item =>
+            item.id === line.productId && this.catalogService.isLikelyDrinkProduct(item)))
+            ? '\n\nLa bebida que ya pediste sigue aparte; esta elección cambia solo el plato.' : '') +
           (session.cart.length ? `\n\n${session.pendingMatch?.replacement ? 'Elige una versión para cambiar ese plato conservando su cantidad y notas.' : 'El pedido sigue igual.'}${this.formatInterruptedStepReminder(conv, session) ? '\n\n' + this.formatInterruptedStepReminder(conv, session) : ''}` : `\n\n_Si quieres el combo, dime *en combo* o el número._`),
       );
       return true;
@@ -13736,6 +13823,68 @@ export class WhatsappOrchestratorService {
   }
 
   /** "quiero que la gaseosa de los dos combos sea ginger": one option for every cart line that offers it. */
+  /** A reply to an offered list, never an instruction to add units. */
+  private pendingAttributeGroupChoice(text: string): number | null | undefined {
+    if (/[¿?]/.test(text)) return undefined;
+    const said = this.normalizeForMatch(text).replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '');
+    const match = said.match(/^(?:(?:a|en|para)\s+)?(?:(?:los|las)\s+(dos|tres|cuatro)|(ambos|ambas)|(todos|todas))$/);
+    if (!match) return undefined;
+    return match[1] ? ({dos:2,tres:3,cuatro:4}[match[1]]) : match[2] ? 2 : null;
+  }
+
+  private async tryResolvePendingAttributeGroup(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, products: MenuProduct[],
+  ): Promise<boolean> {
+    const pending = session.pendingCartAttributeEdit;
+    const count = this.pendingAttributeGroupChoice(text);
+    if (!pending || count === undefined) return false;
+    if (pending.cartSignature !== JSON.stringify(session.cart)) {
+      await this.conversationService.saveSession(conv, {...session,pendingCartAttributeEdit:undefined});
+      await this.reply(conv,waId,'El carrito cambió desde esa lista. Dime de nuevo qué opción quieres cambiar; no apliqué la selección anterior.');
+      return true;
+    }
+    const candidates = pending.candidates;
+    if (pending.unitChanges || candidates.length < 2 || count != null && count !== candidates.length) {
+      await this.reply(conv,waId,'Necesito que señales una opción de esta lista para aplicar el cambio sin alterar cantidades:\n' +
+        candidates.map((candidate,index) => `${index+1}. ${candidate.name}`).join('\n'));
+      return true;
+    }
+    // Prepare every offered target before committing; never expand to other cart lines.
+    const cart = structuredClone(session.cart);
+    for (const candidate of candidates) {
+      const line = cart[candidate.cartIndex];
+      const source = candidate.sourceText || pending.sourceText;
+      const updates = this.catalogService.listCartAttributeOptionsNamedInText(source, session.cart, products)
+        .filter(update => update.cartIndex === candidate.cartIndex);
+      if (!line || !updates.length) {
+        await this.conversationService.saveSession(conv, {...session,pendingCartAttributeEdit:undefined});
+        await this.reply(conv,waId,'No pude validar el cambio completo con la carta actual. El pedido sigue igual; dime de nuevo qué opción prefieres.');
+        return true;
+      }
+      const attributes = [...(line.attributes || [])];
+      for (const update of updates) {
+        const chosen = {attributeName:update.attributeName,attributeValue:update.attributeValue};
+        const index = attributes.findIndex(attr => attr.attributeName === chosen.attributeName);
+        if (index < 0) attributes.push(chosen); else attributes[index] = chosen;
+      }
+      const preference = omitRedundantAttributeNote(this.catalogService.extractProductModificationNote(source) || undefined, attributes);
+      const note = preference ? editScopedCartNote(line.note,{kind:'append',query:'',note:preference,preserve:[]}) : undefined;
+      if (note?.blocked) {
+        await this.reply(conv,waId,'La nota es demasiado larga. Resúmela para aplicar el cambio completo; el pedido sigue igual.');
+        return true;
+      }
+      cart[candidate.cartIndex] = {...line,attributes,...(note ? {note:note.note} : {})};
+    }
+    session = {...session,cart,pendingCartAttributeEdit:undefined};
+    await this.conversationService.saveSession(conv,session);
+    const summary = candidates.map(candidate => {
+      const line = cart[candidate.cartIndex];
+      return `${line.name}: ${(line.attributes || []).map(attr => `${attr.attributeName}: ${attr.attributeValue}`).join(' · ')}`;
+    }).join('\n');
+    await this.reply(conv,waId,`Listo ✅\n${summary}\n\n${this.formatInterruptedStepReminder(conv,session) || this.formatContinueShoppingPrompt(session)}`);
+    return true;
+  }
+
   private async tryApplyOptionToAllCartLines(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
   ): Promise<boolean> {
@@ -15783,15 +15932,17 @@ export class WhatsappOrchestratorService {
     const counts:Record<string,number>={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
     const token='(un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[+-]?\\d+(?:[.,]\\d+)?)';
     const removal=request[1].match(new RegExp(`^${token} de (?:los|las) de (.+)$`));
+    const directRemoval=!removal ? request[1].match(new RegExp(`^${token} (.+)$`)) : null;
+    const selectedRemoval=removal || directRemoval;
     const addition=request[2].match(new RegExp(`^${token} (.+)$`));
-    if (!removal || !addition) return unchanged('Repite la petición completa con la cantidad que retiramos y la cantidad y nombre del producto que añadimos.');
-    const removed=counts[removal[1]]??Number(removal[1]), added=counts[addition[1]]??Number(addition[1]);
+    if (!selectedRemoval || !addition) return unchanged('Repite la petición completa con la cantidad que retiramos y la cantidad y nombre del producto que añadimos.');
+    const removed=counts[selectedRemoval[1]]??Number(selectedRemoval[1]), added=counts[addition[1]]??Number(addition[1]);
     if (![removed,added].every(amount=>Number.isSafeInteger(amount)&&amount>=1&&amount<=99))
       return unchanged('Indica cantidades enteras entre 1 y 99 para ambos cambios.');
-    const parsed=parseScopedCartRemoval(`quita uno de los de ${removal[2]}`);
-    if (!parsed || parsed.quantity!==1 || parsed.target!==undefined || parsed.preserve.length || /\b(?:si|pero|sino|excepto|conserva|agrega|cambia)\b/.test(removal[2]))
+    const parsed=parseScopedCartRemoval(`quita uno de los de ${selectedRemoval[2]}`);
+    if (!parsed || parsed.quantity!==1 || parsed.target!==undefined || parsed.preserve.length || /\b(?:si|pero|sino|excepto|conserva|agrega|cambia)\b/.test(selectedRemoval[2]))
       return unchanged('Aclara una sola retirada y una sola adición, sin otras acciones o condiciones.');
-    const indices=session.cart.flatMap((line,index)=>correctionMatchesLine(line,parsed.query)?[index]:[]);
+    const indices=session.cart.flatMap((line,index)=>(directRemoval ? this.normalizeForMatch(line.name)===this.normalizeForMatch(selectedRemoval[2]) : correctionMatchesLine(line,parsed.query))?[index]:[]);
     if (!indices.length) return unchanged('No identifiqué una sola línea para retirar. Repite ambos cambios con el plato y su opción.');
     const products=await this.catalogService.getMenuProducts();
     const query=this.normalizeForMatch(addition[2]);
@@ -16077,7 +16228,141 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
-  /** A named dish and drink explicitly removed together are replaced atomically by one combo. */
+  /** Resolve a preparation-only note against the cart before catalogue browsing. */
+  private async tryHandlePreparationScopedNote(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state)) return false;
+    if (this.isCancelIntent(text) || this.isClearCartIntent(text)) return false;
+    if (session.pendingSubsetKitchenNote?.preparationScope) return this.resolvePreparationNoteClarification(conv,waId,session,text,cfg);
+    const edit = parseScopedCartNote(text);
+    if (!edit || edit.kind !== 'append') return false;
+    const query = this.normalizeForMatch(edit.query);
+    if (!/^[a-z]+$/.test(query) || this.catalogService.stripCookingStyleTokens(query) !== '') return false;
+    const unchanged = async (reason: string) => { await this.reply(conv,waId,reason+' El pedido sigue igual.'); return true; };
+    if (/\b(?:si|pero|excepto|cuando|quizas)\b/.test(this.normalizeForMatch(edit.note)))
+      return unchanged('Aclara la nota sin condiciones.');
+    if (session.mpPreferenceId || session.pendingAddOffer || session.pendingMatch || session.pendingAttribute ||
+      session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote ||
+      session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
+      return unchanged('Primero aclaremos la selección o pago pendiente.');
+    const indices = session.cart.flatMap((line,index)=>this.normalizeForMatch(line.name).split(' ').includes(query)?[index]:[]);
+    if (!indices.length) return unchanged('No encuentro esa preparación en tu carrito; dime qué plato quieres cambiar.');
+    if (indices.length > 1) {
+      const next = {...session,pendingSubsetKitchenNote:{quantity:0,note:edit.note,productIds:[...new Set(indices.map(i=>session.cart[i].productId))],
+        preparationScope:{cartSignature:JSON.stringify(session.cart),createdAt:Date.now(),indices,preserve:edit.preserve}}};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,this.formatPreparationNoteClarification(next));
+      return true;
+    }
+    const index = indices[0], line = session.cart[index];
+    if (edit.preserve.some(reference=>correctionMatchesLine(line,reference)) || kitchenNotesConflict(line.note,edit.note))
+      return unchanged('La indicación contradice una nota anterior; dime cuál conservamos.');
+    const product = (await this.catalogService.getMenuProducts()).find(p=>p.id===line.productId);
+    if (product && this.catalogService.extractExplicitAttributeChoice(edit.note,product)?.length) return false;
+    const edited = editScopedCartNote(line.note,edit);
+    if (edited.blocked) return unchanged('Necesito una nota más corta para conservar las instrucciones anteriores.');
+    const next = {...session,cart:session.cart.map((item,i)=>i===index?{...item,note:edited.note}:item)};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,'Listo, actualicé la nota de *'+line.name+'* ✅\n\n'+
+      this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
+      (this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
+  }
+
+  private formatPreparationNoteClarification(session: WhatsappSessionData): string {
+    const pending = session.pendingSubsetKitchenNote!;
+    return `¿Cuál línea lleva la nota «${pending.note}»?\n`+
+      pending.preparationScope!.indices.map((index,position)=>`${position+1}. ${this.formatCartLineLabel(session.cart[index])}${session.cart[index].note ? ' · '+session.cart[index].note : ''}`).join('\n')+
+      '\nResponde con un número, una opción o la nota actual del plato. Se aplicará a las unidades de esa línea. Para retirarla, escribe «no apliques esa nota». El pedido sigue igual.';
+  }
+
+  private async resolvePreparationNoteClarification(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const pending = session.pendingSubsetKitchenNote!, scope = pending.preparationScope!;
+    const clear = async (reply: string) => {
+      const next = {...session,pendingSubsetKitchenNote:undefined};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,reply+' El pedido sigue igual.\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+      return true;
+    };
+    if (scope.cartSignature !== JSON.stringify(session.cart) || Date.now()-scope.createdAt > 10*60*1000)
+      return clear('La selección cambió o venció; dime de nuevo el plato y la nota.');
+    const said = this.normalizeForMatch(text).replace(/[.!]+$/,'').trim();
+    if (/^(?:no apliques esa nota|olvida esa nota|cancela esa indicacion)$/.test(said)) return clear('Retiré esa indicación pendiente.');
+    const ask = async (prefix='') => {await this.reply(conv,waId,prefix+this.formatPreparationNoteClarification(session));return true;};
+    if (session.mpPreferenceId || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
+      session.pendingUnitDistribution || session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
+      return ask('Hay otra selección o un pago pendiente; acláralo antes de aplicar la nota.\n');
+    if (/[¿?]/.test(text) || /\b(?:si|no|confirmar|confirmo|ambos|todos|agrega|quita|cambia|quiero|dame)\b/.test(said)) return ask();
+    const numeric = /^\d{1,2}$/.test(said);
+    const match = numeric ? null : this.uniqueClarificationLine(session,scope.indices.map(cartIndex=>({cartIndex})),text);
+    const index = numeric ? scope.indices[Number(said)-1] : match && match !== 'ambiguous' ? match.index : undefined;
+    if (index === undefined) return ask();
+    const line = session.cart[index];
+    if (scope.preserve.some(reference=>correctionMatchesLine(line,reference)) || kitchenNotesConflict(line.note,pending.note))
+      return ask('Esa línea tiene una indicación incompatible. Elige otra o retira esta nota.\n');
+    const product = (await this.catalogService.getMenuProducts()).find(p=>p.id===line.productId);
+    if (product && this.catalogService.extractExplicitAttributeChoice(pending.note,product)?.length)
+      return clear('La indicación afecta una opción del plato; dime explícitamente qué opción quieres cambiar.');
+    const edited = editScopedCartNote(line.note,{kind:'append',query:'',note:pending.note,preserve:[]});
+    if (edited.blocked) return ask('La nota es demasiado larga; retírala y envíala más corta.\n');
+    const cart = session.cart.map((item,i)=>i===index?{...item,note:edited.note}:item);
+    const next = {...session,pendingSubsetKitchenNote:undefined,cart,
+      lastKitchenNoteSelection: JSON.stringify(cart) !== JSON.stringify(session.cart) ? {
+        beforeCart:structuredClone(session.cart),cartSignature:JSON.stringify(cart),sourceIndex:index,
+        note:pending.note,createdAt:Date.now(),lineIndices:scope.indices,
+      } : undefined};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,'Listo, actualicé la nota de '+this.formatCartLineLabel(line)+' ✅\n\n'+
+      this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
+  }
+
+  /** Apply a kitchen note to a counted subset without adding purchased units. */
+  private async tryHandleCountedGroupNote(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const raw=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/^¿/,'').replace(/[.!?]+$/,'').replace(/\s+/g,' ').trim();
+    const words:Record<string,number>={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+    const count=String.raw`(un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[+-]?\d+(?:[.,]\d+)?)`;
+    const match=raw.match(new RegExp('^de (?:los|las) '+count+' (.+?),? '+count+' (sin .+)$'));
+    if(!match)return false;
+    const unchanged=async(reason:string)=>{await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;};
+    if(/[¿?]/.test(text) || /\b(?:si|pero|agrega|anade|dame|quita|cambia|excepto)\b/.test(match[4]) || match[4].length>160)
+      return unchanged('Aclara el reparto y la nota sin otras acciones o condiciones.');
+    const total=words[match[1]]??Number(match[1]),selected=words[match[3]]??Number(match[3]);
+    if(!Number.isSafeInteger(total)||!Number.isSafeInteger(selected)||total<1||total>30||selected<1||selected>total)
+      return unchanged('Indica cuántas unidades del grupo llevan esa nota.');
+    if(session.mpPreferenceId||session.pendingAddOffer||session.pendingPriceInquiry||session.pendingCompositionAsk||session.pendingMatch||session.pendingAttribute||session.pendingMultiOrder||session.pendingUnitDistribution||
+      session.pendingSubsetKitchenNote||session.pendingComposedDishRecovery||CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
+      return unchanged('Primero aclaremos la selección o pago pendiente.');
+    const query=match[2].replace(/,$/,'');
+    const indices=session.cart.flatMap((line,index)=>correctionMatchesLine(line,query)?[index]:[]);
+    if(!indices.length||new Set(indices.map(i=>session.cart[i].productId)).size!==1||
+      indices.reduce((sum,i)=>sum+session.cart[i].quantity,0)!==total)
+      return unchanged('El grupo no coincide con las unidades del carrito; dime el plato y la cantidad.');
+    const note=match[4],already=indices.filter(i=>this.normalizeForMatch(session.cart[i].note||'')===note);
+    if(already.reduce((sum,i)=>sum+session.cart[i].quantity,0)===selected){
+      await this.reply(conv,waId,'Esa nota ya está aplicada a '+selected+' unidades.\n\n'+this.formatCartOnly(session,this.deliveryFeeFor(session,cfg)));
+      return true;
+    }
+    if(indices.length!==1)return unchanged('Hay varias versiones de ese plato; dime a cuáles les aplicamos la nota.');
+    const index=indices[0],original=session.cart[index];
+    if(kitchenNotesConflict(original.note,note))return unchanged('La nota contradice una indicación anterior; aclara cuál conservamos.');
+    const combined=joinKitchenNotes(original.note,note);
+    if((combined||'').length>200)return unchanged('La nota es demasiado larga; resúmela para esas unidades.');
+    const draft={...session,cart:session.cart.flatMap((line,i)=>i!==index?[line]:
+      [...(total>selected?[{...line,quantity:total-selected}]:[]),{...line,quantity:selected,note:combined}])};
+    if(cfg.maxCartLines && draft.cart.length>cfg.maxCartLines)return unchanged('El reparto supera el límite de líneas del carrito.');
+    await this.conversationService.saveSession(conv,draft);
+    await this.reply(conv,waId,'Listo, dejé '+selected+' de los '+total+' *'+original.name+'* '+note+'.\n\n'+
+      this.formatCartOnly(draft,this.deliveryFeeFor(draft,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,draft)||this.formatContinueShoppingPrompt(draft)));
+    return true;
+  }
+
   private async tryHandleFoodDrinkComboReplacement(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
@@ -17865,8 +18150,71 @@ export class WhatsappOrchestratorService {
     return null;
   }
 
+  /** Repair an explicitly discussed two-line split only after reviewing the composed dish. */
+  private async tryRecoverComposedDish(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const said=this.normalizeForMatch(text).replace(/[.!¡…]+/g,'').trim();
+    const pending=session.pendingComposedDishRecovery;
+    const busy=session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+      session.pendingUnitDistribution || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]);
+    if (pending) {
+      if (!/^(?:si|si por favor|si porfa|dale|no|no gracias)$/.test(said)) {
+        if (this.isConfirmKeyword(text)) {
+          await this.reply(conv,waId,'Primero aclaremos el cambio: responde sí para reunir los productos en el plato propuesto o no para conservarlos separados.');
+          return true;
+        }
+        return false;
+      }
+      const clear={...session,pendingComposedDishRecovery:undefined};
+      if (/^no\b/.test(said)) {
+        await this.conversationService.saveSession(conv,clear);
+        await this.reply(conv,waId,'Listo, conservé los dos productos separados. El pedido sigue igual.');
+        return true;
+      }
+      const menu=await this.catalogService.getMenuProducts();
+      const product=menu.find(p=>p.id===pending.productId);
+      if (busy || pending.cartSignature!==JSON.stringify(session.cart) || (!Number.isFinite(pending.createdAt) || Date.now()-pending.createdAt>5*60_000 || pending.createdAt>Date.now()) ||
+          !product || product.availableNow===false || product.price!==pending.price || product.attributes?.length) {
+        await this.conversationService.saveSession(conv,clear);
+        await this.reply(conv,waId,'El carrito o el catálogo cambió. Revisa el pedido y dime de nuevo cómo lo quieres; conservé los productos.');
+        return true;
+      }
+      const result=this.tryAddProductToCart({...clear,cart:[]},product,1,cfg,pending.note);
+      if (result.blocked || result.missingAttributes) {
+        await this.conversationService.saveSession(conv,clear);
+        await this.reply(conv,waId,'No pude completar ese cambio. Conservé los dos productos.');
+        return true;
+      }
+      const next=this.rememberProductFocus(this.reconcileSubstitutionPending(result.session),product,menu);
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,'Listo, dejé un solo *'+product.name+'*, '+pending.note+'.\n\n'+
+        this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
+        (this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+      return true;
+    }
+    if (busy || !/^(?:en combo|el combo|en combo sin gaseosa)$/.test(said) || session.cart.length!==2 ||
+        session.cart.some(line=>line.quantity!==1 || line.attributes?.length)) return false;
+    const notes=session.cart.map(line=>(line.note||'').trim()).filter(Boolean);
+    if (!notes.length || notes.some(note=>!/^sin (?:gaseosa|bebida|refresco)[.!]*$/i.test(note))) return false;
+    const menu=await this.catalogService.getMenuProducts();
+    const [a,b]=session.cart.map(line=>this.normalizeForMatch(line.name));
+    const candidates=menu.filter(p=>p.availableNow!==false && !p.attributes?.length &&
+      [a+' con '+b,b+' con '+a].includes(this.normalizeForMatch(p.name)));
+    if(candidates.length!==1) return false;
+    const product=candidates[0],note=notes[0];
+    await this.conversationService.saveSession(conv,{...session,pendingComposedDishRecovery:{
+      cartSignature:JSON.stringify(session.cart),productId:product.id,price:product.price,createdAt:Date.now(),note,
+    }});
+    await this.reply(conv,waId,'¿Te refieres a un solo *'+product.name+'*, '+note+'? Cuesta *$'+
+      Math.round(product.price).toLocaleString('es-CO')+'* (sin domicilio). Si respondes *sí*, reemplazo las dos líneas por ese plato. El pedido sigue igual por ahora.');
+    return true;
+  }
+
   private isCancelIntent(text: string): boolean {
-    const t = text.trim().toLowerCase();
+    const t = text.trim().toLowerCase().replace(/^¡+/, '').replace(/[.!…]+$/, '').trim();
     if (/\bno\s+(quiero\s+)?(cancelar|anular)\b/i.test(t)) return false;
     if (/^(cancelar|cancela|cancelo|anular|anula)$/i.test(t)) return true;
     if (/\b(cancelarl[oa]|va\s+(?:a\s+)?tocar\s+cancel)\b/i.test(t)) return true;
@@ -20908,6 +21256,7 @@ export class WhatsappOrchestratorService {
   }
 
   private formatSubsetKitchenNoteQuestion(session: WhatsappSessionData): string {
+    if (session.pendingSubsetKitchenNote?.preparationScope) return this.formatPreparationNoteClarification(session);
     const pending = session.pendingSubsetKitchenNote;
     if (!pending) return '';
     const lines = session.cart.filter(line=>pending.productIds.includes(line.productId));
@@ -20949,6 +21298,10 @@ export class WhatsappOrchestratorService {
     const reference = normalizeCorrection(raw).replace(/^(?:al|el|la|a la)\s+/, '');
     if (/^(?:\d{1,2}|otr[oa]|primer[oa]|segund[oa]|tercer[oa]|cuart[oa]|quint[oa])$/.test(reference) ||
       session.cart.some(line=>normalizeCorrection(line.name).replace(/^(?:el|la)\s+/, '') === reference)) return reference;
+    if (session.lastKitchenNoteSelection.lineIndices) {
+      const match = this.uniqueClarificationLine(session,session.lastKitchenNoteSelection.lineIndices.map(cartIndex=>({cartIndex})),raw);
+      if (match) return reference;
+    }
     return null;
   }
 
@@ -20977,7 +21330,9 @@ export class WhatsappOrchestratorService {
     if (reference === null) return false;
     if (!available || !last.createdAt || Date.now() - last.createdAt < 0 || Date.now() - last.createdAt > 10 * 60 * 1000 ||
       last.cartSignature !== JSON.stringify(session.cart) || last.beforeCart.length !== session.cart.length ||
-      session.cart.length < 2 || session.cart.some(line=>line.quantity !== 1) ||
+      session.cart.length < 2 || !last.lineIndices && session.cart.some(line=>line.quantity !== 1) ||
+      last.lineIndices && (last.lineIndices.length < 2 || new Set(last.lineIndices).size !== last.lineIndices.length ||
+        !last.lineIndices.includes(last.sourceIndex) || last.lineIndices.some(index=>!Number.isInteger(index) || index<0 || index>=session.cart.length)) ||
       !Number.isInteger(last.sourceIndex) || last.sourceIndex < 0 || last.sourceIndex >= session.cart.length) return clarify();
     if (reference === '__cancel_redirect__') {
       await this.reply(conv,waId,`Dejé la nota en *${session.cart[last.sourceIndex].name}*. Tu pedido sigue igual.`);
@@ -20985,14 +21340,19 @@ export class WhatsappOrchestratorService {
     }
     const positions: Record<string,number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3,cuarto:4,cuarta:4,quinto:5,quinta:5};
     const ordinal = positions[reference] || (/^\d{1,2}$/.test(reference) ? Number(reference) : 0);
-    const targets = /^(?:otro|otra)$/.test(reference) ? session.cart.flatMap((_,i)=>i !== last.sourceIndex ? [i] : []) :
-      ordinal ? (ordinal >= 1 && ordinal <= session.cart.length ? [ordinal-1] : []) :
-      session.cart.flatMap((line,i)=>normalizeCorrection(line.name).replace(/^(?:el|la)\s+/, '') === reference ? [i] : []);
+    const eligible = last.lineIndices || session.cart.map((_,index)=>index);
+    let targets = /^(?:otro|otra)$/.test(reference) ? eligible.filter(index=>index !== last.sourceIndex) :
+      ordinal ? (ordinal >= 1 && ordinal <= eligible.length ? [eligible[ordinal-1]] : []) :
+      eligible.filter(index=>normalizeCorrection(session.cart[index].name).replace(/^(?:el|la)\s+/, '') === reference);
+    if (last.lineIndices && !targets.length && !ordinal && !/^(?:otro|otra)$/.test(reference)) {
+      const match = this.uniqueClarificationLine(session,eligible.map(cartIndex=>({cartIndex})),reference);
+      if (match && match !== 'ambiguous') targets = [match.index];
+    }
     const askDestination = async (reason = '') => {
       // Retain the original timestamp and cart fingerprint, never renew an old selection.
       await this.conversationService.saveSession(conv,{...session,lastKitchenNoteSelection:{...last,awaitingDestination:true}});
       await this.reply(conv,waId,`${reason ? reason+'\n\n' : ''}¿A cuál plato paso la nota «${last.note}»? Sigue en *${session.cart[last.sourceIndex].name}*.\n`+
-        session.cart.map((line,i)=>`${i+1}. ${this.formatCartLineLabel(line)}${line.note ? ` — ${line.note}` : ''}`).join('\n')+
+        eligible.map((index,position)=>`${position+1}. ${this.formatCartLineLabel(session.cart[index])}${session.cart[index].note ? ` — ${session.cart[index].note}` : ''}`).join('\n')+
         '\nEscribe el número o el nombre completo. Para dejarla donde está, escribe «no muevas la nota».');
       return true;
     };
@@ -25511,6 +25871,133 @@ export class WhatsappOrchestratorService {
     return changes.every(Boolean) ? {...session,cart:changes as WhatsappSessionData['cart']} : null;
   }
 
+  /** A total heading describes the following rows; it is never an extra purchase. */
+  private async tryHandleCountedHeaderOrder(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const normalize = (value: string) => this.normalizeForMatch(value);
+    const number = (value: string) => ({un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10}[value] ?? Number(value));
+    const counted = /^(\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(.+)$/;
+    let pending = session.pendingCountedHeaderOrder;
+    if (!pending && !text.includes('\n')) return false;
+    const menu = await this.catalogService.getMenuProducts();
+    const unchanged = async (message: string) => { await this.reply(conv,waId,message+' El pedido sigue igual.'); return true; };
+    if (pending) {
+      if (/^(reiniciar|cancelar|cancelar pedido|vaciar|borrar todo)$/.test(normalize(text))) return false;
+      if (pending.cartSignature !== JSON.stringify(session.cart)) {
+        await this.conversationService.saveSession(conv,{...session,pendingCountedHeaderOrder:undefined});
+        return unchanged('El carrito cambió. Repite el reparto completo para revisarlo.');
+      }
+      pending = structuredClone(pending);
+      const allocation = pending.allocations[0];
+      const choice = allocation?.counts[0];
+      const available = allocation ? pending.units.filter(unit => !unit.attributes.some(attr => attr.attributeName===allocation.attributeName)) : [];
+      const ids = [...new Set(available.map(unit=>unit.productId))];
+      const words=normalize(text).replace(/^(?:el|la) /,'').split(' ');
+      const named=menu.filter(product=>ids.includes(product.id) && words.length>0 && words.every(word=>normalize(product.name).split(' ').includes(word)));
+      const selected = /^\d{1,2}$/.test(normalize(text)) ? ids[Number(normalize(text))-1] :
+        !/[¿?]/.test(text) && !/\b(?:no|si|sin|agrega|quita|cambia|quiero|dame|otro|otra|mas|ademas|enviame|regalame)\b/.test(normalize(text))
+          ? (named.length===1 ? named[0].id : this.catalogService.resolveSpokenDish(text,menu.filter(product=>ids.includes(product.id)))?.id) : undefined;
+      const note = /^(?:todos |todas |para todos )?sin\s+/.test(normalize(text)) ? this.catalogService.extractProductModificationNote(text) : undefined;
+      if (note) {
+        for (const unit of pending.units) {
+          const edited=editScopedCartNote(unit.note,{kind:'append',query:'',note,preserve:[]});
+          if (edited.blocked) return unchanged('Resume la nota para poder conservarla.');
+          unit.note=edited.note;
+        }
+      } else if (selected && choice) {
+        const targets = available.filter(unit=>unit.productId===selected);
+        if (targets.length < choice.quantity) return unchanged('Esa línea no tiene suficientes unidades para esa opción. Elige otra línea o cancela el reparto.');
+        for (const unit of targets.slice(0,choice.quantity)) unit.attributes.push({attributeName:allocation.attributeName,attributeValue:choice.value});
+        allocation.counts.shift();
+      }
+    } else {
+      if (/[¿?]/.test(text)) return false;
+      const lines = text.split(/\r?\n/).map(value=>value.trim()).filter(Boolean);
+      if (lines.length<3 || lines.length>15) return false;
+      const head = normalize(lines[0]).replace(/^(?:(?:por favor|quiero|dame|me das|me regalas|enviame)\s+)+/,'').match(counted);
+      if (!head || number(head[1])<3 || number(head[1])>30) return false;
+      const variants = this.catalogService.findCatalogPrefixCandidates(head[2],menu.map(product=>({...product,availableNow:true})));
+      if (variants.length<2) return false;
+      if (session.lastCountedHeaderOrder?.sourceText===normalize(text) && session.lastCountedHeaderOrder.cartSignature===JSON.stringify(session.cart)) {
+        await this.reply(conv,waId,'Ese reparto ya está en el pedido; no añadí más unidades.\n\n'+this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,session)||this.formatContinueShoppingPrompt(session)));return true;
+      }
+      if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingUnitDistribution || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return unchanged('Termina o cancela la selección anterior antes de añadir este reparto.');
+      const family = this.catalogService.findProductVariantFamily(head[2],variants);
+      const units: NonNullable<WhatsappSessionData['pendingCountedHeaderOrder']>['units'] = [];
+      const allocations: NonNullable<WhatsappSessionData['pendingCountedHeaderOrder']>['allocations'] = [];
+      const shared: string[]=[];
+      for (const raw of lines.slice(1)) {
+        const row=normalize(raw).match(counted);
+        if (!row) { shared.push(raw); continue; }
+        const quantity=number(row[1]);
+        if (!quantity || quantity>30) return unchanged('Revisa las cantidades del reparto.');
+        // Restrict every shorthand to the heading's catalog family.
+        const product=this.catalogService.resolveSpokenDish(row[2],variants) ||
+          (family ? this.catalogService.pickVariantFromFamilyText(row[2],family) : null) ||
+          this.catalogService.resolveSpokenDish(head[2]+' '+row[2],variants);
+        const attributeHits=variants.flatMap(product=>(product.attributes || []).flatMap(attr=>attr.options
+          .filter(option=>[normalize(option),normalize(option)+'s',normalize(option).replace(/s$/,'')].includes(row[2]))
+          .map(option=>({attributeName:attr.attributeName,value:option}))));
+        const unique=[...new Map(attributeHits.map(hit=>[hit.attributeName+'|'+hit.value,hit])).values()];
+        if (unique.length===1) {
+          const hit=unique[0];let allocation=allocations.find(item=>item.attributeName===hit.attributeName);
+          if (!allocation) {allocation={attributeName:hit.attributeName,counts:[]};allocations.push(allocation);}
+          allocation.counts.push({value:hit.value,quantity});
+        } else if (product && variants.some(item=>item.id===product.id)) {
+          const parsed=this.catalogService.resolveAttributesFromMessage(product,row[2],[]);
+          if (this.catalogService.uncoveredWordsAgainstOffers(row[2],[product]).length) return unchanged('Hay una opción que necesito aclarar antes de añadir el reparto.');
+          for(let i=0;i<quantity;i++) units.push({productId:product.id,attributes:parsed.status==='invalid' ? [] : structuredClone(parsed.attributes)});
+        } else return unchanged('No identifiqué una preparación u opción dentro del reparto. Escríbela con el nombre de la carta.');
+      }
+      const total=number(head[1]);
+      if (units.length!==total) return unchanged(`Pediste ${total} en total, pero las preparaciones suman ${units.length}. Indica las cantidades correctas.`);
+      for (const allocation of allocations) {
+        if (allocation.counts.reduce((sum,item)=>sum+item.quantity,0)!==total || new Set(allocation.counts.map(item=>item.value)).size!==allocation.counts.length) return unchanged(`El reparto de ${allocation.attributeName} debe sumar ${total}.`);
+        allocation.counts.sort((a,b)=>a.quantity-b.quantity);
+      }
+      for (const unit of units) {
+        const product=menu.find(item=>item.id===unit.productId)!;
+        const sharedText=shared.join(' ');
+        const parsed=this.catalogService.resolveAttributesFromMessage(product,sharedText,unit.attributes);
+        unit.attributes=(parsed.status==='invalid' ? unit.attributes : parsed.attributes).filter(attr=>!allocations.some(item=>item.attributeName===attr.attributeName));
+        unit.note=this.catalogService.extractProductModificationNote(sharedText) || undefined;
+        if (this.catalogService.uncoveredWordsAgainstOffers(`${product.name} ${sharedText.replace(/\b(?:todos|todas)\b/gi,'')}`,[product]).length) return unchanged('Necesito aclarar las opciones compartidas antes de añadir el reparto.');
+      }
+      pending={sourceText:normalize(text),cartSignature:JSON.stringify(session.cart),units,allocations};
+    }
+    // Complete the final option only when its count exactly matches the remaining units.
+    while (pending.allocations.length) {
+      const allocation=pending.allocations[0];
+      const remaining=pending.units.filter(unit=>!unit.attributes.some(attr=>attr.attributeName===allocation.attributeName));
+      if (allocation.counts.length!==1) break;
+      const last=allocation.counts[0];
+      if (last.quantity!==remaining.length) return unchanged('Falta aclarar las cantidades de las opciones.');
+      for(const unit of remaining) unit.attributes.push({attributeName:allocation.attributeName,attributeValue:last.value});
+      pending.allocations.shift();
+    }
+    if (pending.allocations.length) {
+      const allocation=pending.allocations[0];const choice=allocation.counts[0];
+      const ids=[...new Set(pending.units.filter(unit=>!unit.attributes.some(attr=>attr.attributeName===allocation.attributeName)).map(unit=>unit.productId))];
+      await this.conversationService.saveSession(conv,{...session,pendingCountedHeaderOrder:pending});
+      await this.reply(conv,waId,`Son ${pending.units.length} platos en total. ¿Cuál lleva ${choice.quantity} ${allocation.attributeName}: ${choice.value}?\n`+
+        ids.map((id,index)=>`${index+1}. ${menu.find(product=>product.id===id)?.name} (${pending!.units.filter(unit=>unit.productId===id).length} unidades)`).join('\n')+'\nEscribe el número. Conservo el reparto; todavía no lo agregué.');
+      return true;
+    }
+    if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) return unchanged('El restaurante está cerrado; no añadí el reparto.');
+    let next: WhatsappSessionData={...session,pendingCountedHeaderOrder:undefined,pendingAddOffer:undefined};
+    for (const unit of pending.units) {
+      const product=menu.find(item=>item.id===unit.productId);
+      if (!product || product.availableNow===false || unit.attributes.some(attr=>!product.attributes?.some(item=>item.attributeName===attr.attributeName && item.options.includes(attr.attributeValue)))) return unchanged('Una preparación u opción ya no está disponible. No añadí el reparto.');
+      const added=this.tryAddProductToCart(next,product,1,cfg,unit.note,unit.attributes,{sourceText:`quiero ${product.name}`});
+      if (added.blocked || added.missingAttributes) return unchanged('Faltan opciones para completar el reparto; indícalas junto con cada plato.');
+      next=added.session;
+    }
+    next={...next,lastCountedHeaderOrder:{sourceText:pending.sourceText,cartSignature:JSON.stringify(next.cart)}};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,'Listo ✅\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
+  }
+
   private async tryHandleTwoUnitFamilyPurchase(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
@@ -25860,6 +26347,7 @@ export class WhatsappOrchestratorService {
     let selectedCartIndex: number | undefined;
     let selectedSourceText: string | undefined;
     const pendingEdit = session.pendingCartAttributeEdit;
+    if (await this.tryResolvePendingAttributeGroup(conv,waId,session,text,products)) return true;
     if (pendingEdit) {
       if (pendingEdit.cartSignature !== JSON.stringify(session.cart)) {
         session = {...session, pendingCartAttributeEdit:undefined};

@@ -60,7 +60,7 @@ export type WhatsappSessionData = {
   /** Read-only price clarification, separate from an order selection. */
   pendingPriceInquiry?: { cartSignature: string; state: string; productIds: number[] };
   /** One immediate repair of a resolved note between two single-unit rows. */
-  lastKitchenNoteSelection?: { beforeCart: WhatsappCartItem[]; cartSignature: string; sourceIndex: number; note: string; createdAt: number; awaitingDestination?: boolean };
+  lastKitchenNoteSelection?: { beforeCart: WhatsappCartItem[]; cartSignature: string; sourceIndex: number; note: string; createdAt: number; awaitingDestination?: boolean; lineIndices?: number[] };
   lastUnitOptionEdit?: { sourceText: string; cartSignature: string; beforeCart?: WhatsappCartItem[]; createdAt?: number };
   pendingCartAttributeEdit?: {
     sourceText: string;
@@ -84,7 +84,7 @@ export type WhatsappSessionData = {
   };
   /** Subset instruction awaits recipients; an empty note awaits preparation for named products.
    * byUnits counts individual portions rather than rows; quantity 0 permits any explicit selection. */
-  pendingSubsetKitchenNote?: { quantity: number; note: string; productIds: number[]; byProduct?: boolean; byUnits?: boolean; sourceText?: string; addOrEdit?: { cartSignature: string; cartIndex: number }; substitution?: { removed: string; choices: [string, string]; hostNote?: string } };
+  pendingSubsetKitchenNote?: { quantity: number; note: string; productIds: number[]; preparationScope?: { cartSignature: string; createdAt: number; indices: number[]; preserve: string[] }; byProduct?: boolean; byUnits?: boolean; sourceText?: string; addOrEdit?: { cartSignature: string; cartIndex: number }; substitution?: { removed: string; choices: [string, string]; hostNote?: string } };
   cart: WhatsappCartItem[];
   orderType: 'delivery' | 'pickup';
   address?: string;
@@ -139,6 +139,13 @@ export type WhatsappSessionData = {
   pendingUnitSplit?: string;
   /** An unresolved two-unit distribution must be completed before checkout. */
   pendingUnitDistribution?: {productId: number; quantity: number; sourceText: string};
+  lastCountedHeaderOrder?: {sourceText:string;cartSignature:string};
+  pendingCountedHeaderOrder?: {
+    sourceText: string;
+    cartSignature: string;
+    units: Array<{productId:number;attributes:Array<{attributeName:string;attributeValue:string}>;note?:string}>;
+    allocations: Array<{attributeName:string;counts:Array<{value:string;quantity:number}>}>;
+  };
   /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
   /** Read-only context for a follow-up about unavailable items; never a purchase draft. */
   recentUnavailableOrder?: { items: string[]; expiresAt: number };
@@ -198,6 +205,13 @@ export type WhatsappSessionData = {
   /** Opción de una lista que se acaba de describir. «Sí, ese» compra solo esta. */
   describedListCandidateId?: number;
   /** A replacement needs one original cart line; choosing it must not delete it alone. */
+  pendingComposedDishRecovery?: {
+    cartSignature: string;
+    productId: number;
+    price: number;
+    createdAt: number;
+    note: string;
+  };
   pendingCartReplacement?: {
     cartSignature: string;
     options: Array<{ cartIndex: number; label: string }>;

@@ -1,0 +1,52 @@
+{
+  "batch": 343,
+  "sources": [
+    "01/11 mensajes217–242: contacto y corrección del bagre/sobrebarriga",
+    "31/10 grupoB y plan U2/U3",
+    "Mensaje recibido durante la tanda:01/11 20:32, consulta arroz chino con costillas cotizada como dos productos"
+  ],
+  "newTests": 42,
+  "baseline": {
+    "initialFailed": 10,
+    "initialPassed": 6,
+    "interpretation": "8 bloqueos de retirada directa;2 expectativas demasiado estrictas de dirección pickup corregidas. Tras ello aparecen2 omisiones de crema en awaiting_payment; evidencia de probe guardada privada."
+  },
+  "scope": [
+    "16 cierres: dos catálogos × agente off/mock × separado/coalescido × con/sin corrección",
+    "14 guardas: exceso, desconocido, stock, pregunta, condición, cantidad negativa y varias líneas del mismo producto",
+    "Retirada directa requiere nombre completo de línea; conserva ruta por opción existente",
+    "Compra reconocida en catálogo durante pago no se descarta como dirección genérica",
+    "DTO, teléfono, cantidades, respuesta y recibo comprobados",
+    "12 controles de cotización compuesta, consulta sin compra y aceptación de oferta;4 cierres extra con DTO/recibo",
+    "X con Y único por prefijo literal no se divide en ingredientes; X y Y conserva dos productos"
+  ],
+  "focus": {
+    "firstRelatedTests": 470,
+    "firstRelatedSuites": 3,
+    "finalRelatedTests": 114,
+    "finalRelatedSuites": 4,
+    "newTests": 42
+  },
+  "limitations": [
+    "Sin modelo, DB, Meta ni mapas reales",
+    "No explica duplicación histórica original",
+    "No cubre nombres abreviados de retirada directa ni todas las formas de contacto",
+    "Calidad de la respuesta del modelo simulado al teléfono no acredita conversación real",
+    "Precio del fixture no representa necesariamente precio vigente en producción; resolución requiere prefijo literal único del catálogo"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "specs": [
+    "src/whatsapp/whatsapp-contact-repair-343.spec.ts",
+    "src/whatsapp/whatsapp-compound-price-343.spec.ts"
+  ],
+  "specHashes": {
+    "src/whatsapp/whatsapp-contact-repair-343.spec.ts": "3176088992a2b531a60d0741f448d276959158040bf73b8a492866a311bee789",
+    "src/whatsapp/whatsapp-compound-price-343.spec.ts": "8d578a4b7da81d514b9aa2bba979e0bc04c3e6eb659bb2d4b61a0bb353baf1d9"
+  },
+  "priceBaseline": {
+    "failed": 4,
+    "passed": 0,
+    "observed": "PPP separa arroz/costillas; catálogo sintético cobra plato compuesto más ingrediente"
+  }
+}

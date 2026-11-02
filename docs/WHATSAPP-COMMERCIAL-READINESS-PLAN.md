@@ -1,6 +1,134 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda349: redirigir la nota tras elegir una línea
+
+Baseline24/24 fallan: «no, el otro» tras aclaración348 no restaura origen/aplica destino. Ahora conserva estado previo y candidatos; permite redirigir líneas completas con cantidades distintas, preservando notas originales, opciones, unidades y checkout. Ordinales pertenecen a la lista de candidatos; productos ajenos no se incluyen. Tres candidatos piden aclaración y admiten número/opción/nota. Firma/caducidad/interrupción/pago/selección pendiente y repeticiones no vuelven a modificar.
+
+56 controles nuevos,24 cierres DTO/recibo; foco56/1 y relacionadas536/4 aprobados. Global aislada33565/417 aprobada,635 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging349 desplegado/verificado: `c0e8bc47`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41460228361; evidencia whatsapp-batch-349-staging-deployment.json. Controles compilados previos aprobados; cobertura349 local. Producción333 y Kamppo321 sin cambios. Cero llamadas pagadas/Meta/órdenes externas; presupuesto267/256/11 intacto. Evidencias whatsapp-batch-349-{sources,patterns}. Próximo: consultar total durante aclaración y retomarla; U3/U4 siguen abiertos.
+
+
+## VIGENTE — tanda348: retomar nota tras aclarar el plato
+
+Baseline24/24 fallan: la nota por preparación ambigua no muestra opciones ni conserva selección. Ahora guarda la solicitud con firma del carrito y caducidad de10 minutos; presenta cantidad/opciones/notas y admite número, opción, nota anterior o nombre inequívoco. Aplica a la línea completa y conserva checkout. Preguntas, sí/confirmar, grupos, conflictos y pago pendiente no seleccionan. Firma cambiada/vencida descarta; retirar nota/cancelar/reiniciar verificados.
+
+56 casos nuevos;24 cierres DTO/recibo; foco258/4 aprobado. Global aislada33509/416 aprobada,634 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging348 desplegado/verificado: `68062b8c`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41454914207; evidencia whatsapp-batch-348-staging-deployment.json. Controles compilados previos aprobados; cobertura348 local. Producción333 y Kamppo321 sin cambios. Cero llamadas pagadas/Meta/órdenes externas, presupuesto267/256/11 intacto. Evidencias whatsapp-batch-348-{sources,patterns}. Próximo: corregir selección recién aplicada («no, el otro») sin duplicar notas; U3/U4 siguen abiertos.
+
+
+## VIGENTE — tanda347: nota tras cambio parcial de preparación
+
+Baseline16/16 fallan: después de cambiar una unidad a broaster, «El broaster sin arroz» consultaba catálogo y no guardaba nota. Ruta temprana resuelve una preparación explícita contra una sola línea del carrito, conserva cantidades, opciones, notas y checkout; ambigüedad/conflicto/selección o pago pendiente piden aclaración.40 controles nuevos,16 cierres DTO/recibo, dos catálogos y agente off/mock. Foco569/5 aprobado; global aislada33453/415 aprobada,633 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging347 desplegado/verificado: `af2a80d5`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41451155444; evidencia whatsapp-batch-347-staging-deployment.json. Controles compilados previos aprobados; cobertura347 local. Producción333 y Kamppo321 sin cambios. Cero llamadas pagadas/Meta/órdenes externas; presupuesto267/256/11 intacto. Evidencias whatsapp-batch-347-{sources,patterns}. Próximo: continuar una aclaración de nota entre varias variantes; U3/U4 siguen abiertos.
+
+
+## VIGENTE — tanda346: notas parciales y conservación de opciones
+
+Prioridad U3/U4: reparto explícito de notas sobre unidades existentes y conservación al cambiar preparación.40 controles nuevos; foco433/4 aprobado. Baseline8/16 fallan por nota parcial;8 cambios de preparación ya pasan. «De los tres churrascos, dos sin arroz más ensalada» conserva3 unidades y modifica solo2; catálogos pollo/res y tofu/vegetal. Cantidades inválidas, preguntas, condiciones y versiones ambiguas no mutan carrito.16 cierres verifican DTO/recibo simulado.
+
+Global aislada33413/414 aprobada;632 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Primera ejecución invalidada por cambios ajenos simultáneos, sin fallos de pruebas. Staging346 desplegado y verificado: código `48ee9b0e`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41390403109; evidencia whatsapp-batch-346-staging-deployment.json. Controles compilados previos aprobados; cobertura346 local. producción333 y Kamppo321 sin cambios. Evidencias whatsapp-batch-346-sources.json y patterns.md. Cero llamadas pagadas/Meta/órdenes externas; presupuesto267/256/11 intacto. Próximo: variaciones de reparto con notas previas y cambios de grupo durante checkout; no declarar cerrado U3/U4.
+
+
+## VIGENTE — tanda345: cancelar y recuperar el carrito dividido
+
+Chat01/11 20:49–20:56. Baseline12/20 falla: «Cancelar.»/«¡Cancelar!» no vacían y «En combo.» solo atiende costillas;8 frases completas ya pasan. Cancelación tolera puntuación y conserva tratamiento de preguntas/negaciones/condiciones. Borrador cancelado se vacía; orden registrada anterior no se cancela.
+
+Con dos líneas unitarias sin atributos y notas exclusivamente de exclusión de bebida, «En combo.» propone reunirlas en único plato compuesto del catálogo, muestra precio y conserva carrito hasta aceptar. Sí aplica cambio y nuevo resumen; confirmar antes de resolver no crea orden. Rechazo, firma/precio/stock cambiados y expiración conservan productos. Se atiende la propuesta antes de la aceptación general del checkout.
+
+38 controles nuevos, foco158/3 aprobado:16 cancelaciones,4 cierres de recuperación con DTO/recibo,14 guardas,3 negación/pregunta/condición y1 orden registrada anterior. Global33373 pruebas/413 suites,631 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-345-{sources,global-sources,validation,patterns}.
+
+Staging345 desplegado y verificado: código `b3eb716f`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41381081970; evidencia `whatsapp-batch-345-staging-deployment.json`. Controles compilados previos aprobados; cobertura345 local. Producción333 y Kamppo321. Cero llamadas pagadas/Meta/órdenes externas; presupuesto267/256/11 intacto. Sin modelo/canal/DB reales. Límites: no combina cantidades mayores, más de dos líneas, atributos o notas ajenas; no inventa descuentos ni permite cancelar órdenes registradas. Siguiente U3/U4: conservación de variantes, bebidas y notas en cambios complejos; ampliar recuperación solo con evidencia.
+
+## VIGENTE — tanda344: pedido compuesto sin gaseosa
+
+Aclaración explícita del usuario sobre chat01/11 20:49: «un arroz chino, costillas de cerdo y sin gaseosa» es un solo plato compuesto. Baseline6/8 falla; ráfaga pedido+Nequi también6/8. Normalización acotada a cantidad+base+coma/con+componente+exclusión de bebida, con nombre compuesto único del catálogo. Conserva nota y cantidad; no agrega bebida, no inventa descuentos ni sustituye combos explícitos.
+
+31 controles nuevos:16 cierres DTO/recibo en dos catálogos × agente off/mock × coma/con × separado/coalescido;13 guardas de parser y2 pedidos separados. Al normalizar una ráfaga, una burbuja independiente de pago reconocido se guarda como dato para que no consuma la compra. Foco60/3 aprobado. Global33335 pruebas/412 suites,630 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-344-{sources,global-sources,validation,patterns}.
+
+Staging344 desplegado y verificado: código `d7ed88aa`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41377899052; evidencia `whatsapp-batch-344-staging-deployment.json`. Controles compilados previos aprobados; cobertura344 local. Producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. Sin canal/modelo/DB reales. No cierra «En combo» sobre carrito ya dividido ni «Cancelar.»: pendientes prioritarios siguientes. No generalizar a cualquier lista con coma, múltiples candidatos o petición sin exclusión de bebida.
+
+## VIGENTE — tanda343: contacto, reparación y cotización compuesta
+
+42 controles nuevos:30 de teléfono intercalado/retirada+adición y12 de cotización de plato compuesto. Reproduce bloqueo de retirada directa con cantidad+nombre completo, omisión de compra en awaiting_payment tras teléfono y cotización de «arroz chino con costillas» como componentes separados. Corrige por reglas de catálogo: retirada directa exacta, compra reconocida durante pago y prefijo único «X con Y». Consultar no compra; aceptar cotización agrega solo el producto combinado. «X y Y» conserva productos separados.
+
+20 cierres con DTO/recibo entre ambas suites; dos catálogos y agente off/mock. Foco previo470/3 y final114/4 aprobados (solapados, no sumar). Global33304/411 aprobada,628 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-343-{sources,global-sources,validation,patterns}. Primera global interrumpida para incorporar el caso nuevo de cotización; solo la ejecución final completa cuenta.
+
+Staging343 desplegado y verificado: código `6e890644`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41375523907; evidencia `whatsapp-batch-343-staging-deployment.json`. Controles compilados previos aprobados; cobertura343 local. Producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/DB reales ni causa histórica del bagre. Precio del fixture no afirma precio de producción.
+
+PRIORIDAD SIGUIENTE: nuevo chat01/11 20:49–20:56. «Arroz chino, costillas ... sin gaseosa» → «En combo» apunta solo a costillas → «Cancelar.» no vacía. No está corregido por343. Regla corta de cancelación no admite punto; reproducir router completo y corregir conservando negaciones/preguntas. Después aclaración contextual del plato combinado/ingredientes y combo sin gaseosa. Datos de entrega/pago sí preservados en el chat; // en dirección es secundario. Fuente anonimizada en patterns343.
+
+## VIGENTE — tanda342: ráfagas parciales y reentregas
+
+24 regresiones nuevas: dos catálogos × agente off/mock × ráfaga parcial, ID duplicado no adyacente, reentrega completa, mezcla nuevo/repetido, cortesía aislada y compra explícita adicional. Receptor real con temporizadores; claim de persistencia simulado.24 cierres comprueban unidades del DTO y recibo. Reentrega completa no modifica sesión ni responde. «Otro» con ID nuevo sí suma.
+
+Foco24/1 y relacionadas63/4 aprobadas; TypeScript general aprobado. Sin cambios al motor; no se repite global ni se redespliega. Global anterior341:33238/408, no es una global342. Evidencias whatsapp-batch-342-{sources,validation,patterns}. Runtime staging341 `eb33603b`; producción333 y Kamppo321. Cero llamadas pagadas/Meta/órdenes externas, presupuesto267/256/11 intacto.
+
+U2 sigue abierto: no reproduce duplicación histórica del bagre, no acredita DB/Meta reales ni carreras entre instancias/caídas. Cortesía aislada solo verifica conservación del carrito, no calidad de respuesta del modelo. Siguiente: contacto intercalado y corrección explícita «quita un bagre y añade una sobrebarriga», compartida con U3; mantener aceptación real como requisito posterior.
+
+## VIGENTE — tanda341: compras consecutivas y cortesía
+
+01/11 mensajes217–242 y31/10 grupoB. Baseline4/8 falló: «también por Fis» omitía sobrebarriga/pasta en turnos separados. Ráfagas aprobaban; duplicación histórica del bagre no reproducida. Normalización acotada de cortesía y prefijo «y» con producto reconocido: «Y un Crema De Tomate» ya no se guarda como dirección.
+
+20 controles nuevos:8 cierres con DTO/recibo en dos catálogos × agente off/mock × separados/coalescidos mediante receptor real;2 propuestas hostiles de agente repitiendo plato anterior;10 límites de cortesía. Carrito, estado, respuesta, recogida/destino y total verificados. Foco20/1 aprobado. Evidencias whatsapp-batch-341-{sources,global-sources,validation,patterns}. Global33238 pruebas/408 suites, inventario exacto y625 fuentes congeladas; TypeScript general/build y scripts aprobados.
+
+Staging341 desplegado y verificado: código `eb33603b`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41370184449; evidencia `whatsapp-batch-341-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica341 local. Producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. U2 sigue abierto: causa original del bagre, reentregas de messageId, ráfagas parciales y contacto. No acredita modelo/canal/persistencia real ni cierra todos los fallos del grupo.
+
+## VIGENTE — tanda340: plan unificado y encabezado de reparto
+
+Prioridad consolidada en `WHATSAPP-UNIFIED-REMEDIATION-PLAN.md`: une grupos pendientes31/10 y01/11 sin considerar cerrados los avances parciales. U1 cantidades/reparto; U2 compras inesperadas/ráfagas; U3 editar/eliminar/reemplazar; U4 opciones/notas; U5 pendientes/catálogo; U6 datos/direcciones; U7 consultas/lenguaje; U8 aceptación real/promoción. Mezcla de idiomas sigue al final.
+
+01/11 mensajes438–447: «4 ejecutivos /3 con frito /1 broster /pierna pernil todos /3 ajiacos /1 menudencias». Baseline2/2 falló:4 fritos+pollo completo+4 sopas aparte (no idéntico resumen al histórico, mismas clases de error). Ahora el encabezado es total, las preparaciones heredan familia y las sopas se reparten como incluidas. Pregunta qué preparación lleva la opción minoritaria, conserva nota «sin ensaladas», añade las4 unidades completas y evita sumar al repetir el mismo reparto. Selección por número/nombre/preparación distintiva. Catálogo ajeno con bowls también cubierto.
+
+68 controles nuevos (8 cierres con DTO/recibo y60 controles de límites, continuidad y guardas); foco final68/1 y relacionadas18/2 aprobadas en el foco previo70/3. Cantidades, notas, checkout, carrito previo, stock/opción retirados, firma obsoleta, cancelación, conteos discordantes, palabras numéricas y negación/pregunta/nueva compra. Global33218 pruebas/407 suites, inventario exacto y624 fuentes congeladas. TypeScript general/build y scripts aprobados. Evidencia whatsapp-batch-340-{sources,global-sources,validation,patterns}.
+
+Staging340 desplegado y verificado: código `2e827464`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41367782193; evidencia `whatsapp-batch-340-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica340 local. Solo staging; producción333 y Kamppo321. Cero llamadas pagadas, Meta u órdenes externas; presupuesto267/256/11 intacto. Límites: encabezados multilínea3–30 unidades, opciones repartidas por una fila elegida; no certifica todo reparto ni reparación de carritos ya erróneos. Tampoco prueba modelo/canal/persistencia real. Siguiente U2: bagre duplicado/sobrebarriga omitida/«por fis» en ráfaga real, combinado con compras inesperadas pendientes del31/10. U1 conserva ampliaciones pendientes de corrección/repartos más complejos.
+
+## VIGENTE — tanda339: análisis01/11 y selección colectiva pendiente
+
+Revisados500 mensajes (256 cliente/244 bot),30 recibos observados, sin asumir clientes independientes ni persistencia externa. Diagnóstico `whatsapp-chats-0111-review.md`, plan `whatsapp-chats-0111-remediation-plan.md` y corpus de51 escenarios `whatsapp-chats-0111-regressions.json`. Prioridades: cantidades/reparto de ejecutivos, duplicación/omisiones en ráfagas, modificar frente a añadir/eliminar, bebida y notas perdidas, reemplazo compuesto y continuidad de contacto.45 escenarios siguen planificados;6 se vinculan a cobertura del primer grupo, con límites descritos en el corpus.
+
+Mensajes156–181: «las arepas fritas»→«a los dos». Baseline16/16 reproduce que la selección colectiva no aplica las opciones; no reproduce literalmente el éxito anunciado seguido de firma obsoleta. Resolver candidatos ofrecidos de forma conjunta, conservar cantidades/notas/paso y consumir la selección; firma o catálogo inválidos no aplican parcialmente.51 controles nuevos (16 cierres con DTO/recibo,28 controles del router,7 guardas), dos catálogos × agente off/mock. Foco51/1 aprobado. Global33150 pruebas/406 suites, inventario exacto y623 fuentes congeladas. TypeScript general/build y scripts aprobados. Evidencia whatsapp-batch-339-{sources,global-sources,validation,patterns}.
+
+Staging339 desplegado y verificado: código `963f7f42`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41364969115; evidencia `whatsapp-batch-339-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica339 local. Alcance solo staging; producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: reparto4 ejecutivos=3 fritos+1broaster y sopas3+1; después compras inesperadas por ráfagas. Otros fallos del01/11 y grupos anteriores no se declaran corregidos por esta tanda.
+
+## VIGENTE — tanda338: consulta general de opciones con cortesía (01/11)
+
+Chat31/10 12:29–12:33, mensajes21–24: «Qué opciones tienen. Gracias». No se reprodujo exactamente «productos de gracias»; sí respuesta sin opciones con agente simulado y pérdida de awaiting_final_confirm en browse sin agente. Ruta acotada de consulta general anterior al modelo muestra categorías del catálogo y conserva estado/carrito. Cortesía inicial/final no se interpreta como un producto. Restricciones, categorías concretas, pago y compras mixtas siguen sus rutas existentes.
+
+60 controles nuevos (52 recorridos/controles del router y8 guardas), dos catálogos × agente off/mock. Baseline16 fallos/8 aprobados. Foco135/2 aprobado. Selección posterior de categoría, cierre simulado con DTO/recibo y sabor pendiente conservado. En checkout/opciones pendientes el menú evita una segunda numeración y recuerda el paso previo. Global33099 pruebas/405 suites, inventario exacto y622 fuentes congeladas. TypeScript general/build y scripts aprobados. Evidencia whatsapp-batch-338-{sources,global-sources,validation,patterns}.
+
+Staging338 desplegado y verificado: código `25b54042`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41356645272; evidencia `whatsapp-batch-338-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica338 local. Alcance solo staging; producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real ni causalidad exacta del fallo histórico. Siguiente: grupoF, selecciones vencidas/stock y opciones inválidas; grupoB conserva compras inesperadas no reproducidas. GrupoE no se declara cerrado en su totalidad.
+
+## VIGENTE — tanda337: domicilio nuevo tras pedido confirmado (01/11)
+
+Chat31/10 20:48, mensajes454–459: «Buenas noches veci me regalas un domicilio». La respuesta histórica de seguimiento no se reprodujo exactamente; sí se reprodujo que con agente simulado la solicitud reabría sin fijar domicilio y contestaba «cuál prefieres». Corrección acotada del reconocimiento de frase logística completa: responde antes del modelo y conserva los flujos existentes de inicio/checkout. Mensajes con dirección, comida, negación, condición o recogida no se reducen a una petición vacía.
+
+54 controles nuevos (48 recorridos/controles del router y6 guardas), dos catálogos × agente off/mock y completed/closed. Baseline4 fallos/12 aprobados. Foco final74/2 aprobado. Dos cierres simulados, creación única por pedido, DTO y recibo del segundo sin productos anteriores. Seguimiento, cortesías y solicitud de salsas conservan orden anterior. Global33039 pruebas/404 suites, inventario exacto y621 fuentes congeladas. TypeScript general/build y scripts aprobados. Evidencia whatsapp-batch-337-{sources,global-sources,validation,patterns}.
+
+Staging337 desplegado y verificado: código `af6c3074`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41354443634; evidencia `whatsapp-batch-337-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica337 local. Alcance solo staging; producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real ni explica por sí sola la respuesta histórica de seguimiento. Siguiente grupoE: consultas de opciones con cortesía («qué opciones tienen, gracias»); grupoB conserva compras inesperadas no reproducidas.
+
+## VIGENTE — tanda336: total y demora en la misma consulta (01/11)
+
+GrupoE: «cuánto es y cuánto demora», orden inverso, «la cuenta y en cuánto llega» y «tiempo y valor». Responde carrito/total y estimación con unidades; conserva paso de dirección/confirmación y opciones pendientes. Reconocimiento acotado a consultas: no intercepta compras, cambios, aprobación ni precios individuales. Reutiliza formato de total y estimación configurada; sin tiempo configurado pide confirmación del equipo; no inventa cotización definitiva sin domicilio.
+
+42 casos nuevos (36 recorridos con router y6 guardas) en dos catálogos × agente off/mock. Baseline32/32 fallaba por respuesta incompleta o rango sin minutos; foco42/1 y relacionadas855/2 aprobados. Cierre simulado, DTO y recibo comprobados desde confirmación. Primera global detectó dos regresiones por default de tiempo sin configuración; detenida y corregida para mantener la confirmación del equipo. Global32985 pruebas/403 suites, inventario exacto y620 fuentes congeladas. TypeScript general/build y scripts aprobados. Evidencia whatsapp-batch-336-{sources,global-sources,validation,patterns}.
+
+Staging336 desplegado y verificado: código `058edc18`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41350624200; evidencia `whatsapp-batch-336-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica336 local. Alcance solo staging; producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: grupoE, saludos/nuevo pedido frente a seguimiento y respuestas de cortesía; grupoB conserva incidentes aún no reproducidos. Consultas mixtas con modificaciones siguen sus rutas previas.
+
+## VIGENTE — tanda335: personas no equivalen a unidades (01/11)
+
+GrupoE: «somos dos» y «para dos» duplicaban un plato sin autorización. Ahora aclara consulta de rendimiento frente a cantidad de unidades y conserva carrito/estado/opciones. Se elimina la conversión automática; «otro igual» sigue sumando una unidad. Regla genérica, sin productos de PPP codificados.
+
+32 casos nuevos en dos catálogos × agente off/mock. Baseline16/16 fallaba; foco inicial70/2 y ampliación32/1 aprobados. Dos expectativas antiguas de duplicación corregidas. Pruebas cubren cierre simulado, DTO y recibo. Global32943 pruebas/402 suites, inventario exacto y619 fuentes congeladas. TypeScript general/build y scripts aprobados. Evidencia whatsapp-batch-335-{sources,global-sources,validation,patterns}.
+
+Staging335 desplegado y verificado: código `ddec9540`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41346772368; evidencia `whatsapp-batch-335-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica335 local. Alcance solo staging; producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Pendiente grupoE: total+demora y consultas de rendimiento más variadas; grupoB conserva incidentes aún no reproducidos.
+
 Esta sección es la hoja de ruta vigente. Los registros de tandas que siguen son evidencia histórica, no una lista acumulativa de tareas abiertas. Responsable de implementación y pruebas: agente en PPP staging; validación del servicio y decisiones comerciales: operador del restaurante con evidencia del agente.
+
+## VIGENTE — tanda334: consultar combo sin reabrir bebida (01/11)
+
+Chat31/10 mensajes302–308:4/4 controles iniciales reproducen que «o hay combo con gaseosa?» reabre sabores de una bebida resuelta. Consulta ahora toma el plato nombrado o el único plato si el foco era bebida; con varios pide identificarlo. No muta carrito. La ampliación reprodujo vaciado al rechazar oferta en confirmación: se identifica el destino solo si hay un combo único y las rutas existentes conservan el pedido al rechazar. Aceptar requiere completar bebida incluida; la bebida separada se conserva y se informa.
+
+40 casos nuevos en dos catálogos × agente off/mock; foco58/2 aprobado. Global32911 pruebas/401 suites, inventario exacto y618 fuentes congeladas; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-334-{sources,global-sources,validation,patterns}. Se corrigió una aserción prematura de aceptación que esperaba compra antes de elegir la bebida incluida.
+
+Staging334 desplegado y verificado: código `cdf6c483`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41338052957; evidencia `whatsapp-batch-334-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica334 local. Alcance explícito: solo staging. Main/producción permanece333 y Kamppo321. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/persistencia real. Siguiente: grupoE, consultas de raciones/personas y total+demora; mantener abiertas incidencias no reproducidas del grupoB y notas ambiguas.
 
 ## VIGENTE — tanda333: plato+bebida a combo y promoción autorizada (01/11)
 

@@ -1,0 +1,31 @@
+{
+  "batch": 338,
+  "source": "Chat31/10 12:29–12:33 mensajes21–24: Qué opciones tienen. Gracias",
+  "spec": "src/whatsapp/whatsapp-menu-courtesy-338.spec.ts",
+  "specSha256": "8b0c6f2040f0bd534764d5db5268e7f2bc2ac53967f22a9052ef84d6fa9c1f16",
+  "newTests": 60,
+  "baseline": {
+    "failed": 16,
+    "passed": 8
+  },
+  "focus": {
+    "passed": 135,
+    "suites": 2
+  },
+  "findings": [
+    "No se reprodujo exactamente productos de gracias en el motor actual",
+    "Con agente simulado una pregunta general respondía cuál prefieres sin opciones",
+    "Sin agente el browse podía cambiar awaiting_final_confirm a building_cart",
+    "Ruta acotada de pregunta general muestra categorías sin depender del modelo y conserva estado/opciones"
+  ],
+  "coverage": [
+    "Dos catálogos, agente off/mock y carrito vacío/con productos/en confirmación",
+    "Cortesía inicial/final y varias formas de pedir opciones",
+    "Selección posterior de categoría y compra de bebida en carrito vacío",
+    "Cierre simulado con creación única, DTO y recibo desde confirmación",
+    "Sabor pendiente conservado; categorías sin numeración competitiva",
+    "Guardas contra consultas de categoría/pago/restricción, compra mixta, negación y producto llamado Gracias"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0
+}

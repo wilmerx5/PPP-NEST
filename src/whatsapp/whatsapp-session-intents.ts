@@ -922,6 +922,19 @@ export function isCartChargeQuestion(text: string): boolean {
     /^(?:[¿?\s]*)(?:y\s+)?(?:cuanto\s+(?:seria|es|vale|sale)|(?:me\s+)?(?:regalas?|confirmas?)\s+(?:porfa\s+)?(?:el\s+)?(?:total|valor\s+del\s+pedido))(?:\s+(?:en\s+total|todo|el\s+pedido))?(?:\s+(?:por\s+favor|porfa))?[?¿.!\s]*$/.test(t);
 }
 
+/** Two informational clauses; never consume a purchase or confirmation. */
+export function isCartTotalAndEtaInquiry(text: string): boolean {
+  const t = (text || '').toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').replace(/[¿?¡!.,;]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/^(?:me )?confirmas? (?:el )?(?:tiempo y (?:el )?valor|valor y (?:el )?tiempo)(?: por favor| porfa)?$/.test(t)) return true;
+  if (/\b(?:agrega|anade|quita|retira|elimina|cambia|reemplaza|dame|ponme|quiero|confirmar|confirmo)\b/.test(t)) return false;
+  const clauses = t.split(/\s+y\s+/);
+  if (clauses.length !== 2) return false;
+  const eta = (clause: string) => /^(?:cuanto (?:se )?(?:demora|tarda|tardaria)|en cuanto (?:llega|llegaria)|cuanto tiempo (?:demora|tarda))(?: (?:el|mi) pedido| el domicilio)?(?: mas o menos)?(?: por favor| porfa)?$/.test(clause);
+  const total = (clause: string) => isCartChargeQuestion(clause) || isOrderBillRequest(clause);
+  return (total(clauses[0]) && eta(clauses[1])) || (eta(clauses[0]) && total(clauses[1]));
+}
+
 export function isOrderBillRequest(text: string): boolean {
   const t = (text || '')
     .toLowerCase()

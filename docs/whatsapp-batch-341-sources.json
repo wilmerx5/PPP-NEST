@@ -1,0 +1,33 @@
+{
+  "batch": 341,
+  "sources": [
+    "01/11 mensajes217–242: bagre, sobrebarriga y cortesía por fis",
+    "31/10 grupoB: compras inesperadas y ráfagas"
+  ],
+  "spec": "src/whatsapp/whatsapp-purchase-burst-courtesy-341.spec.ts",
+  "newTests": 20,
+  "specSha256": "c41b6de58e733f8ad94d89e3f485b08e9a4a39c1a98f6d36325a87b6d16f2bac",
+  "baseline": {
+    "failed": 4,
+    "passed": 4,
+    "observed": "Omisión de sobrebarriga/pasta con por Fis en turnos separados; ráfagas aprobaron. No reprodujo duplicación histórica del bagre."
+  },
+  "scope": [
+    "Cortesía final por fis/porfi y límites de palabra",
+    "Compra con y + cantidad + producto del catálogo no se interpreta como dirección",
+    "Dos catálogos, agente off/mock, cuatro mensajes separados o coalescidos por receptor real",
+    "Ocho cierres con DTO expandido por unidad y recibo de 46000",
+    "Dos propuestas de agente con producto anterior repetido rechazadas por guarda existente"
+  ],
+  "focus": {
+    "passed": 20,
+    "suites": 1
+  },
+  "limitations": [
+    "Modelo, persistencia y Meta simulados",
+    "Duplicación histórica no reproducida; U2 sigue abierto",
+    "No acredita reentrega de messageId ni todas las combinaciones de ráfagas"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0
+}

@@ -682,6 +682,14 @@ export class WhatsappCatalogService {
     return `Por *${brand}* solo tomo pedidos 🍗 Escribe el *plato* o contáctanos al *3118866823*.`;
   }
 
+  /** A complete general menu question; boundary courtesy is not a product. */
+  isGeneralMenuOptionsInquiry(text: string): boolean {
+    const q = normalizeText(text).replace(/[¿?¡!.,;]/g, ' ').replace(/\s+/g, ' ').trim()
+      .replace(/^(?:(?:hola|buenas(?: tardes| noches)?|veci|gracias|muchas gracias|por favor|porfa)\s+)+/, '')
+      .replace(/(?:\s+(?:muchas gracias|gracias|por favor|porfa))+$/, '');
+    return /^(?:que opciones (?:hay|tienen|tienes|manejan|ofrecen)|cuales son (?:las|sus) opciones|(?:me )?(?:muestras|muestra|muestrame) (?:las|sus) opciones)$/.test(q);
+  }
+
   /** Pregunta abierta sobre el menú (almuerzo, qué hay, recomiendan…). */
   isMenuExploreIntent(text: string, products: WhatsappCatalogProduct[] = []): boolean {
     const q = normalizeText(text);
@@ -7449,6 +7457,20 @@ export class WhatsappCatalogService {
     }
     const source = (stripped || text || '').trim();
     if (!source) return [];
+
+    // A single catalog dish named as "X con Y" owns its ingredients.
+    // Require the whole cleaned query to be a unique literal catalog prefix;
+    // explicit additional products and ambiguous variants keep their existing route.
+    const compoundQuery = normalizeText(this.extractProductSearchQuery(
+      this.stripAvailabilityInquiryNoise(source),
+    )).replace(/^me confirmas?\s+/, '').replace(/^(?:el|la|un|una)\s+/, '').trim();
+    if (/\bcon\b/.test(compoundQuery) && !/\b(?:y|mas|otro|otra|aparte)\b/.test(compoundQuery)) {
+      const compounds = products.filter(product => {
+        const name = normalizeText(product.name);
+        return name === compoundQuery || name.startsWith(compoundQuery + ' ');
+      });
+      if (compounds.length === 1 && compounds[0].availableNow !== false) return compounds;
+    }
 
     // Antes que "…Con Medio Pollo" (arroz): cotizar porción de pollo
     const sizedChicken = this.resolveSizedChickenProduct(text, products, opts);

@@ -1,0 +1,37 @@
+{
+  "batch": 349,
+  "baseCommit": "87ee6325dd8fe1ee88926052caa570f332a16e54",
+  "sourcePatterns": [
+    "28/10: distinguir platos por opciones al corregir",
+    "30/10: notas sobre parte de unidades existentes",
+    "348: elección de línea tras aclaración por preparación"
+  ],
+  "derivedJourney": "Nota ambigua → elegir primera línea → no, el otro / perdón, el segundo → restaurar origen y aplicar destino → confirmar.",
+  "baseline": {
+    "tests": 24,
+    "failed": 24
+  },
+  "focused": {
+    "tests": 56,
+    "suites": 1,
+    "passed": true
+  },
+  "related": {
+    "tests": 536,
+    "suites": 4,
+    "passed": true
+  },
+  "newTests": 56,
+  "fullOrderJourneys": 24,
+  "catalogs": [
+    "Ejecutivo Con Pollo",
+    "Bandeja Con Tofu"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Redirección inmediata del último cambio, firma intacta y diez minutos",
+    "Líneas completas y candidatas de la aclaración original",
+    "Pruebas de modelo y servicios externos simulados"
+  ]
+}

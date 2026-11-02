@@ -1,0 +1,31 @@
+{
+  "batch": 342,
+  "baseCommit": "5d2cfef4af47c860dc52e71de7f381900d8c4c15",
+  "spec": "src/whatsapp/whatsapp-partial-burst-replay-342.spec.ts",
+  "specSha256": "82e72c9f02ec114e05c1e960ff72f88eb0ac155303947e85c2c94e572ddb667e",
+  "newTests": 24,
+  "sources": [
+    "01/11 mensajes217–242",
+    "31/10 grupoB",
+    "U2 y pendientes341"
+  ],
+  "coverage": [
+    "Dos catálogos × agente off/mock × seis escenarios",
+    "Dos ráfagas parciales de dos compras",
+    "ID repetido no adyacente en una ráfaga",
+    "Reentrega de lote completo sin respuesta ni cambio de sesión",
+    "Ráfaga mixta con mensajes nuevos y uno ya reclamado",
+    "Cortesía aislada conserva carrito",
+    "Otro plato explícito con ID nuevo sí suma",
+    "24 cierres con DTO por unidad y recibo46000/56000"
+  ],
+  "limitations": [
+    "Claim de persistencia simulado, no DB ni Meta reales",
+    "No acredita todas las carreras entre instancias ni reanudación tras caída",
+    "Duplicación histórica del bagre no reproducida",
+    "Cortesía aislada solo acredita ausencia de mutación; calidad de respuesta del modelo no validada"
+  ],
+  "productionCodeChanged": false,
+  "paidRequests": 0,
+  "externalOrders": 0
+}

@@ -1,0 +1,41 @@
+{
+  "batch": 346,
+  "sources": [
+    {
+      "kind": "user_chat",
+      "date": "2026-10-30",
+      "pattern": "Tres unidades existentes; modificar solo dos sin arroz y con más ensalada."
+    },
+    {
+      "kind": "user_chat",
+      "date": "2026-10-28",
+      "pattern": "Cambiar solo ejecutivo de pechuga a broaster conservando sopa, bebida y notas."
+    }
+  ],
+  "baseline": {
+    "passed": 8,
+    "failed": 8,
+    "total": 16
+  },
+  "focused": {
+    "tests": 433,
+    "suites": 4,
+    "passed": true
+  },
+  "newTests": 40,
+  "catalogs": [
+    "pollo/res",
+    "tofu/vegetal"
+  ],
+  "agentModes": [
+    "disabled",
+    "mocked"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Patrón explícito de los N platos, M sin…",
+    "Versiones existentes distintas requieren aclaración",
+    "Reglas locales; no acredita inferencia o canal real"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "batch": 334,
+  "source": "31/10 messages302\u2013308: combo availability inquiry after separate bottled drink selected",
+  "spec": "src/whatsapp/whatsapp-combo-inquiry-after-drink-3110.spec.ts",
+  "specSha256": "3d52c7b5552aff1ff92b164a7817ec959f6306ea320417a349d4ec542662f5f3",
+  "newTests": 40,
+  "baseline": {
+    "failed": 4,
+    "passed": 0
+  },
+  "focus": {
+    "passed": 58,
+    "suites": 2
+  },
+  "findings": [
+    "Completed drink focus reopened flavors instead of answering combo question",
+    "Declining the inquiry-created offer at final confirmation could empty the cart",
+    "Initial acceptance assertion was too early: included drink choice must be completed before replacement"
+  ],
+  "coverage": [
+    "Two catalogs; agent off/mock; normal/repeat/checkout/multiple foods/named food/pending drink/drink-only/unavailable/accept/en-combo or yes",
+    "Question preserves cart; ambiguous owner asks for dish",
+    "Unique combo offer binds acceptance/refusal to original line",
+    "Pending drink choice preserved",
+    "Explicit included drink chosen before replacement; separate beverage retained and disclosed",
+    "Full mocked checkout, one create, DTO and receipt"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0
+}

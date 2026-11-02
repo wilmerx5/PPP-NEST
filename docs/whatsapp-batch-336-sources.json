@@ -1,0 +1,36 @@
+{
+  "batch": 336,
+  "source": "Grupo E del plan31/10: total y demora; variantes derivadas de patrones de conversaciones",
+  "spec": "src/whatsapp/whatsapp-total-eta-336.spec.ts",
+  "specSha256": "de05b2100b79dee2a1057bb374a436b3cf08bc7e72deda88cfb7ad882dde96fd",
+  "newTests": 42,
+  "baseline": {
+    "failed": 32,
+    "passed": 0
+  },
+  "focus": {
+    "passed": 42,
+    "suites": 1
+  },
+  "findings": [
+    "Consultas compuestas podían responder solo una de las preguntas",
+    "Tiempo y valor mostraba un rango configurado sin unidades",
+    "Se conservan estado, carrito, dirección y sabor pendiente al responder ambas consultas",
+    "Primera global detectó dos regresiones: la ruta conjunta introducía default35–45 sin configuración. Se mantiene confirmación del equipo si falta tiempo configurado; global anterior detenida y repetida."
+  ],
+  "coverage": [
+    "Dos catálogos, agente off/mock; dirección y confirmación",
+    "Ambos órdenes de consulta: total+demora y demora+total",
+    "Cuenta por favor y tiempo+valor",
+    "Rango configurado con minutos y ausencia de estimación sin configuración",
+    "Opciones pendientes preservadas",
+    "Guardas contra compra/cambio/confirmación/precio individual y seguimiento de otra orden",
+    "Cierre simulado con creación única, DTO y recibo en confirmación"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "finalFocus": {
+    "passed": 855,
+    "suites": 2
+  }
+}

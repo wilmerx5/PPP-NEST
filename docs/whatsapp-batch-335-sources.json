@@ -1,0 +1,31 @@
+{
+  "batch": 335,
+  "source": "Grupo E del plan31/10: personas frente a unidades; caso derivado de revisión de regla, no cita literal de cliente",
+  "spec": "src/whatsapp/whatsapp-people-count-335.spec.ts",
+  "specSha256": "aa9c158bbacaedf2af08ce598e0636a2774907387a017d46c694f0073d8a06f9",
+  "newTests": 32,
+  "baseline": {
+    "failed": 16,
+    "passed": 0
+  },
+  "focus": {
+    "initialPassed": 70,
+    "initialSuites": 2,
+    "expandedPassed": 32,
+    "expandedSuites": 1
+  },
+  "findings": [
+    "somos dos y para dos duplicaban automáticamente una línea de una unidad",
+    "Dos expectativas anteriores codificaban esa compra indebida y fueron corregidas",
+    "Los primeros fixtures de opción pendiente se autocompletaban; se cambió el fixture por bebida con sabor realmente pendiente, sin alterar el comportamiento de opciones"
+  ],
+  "coverage": [
+    "Dos catálogos, agente off/mock",
+    "Palabras y cifras para tamaño de grupo",
+    "Carrito, estado y opción pendiente conservados",
+    "Otro igual añade una unidad explícita",
+    "Cierre completo simulado con DTO y recibo"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0
+}

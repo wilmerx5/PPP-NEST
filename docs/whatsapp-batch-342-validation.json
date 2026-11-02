@@ -1,0 +1,12 @@
+{
+  "batch": 342,
+  "newTests": 24,
+  "relatedTests": 63,
+  "relatedSuites": 4,
+  "tscExitCode": 0,
+  "productionCodeChanged": false,
+  "globalRerun": false,
+  "reason": "Solo regresiones nuevas; motor sin cambios. Global anterior341:33238/408, no equivale a una global342.",
+  "runtime": "eb33603b73530b6c9dd1bc237fd97111108cfc7b",
+  "paidRequests": 0
+}

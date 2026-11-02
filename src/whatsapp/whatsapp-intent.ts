@@ -209,6 +209,8 @@ export function isDeliveryLogisticsFluff(text: string): boolean {
     .replace(/\s+/g, ' ')
     .trim();
   if (!t) return true;
+  // A complete colloquial delivery request has no address or food to infer.
+  if (/^(?:(?:hola|buenas(?: noches| tardes| dias)?|veci|vecino|vecina)\s+)*(?:me\s+(?:(?:puedes|podrias)\s+)?(?:regalas?|regalar|envias?|enviar|mandas?|mandar|haces?|hacer))\s+(?:un|1)\s+domicilio(?:\s+(?:porfa|por favor|gracias))*$/.test(t)) return true;
   // A numeric article and repeated conversational fillers still do not name
   // a destination. Match the whole phrase so an actual place remains intact.
   if (/^(?:(?:para|que|porfa|por favor|un|una|1)\s+)*domicilios?(?:\s+(?:porfa|por favor|gracias))*$/.test(t)) return true;
