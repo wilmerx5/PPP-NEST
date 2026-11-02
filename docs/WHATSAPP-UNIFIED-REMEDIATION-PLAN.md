@@ -1,5 +1,16 @@
 # Plan unificado de corrección de pedidos
 
+## VIGENTE — producción349: merge de staging a Main (02/11/2026)
+
+Solicitud explícita del usuario: merge con Main y despliegue. Runtime producción `932f60b7d31957378d054295a9bd154742171621`: incorpora tandas334–349 y preserva íntegros los cambios Bold/auth de Main `b4647a9e`. Merge sin conflictos, validado en worktree aislado; cambios locales ajenos de staging preservados.
+
+Validación del árbol fusionado:33578 pruebas aprobadas en421 suites;11 pruebas opt-in de integración DB de Bold omitidas en2 suites. Inventario423 suites exacto,652 fuentes congeladas, TypeScript general/build y scripts aprobados. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No equivale a validación real del modelo/canal ni cierra U3/U4.
+
+Workflow41484003586 completado: contenedor activo,0 reinicios, API local/pública ok y DB conectada; configuración privada/modelos preservados. Producción no define healthcheck Docker (`health:null`); salud verificada por endpoints. Controles compilados existentes aprobados, cobertura349 local. Evidencia: `whatsapp-batch-349-production-{deployment,validation,global-sources}.json`.
+
+Staging runtime349 `c0e8bc47` y motor Kamppo321 sin cambios en esta operación. El workflow alojado en Kamppo solo desplegó PPP. Próximo trabajo en staging: consultar total durante aclaración y retomarla. Los bloques anteriores que indican producción333 son históricos, sustituidos por este estado.
+
+
 Vigente desde01/11/2026. Une los pendientes de `whatsapp-chats-3110-remediation-plan.md`, `whatsapp-chats-0111-remediation-plan.md` y las tandas anteriores del relevo. Un mismo comportamiento tiene una sola prioridad aunque aparezca en varios chats. Los planes fechados conservan evidencia histórica; consultar el relevo para los SHAs desplegados.
 
 ## Orden de ejecución
