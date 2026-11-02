@@ -105,7 +105,7 @@ isolated('Bold MariaDB concurrency and lifecycle', () => {
     expect(stored.returnedAt).not.toBeNull();
     expect(Number(stored.advanceAmount)).toBe(30000);
   });
-  it('blocks unverified pilot, excessive advances, non-delivery and duplicate order', async () => {
+  it('blocks untrusted receipts, excessive advances, non-delivery and duplicate order', async () => {
     await send(payload('evt-1'));
     await send(payload('evt-2', 'SALE_APPROVED', 'pay-2'));
     const [a, b] = await db
@@ -118,10 +118,15 @@ isolated('Bold MariaDB concurrency and lifecycle', () => {
       service.claim(a.id, { orderId: 3, advanceAmount: 30000 }, actor),
     ).rejects.toThrow();
     cfg.set('BOLD_STATIC_QR_VERIFIED', 'false');
+    await db
+      .getRepository(BoldReceipt)
+      .update(a.id, { confirmationSource: 'untrusted' });
     await expect(
       service.claim(a.id, { orderId: 1, advanceAmount: 30000 }, actor),
     ).rejects.toThrow();
-    cfg.set('BOLD_STATIC_QR_VERIFIED', 'true');
+    await db
+      .getRepository(BoldReceipt)
+      .update(a.id, { confirmationSource: 'webhook' });
     await service.claim(a.id, { orderId: 1, advanceAmount: 30000 }, actor);
     await expect(
       service.claim(b.id, { orderId: 1, advanceAmount: 30000 }, actor),

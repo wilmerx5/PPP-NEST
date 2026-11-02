@@ -92,3 +92,11 @@ Los intentos se guardan para recuperarlos al recargar. Reenviar el mismo request
 Endpoints administrativos: `GET /api/bold/online`, `PUT /api/bold/online/key`, `POST /api/bold/online/check`, `POST /api/bold/online/qr` y `POST /api/bold/online/qr/:id/status`. Aplicar migración `043_bold_dynamic_qr.sql` antes de usar.
 
 Documentación técnica: https://developers.bold.co/pagos-en-linea/api-de-pagos-en-linea/integracion y https://developers.bold.co/pagos-en-linea/api-de-pagos-en-linea/esquema-de-datos . No se afirma que la cuenta del usuario ya tenga autorizada esta API; se comprueba con su llave y se informa el resultado.
+
+## Validación QR Pro de la app y corrección del piloto
+
+Un cobro real de QR Pro generado desde la app llegó como webhook firmado y aprobado. La hora informada por Bold y la recepción diferían aproximadamente 149 segundos; no se debe interpretar la fecha de creación de la transacción como la hora exacta de abono. El registro de acceso demuestra que la espera principal ocurrió antes de recibir el callback, no por el refresco de cinco segundos.
+
+Se elimina el bloqueo global de asociación por `BOLD_STATIC_QR_VERIFIED`: un recibo aprobado de origen verificado `webhook` o `online_api` puede asociarse. El indicador del QR fijo continúa informando que su cobertura no está demostrada; no invalida ingresos ya autenticados. Las fuentes desconocidas siguen bloqueadas. Se mantienen firma, comercio, valor, pedido, unicidad y auditoría de devoluciones.
+
+El panel muestra hora informada por Bold y hora de recepción por separado, además de exponer los errores de intentos recientes. Un intento de generación API fue rechazado por Bold con 403; la prueba exitosa de QR Pro de la app no acredita habilitación de generación por API.

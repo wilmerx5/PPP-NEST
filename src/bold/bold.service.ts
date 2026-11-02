@@ -137,12 +137,9 @@ export class BoldService {
         if (!row) throw new NotFoundException('Pago no encontrado');
         if (row.merchantId !== this.setting('BOLD_MERCHANT_ID'))
           throw new ConflictException('El pago pertenece a otra cuenta Bold');
-        if (
-          !this.configuration().qrVerified &&
-          row.confirmationSource !== 'online_api'
-        )
+        if (!['webhook', 'online_api'].includes(row.confirmationSource))
           throw new ConflictException(
-            'Falta validar el QR fijo; este recibo aún no tiene confirmación por API online',
+            'El recibo no tiene una fuente de confirmación verificada',
           );
         if (row.status !== 'approved')
           throw new ConflictException('El pago no está aprobado');
