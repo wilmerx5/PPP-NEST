@@ -1,5 +1,12 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda355: retirada/cantidad durante aclaración de nota
+
+Baseline16/36 fallan: la aclaración348 bloqueaba retiradas/correcciones nominales inequívocas. Ahora usa los manejadores existentes con referencia única; un cambio real descarta la nota pendiente y lo explica. Respuestas numéricas antiguas no la aplican. Ambigüedad, ordinales, pago, caducidad, condiciones y cantidades inválidas conservan las guardas.44 controles nuevos:24 cierres DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación × retirada completa/parcial/cantidad;20 guardas. Foco232/4 y44/1 aprobado. Código `87122f5b`.
+
+Global aislada33963/423 aprobada,641 fuentes congeladas e inventario exacto;4 workers, TypeScript general/build y scripts aprobados. Publicación/despliegue de staging pendientes de verificación. Producción349 `932f60b7` y Kamppo321 sin cambios; Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni cierra U3/U4. Próximo: sustitución de producto/preparación durante aclaración, conservando identidad y evitando aplicar notas sobre carrito cambiado.
+
+
 ## VIGENTE — tanda354: teléfono y etiqueta fuera de dirección
 
 Chat02/11: etiqueta «celular» posterior al número quedaba en dirección/recibo. Reconocimiento acotado extrae móvil validado y etiqueta juntos, incluyendo +57/espacios, sin borrar referencias con esas palabras. Conserva conjunto, torre, apto y contacto al recibir la calle después. Baseline28/40 fallan;44 controles nuevos,32 cierres DTO/recibo simulado en dos catálogos × agente off/mock × calle presente/pendiente ×4 formatos. Foco258/5 y44/1 aprobados. Código `3d0aca67`.
