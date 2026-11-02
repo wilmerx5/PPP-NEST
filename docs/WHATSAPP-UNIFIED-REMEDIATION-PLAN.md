@@ -1,5 +1,12 @@
 # Plan unificado de corrección de pedidos
 
+## VIGENTE — tanda351: demora durante aclaración de nota
+
+Baseline66/80 fallan: consultar ETA repetía candidatos sin tiempo. Detector acotado responde ETA configurada con unidades, o indica que el equipo debe confirmarla si falta configuración; conserva carrito, selección, estado y caducidad.88 controles nuevos:64 recorridos DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación × ETA presente/ausente ×4 preguntas;16 guardas y8 variantes/cortesías con cancelación posterior. Foco inicial246/4 y final88/1 aprobados.
+
+Global aislada33721/419 aprobada,637 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Código `19326414`. Publicación/despliegue de staging pendientes de verificación al escribir este bloque. Producción349 `932f60b7` y Kamppo321 sin cambios. Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni cierra U3/U4. Próximo: consulta combinada total+demora durante aclaración y selección/corrección posterior.
+
+
 ## VIGENTE — tanda350: total durante aclaración de nota
 
 Baseline50/64 fallan: al preguntar el total durante selección348, el bot repetía candidatos sin precio. Ahora responde con resumen y retoma la misma aclaración sin cambiar carrito, estado ni caducidad.68 controles nuevos:48 recorridos con DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación ×6 frases;16 guardas y4 controles de domicilio. Foco inicial265/4 y final68/1 aprobados.

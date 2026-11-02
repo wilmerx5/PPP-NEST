@@ -1,0 +1,36 @@
+{
+  "batch": 351,
+  "runtimeCommit": "19326414",
+  "origin": "Synthetic journeys derived from user-shared ETA questions and preparation clarification348; not verbatim transcripts",
+  "baseline": {
+    "failed": 66,
+    "passed": 14,
+    "tests": 80
+  },
+  "focusedRelated": {
+    "tests": 246,
+    "suites": 4
+  },
+  "finalFocused": {
+    "tests": 88,
+    "suites": 1
+  },
+  "newTests": 88,
+  "testFile": "src/whatsapp/whatsapp-note-clarification-eta-351.spec.ts",
+  "catalogs": [
+    "PPP-inspired poultry",
+    "synthetic tofu"
+  ],
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "No real model or channel",
+    "Only preparation-note clarification",
+    "Does not change generic ETA fallback elsewhere"
+  ]
+}
