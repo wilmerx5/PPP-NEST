@@ -8,7 +8,7 @@ Con dos líneas unitarias sin atributos y notas exclusivamente de exclusión de 
 
 38 controles nuevos, foco158/3 aprobado:16 cancelaciones,4 cierres de recuperación con DTO/recibo,14 guardas,3 negación/pregunta/condición y1 orden registrada anterior. Global33373 pruebas/413 suites,631 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-345-{sources,global-sources,validation,patterns}.
 
-Despliegue345 pendiente. Runtime staging344; producción333 y Kamppo321. Cero llamadas pagadas/Meta/órdenes externas; presupuesto267/256/11 intacto. Sin modelo/canal/DB reales. Límites: no combina cantidades mayores, más de dos líneas, atributos o notas ajenas; no inventa descuentos ni permite cancelar órdenes registradas. Siguiente U3/U4: conservación de variantes, bebidas y notas en cambios complejos; ampliar recuperación solo con evidencia.
+Staging345 desplegado y verificado: código `b3eb716f`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41381081970; evidencia `whatsapp-batch-345-staging-deployment.json`. Controles compilados previos aprobados; cobertura345 local. Producción333 y Kamppo321. Cero llamadas pagadas/Meta/órdenes externas; presupuesto267/256/11 intacto. Sin modelo/canal/DB reales. Límites: no combina cantidades mayores, más de dos líneas, atributos o notas ajenas; no inventa descuentos ni permite cancelar órdenes registradas. Siguiente U3/U4: conservación de variantes, bebidas y notas en cambios complejos; ampliar recuperación solo con evidencia.
 
 ## VIGENTE — tanda344: pedido compuesto sin gaseosa
 

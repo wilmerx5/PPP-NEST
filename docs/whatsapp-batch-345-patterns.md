@@ -8,6 +8,6 @@ Recuperación: con exactamente dos líneas unitarias, sin atributos y con única
 
 Se detectó durante desarrollo que la aceptación temprana del checkout podía consumir «sí» antes de la propuesta. Ahora la propuesta se atiende antes de esa confirmación. «Confirmar» mientras falta aclararla no crea orden; tras aceptar el cambio, nueva confirmación revisa el resumen resultante.
 
-38 controles nuevos:16 cancelaciones en dos catálogos × agente off/mock,4 recuperaciones con cierre DTO/recibo,14 guardas de propuesta,3 negación/pregunta/condición y1 orden previa. Foco158/3 aprobado. Global33373/413, TypeScript general/build y scripts aprobados; despliegue pendiente.
+38 controles nuevos:16 cancelaciones en dos catálogos × agente off/mock,4 recuperaciones con cierre DTO/recibo,14 guardas de propuesta,3 negación/pregunta/condición y1 orden previa. Foco158/3 aprobado. Global33373/413, TypeScript general/build y scripts aprobados; Staging345 desplegado y verificado: código `b3eb716f`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41381081970; evidencia `whatsapp-batch-345-staging-deployment.json`. Controles compilados previos aprobados; cobertura345 local.
 
 No acredita canal, DB ni modelo reales. No fusiona cantidades mayores, carritos con más productos, atributos o notas ajenas; no cierra todas las recuperaciones a combo. Precio del fixture no afirma precio vigente en producción. Cero inferencia pagada y cero órdenes externas.
