@@ -4,7 +4,7 @@
 
 Baseline66/80 fallan: consultar ETA repetía candidatos sin tiempo. Detector acotado responde ETA configurada con unidades, o indica que el equipo debe confirmarla si falta configuración; conserva carrito, selección, estado y caducidad.88 controles nuevos:64 recorridos DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación × ETA presente/ausente ×4 preguntas;16 guardas y8 variantes/cortesías con cancelación posterior. Foco inicial246/4 y final88/1 aprobados.
 
-Global aislada33721/419 aprobada,637 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Código `19326414`. Publicación/despliegue de staging pendientes de verificación al escribir este bloque. Producción349 `932f60b7` y Kamppo321 sin cambios. Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni cierra U3/U4. Próximo: consulta combinada total+demora durante aclaración y selección/corrección posterior.
+Global aislada33721/419 aprobada,637 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Código `19326414`. Staging351 desplegado/verificado: `56846fb8`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41498203435; evidencia351-staging-deployment. Controles compilados existentes aprobados; cobertura351 local. Producción349 `932f60b7` y Kamppo321 sin cambios. Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni cierra U3/U4. Próximo: consulta combinada total+demora durante aclaración y selección/corrección posterior.
 
 
 ## VIGENTE — tanda350: total durante aclaración de nota

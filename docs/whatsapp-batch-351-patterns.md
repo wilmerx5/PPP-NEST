@@ -10,7 +10,7 @@ Baseline66 fallos/80:64 recorridos y2 controles de repetición no recibían tiem
 
 Un detector acotado de consulta independiente de demora permite responder dentro del resolvedor de la nota, después de validar firma/caducidad y bloqueos de pago/otras selecciones. Usa el tiempo configurado, añadiendo minutos a un rango numérico; sin configuración pide que el equipo confirme el tiempo y no usa el valor genérico35–45. Conserva carrito, estado, candidatos y fecha de la aclaración. No procesa acciones mezcladas, condiciones ni seguimiento de una orden específica como ETA genérica.
 
-88 regresiones:64 recorridos en dos catálogos × agente off/mock × carrito/confirmación × ETA configurada/ausente ×4 preguntas;16 guardas;8 cortesías/variantes con cancelación posterior.64 recorridos cierran con DTO/recibo simulado,3 unidades y solo una con nota nueva. Foco inicial246/4 y final88/1 aprobados. Global33721/419 aprobada,637 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue pendiente de verificación.
+88 regresiones:64 recorridos en dos catálogos × agente off/mock × carrito/confirmación × ETA configurada/ausente ×4 preguntas;16 guardas;8 cortesías/variantes con cancelación posterior.64 recorridos cierran con DTO/recibo simulado,3 unidades y solo una con nota nueva. Foco inicial246/4 y final88/1 aprobados. Global33721/419 aprobada,637 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging351 desplegado/verificado: `56846fb8`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41498203435; evidencia351-staging-deployment. Controles compilados existentes aprobados; cobertura351 local.
 
 ## Límites
 
