@@ -1,0 +1,738 @@
+{
+  "sourceSha256": "0683557ad25b99775174593d41b2507199c7ea61ae94073a8c2c4dc89050ea5f",
+  "scope": "Corpus de diseño, no contador de pruebas aprobadas",
+  "cases": [
+    {
+      "id": "0111-pending-both-01",
+      "family": "pending-both",
+      "sourceMessages": [
+        156,
+        181
+      ],
+      "priority": "P1",
+      "utterance": "a los dos",
+      "expected": "Aplicar solo a los candidatos ofrecidos; mantener cantidades, notas y paso; consumir selección y permitir cierre único.",
+      "status": "covered_by_339_focused_suite",
+      "note": "Dos catálogos × agente off/mock; 51 controles ejecutables en total. «A los tres» rechaza el conteo discordante; no acredita resolución de listas reales de tres candidatos. La cortesía se prueba sin coma."
+    },
+    {
+      "id": "0111-pending-both-02",
+      "family": "pending-both",
+      "sourceMessages": [
+        156,
+        181
+      ],
+      "priority": "P1",
+      "utterance": "ambos",
+      "expected": "Aplicar solo a los candidatos ofrecidos; mantener cantidades, notas y paso; consumir selección y permitir cierre único.",
+      "status": "covered_by_339_focused_suite",
+      "note": "Dos catálogos × agente off/mock; 51 controles ejecutables en total. «A los tres» rechaza el conteo discordante; no acredita resolución de listas reales de tres candidatos. La cortesía se prueba sin coma."
+    },
+    {
+      "id": "0111-pending-both-03",
+      "family": "pending-both",
+      "sourceMessages": [
+        156,
+        181
+      ],
+      "priority": "P1",
+      "utterance": "en ambos",
+      "expected": "Aplicar solo a los candidatos ofrecidos; mantener cantidades, notas y paso; consumir selección y permitir cierre único.",
+      "status": "covered_by_339_focused_suite",
+      "note": "Dos catálogos × agente off/mock; 51 controles ejecutables en total. «A los tres» rechaza el conteo discordante; no acredita resolución de listas reales de tres candidatos. La cortesía se prueba sin coma."
+    },
+    {
+      "id": "0111-pending-both-04",
+      "family": "pending-both",
+      "sourceMessages": [
+        156,
+        181
+      ],
+      "priority": "P1",
+      "utterance": "a todos",
+      "expected": "Aplicar solo a los candidatos ofrecidos; mantener cantidades, notas y paso; consumir selección y permitir cierre único.",
+      "status": "covered_by_339_focused_suite",
+      "note": "Dos catálogos × agente off/mock; 51 controles ejecutables en total. «A los tres» rechaza el conteo discordante; no acredita resolución de listas reales de tres candidatos. La cortesía se prueba sin coma."
+    },
+    {
+      "id": "0111-pending-both-05",
+      "family": "pending-both",
+      "sourceMessages": [
+        156,
+        181
+      ],
+      "priority": "P1",
+      "utterance": "a los tres",
+      "expected": "Aplicar solo a los candidatos ofrecidos; mantener cantidades, notas y paso; consumir selección y permitir cierre único.",
+      "status": "covered_by_339_focused_suite",
+      "note": "Dos catálogos × agente off/mock; 51 controles ejecutables en total. «A los tres» rechaza el conteo discordante; no acredita resolución de listas reales de tres candidatos. La cortesía se prueba sin coma."
+    },
+    {
+      "id": "0111-pending-both-06",
+      "family": "pending-both",
+      "sourceMessages": [
+        156,
+        181
+      ],
+      "priority": "P1",
+      "utterance": "a los dos, por favor",
+      "expected": "Aplicar solo a los candidatos ofrecidos; mantener cantidades, notas y paso; consumir selección y permitir cierre único.",
+      "status": "covered_by_339_focused_suite",
+      "note": "Dos catálogos × agente off/mock; 51 controles ejecutables en total. «A los tres» rechaza el conteo discordante; no acredita resolución de listas reales de tres candidatos. La cortesía se prueba sin coma."
+    },
+    {
+      "id": "0111-executive-distribution-01",
+      "family": "executive-distribution",
+      "sourceMessages": [
+        438,
+        447
+      ],
+      "priority": "P0",
+      "utterance": "4 ejecutivos: 3 fritos y 1 broster",
+      "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-executive-distribution-02",
+      "family": "executive-distribution",
+      "sourceMessages": [
+        438,
+        447
+      ],
+      "priority": "P0",
+      "utterance": "3 fritos y uno broaster, cuatro ejecutivos en total",
+      "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-executive-distribution-03",
+      "family": "executive-distribution",
+      "sourceMessages": [
+        438,
+        447
+      ],
+      "priority": "P0",
+      "utterance": "solo eran 3 fritos y uno rboaster",
+      "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-executive-distribution-04",
+      "family": "executive-distribution",
+      "sourceMessages": [
+        438,
+        447
+      ],
+      "priority": "P0",
+      "utterance": "todos pierna pernil, 3 ajiacos y una menudencia",
+      "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-burst-idempotency-01",
+      "family": "burst-idempotency",
+      "sourceMessages": [
+        217,
+        242
+      ],
+      "priority": "P0",
+      "utterance": "Un bagre sudado | Una sobrebarriga asada por Fis | Una menudencia | Y un ajiaco",
+      "expected": "Contacto/cortesía no agrega unidades; cada compra se aplica una vez; no omitir otros productos. Probar cola y ráfaga efectiva por separado.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-burst-idempotency-02",
+      "family": "burst-idempotency",
+      "sourceMessages": [
+        217,
+        242
+      ],
+      "priority": "P0",
+      "utterance": "por fis",
+      "expected": "Contacto/cortesía no agrega unidades; cada compra se aplica una vez; no omitir otros productos. Probar cola y ráfaga efectiva por separado.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-burst-idempotency-03",
+      "family": "burst-idempotency",
+      "sourceMessages": [
+        217,
+        242
+      ],
+      "priority": "P0",
+      "utterance": "quita un bagre y añade una sobrebarriga",
+      "expected": "Contacto/cortesía no agrega unidades; cada compra se aplica una vez; no omitir otros productos. Probar cola y ráfaga efectiva por separado.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-burst-idempotency-04",
+      "family": "burst-idempotency",
+      "sourceMessages": [
+        217,
+        242
+      ],
+      "priority": "P0",
+      "utterance": "el teléfono es 3000000001",
+      "expected": "Contacto/cortesía no agrega unidades; cada compra se aplica una vez; no omitir otros productos. Probar cola y ráfaga efectiva por separado.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-combo-edit-remove-01",
+      "family": "combo-edit-remove",
+      "sourceMessages": [
+        400,
+        437
+      ],
+      "priority": "P0",
+      "utterance": "el combo paisa lo quiero con gaseosa ginger",
+      "expected": "Editar no suma; quitar elimina la línea descrita; agregar explícito sí suma; bebida incluida no se duplica como adicional.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-combo-edit-remove-02",
+      "family": "combo-edit-remove",
+      "sourceMessages": [
+        400,
+        437
+      ],
+      "priority": "P0",
+      "utterance": "quita el combo que va con colombiana",
+      "expected": "Editar no suma; quitar elimina la línea descrita; agregar explícito sí suma; bebida incluida no se duplica como adicional.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-combo-edit-remove-03",
+      "family": "combo-edit-remove",
+      "sourceMessages": [
+        400,
+        437
+      ],
+      "priority": "P0",
+      "utterance": "cambia solo el que tiene colombiana a ginger",
+      "expected": "Editar no suma; quitar elimina la línea descrita; agregar explícito sí suma; bebida incluida no se duplica como adicional.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-combo-edit-remove-04",
+      "family": "combo-edit-remove",
+      "sourceMessages": [
+        400,
+        437
+      ],
+      "priority": "P0",
+      "utterance": "agrega otro combo con ginger",
+      "expected": "Editar no suma; quitar elimina la línea descrita; agregar explícito sí suma; bebida incluida no se duplica como adicional.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-pending-option-retention-01",
+      "family": "pending-option-retention",
+      "sourceMessages": [
+        448,
+        459
+      ],
+      "priority": "P0",
+      "utterance": "combo de pollo y medio pollo broaster con pepsi | 1",
+      "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-pending-option-retention-02",
+      "family": "pending-option-retention",
+      "sourceMessages": [
+        448,
+        459
+      ],
+      "priority": "P0",
+      "utterance": "combo con pepsi | broaster",
+      "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-pending-option-retention-03",
+      "family": "pending-option-retention",
+      "sourceMessages": [
+        448,
+        459
+      ],
+      "priority": "P0",
+      "utterance": "el combo con pepsi y una gaseosa aparte",
+      "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-pending-option-retention-04",
+      "family": "pending-option-retention",
+      "sourceMessages": [
+        448,
+        459
+      ],
+      "priority": "P0",
+      "utterance": "con pepsi si hay, si no pregúntame",
+      "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-replace-atomic-01",
+      "family": "replace-atomic",
+      "sourceMessages": [
+        312,
+        333
+      ],
+      "priority": "P1",
+      "utterance": "si, elimina todo y agrega elcombo mixto",
+      "expected": "Reemplazo completo validado antes de borrar; fallo conserva carrito; conservar preferencias explícitas.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-replace-atomic-02",
+      "family": "replace-atomic",
+      "sourceMessages": [
+        312,
+        333
+      ],
+      "priority": "P1",
+      "utterance": "quita lo anterior y pon el combo mixto",
+      "expected": "Reemplazo completo validado antes de borrar; fallo conserva carrito; conservar preferencias explícitas.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-replace-atomic-03",
+      "family": "replace-atomic",
+      "sourceMessages": [
+        312,
+        333
+      ],
+      "priority": "P1",
+      "utterance": "elimina todo y agrega un producto inexistente",
+      "expected": "Reemplazo completo validado antes de borrar; fallo conserva carrito; conservar preferencias explícitas.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-replace-atomic-04",
+      "family": "replace-atomic",
+      "sourceMessages": [
+        312,
+        333
+      ],
+      "priority": "P1",
+      "utterance": "el combo con coca cola bien fría",
+      "expected": "Reemplazo completo validado antes de borrar; fallo conserva carrito; conservar preferencias explícitas.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-volume-and-phone-01",
+      "family": "volume-and-phone",
+      "sourceMessages": [
+        79,
+        112
+      ],
+      "priority": "P1",
+      "utterance": "no, quiero una coca cola 1.5 litros",
+      "expected": "Tamaño explícito prevalece; teléfono no son unidades; adicional solo si compra explícita; pendientes no figuran como añadidos.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-volume-and-phone-02",
+      "family": "volume-and-phone",
+      "sourceMessages": [
+        79,
+        112
+      ],
+      "priority": "P1",
+      "utterance": "no quiero cambiar nada, quiero coca de litro y medio",
+      "expected": "Tamaño explícito prevalece; teléfono no son unidades; adicional solo si compra explícita; pendientes no figuran como añadidos.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-volume-and-phone-03",
+      "family": "volume-and-phone",
+      "sourceMessages": [
+        79,
+        112
+      ],
+      "priority": "P1",
+      "utterance": "3000000001",
+      "expected": "Tamaño explícito prevalece; teléfono no son unidades; adicional solo si compra explícita; pendientes no figuran como añadidos.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-volume-and-phone-04",
+      "family": "volume-and-phone",
+      "sourceMessages": [
+        79,
+        112
+      ],
+      "priority": "P1",
+      "utterance": "una coca de 400ml aparte",
+      "expected": "Tamaño explícito prevalece; teléfono no son unidades; adicional solo si compra explícita; pendientes no figuran como añadidos.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-notes-and-scope-01",
+      "family": "notes-and-scope",
+      "sourceMessages": [
+        177,
+        216,
+        368,
+        385
+      ],
+      "priority": "P0",
+      "utterance": "pollo y medio con arepas fritas",
+      "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-notes-and-scope-02",
+      "family": "notes-and-scope",
+      "sourceMessages": [
+        177,
+        216,
+        368,
+        385
+      ],
+      "priority": "P0",
+      "utterance": "bien asada con papa salada y ensalada",
+      "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-notes-and-scope-03",
+      "family": "notes-and-scope",
+      "sourceMessages": [
+        177,
+        216,
+        368,
+        385
+      ],
+      "priority": "P0",
+      "utterance": "solo papa francesa y ensalada sin vinagreta",
+      "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-notes-and-scope-04",
+      "family": "notes-and-scope",
+      "sourceMessages": [
+        177,
+        216,
+        368,
+        385
+      ],
+      "priority": "P0",
+      "utterance": "al pimer churrasco",
+      "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-notes-and-scope-05",
+      "family": "notes-and-scope",
+      "sourceMessages": [
+        177,
+        216,
+        368,
+        385
+      ],
+      "priority": "P0",
+      "utterance": "la bebida bien fría",
+      "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-address-context-01",
+      "family": "address-context",
+      "sourceMessages": [
+        1,
+        19,
+        283,
+        292,
+        488,
+        500
+      ],
+      "priority": "P1",
+      "utterance": "calle 12b 34c 05 | conjunto de prueba casa 9",
+      "expected": "Conservar calle y añadir referencia; ceros/espacios equivalentes sin cambiar numeración; datos entre turnos no se pierden. Usar geocodificador simulado.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-address-context-02",
+      "family": "address-context",
+      "sourceMessages": [
+        1,
+        19,
+        283,
+        292,
+        488,
+        500
+      ],
+      "priority": "P1",
+      "utterance": "cra 34 c12b05",
+      "expected": "Conservar calle y añadir referencia; ceros/espacios equivalentes sin cambiar numeración; datos entre turnos no se pierden. Usar geocodificador simulado.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-address-context-03",
+      "family": "address-context",
+      "sourceMessages": [
+        1,
+        19,
+        283,
+        292,
+        488,
+        500
+      ],
+      "priority": "P1",
+      "utterance": "dirección | nombre | teléfono",
+      "expected": "Conservar calle y añadir referencia; ceros/espacios equivalentes sin cambiar numeración; datos entre turnos no se pierden. Usar geocodificador simulado.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-address-context-04",
+      "family": "address-context",
+      "sourceMessages": [
+        1,
+        19,
+        283,
+        292,
+        488,
+        500
+      ],
+      "priority": "P1",
+      "utterance": "calle 12b 34c 05, apto 302",
+      "expected": "Conservar calle y añadir referencia; ceros/espacios equivalentes sin cambiar numeración; datos entre turnos no se pierden. Usar geocodificador simulado.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-typo-and-courtesy-01",
+      "family": "typo-and-courtesy",
+      "sourceMessages": [
+        14,
+        16,
+        460,
+        474
+      ],
+      "priority": "P2",
+      "utterance": "contraentrea",
+      "expected": "Reconocer intención contextual; no añadir cortesías como productos; negación no confirma ni modifica.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-typo-and-courtesy-02",
+      "family": "typo-and-courtesy",
+      "sourceMessages": [
+        14,
+        16,
+        460,
+        474
+      ],
+      "priority": "P2",
+      "utterance": "confirm,ar",
+      "expected": "Reconocer intención contextual; no añadir cortesías como productos; negación no confirma ni modifica.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-typo-and-courtesy-03",
+      "family": "typo-and-courtesy",
+      "sourceMessages": [
+        14,
+        16,
+        460,
+        474
+      ],
+      "priority": "P2",
+      "utterance": "podría enviarme una menudencia por favor",
+      "expected": "Reconocer intención contextual; no añadir cortesías como productos; negación no confirma ni modifica.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-typo-and-courtesy-04",
+      "family": "typo-and-courtesy",
+      "sourceMessages": [
+        14,
+        16,
+        460,
+        474
+      ],
+      "priority": "P2",
+      "utterance": "por Fis",
+      "expected": "Reconocer intención contextual; no añadir cortesías como productos; negación no confirma ni modifica.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-typo-and-courtesy-05",
+      "family": "typo-and-courtesy",
+      "sourceMessages": [
+        14,
+        16,
+        460,
+        474
+      ],
+      "priority": "P2",
+      "utterance": "no confirmes todavía",
+      "expected": "Reconocer intención contextual; no añadir cortesías como productos; negación no confirma ni modifica.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-stock-snapshot-01",
+      "family": "stock-snapshot",
+      "sourceMessages": [
+        406,
+        429
+      ],
+      "priority": "audit",
+      "utterance": "hay mondongo | sí",
+      "expected": "Oferta y compra coherentes con catálogo efectivo; no inventar disponibilidad ni mostrar basura. Auditar origen antes de atribuir fallo.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-stock-snapshot-02",
+      "family": "stock-snapshot",
+      "sourceMessages": [
+        406,
+        429
+      ],
+      "priority": "audit",
+      "utterance": "producto retirado mientras elige",
+      "expected": "Oferta y compra coherentes con catálogo efectivo; no inventar disponibilidad ni mostrar basura. Auditar origen antes de atribuir fallo.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-stock-snapshot-03",
+      "family": "stock-snapshot",
+      "sourceMessages": [
+        406,
+        429
+      ],
+      "priority": "audit",
+      "utterance": "gaseosa con opción **",
+      "expected": "Oferta y compra coherentes con catálogo efectivo; no inventar disponibilidad ni mostrar basura. Auditar origen antes de atribuir fallo.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-successful-controls-01",
+      "family": "successful-controls",
+      "sourceMessages": [
+        56,
+        66,
+        145,
+        155,
+        183,
+        195,
+        255,
+        264,
+        297,
+        311
+      ],
+      "priority": "control",
+      "utterance": "dos combos con coca cola y papa francesa aparte",
+      "expected": "Preservar recorridos correctos: identidad, cantidad, incluidos/adicionales, contacto, pago y creación única.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-successful-controls-02",
+      "family": "successful-controls",
+      "sourceMessages": [
+        56,
+        66,
+        145,
+        155,
+        183,
+        195,
+        255,
+        264,
+        297,
+        311
+      ],
+      "priority": "control",
+      "utterance": "pollo frito en combo con coca cola zero",
+      "expected": "Preservar recorridos correctos: identidad, cantidad, incluidos/adicionales, contacto, pago y creación única.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-successful-controls-03",
+      "family": "successful-controls",
+      "sourceMessages": [
+        56,
+        66,
+        145,
+        155,
+        183,
+        195,
+        255,
+        264,
+        297,
+        311
+      ],
+      "priority": "control",
+      "utterance": "cuatro ajiacos | dirección corregida",
+      "expected": "Preservar recorridos correctos: identidad, cantidad, incluidos/adicionales, contacto, pago y creación única.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    },
+    {
+      "id": "0111-successful-controls-04",
+      "family": "successful-controls",
+      "sourceMessages": [
+        56,
+        66,
+        145,
+        155,
+        183,
+        195,
+        255,
+        264,
+        297,
+        311
+      ],
+      "priority": "control",
+      "utterance": "combo con dirección y pago en la misma petición",
+      "expected": "Preservar recorridos correctos: identidad, cantidad, incluidos/adicionales, contacto, pago y creación única.",
+      "status": "planned",
+      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+    }
+  ],
+  "executableSuite": "src/whatsapp/whatsapp-pending-option-both-339.spec.ts"
+}

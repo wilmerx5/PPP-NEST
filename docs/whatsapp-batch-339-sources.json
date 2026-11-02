@@ -1,0 +1,30 @@
+{
+  "batch": 339,
+  "source": "Chat01/11 mensajes156–181; revisión íntegra500 mensajes en whatsapp-chats-0111-review.md",
+  "sourceSha256": "0683557ad25b99775174593d41b2507199c7ea61ae94073a8c2c4dc89050ea5f",
+  "spec": "src/whatsapp/whatsapp-pending-option-both-339.spec.ts",
+  "specSha256": "f26b7d13bd6f51f6060003e9e1beb140cd7703679310cf00c363e6bdafdd301b",
+  "newTests": 51,
+  "baseline": {
+    "failed": 16,
+    "passed": 0
+  },
+  "focus": {
+    "passed": 51,
+    "suites": 1
+  },
+  "findings": [
+    "Reproducido: respuesta colectiva no aplica las opciones pendientes en16 casos",
+    "No reproducida la secuencia histórica exacta de éxito anunciado seguido por firma obsoleta; la regresión protege selección consumida y cierre",
+    "Aplicación conjunta preparada para candidatos ofrecidos; conservación de unidades, notas y paso; fallo sin mutación cuando catálogo o firma no validan"
+  ],
+  "coverage": [
+    "Dos catálogos, modelo off/mock; no inferencia real",
+    "16 recorridos con selección colectiva y cierre único, DTO y recibo",
+    "28 controles de firma, catálogo, conteo, cortesía, selección individual, confirmación y línea no ofrecida",
+    "7 guardas de pregunta, negación, condición y solicitudes compuestas"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "remaining": "Otros grupos del corpus permanecen planificados; ninguna declaración de corrección completa de los chats"
+}
