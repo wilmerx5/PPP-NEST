@@ -16328,6 +16328,45 @@ export class WhatsappOrchestratorService {
       }
       return handled || ask();
     }
+    const replacement = !/[¿?]/.test(text) ? parseCartItemReplacement(text, true) : null;
+    const referencedStyle = said.match(/^(?:cambia|cambiame) (?:el|la|uno de los|una de las) (?:de |que tienen? )(.+?) (?:con|a|por) (.+)$/);
+    const contrastStyle = said.match(/^(?:el|la) que tiene (.+?) que ya no sea (.+?) (?:sino|sink) (.+)$/);
+    if (replacement || referencedStyle || contrastStyle) {
+      const query = referencedStyle?.[1] || contrastStyle?.[1] || replacement!.removeQuery;
+      const destination = referencedStyle?.[2] || contrastStyle?.[3] || replacement!.addQuery;
+      const indices = session.cart.flatMap((line,index)=>correctionMatchesLine(line,query)?[index]:[]);
+      if (/[¿?]/.test(text) || cartRowReference(query) !== null || indices.length !== 1 || /\b(?:si|cuando|pero|excepto)\b/.test(said))
+        return ask('Para cambiar el carrito, indica el plato y una opción que lo distinga, sin condiciones.\n');
+      const products = await this.catalogService.getMenuProducts();
+      const original = session.cart[indices[0]];
+      const source = products.find(product=>product.id===original.productId);
+      const named = products.filter(product=>product.availableNow!==false && this.catalogService.productFullyNamedIn(destination,[product]));
+      const exact = named.filter(product=>this.normalizeForMatch(product.name)===this.normalizeForMatch(destination));
+      const targets = exact.length ? exact : named;
+      if (targets.length===1 && this.normalizeForMatch(destination)!==this.normalizeForMatch(targets[0].name))
+        return ask('Indica solo el nombre completo del reemplazo; aclaremos las otras indicaciones por separado.\n');
+      const style = this.catalogService.extractRequestedProteinStyle(destination);
+      const target = targets.length===1 ? targets[0] : !targets.length && source && style && (referencedStyle || contrastStyle)
+        ? this.catalogService.findCookingStyleSibling(source,products,style) : null;
+      if (!target || target.availableNow===false || target.id===original.productId)
+        return ask('No encontré un reemplazo único disponible que cambie esa línea.\n');
+      const compatible = (original.attributes || []).filter(chosen=>target.attributes?.some(attribute=>
+        attribute.attributeName===chosen.attributeName && attribute.options.includes(chosen.attributeValue)));
+      const explicit = this.catalogService.resolveAttributesFromMessage(target,destination,[]);
+      const selected = explicit.status==='complete' || explicit.status==='partial'
+        ? [...compatible.filter(old=>!explicit.attributes.some(next=>next.attributeName===old.attributeName)),...explicit.attributes] : compatible;
+      if (this.catalogService.getRemainingAttributes(target,selected).length)
+        return ask('El reemplazo necesita aclarar sus opciones; primero termina o retira esta nota pendiente.\n');
+      const editable = {...session,pendingSubsetKitchenNote:undefined,lastKitchenNoteSelection:undefined};
+      const handled = replacement && targets.length===1
+        ? await this.tryHandleAtomicCartReplacement(conv,waId,editable,text,products,cfg,{sourceIsCatalogTitle:true})
+        : await this.tryHandleReferencedCookingChange(conv,waId,editable,text,cfg);
+      if (JSON.stringify(this.conversationService.getSession(conv).cart) !== scope.cartSignature) {
+        await this.reply(conv,waId,'Dejé sin aplicar la nota pendiente porque cambió el carrito. Si todavía la necesitas, dime de nuevo el plato y la nota.');
+        return true;
+      }
+      return handled || ask();
+    }
     const totalAndEta = isCartTotalAndEtaInquiry(text);
     if (totalAndEta || isStandaloneDeliveryEtaInquiry(text)) {
       const eta = cfg.localContext?.deliveryTimeNote?.trim()
@@ -16517,6 +16556,7 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state)) return false;
+    if (session.pendingSubsetKitchenNote?.preparationScope) return false;
     const said = this.normalizeForMatch(text);
     const vague = said.match(/^quiero cambiar (?:un|una) (.+)$/);
     if (vague) {
