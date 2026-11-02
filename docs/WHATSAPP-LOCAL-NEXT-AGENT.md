@@ -6,7 +6,7 @@
 
 20 controles nuevos:8 cierres con DTO/recibo en dos catálogos × agente off/mock × separados/coalescidos mediante receptor real;2 propuestas hostiles de agente repitiendo plato anterior;10 límites de cortesía. Carrito, estado, respuesta, recogida/destino y total verificados. Foco20/1 aprobado. Evidencias whatsapp-batch-341-{sources,global-sources,validation,patterns}. Global33238 pruebas/408 suites, inventario exacto y625 fuentes congeladas; TypeScript general/build y scripts aprobados.
 
-Despliegue341 pendiente. Staging runtime340; producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. U2 sigue abierto: causa original del bagre, reentregas de messageId, ráfagas parciales y contacto. No acredita modelo/canal/persistencia real ni cierra todos los fallos del grupo.
+Staging341 desplegado y verificado: código `eb33603b`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41370184449; evidencia `whatsapp-batch-341-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica341 local. Producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. U2 sigue abierto: causa original del bagre, reentregas de messageId, ráfagas parciales y contacto. No acredita modelo/canal/persistencia real ni cierra todos los fallos del grupo.
 
 ## VIGENTE — tanda340: plan unificado y encabezado de reparto
 

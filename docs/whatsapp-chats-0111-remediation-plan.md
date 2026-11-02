@@ -24,7 +24,7 @@ Punto de partida: `whatsapp-executive-initial-journey.spec.ts` cubre otro repart
 
 ## Ráfagas y aplicación única — avance parcial341
 
-Tanda341:20 controles focales aprobados; omisión por cortesía y compra confundida con dirección corregidas. Ocho cierres con DTO/recibo en dos catálogos y modos separado/coalescido. Duplicación histórica del bagre no reproducida; reentregas pendientes. Global33238/408, TypeScript general/build y scripts aprobados. Despliegue pendiente.
+Tanda341:20 controles focales aprobados; omisión por cortesía y compra confundida con dirección corregidas. Ocho cierres con DTO/recibo en dos catálogos y modos separado/coalescido. Duplicación histórica del bagre no reproducida; reentregas pendientes. Global33238/408, TypeScript general/build y scripts aprobados. Staging341 desplegado y verificado: código `eb33603b`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41370184449; evidencia `whatsapp-batch-341-staging-deployment.json`. Controles compilados previos aprobados; cobertura específica341 local.
 
 Prioridad0;217–242. Reproducir el bagre, sobrebarriga, dos sopas y bebida en mensajes consecutivos y en una ráfaga temporal del receptor. No basta llamar `sendQueued` para certificar coalescencia. Usar temporizadores simulados y mensajes con IDs distintos; contrastar reentrega del mismo ID. Añadir plan de agente simulado con historia obsoleta para comprobar rechazo de duplicación. «Por fis», teléfono y destino no autorizan productos. Comparar tanto omisiones como compras extra.
 
