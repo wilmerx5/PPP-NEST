@@ -1,0 +1,32 @@
+{
+  "batch": 348,
+  "baseCommit": "f0e840531c949d02a9e84b4c6cd87c1c1274c375",
+  "sourcePatterns": [
+    "28/10: distinguir ejecutivo por presa al cambiar preparación",
+    "30/10: instrucciones para parte de unidades existentes",
+    "347: nota referida a preparación compartida por varias líneas"
+  ],
+  "derivedJourney": "El broaster sin arroz → aclaración → número, opción, nota anterior o nombre completo → conserva cantidad/opciones y cierre.",
+  "baseline": {
+    "tests": 24,
+    "failed": 24
+  },
+  "focused": {
+    "tests": 258,
+    "suites": 4,
+    "passed": true
+  },
+  "newTests": 56,
+  "fullOrderJourneys": 24,
+  "catalogs": [
+    "Ejecutivo Con Pollo",
+    "Bandeja Con Tofu"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Selecciona una línea completa; no reparte parcialmente unidades dentro de esa línea",
+    "Snapshot del carrito y caducidad de diez minutos",
+    "Dependencias externas y agente simulados"
+  ]
+}
