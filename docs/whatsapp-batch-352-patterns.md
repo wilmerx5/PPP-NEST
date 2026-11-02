@@ -13,3 +13,5 @@ Foco inicial334/5 y final84/1 aprobados. Global33805/420 aprobada,638 fuentes co
 ## Límites y siguiente prioridad
 
 Cero inferencia pagada, Meta u órdenes externas. No acredita canal/modelo real. No amplía el detector336 a nuevas intenciones. Producción349 y Kamppo321 fuera del alcance. Próximo: cambio o retirada explícita de producto durante una aclaración pendiente; verificar que no se aplique luego una nota sobre un carrito desactualizado. U3/U4 siguen abiertos.
+
+Staging352–353 desplegado/verificado: `5850d12f`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41504255082; evidencia353-staging-deployment. Controles compilados existentes aprobados; cobertura352–353 local.
