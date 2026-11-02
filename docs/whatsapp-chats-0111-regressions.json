@@ -142,8 +142,8 @@
       "priority": "P0",
       "utterance": "Un bagre sudado | Una sobrebarriga asada por Fis | Una menudencia | Y un ajiaco",
       "expected": "Contacto/cortesía no agrega unidades; cada compra se aplica una vez; no omitir otros productos. Probar cola y ráfaga efectiva por separado.",
-      "status": "partially_covered_by_341_focused_suite",
-      "note": "Cuatro compras equivalentes en dos catálogos, turnos separados y receptor coalescido, con cierre DTO/recibo. Corrige omisión por cortesía; no reproduce duplicación histórica ni certifica reentregas de messageId."
+      "status": "partially_covered_by_341_342_focused_suites",
+      "note": "341: omisión por cortesía.342: ráfagas parciales y reentregas con claim simulado, DTO/recibo. No reproduce duplicación histórica ni acredita DB/Meta reales."
     },
     {
       "id": "0111-burst-idempotency-02",

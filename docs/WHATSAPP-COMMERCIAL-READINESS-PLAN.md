@@ -1,5 +1,13 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda342: ráfagas parciales y reentregas
+
+24 regresiones nuevas: dos catálogos × agente off/mock × ráfaga parcial, ID duplicado no adyacente, reentrega completa, mezcla nuevo/repetido, cortesía aislada y compra explícita adicional. Receptor real con temporizadores; claim de persistencia simulado.24 cierres comprueban unidades del DTO y recibo. Reentrega completa no modifica sesión ni responde. «Otro» con ID nuevo sí suma.
+
+Foco24/1 y relacionadas63/4 aprobadas; TypeScript general aprobado. Sin cambios al motor; no se repite global ni se redespliega. Global anterior341:33238/408, no es una global342. Evidencias whatsapp-batch-342-{sources,validation,patterns}. Runtime staging341 `eb33603b`; producción333 y Kamppo321. Cero llamadas pagadas/Meta/órdenes externas, presupuesto267/256/11 intacto.
+
+U2 sigue abierto: no reproduce duplicación histórica del bagre, no acredita DB/Meta reales ni carreras entre instancias/caídas. Cortesía aislada solo verifica conservación del carrito, no calidad de respuesta del modelo. Siguiente: contacto intercalado y corrección explícita «quita un bagre y añade una sobrebarriga», compartida con U3; mantener aceptación real como requisito posterior.
+
 ## VIGENTE — tanda341: compras consecutivas y cortesía
 
 01/11 mensajes217–242 y31/10 grupoB. Baseline4/8 falló: «también por Fis» omitía sobrebarriga/pasta en turnos separados. Ráfagas aprobaban; duplicación histórica del bagre no reproducida. Normalización acotada de cortesía y prefijo «y» con producto reconocido: «Y un Crema De Tomate» ya no se guarda como dirección.
