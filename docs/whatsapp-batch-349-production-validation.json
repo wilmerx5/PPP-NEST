@@ -1,0 +1,60 @@
+{
+  "baseCommit": "932f60b7d31957378d054295a9bd154742171621",
+  "batches": [
+    334,
+    335,
+    336,
+    337,
+    338,
+    339,
+    340,
+    341,
+    342,
+    343,
+    344,
+    345,
+    346,
+    347,
+    348,
+    349
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 853.06,
+      "sourceUnchanged": true,
+      "tests": 33562,
+      "failed": 0,
+      "skipped": 11
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 12.13,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 652,
+  "workers": 8,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 33578,
+  "suites": 423,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "passedSuites": 421,
+  "skippedSuites": 2,
+  "skippedTests": 11,
+  "limits": "11 opt-in Bold database integration tests skipped; no paid inference, Meta messages or external test orders. Existing compiled smoke does not replace local batch349 coverage."
+}

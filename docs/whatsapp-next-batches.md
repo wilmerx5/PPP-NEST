@@ -1,5 +1,16 @@
 ## VIGENTE — tanda334: consultar combo sin reabrir bebida (01/11)
 
+## VIGENTE — producción349: merge de staging a Main (02/11/2026)
+
+Solicitud explícita del usuario: merge con Main y despliegue. Runtime producción `932f60b7d31957378d054295a9bd154742171621`: incorpora tandas334–349 y preserva íntegros los cambios Bold/auth de Main `b4647a9e`. Merge sin conflictos, validado en worktree aislado; cambios locales ajenos de staging preservados.
+
+Validación del árbol fusionado:33578 pruebas aprobadas en421 suites;11 pruebas opt-in de integración DB de Bold omitidas en2 suites. Inventario423 suites exacto,652 fuentes congeladas, TypeScript general/build y scripts aprobados. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No equivale a validación real del modelo/canal ni cierra U3/U4.
+
+Workflow41484003586 completado: contenedor activo,0 reinicios, API local/pública ok y DB conectada; configuración privada/modelos preservados. Producción no define healthcheck Docker (`health:null`); salud verificada por endpoints. Controles compilados existentes aprobados, cobertura349 local. Evidencia: `whatsapp-batch-349-production-{deployment,validation,global-sources}.json`.
+
+Staging runtime349 `c0e8bc47` y motor Kamppo321 sin cambios en esta operación. El workflow alojado en Kamppo solo desplegó PPP. Próximo trabajo en staging: consultar total durante aclaración y retomarla. Los bloques anteriores que indican producción333 son históricos, sustituidos por este estado.
+
+
 ## VIGENTE — tanda349: redirigir la nota tras elegir una línea
 
 Baseline24/24 fallan: «no, el otro» tras aclaración348 no restaura origen/aplica destino. Ahora conserva estado previo y candidatos; permite redirigir líneas completas con cantidades distintas, preservando notas originales, opciones, unidades y checkout. Ordinales pertenecen a la lista de candidatos; productos ajenos no se incluyen. Tres candidatos piden aclaración y admiten número/opción/nota. Firma/caducidad/interrupción/pago/selección pendiente y repeticiones no vuelven a modificar.
