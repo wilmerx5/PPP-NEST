@@ -12,6 +12,6 @@ Una firma distinta o diez minutos de antigüedad descartan la selección sin edi
 
 ## Validación
 
-56 casos nuevos:24 cierres con DTO y recibo entre dos catálogos × agente off/mock × carrito/confirmación × número/opción/nota;26 guardas;2 selecciones por nombre de producto distinto;4 cancelaciones/reinicios durante la aclaración. Foco258/4 aprobado. Global aislada33509/416 aprobada,634 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. No mezcla trabajo de Bold/autenticación. Publicación y despliegue pendientes. Sin inferencia pagada, Meta u órdenes externas.
+56 casos nuevos:24 cierres con DTO y recibo entre dos catálogos × agente off/mock × carrito/confirmación × número/opción/nota;26 guardas;2 selecciones por nombre de producto distinto;4 cancelaciones/reinicios durante la aclaración. Foco258/4 aprobado. Global aislada33509/416 aprobada,634 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. No mezcla trabajo de Bold/autenticación. Staging348 publicado y desplegado:68062b8c, workflow41454914207. Contenedor healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Controles compilados previos aprobados; cobertura348 local. Sin inferencia pagada, Meta u órdenes externas.
 
 Límite: aplica a la línea completa, no a una parte de sus unidades. No acredita el comportamiento del modelo/canal real ni cierra U3/U4. Próximo: corregir una selección recién aplicada («no, el otro») conservando las notas originales. Producción333 y Kamppo321 fuera de alcance.
