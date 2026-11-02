@@ -5549,6 +5549,7 @@ export class WhatsappOrchestratorService {
           msg.waId,
           `Queda como *${payPick.label}*.\n\n` +
             `${this.formatOrderSummary(conv, session, this.deliveryFeeFor(session, cfg), cfg.paymentMethods)}\n\n` +
+            (payPick.id === 'transfer' ? `${this.formatMerchantTransferDetails(cfg)}\n\n` : '') +
             'Si está bien, escribe *confirmar*.',
         );
         return;
@@ -11523,8 +11524,15 @@ export class WhatsappOrchestratorService {
         ? `Quedó sin elegir:\n${dropped.candidates.slice(0, 6).map((candidate, index) => `${index + 1}. *${candidate.name}*`).join('\n')}\n` +
           `¿Lo agregamos o lo dejamos? Escribe el número, o *confirmar* para seguir sin él.`
         : 'Si está bien, escribe *confirmar*.';
+      // An early payment choice can bypass awaiting_payment. Repeat the merchant
+      // account at final review, but avoid duplicating the same-turn payment preface.
+      const transferDetails = session.paymentMethod === 'transfer'
+        ? this.formatMerchantTransferDetails(cfg) : '';
+      const accountText = (cfg.localContext?.transferInfoNote || '').trim() || transferDetails;
+      const transferReminder = transferDetails && !opts?.preface?.includes(accountText)
+        ? `${transferDetails}\n\n` : '';
       await say(
-        `${this.formatOrderSummary(conv, session, this.deliveryFeeFor(session, cfg), cfg.paymentMethods)}\n\n${recall}`,
+        `${this.formatOrderSummary(conv, session, this.deliveryFeeFor(session, cfg), cfg.paymentMethods)}\n\n${transferReminder}${recall}`,
       );
       return;
     }
@@ -24034,7 +24042,7 @@ export class WhatsappOrchestratorService {
       brand: cfg.brandName || '',
       transferInfo:
         (cfg.localContext?.transferInfoNote || '').trim() ||
-        'Te pasamos los datos de cuenta en el local / por aquí.',
+        'No tengo los datos de cuenta ni el titular confirmados. El restaurante debe proporcionarlos antes de transferir.',
       paymentInstructions: (cfg.paymentInstructions || '').trim(),
     });
   }
