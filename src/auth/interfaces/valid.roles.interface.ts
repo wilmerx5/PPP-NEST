@@ -1,5 +1,6 @@
 export enum ValidRoles {
   user = 'user',
+  paymentsUser = 'paymentsUser',
   admin = 'admin',
   kitchenUser = 'kitchenUser',
   tableUser = 'tableUser',

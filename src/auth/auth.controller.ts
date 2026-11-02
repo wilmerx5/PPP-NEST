@@ -111,6 +111,7 @@ export class AuthController {
     ValidRoles.tableUser,
     ValidRoles.ordersUser,
     ValidRoles.whatsappUser,
+    ValidRoles.paymentsUser,
   )
   @ApiOperation({ summary: 'Estado de 2FA del usuario autenticado' })
   get2faStatus(@Req() req: Request) {
@@ -124,6 +125,7 @@ export class AuthController {
     ValidRoles.tableUser,
     ValidRoles.ordersUser,
     ValidRoles.whatsappUser,
+    ValidRoles.paymentsUser,
   )
   @ApiOperation({ summary: 'Iniciar setup TOTP (QR + secreto)' })
   setup2fa(@Req() req: Request) {
@@ -137,6 +139,7 @@ export class AuthController {
     ValidRoles.tableUser,
     ValidRoles.ordersUser,
     ValidRoles.whatsappUser,
+    ValidRoles.paymentsUser,
   )
   @ApiOperation({ summary: 'Confirmar setup TOTP y obtener códigos de recuperación' })
   @ApiBody({ type: Confirm2faDto })
@@ -151,6 +154,7 @@ export class AuthController {
     ValidRoles.tableUser,
     ValidRoles.ordersUser,
     ValidRoles.whatsappUser,
+    ValidRoles.paymentsUser,
   )
   @ApiOperation({ summary: 'Desactivar 2FA con código TOTP o de recuperación' })
   @ApiBody({ type: Disable2faDto })
@@ -165,6 +169,7 @@ export class AuthController {
     ValidRoles.tableUser,
     ValidRoles.ordersUser,
     ValidRoles.whatsappUser,
+    ValidRoles.paymentsUser,
   )
   @ApiOperation({
     summary: 'Mostrar QR/secreto actual (sin rotar) tras verificar código TOTP',

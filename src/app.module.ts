@@ -1,3 +1,4 @@
+import { BoldModule } from './bold/bold.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -84,6 +85,7 @@ import { databaseTransport, assertStagingDatabase } from './common/database-tran
     CommonModule,
 
     PaymentsModule,
+    BoldModule,
     ExpensesModule,
     BusinessModule,
     WhatsappModule,

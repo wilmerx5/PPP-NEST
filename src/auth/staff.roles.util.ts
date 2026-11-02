@@ -3,6 +3,7 @@ import { ValidRoles } from './interfaces/valid.roles.interface';
 /** Roles de operación interna (no clientes del portal). */
 export const STAFF_ROLES: ValidRoles[] = [
   ValidRoles.admin,
+  ValidRoles.paymentsUser,
   ValidRoles.kitchenUser,
   ValidRoles.tableUser,
   ValidRoles.ordersUser,
