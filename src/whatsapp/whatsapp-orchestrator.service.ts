@@ -3561,7 +3561,7 @@ export class WhatsappOrchestratorService {
     }
     const earlyMenu = session.cart.length ? await this.catalogService.getMenuProducts() : [];
     const namesLoadedDish = earlyMenu.some((product) => this.normalizeForMatch(product.name) === this.normalizeForMatch(originalText));
-    const namesOrderDish = /^(?:quiero|quisiera|dame|reg[aá]lame|me\s+env[ií]as|un|una|dos|tres|cuatro|cinco|\d+)\b/i.test(compound.productText.trim()) &&
+    const namesOrderDish = /^(?:y\s+)?(?:quiero|quisiera|dame|reg[aá]lame|me\s+env[ií]as|un|una|dos|tres|cuatro|cinco|\d+)\b/i.test(compound.productText.trim()) &&
       !!this.catalogService.findProductEmbeddedInMessage(compound.productText, earlyMenu);
     if (
       session.cart.length > 1 &&

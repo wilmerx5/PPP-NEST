@@ -1,5 +1,13 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda341: compras consecutivas y cortesía
+
+01/11 mensajes217–242 y31/10 grupoB. Baseline4/8 falló: «también por Fis» omitía sobrebarriga/pasta en turnos separados. Ráfagas aprobaban; duplicación histórica del bagre no reproducida. Normalización acotada de cortesía y prefijo «y» con producto reconocido: «Y un Crema De Tomate» ya no se guarda como dirección.
+
+20 controles nuevos:8 cierres con DTO/recibo en dos catálogos × agente off/mock × separados/coalescidos mediante receptor real;2 propuestas hostiles de agente repitiendo plato anterior;10 límites de cortesía. Carrito, estado, respuesta, recogida/destino y total verificados. Foco20/1 aprobado. Evidencias whatsapp-batch-341-{sources,global-sources,validation,patterns}. Global33238 pruebas/408 suites, inventario exacto y625 fuentes congeladas; TypeScript general/build y scripts aprobados.
+
+Despliegue341 pendiente. Staging runtime340; producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. U2 sigue abierto: causa original del bagre, reentregas de messageId, ráfagas parciales y contacto. No acredita modelo/canal/persistencia real ni cierra todos los fallos del grupo.
+
 ## VIGENTE — tanda340: plan unificado y encabezado de reparto
 
 Prioridad consolidada en `WHATSAPP-UNIFIED-REMEDIATION-PLAN.md`: une grupos pendientes31/10 y01/11 sin considerar cerrados los avances parciales. U1 cantidades/reparto; U2 compras inesperadas/ráfagas; U3 editar/eliminar/reemplazar; U4 opciones/notas; U5 pendientes/catálogo; U6 datos/direcciones; U7 consultas/lenguaje; U8 aceptación real/promoción. Mezcla de idiomas sigue al final.

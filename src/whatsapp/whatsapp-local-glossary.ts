@@ -25,6 +25,9 @@ const PHRASE_REWRITES: Array<{
   { re: /^(?:te\s+)?agradezco\s+si\s+me\s+(?:alistan|preparan)\s+/i, to: 'quiero ' },
   { re: /^(?:ada|nad)\s+m[aá]s[.!]*$/i, to: 'nada mas' },
   { re: /\bme[ \t]+haces?[ \t]+(?:el[ \t]+)?favor[ \t]+(?:me[ \t]+)?(?:mandas?|env[ií]as?)\b[ \t]*/gi, to: 'quiero ' },
+  // Colloquial courtesy at a message boundary, never a substring of an ingredient.
+  { re: /\bpor[ \t]*fis?\b(?=[ \t]*[!.,?]*[ \t]*$)/gim, to: 'por favor' },
+  { re: /^por[ \t]*fis?[ \t,]+(?=(?:quiero|dame|me|un[oa]?|dos|tres|cuatro|\d{1,2})\b)/gim, to: 'por favor ' },
   // Cortesía inicial: conservar el pedido y su cantidad, sin tratarla como plato.
   { re: /^(?:por\s+favor|porfa|por\s+fa)[\s,!.-]+(?=(?:\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b)/i, to: '' },
   // "perdon de mango" corrige el pedido; perdón no es el producto.

@@ -22,7 +22,9 @@ Prioridad0; evidencia438–447. Fixture con ejecutivo frito, ejecutivo broaster 
 
 Punto de partida: `whatsapp-executive-initial-journey.spec.ts` cubre otro reparto de dos ejecutivos, no acredita este encabezado y combinación3+1.
 
-## Después: ráfagas y aplicación única
+## Ráfagas y aplicación única — avance parcial341
+
+Tanda341:20 controles focales aprobados; omisión por cortesía y compra confundida con dirección corregidas. Ocho cierres con DTO/recibo en dos catálogos y modos separado/coalescido. Duplicación histórica del bagre no reproducida; reentregas pendientes. Global33238/408, TypeScript general/build y scripts aprobados. Despliegue pendiente.
 
 Prioridad0;217–242. Reproducir el bagre, sobrebarriga, dos sopas y bebida en mensajes consecutivos y en una ráfaga temporal del receptor. No basta llamar `sendQueued` para certificar coalescencia. Usar temporizadores simulados y mensajes con IDs distintos; contrastar reentrega del mismo ID. Añadir plan de agente simulado con historia obsoleta para comprobar rechazo de duplicación. «Por fis», teléfono y destino no autorizan productos. Comparar tanto omisiones como compras extra.
 
