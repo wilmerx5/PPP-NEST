@@ -279,10 +279,21 @@ export function isConfirmCurrentAddressIntent(text: string): boolean {
   );
 }
 
+/** Colloquial reply to «¿Algo más?», shared by checkout and recipient validation. */
+export function isAsiNoMasClosing(text: string): boolean {
+  if (!text || text.length > 100 || /[¿?]/.test(text)) return false;
+  const t = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¡!.,;:]/g, ' ')
+    .replace(/\b(?:senor|senora|veci|vecino|vecina|por favor|porfa|muchas gracias|gracias)\b/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return /^(?:no )?asi no\s*mas$/.test(t);
+}
+
 /**
  * Nombre usable para cocina/FE (no placeholders tipo “Pedidos”, “Cliente”).
  */
 export function isUsableWhatsappCustomerName(name: string): boolean {
+  if (isAsiNoMasClosing(name)) return false;
   const raw = (name || '').trim();
   if (raw.length < 2 || raw.length > 80) return false;
 

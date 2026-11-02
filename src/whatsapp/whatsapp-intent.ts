@@ -6,6 +6,7 @@
 
 import {
   isAddressChangeIntent,
+  isAsiNoMasClosing,
   isAddressRejectionIntent,
   isConfirmCurrentAddressIntent,
   isDeliveryEtaInquiry,
@@ -274,6 +275,7 @@ export function isDeliveryLogisticsFluff(text: string): boolean {
 
 /** “Así nada más” / “eso es todo” → cierre de pedido, no dirección. */
 export function isNothingElseOrderIntent(text: string): boolean {
+  if (isAsiNoMasClosing(text)) return true;
   const said = normalizeIntentText(text);
   if (!said || said.length > 64) return false;
   // "No señor, así está bien" answers "¿Algo más?": drop the vocative and that "no".
