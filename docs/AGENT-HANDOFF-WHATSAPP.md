@@ -1,5 +1,12 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda356: datos de transferencia antes de confirmar
+
+Chat02/11: elección anticipada de transferencia omitía datos de cuenta al completar nombre/dirección; también al cambiar desde efectivo en revisión final. Baseline20/20 fallan. Ahora revisión final muestra datos configurados o aviso explícito de cuenta ausente, sin duplicar el prefacio del mismo turno.28 controles nuevos en dos catálogos × agente off/mock;16 cierres DTO simulados. Foco28/1 y124 controles relacionados aprobados. Código `8a02d021`. Incluye despedida de domicilio `f692d43e`: «Te lo enviaremos lo más pronto posible».
+
+Global33991/424 aprobada;642 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue356 pendiente; staging runtime355 y producción349 siguen vigentes. Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni pago realizado. Próximo: «manejan datáfono», distinguir equipo físico de enlace usando configuración; luego sustituciones durante aclaración de notas.
+
+
 ## Ajuste de despedida — 02/11/2026
 
 Por solicitud del usuario, al registrar domicilio las despedidas «que tengas excelente día» y «Buen provecho» se sustituyen por «Te lo enviaremos lo más pronto posible». Para recogida se usa «Prepararemos tu pedido lo más pronto posible». Se conservan otros mensajes personalizados y el saludo de buen provecho posterior a la entrega. Cambio de texto, sin cambios de carrito, pago o confirmación.

@@ -1,5 +1,12 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda356: datos de transferencia antes de confirmar
+
+Chat02/11: elección anticipada de transferencia omitía datos de cuenta al completar nombre/dirección; también al cambiar desde efectivo en revisión final. Baseline20/20 fallan. Ahora revisión final muestra datos configurados o aviso explícito de cuenta ausente, sin duplicar el prefacio del mismo turno.28 controles nuevos en dos catálogos × agente off/mock;16 cierres DTO simulados. Foco28/1 y124 controles relacionados aprobados. Código `8a02d021`. Incluye despedida de domicilio `f692d43e`: «Te lo enviaremos lo más pronto posible».
+
+Global33991/424 aprobada;642 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue356 pendiente; staging runtime355 y producción349 siguen vigentes. Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni pago realizado. Próximo: «manejan datáfono», distinguir equipo físico de enlace usando configuración; luego sustituciones durante aclaración de notas.
+
+
 ## VIGENTE — tanda355: retirada/cantidad durante aclaración de nota
 
 Baseline16/36 fallan: la aclaración348 bloqueaba retiradas/correcciones nominales inequívocas. Ahora usa los manejadores existentes con referencia única; un cambio real descarta la nota pendiente y lo explica. Respuestas numéricas antiguas no la aplican. Ambigüedad, ordinales, pago, caducidad, condiciones y cantidades inválidas conservan las guardas.44 controles nuevos:24 cierres DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación × retirada completa/parcial/cantidad;20 guardas. Foco232/4 y44/1 aprobado. Código `87122f5b`.

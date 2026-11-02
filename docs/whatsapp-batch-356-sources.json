@@ -1,0 +1,22 @@
+{
+  "batch": 356,
+  "source": "Chat anonimizado aportado por usuario, 2026-11-02",
+  "codeCommit": "8a02d021",
+  "baseline": {
+    "failed": 20,
+    "total": 20
+  },
+  "newTests": 28,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "No modelo/canal real",
+    "Datáfono pendiente",
+    "Sin validación de pago real"
+  ]
+}
