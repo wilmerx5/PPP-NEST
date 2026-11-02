@@ -46,3 +46,7 @@ Caso de cotización20:32 incorporado343:12 pruebas adicionales, total42 nuevas. 
 ## Evidencia344
 
 Aclaración del usuario: «arroz chino, costillas ... sin gaseosa» debe identificar un plato compuesto.31 controles nuevos y60 relacionadas aprobados; normalización acotada por catálogo y pago independiente conservado en ráfaga.16 cierres DTO/recibo. Global33335/412, TypeScript general/build y scripts aprobados; Staging344 desplegado y verificado: código `d7ed88aa`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41377899052; evidencia `whatsapp-batch-344-staging-deployment.json`. Controles compilados previos aprobados; cobertura344 local. La compra inicial pasa; recuperación contextual a combo y cancelación con puntuación siguen pendientes, no cubiertas por344.
+
+## Evidencia345
+
+Cancelación con puntuación y propuesta de recuperación contextual de dos líneas unitarias sin bebida.38 controles nuevos/158 relacionadas aprobadas,4 cierres DTO/recibo. Mantener separados aceptar cambio y confirmar orden. Global33373/413, TypeScript general/build y scripts aprobados; despliegue pendiente. U3 mantiene ampliaciones de cantidades, atributos y notas; U4 sigue con conservación de bebida/notas en cambios más complejos.

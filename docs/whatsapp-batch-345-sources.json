@@ -1,0 +1,31 @@
+{
+  "batch": 345,
+  "source": "Chat01/11 20:49–20:56: en combo tras carrito dividido, Cancelar. conserva carrito",
+  "spec": "src/whatsapp/whatsapp-cancel-composed-recovery-345.spec.ts",
+  "specSha256": "4005a372e05191b3ecd7e206bb1a931f47e6e11a4c186bb6d61c27221cbf8d7f",
+  "newTests": 38,
+  "baseline": {
+    "failed": 12,
+    "passed": 8,
+    "total": 20
+  },
+  "focus": {
+    "tests": 158,
+    "suites": 3
+  },
+  "scope": [
+    "Cancelación de carrito no registrado con punto/exclamación",
+    "Propuesta contextual de reunir exactamente dos líneas unitarias en único plato compuesto de catálogo, conservando exclusión de bebida",
+    "Sí aplica cambio; confirmar antes de resolver no registra orden; nueva confirmación tras resumen",
+    "Rechazo, stock/precio cambiados, firma obsoleta, expiración y cancelación de propuesta",
+    "No cancelar por negación, pregunta o condición; orden registrada anterior permanece intacta"
+  ],
+  "limits": [
+    "Solo dos líneas unitarias sin atributos ni otras notas; no combinación arbitraria",
+    "No cambia automáticamente un combo explícito ni inventa descuento",
+    "No DB, Meta ni modelo reales; no permite cancelar órdenes registradas",
+    "No acredita todas las variantes regionales ni carreras de catálogo"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0
+}

@@ -1478,6 +1478,9 @@ export class WhatsappOrchestratorService {
         return;
       }
     }
+    const composedRecovery = this.conversationService.getSession(conv);
+    if (composedRecovery.pendingComposedDishRecovery && !this.isCancelIntent(text) &&
+        await this.tryRecoverComposedDish(conv, msg.waId, composedRecovery, text, cfg)) return;
     if (conv.state === 'awaiting_final_confirm' && await this.tryAnswerRecalledPick(conv, msg.waId, text, cfg)) return;
     // A negative answer at the approval step is not consent and must not reopen shopping.
     if (conv.state === 'awaiting_final_confirm' && /^(?:no(?: mas)?|solo eso)(?: gracias| porfa| veci)?$/.test(this.normalizeForMatch(text))) {
@@ -2042,6 +2045,8 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    if (await this.tryRecoverComposedDish(conv, msg.waId, session, originalText, cfg)) return;
+
     // An explicitly named unavailable addition must not be swallowed by the pending option.
     if (session.pendingAttribute && !cfg.ignoreBusinessHours && !/[¿?]/.test(originalText) &&
         /^(?:agrega|agregame|anade|anademe|quiero|dame)\b/.test(this.normalizeForMatch(originalText))) {
@@ -18009,8 +18014,71 @@ export class WhatsappOrchestratorService {
     return null;
   }
 
+  /** Repair an explicitly discussed two-line split only after reviewing the composed dish. */
+  private async tryRecoverComposedDish(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const said=this.normalizeForMatch(text).replace(/[.!¡…]+/g,'').trim();
+    const pending=session.pendingComposedDishRecovery;
+    const busy=session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+      session.pendingUnitDistribution || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]);
+    if (pending) {
+      if (!/^(?:si|si por favor|si porfa|dale|no|no gracias)$/.test(said)) {
+        if (this.isConfirmKeyword(text)) {
+          await this.reply(conv,waId,'Primero aclaremos el cambio: responde sí para reunir los productos en el plato propuesto o no para conservarlos separados.');
+          return true;
+        }
+        return false;
+      }
+      const clear={...session,pendingComposedDishRecovery:undefined};
+      if (/^no\b/.test(said)) {
+        await this.conversationService.saveSession(conv,clear);
+        await this.reply(conv,waId,'Listo, conservé los dos productos separados. El pedido sigue igual.');
+        return true;
+      }
+      const menu=await this.catalogService.getMenuProducts();
+      const product=menu.find(p=>p.id===pending.productId);
+      if (busy || pending.cartSignature!==JSON.stringify(session.cart) || (!Number.isFinite(pending.createdAt) || Date.now()-pending.createdAt>5*60_000 || pending.createdAt>Date.now()) ||
+          !product || product.availableNow===false || product.price!==pending.price || product.attributes?.length) {
+        await this.conversationService.saveSession(conv,clear);
+        await this.reply(conv,waId,'El carrito o el catálogo cambió. Revisa el pedido y dime de nuevo cómo lo quieres; conservé los productos.');
+        return true;
+      }
+      const result=this.tryAddProductToCart({...clear,cart:[]},product,1,cfg,pending.note);
+      if (result.blocked || result.missingAttributes) {
+        await this.conversationService.saveSession(conv,clear);
+        await this.reply(conv,waId,'No pude completar ese cambio. Conservé los dos productos.');
+        return true;
+      }
+      const next=this.rememberProductFocus(this.reconcileSubstitutionPending(result.session),product,menu);
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,'Listo, dejé un solo *'+product.name+'*, '+pending.note+'.\n\n'+
+        this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
+        (this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+      return true;
+    }
+    if (busy || !/^(?:en combo|el combo|en combo sin gaseosa)$/.test(said) || session.cart.length!==2 ||
+        session.cart.some(line=>line.quantity!==1 || line.attributes?.length)) return false;
+    const notes=session.cart.map(line=>(line.note||'').trim()).filter(Boolean);
+    if (!notes.length || notes.some(note=>!/^sin (?:gaseosa|bebida|refresco)[.!]*$/i.test(note))) return false;
+    const menu=await this.catalogService.getMenuProducts();
+    const [a,b]=session.cart.map(line=>this.normalizeForMatch(line.name));
+    const candidates=menu.filter(p=>p.availableNow!==false && !p.attributes?.length &&
+      [a+' con '+b,b+' con '+a].includes(this.normalizeForMatch(p.name)));
+    if(candidates.length!==1) return false;
+    const product=candidates[0],note=notes[0];
+    await this.conversationService.saveSession(conv,{...session,pendingComposedDishRecovery:{
+      cartSignature:JSON.stringify(session.cart),productId:product.id,price:product.price,createdAt:Date.now(),note,
+    }});
+    await this.reply(conv,waId,'¿Te refieres a un solo *'+product.name+'*, '+note+'? Cuesta *$'+
+      Math.round(product.price).toLocaleString('es-CO')+'* (sin domicilio). Si respondes *sí*, reemplazo las dos líneas por ese plato. El pedido sigue igual por ahora.');
+    return true;
+  }
+
   private isCancelIntent(text: string): boolean {
-    const t = text.trim().toLowerCase();
+    const t = text.trim().toLowerCase().replace(/^¡+/, '').replace(/[.!…]+$/, '').trim();
     if (/\bno\s+(quiero\s+)?(cancelar|anular)\b/i.test(t)) return false;
     if (/^(cancelar|cancela|cancelo|anular|anula)$/i.test(t)) return true;
     if (/\b(cancelarl[oa]|va\s+(?:a\s+)?tocar\s+cancel)\b/i.test(t)) return true;

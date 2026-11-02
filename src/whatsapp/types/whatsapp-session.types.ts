@@ -205,6 +205,13 @@ export type WhatsappSessionData = {
   /** Opción de una lista que se acaba de describir. «Sí, ese» compra solo esta. */
   describedListCandidateId?: number;
   /** A replacement needs one original cart line; choosing it must not delete it alone. */
+  pendingComposedDishRecovery?: {
+    cartSignature: string;
+    productId: number;
+    price: number;
+    createdAt: number;
+    note: string;
+  };
   pendingCartReplacement?: {
     cartSignature: string;
     options: Array<{ cartIndex: number; label: string }>;

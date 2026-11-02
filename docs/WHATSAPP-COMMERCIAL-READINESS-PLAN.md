@@ -1,5 +1,15 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda345: cancelar y recuperar el carrito dividido
+
+Chat01/11 20:49–20:56. Baseline12/20 falla: «Cancelar.»/«¡Cancelar!» no vacían y «En combo.» solo atiende costillas;8 frases completas ya pasan. Cancelación tolera puntuación y conserva tratamiento de preguntas/negaciones/condiciones. Borrador cancelado se vacía; orden registrada anterior no se cancela.
+
+Con dos líneas unitarias sin atributos y notas exclusivamente de exclusión de bebida, «En combo.» propone reunirlas en único plato compuesto del catálogo, muestra precio y conserva carrito hasta aceptar. Sí aplica cambio y nuevo resumen; confirmar antes de resolver no crea orden. Rechazo, firma/precio/stock cambiados y expiración conservan productos. Se atiende la propuesta antes de la aceptación general del checkout.
+
+38 controles nuevos, foco158/3 aprobado:16 cancelaciones,4 cierres de recuperación con DTO/recibo,14 guardas,3 negación/pregunta/condición y1 orden registrada anterior. Global33373 pruebas/413 suites,631 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-345-{sources,global-sources,validation,patterns}.
+
+Despliegue345 pendiente. Runtime staging344; producción333 y Kamppo321. Cero llamadas pagadas/Meta/órdenes externas; presupuesto267/256/11 intacto. Sin modelo/canal/DB reales. Límites: no combina cantidades mayores, más de dos líneas, atributos o notas ajenas; no inventa descuentos ni permite cancelar órdenes registradas. Siguiente U3/U4: conservación de variantes, bebidas y notas en cambios complejos; ampliar recuperación solo con evidencia.
+
 ## VIGENTE — tanda344: pedido compuesto sin gaseosa
 
 Aclaración explícita del usuario sobre chat01/11 20:49: «un arroz chino, costillas de cerdo y sin gaseosa» es un solo plato compuesto. Baseline6/8 falla; ráfaga pedido+Nequi también6/8. Normalización acotada a cantidad+base+coma/con+componente+exclusión de bebida, con nombre compuesto único del catálogo. Conserva nota y cantidad; no agrega bebida, no inventa descuentos ni sustituye combos explícitos.
