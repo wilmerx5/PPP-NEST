@@ -6,7 +6,7 @@ Se reprodujeron8 bloqueos de «quita un [plato] y añade una [plato]»: el parse
 
 Durante la comprobación apareció otra omisión: teléfono separado lleva a awaiting_payment y «Y un Crema De Tomate» se descarta como dirección genérica. Ahora la ruta de compra durante pago consulta el catálogo antes de aplicar ese descarte; las direcciones estructuradas conservan su exclusión.
 
-30 controles nuevos:16 cierres completos en dos catálogos, agente off/mock y separado/coalescido, más14 guardas. Teléfono, cantidades, estado/tipo, respuesta, DTO y recibo43000/44000 comprobados. Foco y relacionadas470/3 aprobadas. Global33304/411, TypeScript general/build y scripts aprobados; despliegue pendiente. Primera global interrumpida para incorporar el caso recibido a las20:32.
+30 controles nuevos:16 cierres completos en dos catálogos, agente off/mock y separado/coalescido, más14 guardas. Teléfono, cantidades, estado/tipo, respuesta, DTO y recibo43000/44000 comprobados. Foco y relacionadas470/3 aprobadas. Global33304/411, TypeScript general/build y scripts aprobados; Staging343 desplegado y verificado: código `6e890644`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41375523907; evidencia `whatsapp-batch-343-staging-deployment.json`. Controles compilados previos aprobados; cobertura343 local. Primera global interrumpida para incorporar el caso recibido a las20:32.
 
 La primera ejecución tuvo10 fallos:8 bloqueos reales y2 aserciones erróneas que rechazaban «Recoge en el local», un destino válido de pickup. Corregida esa aserción, se observaron2 omisiones reales de la sopa en pago. No presentar todos los fallos iniciales como errores de producción.
 

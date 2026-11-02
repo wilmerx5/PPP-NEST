@@ -6,7 +6,7 @@
 
 20 cierres con DTO/recibo entre ambas suites; dos catálogos y agente off/mock. Foco previo470/3 y final114/4 aprobados (solapados, no sumar). Global33304/411 aprobada,628 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-343-{sources,global-sources,validation,patterns}. Primera global interrumpida para incorporar el caso nuevo de cotización; solo la ejecución final completa cuenta.
 
-Despliegue343 pendiente. Runtime staging341, producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/DB reales ni causa histórica del bagre. Precio del fixture no afirma precio de producción.
+Staging343 desplegado y verificado: código `6e890644`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41375523907; evidencia `whatsapp-batch-343-staging-deployment.json`. Controles compilados previos aprobados; cobertura343 local. Producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal/DB reales ni causa histórica del bagre. Precio del fixture no afirma precio de producción.
 
 PRIORIDAD SIGUIENTE: nuevo chat01/11 20:49–20:56. «Arroz chino, costillas ... sin gaseosa» → «En combo» apunta solo a costillas → «Cancelar.» no vacía. No está corregido por343. Regla corta de cancelación no admite punto; reproducir router completo y corregir conservando negaciones/preguntas. Después aclaración contextual del plato combinado/ingredientes y combo sin gaseosa. Datos de entrega/pago sí preservados en el chat; // en dirección es secundario. Fuente anonimizada en patterns343.
 
