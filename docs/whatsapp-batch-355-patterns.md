@@ -10,7 +10,7 @@ Dentro del resolvedor348, tras validar firma/caducidad/pago/otras selecciones, u
 
 Solo un cambio real del carrito descarta la nota pendiente; se avisa explícitamente que no se aplicó y que debe indicarse de nuevo si se necesita. Respuestas numéricas posteriores no aplican la nota antigua. No se reemplazan productos/preparaciones en esta tanda.
 
-44 controles nuevos:24 recorridos de dos catálogos × agente off/mock × carrito/confirmación × retirada completa/parcial/cantidad;20 guardas.24 cierres DTO/recibo simulado verifican cantidades finales1/2/4, notas/opciones previas y ausencia de «sin arroz». Foco232/4 antes de ampliar retirada parcial; final44/1 aprobado. Global33963/423 aprobada,641 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue pendiente de verificación.
+44 controles nuevos:24 recorridos de dos catálogos × agente off/mock × carrito/confirmación × retirada completa/parcial/cantidad;20 guardas.24 cierres DTO/recibo simulado verifican cantidades finales1/2/4, notas/opciones previas y ausencia de «sin arroz». Foco232/4 antes de ampliar retirada parcial; final44/1 aprobado. Global33963/423 aprobada,641 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging355 desplegado/verificado: `f6f5159e`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41515895462; evidencia355-staging-deployment. Controles compilados existentes aprobados; cobertura355 local.
 
 ## Límites y próximo paso
 
