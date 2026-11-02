@@ -1,0 +1,35 @@
+{
+  "batch": 352,
+  "runtimeCommit": "6a5c9d7f",
+  "origin": "Synthetic continuation of total/ETA interruptions and note clarification/redirect; not verbatim customer transcript",
+  "baseline": {
+    "failed": 66,
+    "passed": 14,
+    "tests": 80
+  },
+  "focusedRelated": {
+    "tests": 334,
+    "suites": 5
+  },
+  "finalFocused": {
+    "tests": 84,
+    "suites": 1
+  },
+  "newTests": 84,
+  "testFile": "src/whatsapp/whatsapp-note-total-eta-352.spec.ts",
+  "catalogs": [
+    "PPP-inspired poultry",
+    "synthetic tofu"
+  ],
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "No real model/channel",
+    "Scoped to preparation-note clarification"
+  ]
+}
