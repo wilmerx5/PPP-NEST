@@ -1,0 +1,32 @@
+{
+  "batch": 353,
+  "runtimeCommit": "f64e0114",
+  "source": "User-shared chat 2026-11-02 13:18\u201313:23; exact closing No as\u00ed no m\u00e1s; customer PII replaced in fixtures",
+  "baseline": {
+    "failed": 46,
+    "passed": 20,
+    "tests": 66
+  },
+  "focusedRelated": {
+    "tests": 431,
+    "suites": 5
+  },
+  "finalFocused": {
+    "tests": 70,
+    "suites": 1
+  },
+  "newTests": 70,
+  "testFile": "src/whatsapp/whatsapp-closing-not-name-353.spec.ts",
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "remaining": [
+    "Phone label residue in address reference",
+    "No real model/channel test",
+    "No historical orders modified"
+  ]
+}

@@ -1,5 +1,14 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tandas352–353: total+demora y cierre que no es nombre
+
+352:84 controles nuevos; consulta combinada de total/ETA durante aclaración, selección y «no, el otro» conservan notas, opciones y cantidades. Baseline66/80 fallan; foco334/5 y84/1; global propia33805/420 aprobada. Código `6a5c9d7f`.
+
+353 priorizada por chat real02/11 13:18–13:23: «No así no más» se guardaba como nombre. Detector acotado compartido reconoce cierre y rechaza identidad; si estaba guardado obliga a pedir nombre real antes de confirmar. Baseline46/66 fallan;70 controles nuevos, foco431/5 y70/1 aprobados. Incluye56 cierres DTO simulados, dos catálogos y agente off/mock. Código `f64e0114`. No modifica órdenes históricas.
+
+Global conjunta33875/421 aprobada,639 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Publicación/despliegue agrupado de staging pendientes de verificación. Producción349 `932f60b7` y Kamppo321 sin cambios; Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni cierra U3/U4. Próximo: limpiar etiqueta «celular» de referencia de dirección preservando conjunto/torre/apartamento y teléfono; después cambios/retiradas durante aclaración de nota.
+
+
 ## VIGENTE — tanda351: demora durante aclaración de nota
 
 Baseline66/80 fallan: consultar ETA repetía candidatos sin tiempo. Detector acotado responde ETA configurada con unidades, o indica que el equipo debe confirmarla si falta configuración; conserva carrito, selección, estado y caducidad.88 controles nuevos:64 recorridos DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación × ETA presente/ausente ×4 preguntas;16 guardas y8 variantes/cortesías con cancelación posterior. Foco inicial246/4 y final88/1 aprobados.
