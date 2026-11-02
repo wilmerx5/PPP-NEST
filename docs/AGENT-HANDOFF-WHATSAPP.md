@@ -1,5 +1,10 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda347: nota tras cambio parcial de preparación
+
+Baseline16/16 fallan: después de cambiar una unidad a broaster, «El broaster sin arroz» consultaba catálogo y no guardaba nota. Ruta temprana resuelve una preparación explícita contra una sola línea del carrito, conserva cantidades, opciones, notas y checkout; ambigüedad/conflicto/selección o pago pendiente piden aclaración.40 controles nuevos,16 cierres DTO/recibo, dos catálogos y agente off/mock. Foco569/5 aprobado; global aislada33453/415 aprobada,633 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Publicación y despliegue347 pendientes. Runtime staging346 `48ee9b0e`; producción333 y Kamppo321. Cero llamadas pagadas/Meta/órdenes externas; presupuesto267/256/11 intacto. Evidencias whatsapp-batch-347-{sources,patterns}. Próximo: continuar una aclaración de nota entre varias variantes; U3/U4 siguen abiertos.
+
+
 ## VIGENTE — tanda346: notas parciales y conservación de opciones
 
 Prioridad U3/U4: reparto explícito de notas sobre unidades existentes y conservación al cambiar preparación.40 controles nuevos; foco433/4 aprobado. Baseline8/16 fallan por nota parcial;8 cambios de preparación ya pasan. «De los tres churrascos, dos sin arroz más ensalada» conserva3 unidades y modifica solo2; catálogos pollo/res y tofu/vegetal. Cantidades inválidas, preguntas, condiciones y versiones ambiguas no mutan carrito.16 cierres verifican DTO/recibo simulado.

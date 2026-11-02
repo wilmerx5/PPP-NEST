@@ -1569,6 +1569,7 @@ export class WhatsappOrchestratorService {
     let originalText = text;
     if (await this.tryHandleDefinitePreparationChange(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleTwoUnitServingPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandlePreparationScopedNote(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleCountedGroupNote(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleBinaryUnitSubset(conv,msg.waId,this.conversationService.getSession(conv),originalText,cfg)) return;
     // Resolve explicit one/other family plans before generic quantity/option
@@ -16224,6 +16225,41 @@ export class WhatsappOrchestratorService {
     await this.conversationService.saveSession(conv,next,next.cart.length?conv.state:'building_cart');
     await this.reply(conv,waId,`Listo, quité ${units} de *${original.name}*.\n\n`+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
       (next.cart.length ? this.formatInterruptedStepReminder(conv,next) || this.formatContinueShoppingPrompt(next) : '¿Qué te gustaría pedir?'));
+    return true;
+  }
+
+  /** Resolve a preparation-only note against the cart before catalogue browsing. */
+  private async tryHandlePreparationScopedNote(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state)) return false;
+    const edit = parseScopedCartNote(text);
+    if (!edit || edit.kind !== 'append') return false;
+    const query = this.normalizeForMatch(edit.query);
+    if (!/^[a-z]+$/.test(query) || this.catalogService.stripCookingStyleTokens(query) !== '') return false;
+    const unchanged = async (reason: string) => { await this.reply(conv,waId,reason+' El pedido sigue igual.'); return true; };
+    if (/\b(?:si|pero|excepto|cuando|quizas)\b/.test(this.normalizeForMatch(edit.note)))
+      return unchanged('Aclara la nota sin condiciones.');
+    if (session.mpPreferenceId || session.pendingAddOffer || session.pendingMatch || session.pendingAttribute ||
+      session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote ||
+      session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
+      return unchanged('Primero aclaremos la selección o pago pendiente.');
+    const indices = session.cart.flatMap((line,index)=>this.normalizeForMatch(line.name).split(' ').includes(query)?[index]:[]);
+    if (indices.length !== 1) return unchanged(indices.length ?
+      'Hay varios platos con esa preparación; dime el nombre completo y la nota actual del que quieres cambiar.' :
+      'No encuentro esa preparación en tu carrito; dime qué plato quieres cambiar.');
+    const index = indices[0], line = session.cart[index];
+    if (edit.preserve.some(reference=>correctionMatchesLine(line,reference)) || kitchenNotesConflict(line.note,edit.note))
+      return unchanged('La indicación contradice una nota anterior; dime cuál conservamos.');
+    const product = (await this.catalogService.getMenuProducts()).find(p=>p.id===line.productId);
+    if (product && this.catalogService.extractExplicitAttributeChoice(edit.note,product)?.length) return false;
+    const edited = editScopedCartNote(line.note,edit);
+    if (edited.blocked) return unchanged('Necesito una nota más corta para conservar las instrucciones anteriores.');
+    const next = {...session,cart:session.cart.map((item,i)=>i===index?{...item,note:edited.note}:item)};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,'Listo, actualicé la nota de *'+line.name+'* ✅\n\n'+
+      this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
+      (this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
     return true;
   }
 

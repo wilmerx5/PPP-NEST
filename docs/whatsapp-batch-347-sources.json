@@ -1,0 +1,30 @@
+{
+  "batch": 347,
+  "baseCommit": "66f18e58746393d9251480d710601690e22dc778",
+  "sourcePatterns": [
+    "28/10: cambiar el ejecutivo de pechuga a broaster",
+    "30/10: nota dirigida solo a parte de las unidades existentes"
+  ],
+  "derivedJourney": "Cambiar una de tres unidades; luego El broaster sin arroz; cerrar pedido conservando todas las opciones y notas.",
+  "baseline": {
+    "tests": 16,
+    "failed": 16
+  },
+  "focused": {
+    "tests": 569,
+    "suites": 5,
+    "passed": true
+  },
+  "newTests": 40,
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "catalogs": [
+    "Ejecutivo Con Pollo",
+    "Bandeja Con Tofu"
+  ],
+  "limits": [
+    "Preparación explícita de una sola palabra reconocida y presente en el nombre",
+    "Una sola línea candidata; varias líneas requieren aclaración",
+    "Modelo y servicios externos simulados"
+  ]
+}
