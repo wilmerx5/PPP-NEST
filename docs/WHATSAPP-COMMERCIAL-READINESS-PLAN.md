@@ -6,7 +6,7 @@ Aclaración explícita del usuario sobre chat01/11 20:49: «un arroz chino, cost
 
 31 controles nuevos:16 cierres DTO/recibo en dos catálogos × agente off/mock × coma/con × separado/coalescido;13 guardas de parser y2 pedidos separados. Al normalizar una ráfaga, una burbuja independiente de pago reconocido se guarda como dato para que no consuma la compra. Foco60/3 aprobado. Global33335 pruebas/412 suites,630 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-344-{sources,global-sources,validation,patterns}.
 
-Despliegue344 pendiente. Runtime staging343; producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. Sin canal/modelo/DB reales. No cierra «En combo» sobre carrito ya dividido ni «Cancelar.»: pendientes prioritarios siguientes. No generalizar a cualquier lista con coma, múltiples candidatos o petición sin exclusión de bebida.
+Staging344 desplegado y verificado: código `d7ed88aa`, healthy, cero reinicios, API local/pública ok y modelos/configuración privada preservados. Workflow41377899052; evidencia `whatsapp-batch-344-staging-deployment.json`. Controles compilados previos aprobados; cobertura344 local. Producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. Sin canal/modelo/DB reales. No cierra «En combo» sobre carrito ya dividido ni «Cancelar.»: pendientes prioritarios siguientes. No generalizar a cualquier lista con coma, múltiples candidatos o petición sin exclusión de bebida.
 
 ## VIGENTE — tanda343: contacto, reparación y cotización compuesta
 
