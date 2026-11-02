@@ -168,8 +168,8 @@
       "priority": "P0",
       "utterance": "quita un bagre y añade una sobrebarriga",
       "expected": "Contacto/cortesía no agrega unidades; cada compra se aplica una vez; no omitir otros productos. Probar cola y ráfaga efectiva por separado.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_343_focused_suite",
+      "note": "30 controles en total: teléfono intercalado separado/coalescido y retirada directa más adición, dos catálogos,16 cierres DTO/recibo. No acredita canal/modelo/DB reales ni todas las variantes."
     },
     {
       "id": "0111-burst-idempotency-04",
@@ -181,8 +181,8 @@
       "priority": "P0",
       "utterance": "el teléfono es 3000000001",
       "expected": "Contacto/cortesía no agrega unidades; cada compra se aplica una vez; no omitir otros productos. Probar cola y ráfaga efectiva por separado.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_343_focused_suite",
+      "note": "30 controles en total: teléfono intercalado separado/coalescido y retirada directa más adición, dos catálogos,16 cierres DTO/recibo. No acredita canal/modelo/DB reales ni todas las variantes."
     },
     {
       "id": "0111-combo-edit-remove-01",

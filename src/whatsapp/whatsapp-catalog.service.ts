@@ -7458,6 +7458,20 @@ export class WhatsappCatalogService {
     const source = (stripped || text || '').trim();
     if (!source) return [];
 
+    // A single catalog dish named as "X con Y" owns its ingredients.
+    // Require the whole cleaned query to be a unique literal catalog prefix;
+    // explicit additional products and ambiguous variants keep their existing route.
+    const compoundQuery = normalizeText(this.extractProductSearchQuery(
+      this.stripAvailabilityInquiryNoise(source),
+    )).replace(/^me confirmas?\s+/, '').replace(/^(?:el|la|un|una)\s+/, '').trim();
+    if (/\bcon\b/.test(compoundQuery) && !/\b(?:y|mas|otro|otra|aparte)\b/.test(compoundQuery)) {
+      const compounds = products.filter(product => {
+        const name = normalizeText(product.name);
+        return name === compoundQuery || name.startsWith(compoundQuery + ' ');
+      });
+      if (compounds.length === 1 && compounds[0].availableNow !== false) return compounds;
+    }
+
     // Antes que "…Con Medio Pollo" (arroz): cotizar porción de pollo
     const sizedChicken = this.resolveSizedChickenProduct(text, products, opts);
     if (sizedChicken) {

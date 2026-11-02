@@ -11064,7 +11064,9 @@ export class WhatsappOrchestratorService {
     if (this.resolvePaymentChoice(raw, cfg)) return false;
     if (this.looksLikePaymentMethodQuestion(raw)) return false;
     if (this.looksLikePhoneNumber(raw)) return false;
-    if (looksLikeAddressOnlyMessage(raw) || this.isAddressOnlyCustomerMessage(raw)) return false;
+    const namedPurchase = /^(?:y\s+)?(?:quiero|quisiera|dame|un|una|dos|tres|cuatro|cinco|\d+)\b/i.test(raw) &&
+      !!this.catalogService.findProductEmbeddedInMessage(raw, products);
+    if (looksLikeAddressOnlyMessage(raw) || (!namedPurchase && this.isAddressOnlyCustomerMessage(raw))) return false;
     if (isCourtesyAffirmation(raw) || this.isConfirmKeyword(raw)) return false;
     if (/^(?:el|la|un|una)?\s*(?:medio|media|cuarto|entero)\s*$/i.test(raw)) return false;
 
@@ -15899,15 +15901,17 @@ export class WhatsappOrchestratorService {
     const counts:Record<string,number>={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
     const token='(un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[+-]?\\d+(?:[.,]\\d+)?)';
     const removal=request[1].match(new RegExp(`^${token} de (?:los|las) de (.+)$`));
+    const directRemoval=!removal ? request[1].match(new RegExp(`^${token} (.+)$`)) : null;
+    const selectedRemoval=removal || directRemoval;
     const addition=request[2].match(new RegExp(`^${token} (.+)$`));
-    if (!removal || !addition) return unchanged('Repite la petición completa con la cantidad que retiramos y la cantidad y nombre del producto que añadimos.');
-    const removed=counts[removal[1]]??Number(removal[1]), added=counts[addition[1]]??Number(addition[1]);
+    if (!selectedRemoval || !addition) return unchanged('Repite la petición completa con la cantidad que retiramos y la cantidad y nombre del producto que añadimos.');
+    const removed=counts[selectedRemoval[1]]??Number(selectedRemoval[1]), added=counts[addition[1]]??Number(addition[1]);
     if (![removed,added].every(amount=>Number.isSafeInteger(amount)&&amount>=1&&amount<=99))
       return unchanged('Indica cantidades enteras entre 1 y 99 para ambos cambios.');
-    const parsed=parseScopedCartRemoval(`quita uno de los de ${removal[2]}`);
-    if (!parsed || parsed.quantity!==1 || parsed.target!==undefined || parsed.preserve.length || /\b(?:si|pero|sino|excepto|conserva|agrega|cambia)\b/.test(removal[2]))
+    const parsed=parseScopedCartRemoval(`quita uno de los de ${selectedRemoval[2]}`);
+    if (!parsed || parsed.quantity!==1 || parsed.target!==undefined || parsed.preserve.length || /\b(?:si|pero|sino|excepto|conserva|agrega|cambia)\b/.test(selectedRemoval[2]))
       return unchanged('Aclara una sola retirada y una sola adición, sin otras acciones o condiciones.');
-    const indices=session.cart.flatMap((line,index)=>correctionMatchesLine(line,parsed.query)?[index]:[]);
+    const indices=session.cart.flatMap((line,index)=>(directRemoval ? this.normalizeForMatch(line.name)===this.normalizeForMatch(selectedRemoval[2]) : correctionMatchesLine(line,parsed.query))?[index]:[]);
     if (!indices.length) return unchanged('No identifiqué una sola línea para retirar. Repite ambos cambios con el plato y su opción.');
     const products=await this.catalogService.getMenuProducts();
     const query=this.normalizeForMatch(addition[2]);
