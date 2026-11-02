@@ -28367,7 +28367,7 @@ export class WhatsappOrchestratorService {
         lines.push('También está habilitado *Mercado Pago*: permite pagar con tarjeta por *link* desde el celular. Es un pago en línea.');
       }
     } else {
-      lines.push('Claro, te cuento cómo puedes pagar:');
+      lines.push('Estos son los métodos disponibles. Por consultar un método no lo dejo elegido.');
     }
 
     if (enabled.length) {
