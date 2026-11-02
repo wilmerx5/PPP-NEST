@@ -1,0 +1,40 @@
+{
+  "batch": 344,
+  "sources": [
+    "01/11 20:49: Buen día, por favor un arroz chino, costillas de cerdo y sin gaseosa",
+    "Aclaración explícita del usuario: pretendía un solo arroz chino con costillas sin gaseosa"
+  ],
+  "spec": "src/whatsapp/whatsapp-compound-order-344.spec.ts",
+  "specSha256": "7bf568ae8f10d76539f4e832af6a2695ede64a002c2ca6573a7f835101b60b32",
+  "newTests": 31,
+  "baseline": {
+    "passed": 2,
+    "failed": 6,
+    "total": 8
+  },
+  "burstBaseline": {
+    "passed": 2,
+    "failed": 6,
+    "total": 8
+  },
+  "scope": [
+    "Cantidad + plato + coma/con + componente + exclusión de bebida, con nombre compuesto único del catálogo",
+    "Dos catálogos, agente off/mock, coma/con, mensajes separados/coalescidos",
+    "16 cierres con DTO/recibo y nota sin gaseosa; Nequi preservado",
+    "13 guardas de parser y2 recorridos de compras separadas",
+    "Pago independiente de una ráfaga canónica se guarda sin consumir la compra"
+  ],
+  "focus": {
+    "passed": 60,
+    "suites": 3
+  },
+  "limitations": [
+    "Sin DB, Meta, mapas ni modelo reales",
+    "No completa recuperación en combo desde carrito histórico ya dividido",
+    "Cancelación con puntuación continúa pendiente",
+    "Reescritura exige exclusión de bebida y único nombre compuesto; no fusiona cualquier lista con coma",
+    "No infiere descuentos ni cambia combo explícito por plato simple"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0
+}

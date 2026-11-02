@@ -1,3 +1,4 @@
+import { canonicalCompoundDishRequest } from './whatsapp-compound-dish-request';
 import { parseMultiAttributeDistribution } from './whatsapp-multi-attribute-distribution';
 import { parseCombinedOptions } from './whatsapp-combined-options';
 import { parseOptionDistribution } from './whatsapp-option-distribution';
@@ -1387,6 +1388,29 @@ export class WhatsappOrchestratorService {
     text = /\b(?:en\s+(?:vez|ves|lugar)|envez)\s+de\b/i.test(text)
       ? this.glossaryKeepingDishNames(text, await this.catalogService.getMenuProducts())
       : applyLocalGlossary(text);
+    if (['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state || '') &&
+        /\bsin\s+(?:gaseosa|bebida|refresco)\b/i.test(text)) {
+      const compoundMenu = await this.catalogService.getMenuProducts();
+      const lines = text.split(/\r?\n/);
+      const canonical = lines.map(line => canonicalCompoundDishRequest(line, compoundMenu));
+      if (canonical.some(Boolean)) {
+        const paymentLines = lines.map((line, index) => {
+          const match = line.trim().match(/^pago\s+(?:con|por|en)\s+(.+?)[.!]*$/i);
+          const method = match && getEnabledPaymentMethods(cfg.paymentMethods).find(candidate =>
+            [candidate.label, ...candidate.keywords].some(word =>
+              this.normalizeForMatch(word) === this.normalizeForMatch(match[1])));
+          return method ? { index, method } : null;
+        }).filter((entry): entry is NonNullable<typeof entry> => !!entry);
+        // Keep an independent payment bubble as checkout data, not as a command
+        // that consumes the composed dish before the purchase route sees it.
+        if (paymentLines.length === 1) {
+          const current = this.conversationService.getSession(conv);
+          await this.conversationService.saveSession(conv, { ...current, paymentMethod: paymentLines[0].method.id });
+        }
+        text = lines.flatMap((line, index) =>
+          paymentLines.length === 1 && paymentLines[0].index === index ? [] : [canonical[index] || line]).join('\n');
+      }
+    }
     if (!['awaiting_name', 'awaiting_address', 'awaiting_phone'].includes(conv.state || '')) {
       text = this.catalogService.dropRedundantReminders(
         this.catalogService.alignMenuSpelling(text, await this.catalogService.getMenuProducts()),

@@ -1,5 +1,13 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda344: pedido compuesto sin gaseosa
+
+Aclaración explícita del usuario sobre chat01/11 20:49: «un arroz chino, costillas de cerdo y sin gaseosa» es un solo plato compuesto. Baseline6/8 falla; ráfaga pedido+Nequi también6/8. Normalización acotada a cantidad+base+coma/con+componente+exclusión de bebida, con nombre compuesto único del catálogo. Conserva nota y cantidad; no agrega bebida, no inventa descuentos ni sustituye combos explícitos.
+
+31 controles nuevos:16 cierres DTO/recibo en dos catálogos × agente off/mock × coma/con × separado/coalescido;13 guardas de parser y2 pedidos separados. Al normalizar una ráfaga, una burbuja independiente de pago reconocido se guarda como dato para que no consuma la compra. Foco60/3 aprobado. Global33335 pruebas/412 suites,630 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Evidencias whatsapp-batch-344-{sources,global-sources,validation,patterns}.
+
+Despliegue344 pendiente. Runtime staging343; producción333 y Kamppo321. Cero inferencia pagada, Meta u órdenes externas; presupuesto267/256/11 intacto. Sin canal/modelo/DB reales. No cierra «En combo» sobre carrito ya dividido ni «Cancelar.»: pendientes prioritarios siguientes. No generalizar a cualquier lista con coma, múltiples candidatos o petición sin exclusión de bebida.
+
 ## VIGENTE — tanda343: contacto, reparación y cotización compuesta
 
 42 controles nuevos:30 de teléfono intercalado/retirada+adición y12 de cotización de plato compuesto. Reproduce bloqueo de retirada directa con cantidad+nombre completo, omisión de compra en awaiting_payment tras teléfono y cotización de «arroz chino con costillas» como componentes separados. Corrige por reglas de catálogo: retirada directa exacta, compra reconocida durante pago y prefijo único «X con Y». Consultar no compra; aceptar cotización agrega solo el producto combinado. «X y Y» conserva productos separados.
