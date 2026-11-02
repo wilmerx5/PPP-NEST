@@ -1,0 +1,23 @@
+{
+  "batch": 357,
+  "source": "Chat anonimizado aportado por usuario, 2026-11-02; consulta sobre datáfono",
+  "codeCommit": "131b2c33",
+  "baseline": {
+    "failed": 60,
+    "passed": 4,
+    "total": 64
+  },
+  "newTests": 73,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "No modelo/canal real",
+    "Sin verificación de disponibilidad física",
+    "Mensajes mixtos: solo límite del detector nuevo"
+  ],
+  "firstAttempt": "Interrumpida por4 fallos de claridad en consulta sobre efectivo; corregidos y foco repetido."
+}

@@ -1,5 +1,12 @@
 ## VIGENTE — tanda334: consultar combo sin reabrir bebida (01/11)
 
+## VIGENTE — tanda357: datáfono y preguntas de capacidad de pago
+
+Baseline60/64 fallan: «manejan datáfono» podía buscar productos; consultas de tarjeta podían contestarse por efectivo seleccionado. Ahora las preguntas aisladas se resuelven antes de consumir campos de checkout; no seleccionan pago ni descartan ofertas. Reconoce maneja/manejan, recibe/reciben y consulta corta; distingue enlace de datáfono, muestra condiciones de métodos presenciales explícitos y reconoce disponibilidad no confirmada.73 controles nuevos,6 estados,2 catálogos, agente off/mock,MP configurado/ausente y4 cierres simulados. Foco164/3; final73/1. Primera global detectó4 fallos de claridad en consulta sobre efectivo: se restauró «no lo dejo elegido» y pasaron4/4; ejecución incompleta descartada. Código final `131b2c33` sobre `4c58f6d1`.
+
+Repetición global34064/425 aprobada;643 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue357 pendiente; staging runtime356 y producción349 siguen vigentes. Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni disponibilidad física de datáfono. Mensajes mixtos: probado límite de intercepción, no resolución de todas las intenciones. Próximo: sustitución de producto/preparación durante aclaración de nota, preservando identidad y evitando aplicar selección antigua sobre carrito cambiado.
+
+
 ## VIGENTE — tanda356: datos de transferencia antes de confirmar
 
 Chat02/11: elección anticipada de transferencia omitía datos de cuenta al completar nombre/dirección; también al cambiar desde efectivo en revisión final. Baseline20/20 fallan. Ahora revisión final muestra datos configurados o aviso explícito de cuenta ausente, sin duplicar el prefacio del mismo turno.28 controles nuevos en dos catálogos × agente off/mock;16 cierres DTO simulados. Foco28/1 y124 controles relacionados aprobados. Código `8a02d021`. Incluye despedida de domicilio `f692d43e`: «Te lo enviaremos lo más pronto posible».
