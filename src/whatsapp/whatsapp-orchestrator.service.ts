@@ -24178,7 +24178,13 @@ export class WhatsappOrchestratorService {
     session: WhatsappSessionData,
     thanksMessage?: string,
   ): string {
-    const custom = (thanksMessage || '').trim().replace(/que tengas? (?:un )?excelente d[ií]a/gi,'¡Buen provecho!');
+    const nextStep = session.orderType === 'delivery'
+      ? 'Te lo enviaremos lo más pronto posible'
+      : 'Prepararemos tu pedido lo más pronto posible';
+    const custom = (thanksMessage || '').trim().replace(
+      /(?:que tengas? (?:un )?excelente d[ií]a|¡?buen provecho!?)/gi,
+      nextStep,
+    );
     const looksLikePickupDefault =
       !custom || /te esperamos/i.test(custom);
 

@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## Ajuste de despedida — 02/11/2026
+
+Por solicitud del usuario, al registrar domicilio las despedidas «que tengas excelente día» y «Buen provecho» se sustituyen por «Te lo enviaremos lo más pronto posible». Para recogida se usa «Prepararemos tu pedido lo más pronto posible». Se conservan otros mensajes personalizados y el saludo de buen provecho posterior a la entrega. Cambio de texto, sin cambios de carrito, pago o confirmación.
+
+Validación local: suite whatsapp-reported-delivery-2910, 74/74 aprobadas; TypeScript build sin emisión y git diff --check aprobados. Sin nueva global ni inferencia/Meta/órdenes externas. Publicado en staging; este ajuste todavía NO está desplegado. Runtime staging sigue siendo el de tanda355; producción sin cambios.
+
+Chat analizado: pedido completado, totales correctos. Usuario aclara que «con pollo frito» no debe tratarse como fallo en este caso; luego añadió medio pollo broaster. Mejoras pendientes de evaluación: respuesta configurable sobre datáfono e instrucciones de transferencia al elegirla anticipadamente. No afirmar que faltó pago basándose en el chat.
+
+
 ## VIGENTE — tanda355: retirada/cantidad durante aclaración de nota
 
 Baseline16/36 fallan: la aclaración348 bloqueaba retiradas/correcciones nominales inequívocas. Ahora usa los manejadores existentes con referencia única; un cambio real descarta la nota pendiente y lo explica. Respuestas numéricas antiguas no la aplican. Ambigüedad, ordinales, pago, caducidad, condiciones y cantidades inválidas conservan las guardas.44 controles nuevos:24 cierres DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación × retirada completa/parcial/cantidad;20 guardas. Foco232/4 y44/1 aprobado. Código `87122f5b`.
