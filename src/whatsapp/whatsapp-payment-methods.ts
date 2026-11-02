@@ -220,9 +220,10 @@ export function isPaymentCapabilityQuestion(text: string): boolean {
   const raw = (text || '').trim();
   if (raw.length < 8) return false;
   const t = normalizeKeyword(raw);
+  if (/^[¿?\s]*dat[aá]fono[?¿!.\s]*$/i.test(raw) && /[¿?]/.test(raw)) return true;
 
   if (
-    /\b(se puede|puedo|pueden|podemos|aceptan|acepta|tienen|tiene|hay forma de|hay manera)\b/.test(
+    /\b(se puede|puedo|pueden|podemos|aceptan|acepta|tienen|tiene|manejan|maneja|reciben|recibe|hay forma de|hay manera)\b/.test(
       t,
     ) &&
     /\b(pagar|pago|tarjeta|datafono|credito|nequi|daviplata|transferencia|efectivo|mercadopago|mercado pago|llave)\b/.test(
@@ -241,6 +242,13 @@ export function isPaymentCapabilityQuestion(text: string): boolean {
     return true;
   }
   return false;
+}
+
+/** A standalone capability question can interrupt checkout without changing its state. */
+export function isStandalonePaymentCapabilityQuestion(text: string): boolean {
+  if (!isPaymentCapabilityQuestion(text)) return false;
+  const t = normalizeKeyword(text).replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim();
+  return /^(?:(?:hola|buenas|veci|por favor) )*(?:(?:ustedes )?(?:manejan|maneja|reciben|recibe|aceptan|acepta|tienen|tiene|se puede|puedo|pueden|podemos)(?: pagar| pago)?(?: con| por| en)? |(?:hay forma de|hay manera de) pagar (?:con|por) )?(?:(?:pago|pagar) (?:con|por) )?(?:datafono|tarjeta(?: de)?(?: credito| debito)?|credito|debito|nequi|daviplata|transferencia|efectivo|mercado pago|mercadopago|llave)(?: a domicilio| en el local| al recoger)?(?: porfa| por favor| gracias| veci)*$/.test(t);
 }
 
 export function buildPaymentOptionsPrompt(

@@ -140,6 +140,7 @@ import {
   findPaymentMethodByText,
   getEnabledPaymentMethods,
   isPaymentCapabilityQuestion,
+  isStandalonePaymentCapabilityQuestion,
   paymentMethodLabel,
   type WhatsappPaymentMethodConfig,
   normalizeRegionalPaymentIntent,
@@ -1682,6 +1683,9 @@ export class WhatsappOrchestratorService {
     // Merchant payment details are information, never customer identity or a
     // payment selection. Handle them before checkout field extraction.
     if (await this.tryHandleMerchantPaymentDetails(conv, msg.waId, originalText, cfg)) return;
+    if (!conv.humanTakeover && !['completed','closed','human','human_takeover'].includes(conv.state) &&
+        isStandalonePaymentCapabilityQuestion(originalText) &&
+        await this.tryHandlePaymentCapabilityQuestion(conv, msg.waId, this.conversationService.getSession(conv), originalText, cfg)) return;
     // A complete request for the menu is informational at every checkout step.
     // It never supplies a name/address/payment or clears a pending selection.
     if (this.isPoliteMenuLinkRequest(originalText)) {
@@ -28351,15 +28355,16 @@ export class WhatsappOrchestratorService {
 
     const lines: string[] = [];
     if (asksCard) {
-      if (hasMp) {
-        lines.push(
-          'Sí: con *Mercado Pago* te mandamos un *link* y puedes pagar con *tarjeta* (débito/crédito) desde el celular.',
-        );
-        lines.push('_No tenemos datáfono a domicilio; es pago por link._');
+      const terminal = enabled.filter(method => method.flow !== 'mercadopago' &&
+        /\bdatafono\b/.test(this.normalizeForMatch([method.label, method.optionText, ...method.keywords].join(' '))));
+      if (terminal.length) {
+        lines.push('El comercio tiene configurado este método presencial:');
+        for (const method of terminal) lines.push(`• ${method.optionText || method.label}`);
       } else {
-        lines.push(
-          'Por WhatsApp *no* recibimos tarjeta/datáfono presencial.',
-        );
+        lines.push('No tengo confirmada la disponibilidad de datáfono.');
+      }
+      if (hasMp) {
+        lines.push('También está habilitado *Mercado Pago*: permite pagar con tarjeta por *link* desde el celular. Es un pago en línea.');
       }
     } else {
       lines.push('Claro, te cuento cómo puedes pagar:');
@@ -28379,21 +28384,12 @@ export class WhatsappOrchestratorService {
       lines.push(`_${payHint}_`);
     }
 
-    if (session.cart.length > 0) {
-      lines.push('');
-      lines.push('Escribe *confirmar* y te pido el método, o di ya *nequi* / *contraentrega*.');
-    } else {
-      lines.push('');
-      lines.push('Cuando armes el pedido te pido el método al *confirmar*.');
-    }
+    const reminder = this.formatInterruptedStepReminder(conv, session);
+    if (reminder) lines.push('', reminder);
+    else if (session.cart.length) lines.push('', 'El pedido sigue igual.', this.formatContinueShoppingPrompt(session));
+    else lines.push('', '¿Qué te gustaría pedir?');
 
-    // No mutar paymentMethod ni abrir checkout
-    if (session.pendingAddOffer) {
-      await this.conversationService.saveSession(conv, {
-        ...session,
-        pendingAddOffer: undefined,
-      });
-    }
+    // A capability inquiry neither selects payment nor discards pending choices.
 
     await this.reply(conv, waId, lines.join('\n'));
     return true;
