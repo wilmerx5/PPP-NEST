@@ -79,7 +79,10 @@ export type WhatsappSessionData = {
     candidates: Array<{cartIndex: number; name: string}>;
     revision: { query?: string; quantity?: number; remainder?: number; clearAll: boolean; remove: string[]; add?: string };
   };
+  lastPreparationCountReply?: { text: string; cartSignature: string; createdAt: number };
   pendingCartQuantity?: {
+    /** Atomic totals by preparation, awaiting an explicit count for every ambiguous row. */
+    distribution?: { targets: Array<{productId: number; quantity: number}>; createdAt: number };
     quantity: number;
     options: Array<{ cartIndex: number; label: string }>;
     cartSignature: string;

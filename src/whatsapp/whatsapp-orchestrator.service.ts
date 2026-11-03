@@ -1533,6 +1533,7 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.normalizeNumericOptionTokens(text, await this.catalogService.getMenuProducts());
     }
     if (await this.tryHandleCountedHeaderOrder(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryResolvePreparationCounts(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleRestatedPreparationCounts(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleMixedRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleMultipleRemovalFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -17884,6 +17885,7 @@ export class WhatsappOrchestratorService {
     text: string,
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    if (session.pendingCartQuantity?.distribution) return false;
     let correction = parseCartQuantityCorrection(text);
     const shortText = this.normalizeForMatch(text).replace(/\s+(?:por favor|porfa|gracias)$/, '');
     const shortAmount = '(\\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
@@ -18899,6 +18901,8 @@ export class WhatsappOrchestratorService {
         attribute.options.map((option,index)=>`${index+1}. ${option}`).join('\n')+
         '\nEscribe el número o la opción. Aplicaré la retirada y la adición juntas al completar las opciones. El pedido sigue igual.';
     }
+
+    if (session.pendingCartQuantity?.distribution) return this.formatPreparationCountsQuestion(session);
 
     const removalAmount=removal?.quantity ?? removal?.batchQuantities?.[removal.batchGroups?.findIndex(group=>group.length>1) ?? -1];
     const question = {
@@ -26101,7 +26105,73 @@ export class WhatsappOrchestratorService {
     return changes.every(Boolean) ? {...session,cart:changes as WhatsappSessionData['cart']} : null;
   }
 
-  /** A total heading describes the following rows; it is never an extra purchase. */
+  private formatPreparationCountsQuestion(session: WhatsappSessionData): string {
+    const pending=session.pendingCartQuantity!, targets=pending.distribution!.targets;
+    const totals=targets.map(target=>`${target.quantity} de ${session.cart.find(line=>line.productId===target.productId)?.name || 'la preparación'}`).join('; ');
+    return `Hay varias líneas con distintas opciones. Indica cuántas dejamos de cada una para completar: ${totals}.\n`+
+      pending.options.map((option,index)=>`${index+1}. ${option.label}`).join('\n')+
+      '\nEscribe la cantidad y la sopa, bebida o nota que distingue cada línea. Deben sumar el total solicitado. El pedido sigue igual.';
+  }
+
+  private async tryResolvePreparationCounts(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    const pending=session.pendingCartQuantity, plan=pending?.distribution;
+    if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const said=normalizeCorrection(text);
+    const previous=session.lastPreparationCountReply;
+    if (!pending && previous && previous.text===said && session.cart.length && !/[¿?]/.test(text) &&
+        !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder && !session.pendingSubsetKitchenNote && !session.pendingUnitDistribution &&
+        !CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) {
+      const valid=previous.cartSignature===JSON.stringify(session.cart) && Date.now()-previous.createdAt<=10*60*1000;
+      if (!valid) await this.conversationService.saveSession(conv,{...session,lastPreparationCountReply:undefined});
+      await this.reply(conv,waId,(valid?'Ese reparto ya quedó aplicado; no cambié productos ni notas.':'El pedido cambió o pasó el tiempo de esa aclaración. Indica de nuevo el reparto completo; no cambié el carrito.')+'\n\n'+
+        this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,session)||this.formatContinueShoppingPrompt(session)));
+      return true;
+    }
+    if (!pending || !plan) return false;
+    if (this.isCancelIntent(text) || /^(reiniciar|vaciar|borrar todo)$/.test(said)) return false;
+    const clear=async(message:string)=>{
+      const next={...session,pendingCartQuantity:undefined};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,message+' El pedido sigue igual.\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+      return true;
+    };
+    if (/^(olvida ese reparto|cancela ese cambio|no cambies las cantidades)$/.test(said)) return clear('Descarté el cambio de cantidades.');
+    if (pending.cartSignature!==JSON.stringify(session.cart) || Date.now()-plan.createdAt>10*60*1000) return clear('El carrito cambió o venció la aclaración. Repite el reparto completo.');
+    const ask=async(reason='')=>{await this.reply(conv,waId,reason+this.formatPreparationCountsQuestion(session));return true;};
+    if (session.mpPreferenceId || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote || session.pendingPriceInquiry || CART_EDIT_SELECTION_KEYS.some(key=>key!=='pendingCartQuantity' && !!session[key])) return ask('Hay otra selección o un pago pendiente. ');
+    if (/[¿?]/.test(text) || cartTotalFollowupIntent(text,false)) return false;
+    const words:Record<string,number>={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+    const parts=text.split(/\s+y\s+|\s*,\s*/i).map(part=>normalizeCorrection(part));
+    const counts=new Map<number,number>();
+    for (const part of parts) {
+      const match=part.match(/^(\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) (.+)$/);
+      if (!match) return ask();
+      const quantity=words[match[1]] ?? Number(match[1]);
+      if (quantity<1 || quantity>30) return ask('Indica una cantidad entre1 y30 por línea. ');
+      const query=match[2].replace(/^de (el|la) /,'$1 ');
+      let selected=this.uniqueClarificationLine(session,pending.options,query);
+      if (!selected || selected==='ambiguous') {
+        const exact=pending.options.filter(option=>session.cart[option.cartIndex]?.note && normalizeCorrection(session.cart[option.cartIndex].note!)===query);
+        if (exact.length===1) selected={index:exact[0].cartIndex,ordinal:false};
+      }
+      if (!selected || selected==='ambiguous' || counts.has(selected.index)) return ask('La respuesta debe identificar cada línea una sola vez. ');
+      counts.set(selected.index,quantity);
+    }
+    if (counts.size!==pending.options.length) return ask('Falta indicar la cantidad de alguna línea. ');
+    const next={...session,pendingCartQuantity:undefined,cart:session.cart.map((line,index)=>{
+      const target=plan.targets.find(target=>target.productId===line.productId);
+      if (!target) return line;
+      const quantity=counts.get(index) ?? (session.cart.filter(item=>item.productId===line.productId).length===1 ? target.quantity : line.quantity);
+      return {...line,quantity};
+    })};
+    if (plan.targets.some(target=>next.cart.filter(line=>line.productId===target.productId).reduce((sum,line)=>sum+line.quantity,0)!==target.quantity)) return ask('Las cantidades no suman los totales que pediste. ');
+    const limit=evaluateCartLimits(next.cart,this.toCartLimitsConfig(cfg,next),{orderType:next.orderType});
+    if (!limit.ok) return ask('Ese reparto supera el límite del pedido. ');
+    await this.conversationService.saveSession(conv,{...next,lastPreparationCountReply:{text:said,cartSignature:JSON.stringify(next.cart),createdAt:Date.now()}});
+    await this.reply(conv,waId,'Listo, corregí el reparto y conservé las opciones y notas.\n\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
+  }
+
   private async tryHandleRestatedPreparationCounts(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
     if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
     const words: Record<string,number> = {un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
@@ -26140,7 +26210,16 @@ export class WhatsappOrchestratorService {
         this.catalogService.stripCookingStyleTokens(targets[0].product!.name)!==this.catalogService.stripCookingStyleTokens(targets[1].product!.name)) return unchanged('Indica los nombres completos de las dos preparaciones y sus cantidades.');
     const updates = targets.map(target=>({...target,indices:session.cart.flatMap((line,index)=>line.productId===target.product!.id?[index]:[])}));
     const changed = updates.filter(target=>target.indices.reduce((sum,index)=>sum+session.cart[index].quantity,0)!==target.quantity);
-    if (changed.some(target=>target.indices.length!==1)) return unchanged('Hay varias líneas con distintas opciones; indica cuántas dejamos de cada una.');
+    if (changed.some(target=>target.indices.length!==1)) {
+      const options=changed.filter(target=>target.indices.length>1).flatMap(target=>target.indices.map(cartIndex=>({
+        cartIndex,label:this.formatCartLineLabel(session.cart[cartIndex])+(session.cart[cartIndex].note ? ` · ${session.cart[cartIndex].note}` : ''),
+      })));
+      const next={...session,pendingCartQuantity:{quantity:changed[0].quantity,options,cartSignature:JSON.stringify(session.cart),
+        distribution:{targets:changed.map(target=>({productId:target.product!.id,quantity:target.quantity})),createdAt:Date.now()}}};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,this.formatPreparationCountsQuestion(next));
+      return true;
+    }
     const next = {...session,cart:session.cart.map((line,index)=>{
       const update=changed.find(target=>target.indices[0]===index);
       return update?{...line,quantity:update.quantity}:line;
