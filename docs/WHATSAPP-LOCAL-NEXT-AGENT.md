@@ -1,5 +1,12 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda371: reiteración y reparación de cantidades por preparación
+
+Código `d16ba238`. Baseline final42/48 fallan (respuesta/estado/carrito),6controles ya pasaban. Reconoce total agregado existente, preserva/corrige reparto entre preparaciones de una misma familia y libera cancelación pendiente sin tocar una orden anterior.48regresiones:4recorridos originales,32carritos preparados en dos familias × agente off/mock × compra/revisión final y12controles cancelación/pago.20 cierres DTO; notas, bebidas y el producto aparte conservados. Foco543/4 aprobado. Global: 34.852 pruebas / 439 suites aprobadas; 657 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Despliegue staging pendiente.
+
+Ledger01/11 actualiza executive-distribution01/03 parcialmente. Cantidad7es un fixture de recuperación; no reproduce la inflación histórica original. Varias líneas con distintas opciones/familia equivocada exigen aclaración. Próximo: completar aclaración de cantidades por línea, conservando sopas/bebidas; luego notas en varios platos202–216/368–385. Producción349/Kamppo321 sin cambios; cero inferencia pagada/Meta/órdenes externas, presupuesto267/256/11 intacto. No acredita modelo/canal real.
+
+
 ## VIGENTE — tanda370: bebida al elegir variante con varios productos
 
 Código `2f5d2a00`. Reproducido chat01/11 mensajes448–459: Pepsi se perdía al elegir combo. Conserva bebida final en un único grupo compatible y segmento propio al elegir variante, manteniendo cantidades y bebidas aparte. Baseline final14/40 fallan;26 controles ya pasaban.40 regresiones/40 cierres DTO simulados, agente off/mock, fixturePPP y catálogos sintéticos pollo/pescado; número/nombre, cantidades1/2, posición de bebida y Pepsi/Ginger. Foco108/4 aprobado. Global34804/438 aprobada;656 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging370 desplegado/verificado: `5afe0c3f`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41587846053; evidencia370-staging-deployment. Controles compilados existentes aprobados; cobertura370 local.

@@ -1,0 +1,37 @@
+{
+  "batch": 371,
+  "codeCommit": "d16ba238fdc4960d4c8110c4642cab7768edc5ba",
+  "source": "11-1-2026.zip chat.txt messages438–447; docs/whatsapp-chats-0111-review.md",
+  "initialBaseline": {
+    "tests": 4,
+    "failed": 2,
+    "passed": 2
+  },
+  "expandedBaseline": {
+    "tests": 48,
+    "failed": 42,
+    "passed": 6,
+    "scope": "Failures include response/state/cart assertions, not42 demonstrated cart corruptions"
+  },
+  "newTests": 48,
+  "originalInputJourneys": 4,
+  "seededCartScenarios": 32,
+  "cancellationAndPaymentControls": 12,
+  "mockOrderClosures": 20,
+  "affected": {
+    "tests": 543,
+    "suites": 4,
+    "failed": 0
+  },
+  "modes": [
+    "agent off",
+    "agent mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Synthetic router and DTO only; no real model or Meta",
+    "Seeded quantity7 fixture is recovery coverage, not a reproduction of the historical inflation root cause",
+    "Different product families or multiple option lines require clarification; no guessed substitutions"
+  ]
+}

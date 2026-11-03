@@ -90,8 +90,8 @@
       "priority": "P0",
       "utterance": "4 ejecutivos: 3 fritos y 1 broster",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "partially_covered_by_340",
-      "note": "68 controles del encabezado multilínea y reparto inicial; formas en una sola línea y correcciones del carrito erróneo siguen pendientes."
+      "status": "partially_covered_by_340_371",
+      "note": "340:entrada multilínea inicial.371:continuación con reiteración de total/reparto, nota compartida y cierre; guardas de varias líneas/familia ajena. Entrada literal en una sola línea e inflación histórica completa siguen pendientes; cantidad7en371 es fixture de recuperación."
     },
     {
       "id": "0111-executive-distribution-02",
@@ -116,8 +116,8 @@
       "priority": "P0",
       "utterance": "solo eran 3 fritos y uno rboaster",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_371_full_router",
+      "note": "Frase exacta con rboaster preserva reparto pendiente o carrito correcto; corrección de7a3con una línea por preparación en fixtures conserva notas/bebida/extras/checkout.20 cierres DTO en48controles totales. Familia errónea o varias líneas con opciones distintas requieren aclaración; no acredita reparación automática de todo el carrito histórico ni modelo/canal reales."
     },
     {
       "id": "0111-executive-distribution-04",
