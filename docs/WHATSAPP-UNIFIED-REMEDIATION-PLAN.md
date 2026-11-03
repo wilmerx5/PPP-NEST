@@ -1,5 +1,12 @@
 # Plan unificado de corrección de pedidos
 
+## VIGENTE — tanda358: reemplazos durante aclaración de nota
+
+Baseline28/46 fallan: cambios inequívocos bloqueados y caducidad/carrito cambiado interceptados antes de resolver la nota. Reutiliza reemplazo atómico y cambios de preparación sobre origen único/destino disponible con opciones completas; conserva cantidades, variantes, notas y checkout. Al cambiar carrito descarta nota pendiente y avisa; número antiguo no la aplica al nuevo plato. Títulos completos de catálogo no se convierten en nota.62 controles nuevos:32 cierres DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación ×4 cambios;30 guardas. Foco564/4 aprobado. Código `14919485`.
+
+Global34126/426 aprobada;644 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue358 pendiente; staging runtime357 y producción349 siguen vigentes. Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Destinos con opciones nuevas o indicaciones extra requieren terminar/retirar primero la nota pendiente; no se inicia otra selección superpuesta. Próximo: recuperación guiada cuando el reemplazo requiere opciones adicionales, conservando el original hasta completarlas; luego claridad al retomar ofertas tras consultas.
+
+
 ## VIGENTE — tanda357: datáfono y preguntas de capacidad de pago
 
 Baseline60/64 fallan: «manejan datáfono» podía buscar productos; consultas de tarjeta podían contestarse por efectivo seleccionado. Ahora las preguntas aisladas se resuelven antes de consumir campos de checkout; no seleccionan pago ni descartan ofertas. Reconoce maneja/manejan, recibe/reciben y consulta corta; distingue enlace de datáfono, muestra condiciones de métodos presenciales explícitos y reconoce disponibilidad no confirmada.73 controles nuevos,6 estados,2 catálogos, agente off/mock,MP configurado/ausente y4 cierres simulados. Foco164/3; final73/1. Primera global detectó4 fallos de claridad en consulta sobre efectivo: se restauró «no lo dejo elegido» y pasaron4/4; ejecución incompleta descartada. Código final `131b2c33` sobre `4c58f6d1`.
