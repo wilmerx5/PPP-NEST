@@ -18888,6 +18888,13 @@ export class WhatsappOrchestratorService {
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
       return this.formatPendingPurchaseReminder(session);
     }
+    const offer = session.pendingAddOffer;
+    if (offer?.productId && offer.name) {
+      return (offer.productIds && offer.productIds.length > 1
+        ? 'Sigue pendiente agregar los productos de la cotización anterior.'
+        : `Sigue pendiente agregar *${offer.name}*${offer.quantity > 1 ? ` ×${offer.quantity}` : ''}.`) +
+        ' ¿Quieres agregar lo cotizado? Responde sí para agregarlo o no para dejar el pedido igual.';
+    }
     if (conv.state === 'awaiting_name') return 'Para seguir, ¿a nombre de quién dejamos el pedido?';
     if (conv.state === 'awaiting_phone') return 'Para seguir, confirma el teléfono o escribe otro número de contacto.';
     if (conv.state === 'awaiting_address') return 'Para seguir, escribe la dirección del domicilio.';
