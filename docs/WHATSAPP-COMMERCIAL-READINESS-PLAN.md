@@ -1,5 +1,14 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda378: conservar la aclaración de nota entre líneas del mismo plato
+
+Código integrado `285b551e` (original aislado `4bb4e2ce`). Dos líneas del mismo SKU pedían aclarar sin guardar nota/candidatos. Ahora guardan firma/vencimiento/lista y reutilizan el resolver protegido. Acepta «al primero», «al primer Churrasco» y «al pimer Churrasco»; si hay nombre, debe coincidir con el primer candidato.40 regresiones nuevas:24 recorridos DTO y16guardas; dos catálogos × agente off/mock × carrito/confirmación. Baseline24/24 fallan por estado ausente; ajuste intermedio detectó8casos de «al primero». Foco146/3 y TypeScript general aprobados. Global y despliegue pendientes.
+
+Global378 iniciada en worktree persistente `/home/levi/Documents/programming/PPP/ppp-staging-374-recovery`; evidencia/runner `.git/codex-validation-378`. Fuentes integradas verificadas iguales a las de la copia probada. No editar hasta terminar. Staging377 verificado: `fd83887e`, healthy, cero reinicios, API local/pública ok, modelos/configuración preservados; workflow41678556101. Global377:35228/445 aprobada, TypeScript general/build y scripts ok. Producción349/Kamppo321 sin cambios. Sin inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto.
+
+Límite: selección de la primera línea completa, no una unidad dentro de una línea múltiple ni todos los ordinales/typos. Consultas, nombres ajenos, acciones mezcladas, conflicto, firma obsoleta, vencimiento, cancelación y repetición conservan el carrito. Próximo: alcance por unidades en líneas repetidas y notas diferentes/repetidas en varios productos, sin borrar opciones ni duplicar pedidos.
+
+
 ## VIGENTE — tanda377: nota para algunas unidades sin añadir productos
 
 Código `c773c7cf`. «A dos de los tres churrascos sin arroz y el otro normal» podía pasar de3a6unidades. Reconoce la preposición inicial únicamente ante cantidad+«de los/las» y reutiliza el reparto existente. La variante interrogativa también podía agregar3unidades; ahora conserva el carrito y pide indicar el cambio. Sin nombres/IDs/precios del restaurante en producción.

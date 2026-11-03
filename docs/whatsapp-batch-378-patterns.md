@@ -1,6 +1,15 @@
 # Tanda378: aclarar qué línea del mismo plato lleva la nota
 
-Estado local, pendiente integrar después de377 y ejecutar global. Dos líneas del mismo producto recibían una aclaración textual sin guardar la nota pendiente. Ahora la ruta de notas compartida guarda candidatos/firma/vencimiento y muestra una lista numerada. Reutiliza el resolver protegido de notas por preparación. Acepta «al primero», «al primer Churrasco» y «al pimer Churrasco»; si incluye nombre, debe coincidir exactamente con el primer candidato normalizado. No se amplía la tolerancia ortográfica de todo el catálogo.
+## VIGENTE — tanda378: conservar la aclaración de nota entre líneas del mismo plato
+
+Código integrado `285b551e` (original aislado `4bb4e2ce`). Dos líneas del mismo SKU pedían aclarar sin guardar nota/candidatos. Ahora guardan firma/vencimiento/lista y reutilizan el resolver protegido. Acepta «al primero», «al primer Churrasco» y «al pimer Churrasco»; si hay nombre, debe coincidir con el primer candidato.40 regresiones nuevas:24 recorridos DTO y16guardas; dos catálogos × agente off/mock × carrito/confirmación. Baseline24/24 fallan por estado ausente; ajuste intermedio detectó8casos de «al primero». Foco146/3 y TypeScript general aprobados. Global y despliegue pendientes.
+
+Global378 iniciada en worktree persistente `/home/levi/Documents/programming/PPP/ppp-staging-374-recovery`; evidencia/runner `.git/codex-validation-378`. Fuentes integradas verificadas iguales a las de la copia probada. No editar hasta terminar. Staging377 verificado: `fd83887e`, healthy, cero reinicios, API local/pública ok, modelos/configuración preservados; workflow41678556101. Global377:35228/445 aprobada, TypeScript general/build y scripts ok. Producción349/Kamppo321 sin cambios. Sin inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto.
+
+Límite: selección de la primera línea completa, no una unidad dentro de una línea múltiple ni todos los ordinales/typos. Consultas, nombres ajenos, acciones mezcladas, conflicto, firma obsoleta, vencimiento, cancelación y repetición conservan el carrito. Próximo: alcance por unidades en líneas repetidas y notas diferentes/repetidas en varios productos, sin borrar opciones ni duplicar pedidos.
+
+
+Integrada sobre377 verificada; global378 en ejecución. Dos líneas del mismo producto recibían una aclaración textual sin guardar la nota pendiente. Ahora la ruta de notas compartida guarda candidatos/firma/vencimiento y muestra una lista numerada. Reutiliza el resolver protegido de notas por preparación. Acepta «al primero», «al primer Churrasco» y «al pimer Churrasco»; si incluye nombre, debe coincidir exactamente con el primer candidato normalizado. No se amplía la tolerancia ortográfica de todo el catálogo.
 
 Baseline24/24 fallan porque falta el estado pendiente, antes de poder verificar el ordinal. Primera implementación:16pasan/8fallan con «al primero»; corregido el reconocimiento local. Foco final146/3 aprobado, incluyendo40regresiones nuevas:24recorridos con cierre DTO en dos catálogos × agente off/mock × carrito/confirmación × tres referencias;16guardas de nombre ajeno, pregunta, acción mezclada, firma obsoleta, vencimiento, cancelación, conflicto y repetición.24 cierres simulados conservan2unidades, atributos y notas; solo la línea elegida recibe la nueva nota. TypeScript general aprobado.
 

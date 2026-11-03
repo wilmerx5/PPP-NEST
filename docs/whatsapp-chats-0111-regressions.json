@@ -449,8 +449,8 @@
       "priority": "P0",
       "utterance": "al pimer churrasco",
       "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_378_pending_global",
+      "note": "Referencia exacta al pimer Churrasco tras nota pendiente en dos líneas preparadas del mismo SKU;40 regresiones y24cierres DTO. No replay literal completo ni unidad dentro de línea múltiple. Foco146/3 aprobado; global y despliegue pendientes."
     },
     {
       "id": "0111-notes-and-scope-05",

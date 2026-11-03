@@ -14,8 +14,9 @@
     "tests": 146,
     "suites": 3
   },
-  "global": "pending",
+  "global": "running",
   "deployment": "pending",
   "paidRequests": 0,
-  "externalOrders": 0
+  "externalOrders": 0,
+  "integratedCodeCommit": "285b551e"
 }
