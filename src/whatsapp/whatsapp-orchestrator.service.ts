@@ -28250,9 +28250,11 @@ export class WhatsappOrchestratorService {
           (sizeHint === 'pequena' || bareSize
             ? this.catalogService.resolveSizedSoupProduct(`${product.name} pequeña`, products)
             : null) || product;
-        const match = { segment: sizeSource, product: sized, score: 100 };
+        // Keep each quoted line's quantity, note and choices with its product.
+        const segment = this.catalogService.orderSegmentForProduct(sizeSource, product, offerProducts);
+        const match = { segment, product: sized, score: 100 };
         if (sized.hasAttributes && sized.attributes?.length) {
-          if (this.catalogService.extractExplicitAttributeChoice(sizeSource, sized)) {
+          if (this.catalogService.extractExplicitAttributeChoice(segment, sized)) {
             confident.push(match);
           } else {
             needsAttributes.push(match);
@@ -28303,7 +28305,8 @@ export class WhatsappOrchestratorService {
             ...session,
             pendingMultiOrder: {
               ...pending,
-              needsAttributes: pending.needsAttributes.slice(1),
+              // Completion removes this product by ID; keep it in the queue until then.
+              needsAttributes: pending.needsAttributes,
               confident: [],
             },
             pendingAttribute: this.toPendingAttribute(nextProduct, {
