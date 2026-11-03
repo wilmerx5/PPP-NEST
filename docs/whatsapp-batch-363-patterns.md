@@ -6,6 +6,6 @@ Baseline52/56 fallan:32 precio cambiado,16 disponibilidad parcial y4 oferta sin 
 
 68 regresiones:32 subida/bajada en ambos productos y aceptar/rechazar;16 retiro/agotamiento parcial y recuperación explícita;4 sin cambios;4 legacy;8 cambio/agotamiento posterior;4 retiro total. Dos catálogos × agente off/mock;16 cierres DTO simulados. Foco228/4 y final68/1 aprobados. Código9508da43.
 
-Global34410/431 aprobada;649 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Despliegue363 pendiente; runtime staging362. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada, Meta y órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real.
+Global34410/431 aprobada;649 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging363 desplegado/verificado: `6322b444`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41567153690; evidencia363-staging-deployment. Controles compilados existentes aprobados; cobertura363 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada, Meta y órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real.
 
 Límites: snapshot de precios base por producto; no amplía cantidades distintas por línea ni elección de otro tamaño. Disponibilidad parcial requiere volver a indicar lo deseado; no ofrece aceptación implícita de los restantes. Próximo: repetición/reformulación y cantidades distintas dentro de una cotización múltiple; revisar primero cobertura previa antes de ampliar.
