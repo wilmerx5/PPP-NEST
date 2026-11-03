@@ -1,5 +1,12 @@
 ## VIGENTE — tanda334: consultar combo sin reabrir bebida (01/11)
 
+## VIGENTE — tanda367: disponibilidad al responder opciones
+
+Baseline32/48 fallan;16 controles ya pasaban. El producto activo agotado podía agregarse y el retirado dejaba la cola sin retomar. Ahora valida disponibilidad, avisa, retira solo la fila activa y continúa con las siguientes válidas sin perder el carrito.48 regresiones en dos catálogos × agente off/mock: activo/siguiente/segunda fila/todos/restantes agotados o retirados; cancelación total y respuesta tardía.32 cierres DTO simulados. Foco892/3 aprobado. Código `26a4fddd`.
+
+Global34690/435 aprobada;653 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue367 pendiente; runtime staging366. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Catálogo vacío conserva fallback previo; disponibilidad respeta ignoreBusinessHours. Próximo: cancelar solo plato frente a pedido completo con opciones parciales y respuestas tardías; ofertas antiguas/consultas largas.
+
+
 ## VIGENTE — tanda366: conservar productos cotizados al elegir opciones
 
 Baseline final76/80 fallan;4 controles ya pasaban. La cotización retiraba el producto activo antes de completar opciones y la finalización podía saltarse el siguiente. Ahora conserva la cola hasta completar por ID y asigna a cada producto su segmento, separando cantidades/notas/opciones.80 regresiones nuevas en dos catálogos × agente off/mock, platos con defaults y bebidas de sabor obligatorio; respuestas por nombre/número, menú intermedio, opciones explícitas y tres productos.80 cierres DTO simulados. Foco224/3 aprobado. Código `559784c7`.
