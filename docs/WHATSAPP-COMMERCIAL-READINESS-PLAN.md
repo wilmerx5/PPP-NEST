@@ -1,5 +1,12 @@
 # Plan operativo de calidad — 29/10/2026
 
+## Producción — tandas350–378 publicadas
+
+Producción PPP desplegada y verificada en `c1563528`: API local/pública ok, contenedor activo, cero reinicios, imagen confirmada y modelos/configuración privados preservados. Workflow41686492945; evidencia whatsapp-batch-378-production-deployment.json. Merge de Main con staging; conflictos solo documentales, conservando ambos registros. WhatsApp idéntico a staging378 validado (35268pruebas/446suites consolidadas); TypeScript general/build del merge aprobados. Se conservaron las funcionalidades previas exclusivas de Main.
+
+Migración Kamppo322–378 en curso en `/home/levi/Documents/programming/kamppo-migration-378`:70archivos trasladados mediante merge de tres vías para preservar adaptaciones. No declarar Kamppo actualizado hasta terminar pruebas, publicar y verificar su despliegue.
+
+
 ## VIGENTE — tanda378: conservar la aclaración de nota entre líneas del mismo plato
 
 Código integrado `285b551e` (original aislado `4bb4e2ce`). Dos líneas del mismo SKU pedían aclarar sin guardar nota/candidatos. Ahora guardan firma/vencimiento/lista y reutilizan el resolver protegido. Acepta «al primero», «al primer Churrasco» y «al pimer Churrasco»; si hay nombre, debe coincidir con el primer candidato.40 regresiones nuevas:24 recorridos DTO y16guardas; dos catálogos × agente off/mock × carrito/confirmación. Baseline24/24 fallan por estado ausente; ajuste intermedio detectó8casos de «al primero». Foco146/3 y TypeScript general aprobados. Validación consolidada: global inicial con1fallo en un simulador antiguo (outboundHoldByWaId ausente); solo se reparó ese fixture y se amplió su aserción de resolución. Sin cambios en producción desde la global. Repetición173/4 aprobada,440suites reutilizadas con fuentes idénticas; temporizadores, TypeScript general/build y scripts ejecutados después. Reparación `a0c04607`. Global final: 35268 pruebas / 446 suites aprobadas; 664 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging378 desplegado/verificado: `82a2acf2`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41681992091; evidencia378-staging-deployment. Controles compilados existentes aprobados; cobertura378 local.
