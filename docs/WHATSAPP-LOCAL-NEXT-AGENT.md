@@ -4,7 +4,7 @@
 
 Baseline64/64 fallan en continuidad. Menú ahora recuerda oferta aun con carrito vacío; ETA general aislada responde y retoma decisión sin tratar cotización como orden registrada. Reconoce «cuánto tarda la entrega».72 controles nuevos:64 recorridos en dos catálogos × agente off/mock × oferta individual/múltiple × cuatro consultas × aceptar/rechazar,32 cierres DTO simulados;8 guardas de mensajes mixtos/orden concreta. Foco92/2 y final72/1 aprobados. Código `f3972949`.
 
-Global34270/429 aprobada;647 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Despliegue361 pendiente; runtime staging360. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni tiempos reales de llegada. Próximo: repetición/reformulación con oferta pendiente, cantidades cotizadas y cambios de disponibilidad/precio entre consulta y aceptación.
+Global34270/429 aprobada;647 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Staging361 desplegado/verificado: `bb0b9cc4`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41560854089; evidencia361-staging-deployment. Controles compilados existentes aprobados; cobertura361 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni tiempos reales de llegada. Próximo: repetición/reformulación con oferta pendiente, cantidades cotizadas y cambios de disponibilidad/precio entre consulta y aceptación.
 
 
 ## VIGENTE — tanda360: retomar cotizaciones tras consultas de pago
