@@ -90,8 +90,8 @@
       "priority": "P0",
       "utterance": "4 ejecutivos: 3 fritos y 1 broster",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "partially_covered_by_340_371",
-      "note": "340:entrada multilínea inicial.371:continuación con reiteración de total/reparto, nota compartida y cierre; guardas de varias líneas/familia ajena. Entrada literal en una sola línea e inflación histórica completa siguen pendientes; cantidad7en371 es fixture de recuperación."
+      "status": "partially_covered_by_340_371_374",
+      "note": "340:entrada multilínea inicial.371:continuación con reiteración de total/reparto, nota compartida y cierre; guardas de varias líneas/familia ajena. Entrada literal en una sola línea e inflación histórica completa siguen pendientes; cantidad7en371 es fixture de recuperación. Tanda374: encabezados compactos con opciones explícitas y4controles abreviados; estos últimos no acreditan captura progresiva ni cierre."
     },
     {
       "id": "0111-executive-distribution-02",
@@ -103,8 +103,8 @@
       "priority": "P0",
       "utterance": "3 fritos y uno broaster, cuatro ejecutivos en total",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_374_with_explicit_options",
+      "note": "Tanda374: total al final con opciones explícitas en dos catálogos; no acredita todas las continuaciones abreviadas ni captura progresiva."
     },
     {
       "id": "0111-executive-distribution-03",

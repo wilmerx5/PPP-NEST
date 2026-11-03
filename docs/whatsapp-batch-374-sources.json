@@ -1,0 +1,29 @@
+{
+  "batches": [
+    374
+  ],
+  "codeCommit": "138a99da65aafb24366c27308d0abd816fd16c40",
+  "source": "Derived from 01/11 messages438–447, compact equivalents of batch340",
+  "newTests": 100,
+  "primaryJourneys": 64,
+  "guardCases": 32,
+  "shortLiteralControls": 4,
+  "mockOrderClosures": 64,
+  "baselineFinal": {
+    "tests": 100,
+    "failed": 92,
+    "passed": 8
+  },
+  "focused": {
+    "tests": 292,
+    "suites": 4
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Explicit separators and total >=3",
+    "Short literal controls do not prove progressive capture or checkout",
+    "Historical inflation root cause not demonstrated"
+  ],
+  "recovery": "Temporary worktree lost; committed660source hashes match frozen inventory; rerunning complete global"
+}
