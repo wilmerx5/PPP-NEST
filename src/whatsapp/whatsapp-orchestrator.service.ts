@@ -21003,8 +21003,13 @@ export class WhatsappOrchestratorService {
   }
 
   private async tryHandlePartialUnitKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
-    const partialNote = parsePartialNote(text);
+    const isQuestion = /[¿?]/.test(text);
+    const partialNote = parsePartialNote(isQuestion ? text.replace(/[¿?]/g,'') : text);
     if (!partialNote || !session.cart.length || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    if (isQuestion) {
+      await this.reply(conv,waId,'Para aplicar esa nota, indícame el producto y las unidades que deseas modificar. No añadí productos; el carrito sigue igual.');
+      return true;
+    }
     if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) {
       await this.reply(conv,waId,'Primero aclaremos la selección pendiente para aplicar la nota a las unidades correctas.\n\n'+this.formatInterruptedStepReminder(conv,session));return true;
     }
