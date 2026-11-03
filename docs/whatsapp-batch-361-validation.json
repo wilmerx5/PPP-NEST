@@ -1,0 +1,41 @@
+{
+  "baseCommit": "f39729493e46aa88b6c25c61959deb1ef6bcac31",
+  "batches": [
+    361
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 994.25,
+      "sourceUnchanged": true,
+      "tests": 34254,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.48,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 647,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 34270,
+  "suites": 429,
+  "inventoryExact": true,
+  "sourceUnchanged": true
+}

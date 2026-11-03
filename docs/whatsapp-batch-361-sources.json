@@ -1,0 +1,24 @@
+{
+  "batch": 361,
+  "source": "Casos derivados de chats previos y plan360 de consultas con oferta pendiente",
+  "codeCommit": "f3972949",
+  "baseline": {
+    "total": 64,
+    "failed": 64,
+    "passed": 0
+  },
+  "newTests": 72,
+  "journeysWithMockOrder": 32,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Sin modelo/canal real",
+    "ETA general configurada; no seguimiento real",
+    "Consultas mixtas no interceptadas por nueva ruta"
+  ]
+}
