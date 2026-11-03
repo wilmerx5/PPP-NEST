@@ -26248,6 +26248,16 @@ export class WhatsappOrchestratorService {
         await this.conversationService.saveSession(conv,{...session,pendingCountedHeaderOrder:undefined});
         return unchanged('El carrito cambió. Repite el reparto completo para revisarlo.');
       }
+      if (pending.missingOptions && pending.optionsSource) {
+        if (normalize(text)===pending.sourceText || /[¿?]/.test(text) || this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isAvailabilityInquiry(text)) {
+          return unchanged(`Conservo los ${pending.units.length} platos. Faltan opciones; dime cuáles quieres para todos o cómo las repartimos.`);
+        }
+        const extra=text.split(/[:,;]|\s+y\s+(?=(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s)/i).map(row=>row.trim()).filter(Boolean).join('\n');
+        // Reuse the atomic catalog validation. An invalid continuation leaves the
+        // persisted draft untouched; it is never routed as a new purchase/name.
+        const handled=await this.tryHandleCountedHeaderOrder(conv,waId,{...session,pendingCountedHeaderOrder:undefined},pending.optionsSource+'\n'+extra,cfg);
+        return handled || unchanged('Conservo el reparto. Dime las opciones que faltan.');
+      }
       pending = structuredClone(pending);
       const allocation = pending.allocations[0];
       const choice = allocation?.counts[0];
@@ -26333,7 +26343,7 @@ export class WhatsappOrchestratorService {
         unit.note=this.catalogService.extractProductModificationNote(sharedText) || undefined;
         if (this.catalogService.uncoveredWordsAgainstOffers(`${product.name} ${sharedText.replace(/\b(?:todos|todas)\b/gi,'')}`,[product]).length) return unchanged('Necesito aclarar las opciones compartidas antes de añadir el reparto.');
       }
-      pending={sourceText:normalize(text),cartSignature:JSON.stringify(session.cart),units,allocations};
+      pending={sourceText:normalize(text),optionsSource:lines.join("\n"),cartSignature:JSON.stringify(session.cart),units,allocations};
     }
     // Complete the final option only when its count exactly matches the remaining units.
     while (pending.allocations.length) {
@@ -26359,7 +26369,12 @@ export class WhatsappOrchestratorService {
       const product=menu.find(item=>item.id===unit.productId);
       if (!product || product.availableNow===false || unit.attributes.some(attr=>!product.attributes?.some(item=>item.attributeName===attr.attributeName && item.options.includes(attr.attributeValue)))) return unchanged('Una preparación u opción ya no está disponible. No añadí el reparto.');
       const added=this.tryAddProductToCart(next,product,1,cfg,unit.note,unit.attributes,{sourceText:`quiero ${product.name}`});
-      if (added.blocked || added.missingAttributes) return unchanged('Faltan opciones para completar el reparto; indícalas junto con cada plato.');
+      if (added.blocked) return unchanged('No pude añadir el reparto. '+added.blocked.reason);
+      if (added.missingAttributes || ((product.attributes || []).length>0 && pending.units.every(unit=>unit.attributes.length===0))) {
+        await this.conversationService.saveSession(conv,{...session,pendingCountedHeaderOrder:{...pending,missingOptions:true}});
+        const labels=[...new Set((product.attributes || []).filter(attr=>!unit.attributes.some(selected=>selected.attributeName===attr.attributeName)).map(attr=>attr.attributeName))];
+        return unchanged(`Conservo los ${pending.units.length} platos. Faltan opciones${labels.length ? ': '+labels.join(', ') : ''}; dime cuáles quieres para todos o cómo las repartimos.`);
+      }
       next=added.session;
     }
     next={...next,lastCountedHeaderOrder:{sourceText:pending.sourceText,cartSignature:JSON.stringify(next.cart)}};

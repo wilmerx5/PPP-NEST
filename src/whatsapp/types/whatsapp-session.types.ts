@@ -146,6 +146,9 @@ export type WhatsappSessionData = {
   pendingUnitDistribution?: {productId: number; quantity: number; sourceText: string};
   lastCountedHeaderOrder?: {sourceText:string;cartSignature:string};
   pendingCountedHeaderOrder?: {
+    /** Canonical rows retained while required shared options are missing. */
+    optionsSource?: string;
+    missingOptions?: boolean;
     sourceText: string;
     cartSignature: string;
     units: Array<{productId:number;attributes:Array<{attributeName:string;attributeValue:string}>;note?:string}>;
