@@ -10,7 +10,7 @@ Origen: chat01/11 mensajes438–447. Entrada original multilínea ya cubierta po
 
 ## Evidencia
 
-Baseline inicial2/4 fallan; matriz final42/48 fallan y6controles ya pasan. Los fallos incluyen respuesta/estado/carrito; no equivalen a42corrupciones independientes.48 pruebas:4recorridos desde la entrada original;32 escenarios de carrito preparado en dos familias (ejecutivos/pescado), agente off/mock, compra/revisión final, reparto correcto/cantidad7a3/múltiples líneas/familia equivocada;12 controles de cancelación/pago con y sin orden previa.20 cierres DTO simulados comprueban cantidades y conservación de notas/bebida. Foco543/4 aprobado. Global: 34.852 pruebas / 439 suites aprobadas; 657 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Despliegue staging pendiente.
+Baseline inicial2/4 fallan; matriz final42/48 fallan y6controles ya pasan. Los fallos incluyen respuesta/estado/carrito; no equivalen a42corrupciones independientes.48 pruebas:4recorridos desde la entrada original;32 escenarios de carrito preparado en dos familias (ejecutivos/pescado), agente off/mock, compra/revisión final, reparto correcto/cantidad7a3/múltiples líneas/familia equivocada;12 controles de cancelación/pago con y sin orden previa.20 cierres DTO simulados comprueban cantidades y conservación de notas/bebida. Foco543/4 aprobado. Global: 34.852 pruebas / 439 suites aprobadas; 657 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging371 desplegado/verificado: `dddc9747`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41591181896; evidencia371-staging-deployment. Controles compilados existentes aprobados; cobertura371 local.
 
 ## Límites y próximos pasos
 
