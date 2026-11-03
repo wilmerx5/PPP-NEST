@@ -1,0 +1,118 @@
+{
+  "baseCommit": "e3fe545da4efbfc9a223a2a8912cb45d1481e1c5",
+  "batches": [
+    322,
+    323,
+    324,
+    325,
+    326,
+    327,
+    328,
+    329,
+    330,
+    331,
+    332,
+    333,
+    334,
+    335,
+    336,
+    337,
+    338,
+    339,
+    340,
+    341,
+    342,
+    343,
+    344,
+    345,
+    346,
+    347,
+    348,
+    349,
+    350,
+    351,
+    352,
+    353,
+    354,
+    355,
+    356,
+    357,
+    358,
+    359,
+    360,
+    361,
+    362,
+    363,
+    364,
+    365,
+    366,
+    367,
+    368,
+    369,
+    370,
+    371,
+    372,
+    373,
+    374,
+    375,
+    376,
+    377,
+    378
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1024.48,
+      "sourceUnchanged": true,
+      "tests": 35156,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 17.04,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 529,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 35172,
+  "suites": 428,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "sourceCommit": "28471ab50a3f28be84d79b0a458723d58d861768",
+  "api": {
+    "passed": 496,
+    "skipped": 15,
+    "suites": 70,
+    "hostIntegration": 36,
+    "newHostIntegration": 6,
+    "execution": "Full API inventory split into host integration and remaining suites."
+  },
+  "buildApiPassed": true,
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "adaptationsPreserved": [
+    "Per-tenant host isolation, channel identity, coexistence and PostgreSQL locking",
+    "UUID and option-price translation",
+    "Bounded deterministic order request IDs"
+  ],
+  "limits": [
+    "Offline mocked dependencies; no live Meta/model conversation"
+  ]
+}

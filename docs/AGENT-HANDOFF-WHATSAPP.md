@@ -1,10 +1,19 @@
 # Relevo del agente: PPP WhatsApp
 
+## Estado verificado 03/11 — producción PPP y Kamppo hasta tanda378
+
+PPP producción: `c1563528`, workflow41686492945; API local/pública ok, contenedor activo con cero reinicios, modelos/configuración privados preservados. Merge Main/staging con WhatsApp idéntico al validado y funcionalidades exclusivas de Main conservadas. Evidencia `whatsapp-batch-378-production-deployment.json`.
+
+Kamppo: tandas322–378 migradas y desplegadas en `708a519f71ba`, workflow41689523342; imagen y health verificados, DB up. Global local:35172 pruebas/428 suites del motor,496 pruebas/70 suites API,92 pruebas de scripts y tipos/build aprobados. Seis recorridos host nuevos; UUIDs, recargos, separación por restaurante/canal y coexistencia preservados. CI adicional registrado en evidencia; no implica una conversación real nueva. Evidencias `whatsapp-batch-378-kamppo-validation.json` y `whatsapp-batch-378-kamppo-deployment.json`.
+
+Staging conserva runtime378 `82a2acf2`. Cero inferencia pagada/Meta/órdenes externas durante esta entrega; presupuesto267/256/11 intacto. Los estados anteriores de producción349/Kamppo321 son históricos. Próximo trabajo: retomar pruebas en staging sobre alcance por unidades en líneas repetidas y notas en varios productos.
+
+
 ## Producción — tandas350–378 publicadas
 
 Producción PPP desplegada y verificada en `c1563528`: API local/pública ok, contenedor activo, cero reinicios, imagen confirmada y modelos/configuración privados preservados. Workflow41686492945; evidencia whatsapp-batch-378-production-deployment.json. Merge de Main con staging; conflictos solo documentales, conservando ambos registros. WhatsApp idéntico a staging378 validado (35268pruebas/446suites consolidadas); TypeScript general/build del merge aprobados. Se conservaron las funcionalidades previas exclusivas de Main.
 
-Migración Kamppo322–378 en curso en `/home/levi/Documents/programming/kamppo-migration-378`:70archivos trasladados mediante merge de tres vías para preservar adaptaciones. No declarar Kamppo actualizado hasta terminar pruebas, publicar y verificar su despliegue.
+Migración Kamppo322–378 terminada y despliegue verificado en `708a519f71ba`; ver estado actual y evidencia al inicio de este documento.
 
 
 ## VIGENTE — tanda378: conservar la aclaración de nota entre líneas del mismo plato
