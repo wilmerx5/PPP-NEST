@@ -1,5 +1,12 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda360: retomar cotizaciones tras consultas de pago
+
+Oferta conservada pero recordatorio genérico tras preguntar datáfono/tarjeta/efectivo. Ahora recuerda producto/cantidad, o todos los productos de la cotización, y pide sí/no para agregar/rechazar. Baseline exploratoria:24 fallos reales de claridad y24 preparaciones inválidas retiradas; ver patterns360.28 regresiones nuevas en dos catálogos × agente off/mock, aceptación/rechazo y12 cierres simulados. Foco151/3 y final28/1 aprobados. Código `1f81890e`.
+
+Global34198/428 aprobada;646 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Despliegue360 pendiente; runtime staging359. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Próximo: consultas informativas de menú/tiempo con carrito vacío y oferta pendiente; coherencia entre recordatorio y decisión posterior.
+
+
 ## VIGENTE — tanda359: opciones nuevas durante reemplazo con nota pendiente
 
 Baseline44/44 fallan. Reemplazo por nombre completo con origen único y opciones anteriores compatibles inicia selección explícita de las opciones nuevas. Descarta la nota pendiente sin aplicar y lo comunica; conserva el original hasta completar. No autocompleta opciones nuevas, confirmar recuerda la selección, cancelar conserva original y recupera checkout.44 controles nuevos:32 cierres DTO/recibo simulados,8 cancelaciones,4 guardas de original cambiado; dos catálogos × agente off/mock. Foco106/2 aprobado. Código `0613645b`.
