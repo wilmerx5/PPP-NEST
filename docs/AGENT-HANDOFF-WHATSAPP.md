@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda376: controles de conservación tras cambiar una opción
+
+Ocho regresiones adicionales aprobadas: tras repartir sopas y elegir la preparación, «todos con quinoa» conserva4platos, sopa minoritaria y notas. Catálogo sintético × agente off/mock × ambas selecciones × nota presente/ausente. No requiere cambio de producción. No hubo8bugs corregidos: el comportamiento final ya funcionaba; la primera exploración asumía erróneamente que Base no tenía default.
+
+Staging375 desplegado y verificado en `e1256172`: healthy, cero reinicios, API local/pública ok, modelos/configuración preservados; workflow41674059548. Global375:35160pruebas/443suites, TypeScript general/build y scripts aprobados. Los8controles376 se ejecutaron aparte: no se suman como una nueva global conjunta. Solo pruebas/documentación después del runtime validado. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. Producción349/Kamppo321 sin cambios.
+
+Próximo: notas multiproducto de los chats01/11, mensajes202–216/368–385, priorizando alcance exacto por unidad, sin duplicar productos ni perder opciones. Repartos fragmentados con atributos obligatorios sin defaults siguen sin acreditarse.
+
+
 ## VIGENTE — tanda375: conservar encabezados mientras llegan opciones
 
 Código `6d7f7943`. Una entrada abreviada como «4 ejecutivos:3 fritos y1 broster» queda pendiente cuando no trae ninguna opción explícita, en vez de añadir inmediatamente los defaults. Conserva el total y pide opciones; acepta después «todos pierna pernil,3 ajiacos y una menudencia» y pregunta qué preparación lleva la sopa minoritaria. Reutiliza validación atómica por catálogo; cancelación y firma de carrito protegen el borrador.

@@ -1,0 +1,13 @@
+{
+  "batches": [
+    376
+  ],
+  "tests": 8,
+  "suites": 1,
+  "failed": 0,
+  "scope": "Router tests only; no production change or new combined global",
+  "productionCodeCommit": "6d7f79434f6f1d9c67ecc9fa34e44dfa8b28c1df",
+  "stagingRuntime": "e125617281f3f0e32cb77f3ce82c4e81c5be507c",
+  "paidRequests": 0,
+  "externalOrders": 0
+}
