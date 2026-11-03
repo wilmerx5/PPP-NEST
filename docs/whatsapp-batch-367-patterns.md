@@ -16,6 +16,6 @@ Baseline final sobre366:32 fallos y16 controles aprobados. Con la corrección:48
 
 No cambia la semántica de una carga de catálogo completamente vacía: se mantiene el fallback previo, pues puede representar un fallo de carga. Para probar retirada total se conserva un producto ajeno disponible. Se respeta ignoreBusinessHours; las pruebas de disponibilidad lo desactivan. No valida modelo real, Meta ni pedidos externos.
 
-Global34690/435 aprobada, sin fallos ni omitidas;653 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados; despliegue367 pendiente. Producción349 y motor Kamppo321 sin cambios; presupuesto267/256/11 intacto. Cero inferencia pagada.
+Global34690/435 aprobada, sin fallos ni omitidas;653 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados; Staging367 desplegado/verificado: `d1df0fdc`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41579862848; evidencia367-staging-deployment. Controles compilados existentes aprobados; cobertura367 local. Producción349 y motor Kamppo321 sin cambios; presupuesto267/256/11 intacto. Cero inferencia pagada.
 
 Próximo: cancelación solo del plato activo frente a cancelación total durante cotización, con opciones parciales y respuestas tardías; luego ofertas antiguas/consultas largas.
