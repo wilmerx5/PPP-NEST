@@ -194,8 +194,8 @@
       "priority": "P0",
       "utterance": "el combo paisa lo quiero con gaseosa ginger",
       "expected": "Editar no suma; quitar elimina la línea descrita; agregar explícito sí suma; bebida incluida no se duplica como adicional.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_369_synthetic_full_journey",
+      "note": "Tanda369: 16 recorridos completos en dos catálogos × agente off/mock × carrito/revisión final × dos retiradas. Cambio de bebida por nombre completo, adición explícita, retirada por bebida, reemplazo compatible y cierre DTO conservan bebida, nota y compras aparte. 10 guardas adicionales. No reproduce literalmente el catálogo histórico ni acredita modelo/canal real; referencias abreviadas y cambio por atributo sin nombre siguen pendientes."
     },
     {
       "id": "0111-combo-edit-remove-02",
@@ -207,8 +207,8 @@
       "priority": "P0",
       "utterance": "quita el combo que va con colombiana",
       "expected": "Editar no suma; quitar elimina la línea descrita; agregar explícito sí suma; bebida incluida no se duplica como adicional.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "covered_by_369_synthetic_full_journey",
+      "note": "Tanda369: 16 recorridos completos en dos catálogos × agente off/mock × carrito/revisión final × dos retiradas. Cambio de bebida por nombre completo, adición explícita, retirada por bebida, reemplazo compatible y cierre DTO conservan bebida, nota y compras aparte. 10 guardas adicionales. No reproduce literalmente el catálogo histórico ni acredita modelo/canal real; referencias abreviadas y cambio por atributo sin nombre siguen pendientes."
     },
     {
       "id": "0111-combo-edit-remove-03",

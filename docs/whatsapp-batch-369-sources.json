@@ -1,0 +1,33 @@
+{
+  "batch": 369,
+  "codeCommit": "304b9341742e03a4873fe522721ac41e5c5f612b",
+  "source": "docs/whatsapp-chats-0111-review.md, messages400–437; cases0111-combo-edit-remove-01/02",
+  "initialBaseline": {
+    "tests": 16,
+    "failed": 16,
+    "firstFailure": "included beverage misrouted to cooking preparation"
+  },
+  "newTests": 26,
+  "completeMockOrderJourneys": 16,
+  "safetyControls": 10,
+  "affected": {
+    "tests": 170,
+    "suites": 5,
+    "failed": 0
+  },
+  "catalogs": [
+    "rice combos",
+    "sandwich/burger combos"
+  ],
+  "modes": [
+    "agent off",
+    "agent mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Synthetic router and DTO checks; no historical server traces",
+    "No real model or WhatsApp channel validation",
+    "Not all combo-edit-remove incident variants closed"
+  ]
+}
