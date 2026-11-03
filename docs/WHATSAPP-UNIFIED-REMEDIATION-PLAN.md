@@ -4,7 +4,7 @@
 
 Baseline44/44 fallan. Reemplazo por nombre completo con origen único y opciones anteriores compatibles inicia selección explícita de las opciones nuevas. Descarta la nota pendiente sin aplicar y lo comunica; conserva el original hasta completar. No autocompleta opciones nuevas, confirmar recuerda la selección, cancelar conserva original y recupera checkout.44 controles nuevos:32 cierres DTO/recibo simulados,8 cancelaciones,4 guardas de original cambiado; dos catálogos × agente off/mock. Foco106/2 aprobado. Código `0613645b`.
 
-Global34170/427 aprobada;645 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Despliegue359 pendiente; runtime staging358. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Opciones previas incompatibles, destino ambiguo o instrucciones adicionales conservan guardas de358. Próximo: claridad al retomar ofertas tras consultas intermedias.
+Global34170/427 aprobada;645 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Staging359 desplegado/verificado: `b2131279`, healthy, cero reinicios, API local/pública ok, modelos/configuración preservados. Workflow41555190121; evidencia359-staging-deployment. Controles compilados existentes aprobados; cobertura359 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Opciones previas incompatibles, destino ambiguo o instrucciones adicionales conservan guardas de358. Próximo: claridad al retomar ofertas tras consultas intermedias.
 
 
 ## VIGENTE — tanda358: reemplazos durante aclaración de nota

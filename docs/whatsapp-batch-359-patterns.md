@@ -6,7 +6,7 @@ Baseline:44/44 fallaban. Una nota ambigua bloqueaba el reemplazo con opciones ad
 
 44 controles nuevos:32 recorridos con creación simulada y recibo (dos catálogos, agente off/mock, carrito/confirmación, una/dos opciones y respuesta textual/numérica);8 cancelaciones tras una elección parcial;4 controles de cambio externo del original. Verifican cantidades, precio actual, notas, opciones anteriores y conservación de la otra línea. Los62 controles de358 conservan las guardas; los dos de opciones adicionales ahora esperan selección segura. Foco106/2 aprobado. Código0613645b.
 
-Global34170/427 aprobada;645 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Despliegue359 pendiente; runtime staging358. Sin llamadas pagadas, Meta ni órdenes externas; no acredita modelo o canal real. Presupuesto267/256/11 intacto. Producción349 y Kamppo321 sin cambios.
+Global34170/427 aprobada;645 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging359 desplegado/verificado: `b2131279`, healthy, cero reinicios, API local/pública ok, modelos/configuración preservados. Workflow41555190121; evidencia359-staging-deployment. Controles compilados existentes aprobados; cobertura359 local. Sin llamadas pagadas, Meta ni órdenes externas; no acredita modelo o canal real. Presupuesto267/256/11 intacto. Producción349 y Kamppo321 sin cambios.
 
 Límites: mantiene bloqueo ante opciones previas incompatibles, destino ambiguo, indicaciones adicionales, pago iniciado y notas caducadas/carrito cambiado. No amplía reemplazos arbitrarios de varias líneas.
 
