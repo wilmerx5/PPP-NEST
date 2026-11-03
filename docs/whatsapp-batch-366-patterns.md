@@ -16,6 +16,6 @@ La reproducción final ejecutó exactamente esos80 controles sobre la versión36
 
 ## Estado y límites
 
-Global34642/434 aprobada, sin fallos ni omitidas;652 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados; despliegue366 pendiente. Código congelado durante la global. Pruebas con router real y dependencias externas simuladas; cero inferencia pagada, Meta u órdenes externas. Presupuesto267/256/11 intacto. Producción349 y motor Kamppo321 sin cambios.
+Global34642/434 aprobada, sin fallos ni omitidas;652 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados; Staging366 desplegado/verificado: `1da7a1cb`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41576822468; evidencia366-staging-deployment. Controles compilados existentes aprobados; cobertura366 local. Código congelado durante la global. Pruebas con router real y dependencias externas simuladas; cero inferencia pagada, Meta u órdenes externas. Presupuesto267/256/11 intacto. Producción349 y motor Kamppo321 sin cambios.
 
 Siguiente: interrupciones/cancelación y disponibilidad del producto siguiente durante la selección; compatibilidad de ofertas antiguas y consultas largas. Esta tanda no acredita modelos/canales reales ni cubre todas las formas regionales de pedir.
