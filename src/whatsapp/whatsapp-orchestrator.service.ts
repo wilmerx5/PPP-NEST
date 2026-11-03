@@ -28342,6 +28342,15 @@ export class WhatsappOrchestratorService {
         : null) ||
       productBase;
 
+    if (product.id === offer.productId && Number(product.price) !== Number(offer.price)) {
+      const next = {...session,pendingAddOffer:{...offer,price:product.price}};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,
+        `El precio de *${product.name}* cambió de ${this.catalogService.formatMoney(offer.price)} a ${this.catalogService.formatMoney(product.price)} por unidad. No lo agregué.\n\n` +
+        this.formatInterruptedStepReminder(conv,next));
+      return true;
+    }
+
     if (product.hasAttributes && product.attributes?.length) {
       session = { ...session, pendingAddOffer: undefined };
       await this.conversationService.saveSession(conv, session);
