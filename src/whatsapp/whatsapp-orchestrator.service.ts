@@ -2394,6 +2394,12 @@ export class WhatsappOrchestratorService {
         text = originalText;
       }
     }
+    // Resolve the active quantity list before interpreting its note labels as new notes.
+    if (session.pendingCartQuantity && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+        !session.pendingSubsetKitchenNote && !session.pendingPriceInquiry &&
+        !CART_EDIT_SELECTION_KEYS.some(key => key !== 'pendingCartQuantity' && !!session[key]) &&
+        ['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state) &&
+        await this.tryHandleCartQuantityCorrection(conv,msg.waId,session,originalText,cfg)) return;
     if (await this.tryClarifyCountedKitchenNote(conv,msg.waId,session,originalText,cfg) ||
         await this.tryUndoLastUnitOptionEdit(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleStandardPortionPreference(conv,msg.waId,session,originalText,cfg,turn) ||
@@ -17946,8 +17952,18 @@ export class WhatsappOrchestratorService {
     }
     const pending = session.pendingCartQuantity;
     const pick = /^\d+$/.test(text.trim()) ? Number(text.trim()) : null;
-    const namedLine = !correction && pending && pick === null
+    let namedLine = !correction && pending && pick === null
       ? this.uniqueClarificationLine(session, pending.options, text) : null;
+    if (!correction && pending && pick === null && (!namedLine || namedLine === 'ambiguous') && !/[¿?]/.test(text)) {
+      // A verbatim note can identify a row without dropping its con/sin polarity.
+      const reference = this.normalizeForMatch(text).replace(/^(?:el|la) (?:de |que va )?/, '');
+      const matches = pending.options.filter(option => {
+        const note = session.cart[option.cartIndex]?.note;
+        return !!note && this.normalizeForMatch(note) === reference;
+      });
+      if (matches.length === 1) namedLine = {index: matches[0].cartIndex, ordinal: false};
+      else if (matches.length > 1) namedLine = 'ambiguous';
+    }
     if (!correction && !(pending && (pick !== null || namedLine !== null))) return false;
     // A payment preference already contains a payable order snapshot. Clearing its
     // local ID does not cancel that external link, so do not silently change it.
@@ -18032,13 +18048,14 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, check.reason || 'Esa cantidad supera el límite del pedido.');
       return true;
     }
-    const pendingState = keepPending ? 'awaiting_attribute' : ['awaiting_name', 'awaiting_phone', 'awaiting_address', 'awaiting_payment'].includes(conv.state)
+    const pendingState = keepPending ? 'awaiting_attribute' : ['awaiting_name', 'awaiting_phone', 'awaiting_address', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state)
       ? conv.state : 'building_cart';
     await this.conversationService.saveSession(conv, next, pendingState);
     const followUp = keepPending ? this.formatPendingPurchaseReminder(next) : pendingState === 'awaiting_name' ? '¿A nombre de quién dejamos el pedido?'
       : pendingState === 'awaiting_phone' ? this.buildAskPhoneMessage(conv, next, this.deliveryFeeFor(next, cfg))
       : pendingState === 'awaiting_address' ? 'Escribe la dirección del domicilio.'
       : pendingState === 'awaiting_payment' ? buildPaymentOptionsPrompt(cfg.paymentMethods, cfg.paymentInstructions)
+      : pendingState === 'awaiting_final_confirm' ? 'Revisa las cantidades y el total actualizado. Si está bien, escribe confirmar.'
       : this.formatContinueShoppingPrompt(next);
     await this.reply(conv, waId, `Listo, corregí la cantidad ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${followUp}`);
     return true;
