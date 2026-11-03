@@ -1,5 +1,12 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda372: resolver la línea y retomar confirmación
+
+Código inicial `019fbf55`, guarda final `3bb48cbf`. Baseline final:28/68 fallan,40 controles ya pasaban.68 regresiones nuevas en dos catálogos, agente off/mock y compra/revisión final: selección por número, ordinal, sopa y nota exacta; consulta de total, opción compartida y carrito obsoleto; controles de polaridad, pregunta y nota duplicada. 48 cierres DTO simulados conservan notas, bebida y producto aparte. Foco final273/4 aprobado. Global inicial interrumpida tras6 fallos con selección incompleta; corregida la entrada para exigir lista de opciones válida. Global final: 34920 pruebas / 440 suites aprobadas; 658 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Despliegue staging pendiente.
+
+Corregido retorno a «¿algo más?» después de cambiar cantidades en revisión final: muestra total actualizado y pide confirmar de nuevo. La lista pendiente se resuelve antes de interpretar sus notas como nuevas instrucciones; coincidencia exacta conserva con/sin. No completa aún la redistribución compuesta entre varias preparaciones de371: esta tanda resuelve la aclaración existente por línea. Próximo: cantidades explícitas por varias líneas en una frase, luego notas multiproducto202–216/368–385. Producción349/Kamppo321 sin cambios; cero inferencia pagada/Meta/órdenes externas, presupuesto267/256/11 intacto. No acredita modelo/canal real.
+
+
 ## VIGENTE — tanda371: reiteración y reparación de cantidades por preparación
 
 Código `d16ba238`. Baseline final42/48 fallan (respuesta/estado/carrito),6controles ya pasaban. Reconoce total agregado existente, preserva/corrige reparto entre preparaciones de una misma familia y libera cancelación pendiente sin tocar una orden anterior.48regresiones:4recorridos originales,32carritos preparados en dos familias × agente off/mock × compra/revisión final y12controles cancelación/pago.20 cierres DTO; notas, bebidas y el producto aparte conservados. Foco543/4 aprobado. Global: 34.852 pruebas / 439 suites aprobadas; 657 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging371 desplegado/verificado: `dddc9747`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41591181896; evidencia371-staging-deployment. Controles compilados existentes aprobados; cobertura371 local.
