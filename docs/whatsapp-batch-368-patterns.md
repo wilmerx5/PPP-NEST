@@ -8,7 +8,7 @@ Derivada de los fallos de continuidad de pedidos múltiples y del seguimiento367
 
 48 controles nuevos: dos catálogos × agente off/mock × antes/después de agregar la primera compra × seis frases. Incluyen «no quiero ese producto», «cancela ese producto», «cancela ese plato», «cansela ese plato porfa», «no quiero ese plato» y «cancela el pedido». La cancelación individual conserva carrito previo y completa el resto; la total vacía y una respuesta tardía no resucita el pedido.40 cierres DTO simulados. Baseline16/48 fallan,32 controles ya pasaban; foco176/3 aprobado. No se atribuye esta matriz a48 chats nuevos ni a48 fallos distintos de producción.
 
-Global34738/436 aprobada, sin fallos ni omitidas;654 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados; despliegue368 pendiente. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. Producción349 y motor Kamppo321 sin cambios. No acredita modelo/canal real.
+Global34738/436 aprobada, sin fallos ni omitidas;654 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados; Staging368 desplegado/verificado: `d61dfdfa`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41582127210; evidencia368-staging-deployment. Controles compilados existentes aprobados; cobertura368 local. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. Producción349 y motor Kamppo321 sin cambios. No acredita modelo/canal real.
 
 ## Prioridad siguiente
 

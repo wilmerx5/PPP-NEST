@@ -4,7 +4,7 @@
 
 Baseline16/48 fallan;32 controles ya pasaban. «Cancela ese plato» ahora usa la retirada de selección existente, igual que «ese producto», manteniendo compras válidas y cola.48 controles en dos catálogos × agente off/mock × antes/después de agregar primera compra ×6 frases;40 cierres DTO simulados y8 cancelaciones totales con respuesta tardía. Foco176/3 aprobado. Código `14d6a5c3`.
 
-Global34738/436 aprobada;654 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue368 pendiente; runtime staging367. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Próximo: volver a recorridos completos críticos de chats, reparación de carrito/reemplazos compuestos y conservación de bebida/notas; duplicaciones históricas sin reproducción requieren trazas. Ofertas antiguas/consultas largas secundarias.
+Global34738/436 aprobada;654 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging368 desplegado/verificado: `d61dfdfa`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41582127210; evidencia368-staging-deployment. Controles compilados existentes aprobados; cobertura368 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Próximo: volver a recorridos completos críticos de chats, reparación de carrito/reemplazos compuestos y conservación de bebida/notas; duplicaciones históricas sin reproducción requieren trazas. Ofertas antiguas/consultas largas secundarias.
 
 
 ## VIGENTE — tanda367: disponibilidad al responder opciones
