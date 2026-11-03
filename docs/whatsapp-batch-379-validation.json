@@ -1,0 +1,66 @@
+{
+  "baseCommit": "c000591c58baa381fb9a25a5538cd8d1a92b68b4",
+  "batches": [
+    379
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 2270.57,
+      "sourceUnchanged": true,
+      "tests": 35296,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 12.88,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 665,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 35312,
+  "suites": 447,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "focused": {
+    "batch": 379,
+    "baseline": {
+      "tests": 32,
+      "failed": 32
+    },
+    "focused": {
+      "tests": 44,
+      "passed": 44
+    },
+    "scope": [
+      "Named size questions do not mutate cart or pending choices",
+      "Unknown size explicitly reported; catalog measurements quoted",
+      "Immediate exact-name description follow-up remains informational",
+      "Explicit purchase and pending preparation continue through checkout"
+    ],
+    "limits": [
+      "Follow-up inheritance covers one immediate named follow-up after a description, not arbitrary chains",
+      "Audio transcription and live model/Meta not exercised",
+      "Expiry notice investigation deferred at user direction"
+    ],
+    "paidRequests": 0,
+    "externalOrders": 0
+  },
+  "runnerTests": 92
+}

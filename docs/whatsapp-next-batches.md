@@ -1,5 +1,14 @@
 ## VIGENTE — tanda334: consultar combo sin reabrir bebida (01/11)
 
+## VIGENTE — tanda379: tamaño y continuación de consultas
+
+Reproducido el chat «Qué tan grande es la mojarra»:32 variantes iniciales fallaban. El router ahora responde consultas de tamaño antes de interpretar compras, cita medidas registradas o indica que no están confirmadas; preserva carrito, estado y opciones pendientes. Un nombre ajeno/ambiguo no toma el peso de otro producto. «Cómo viene el churrasco» → «Y la trucha» conserva la consulta si el nombre coincide exactamente y no hay selección pendiente; la compra explícita sigue agregando normalmente.
+
+44 regresiones nuevas: dos catálogos, agente desactivado/simulado, carrito/confirmación, preguntas repetidas, tamaño desconocido/con dato, nombres ambiguos/desconocidos, consulta seguida de compra y elección de preparación interrumpida hasta DTO final. Global completa:35312 pruebas/447 suites,665 fuentes congeladas e inventario exacto; TypeScript general/build y92 pruebas de scripts aprobados. Evidencia `whatsapp-batch-379-validation.json`; ejecución privada `.git/codex-validation-379`. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. Staging379 pendiente de despliegue; producción y Kamppo continúan en378.
+
+Límites: continuación inmediata con nombre exacto tras una pregunta de descripción, no cadenas arbitrarias ni selección pendiente. La consulta de tamaño no infiere medidas ausentes. Audio real no ejecutado. El usuario aclaró que el pedido52 sí se confirmó; el aviso de expiración apareció uno o dos días después. No afirmar venta perdida por ese aviso. Su investigación queda pendiente: en esta tanda el usuario priorizó tamaño/preguntas. Próximos casos: consultas encadenadas, referencias cortas y medidas de acompañamientos frente al plato consultado.
+
+
 ## Estado verificado 03/11 — producción PPP y Kamppo hasta tanda378
 
 PPP producción: `c1563528`, workflow41686492945; API local/pública ok, contenedor activo con cero reinicios, modelos/configuración privados preservados. Merge Main/staging con WhatsApp idéntico al validado y funcionalidades exclusivas de Main conservadas. Evidencia `whatsapp-batch-378-production-deployment.json`.
