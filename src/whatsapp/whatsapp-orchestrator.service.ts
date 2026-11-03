@@ -10323,7 +10323,7 @@ export class WhatsappOrchestratorService {
       : fromResolve.map((row) => ({ product: row.product, segment: row.segment }));
     if (!others.length) return false;
     return this.addResolvedDishesToCart(conv, waId, session, [
-      { product: chosen, segment: chosen.name },
+      { product: chosen, segment: stored || chosen.name, note: pending.note },
       ...others,
     ], cfg);
   }
@@ -10375,7 +10375,7 @@ export class WhatsappOrchestratorService {
       ...session,
       pendingMultiOrder: undefined,
       pendingMatch: {
-        query: waiting.length ? text : segment,
+        query: segment,
         candidates: variants,
         alsoAdd: waiting.map((item) => ({
           productId: item.product.id,

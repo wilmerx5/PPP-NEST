@@ -9776,6 +9776,7 @@ export class WhatsappCatalogService {
     }
     const framed = this.frameSpokenOrder(text, products);
     const result = this.resolveMultiProductOrderCore(framed.text, products);
+    if (result) this.preserveUniquelyOwnedTrailingDrink(result);
     if (!result || !framed.notes.length) return result;
     const words = (value: string) => new Set(normalizeText(value).split(/[^a-z0-9]+/).filter((w) => w.length >= 3));
     const lines: Array<{ segment: string; note?: string }> = [...result.confident, ...result.needsAttributes, ...result.ambiguous];
@@ -9792,6 +9793,37 @@ export class WhatsappCatalogService {
       if (!parts.some((part) => normalizeText(part) === normalizeText(note))) target.note = [...parts, note].join('; ');
     }
     return result;
+  }
+
+  private preserveUniquelyOwnedTrailingDrink(multi: MultiProductResolveResult): void {
+    // A trailing drink choice may follow a dish with no included drink:
+    // keep it on the unique compatible purchase (including unresolved variants).
+    const choiceGroups = [
+      ...multi.confident.map(item => ({item, candidates:[item.product]})),
+      ...multi.needsAttributes.map(item => ({item, candidates:[item.product]})),
+      ...multi.ambiguous.map(item => ({item, candidates:item.candidates})),
+    ];
+    for (const source of choiceGroups) {
+      const tail = source.item.segment.match(/\s+con\s+((?:(?!\bcon\b)[\p{L}\d ])+)[.!]*$/iu);
+      if (!tail || source.candidates.some(product => this.isLikelyDrinkProduct(product) ||
+          this.drinkTextMatchesAttribute(product,tail[1]))) continue;
+      const owners = choiceGroups.filter(group => group !== source && group.candidates.length &&
+        group.candidates.every(product => {
+          const picked = this.drinkTextMatchesAttribute(product,tail[1]);
+          return picked && normalizeText(tail[1]).replace(/^(?:bebida|gaseosa|refresco) /, '') === normalizeText(picked.attributeValue);
+        }));
+      if (owners.length !== 1) continue;
+      const owner = owners[0];
+      const alreadyChosen = owner.candidates.some(product => {
+        const drink = this.drinkTextMatchesAttribute(product,tail[1])!;
+        return this.extractExplicitAttributeChoice(owner.item.segment,product)?.some(choice =>
+          normalizeText(choice.attributeName) === normalizeText(drink.attributeName));
+      });
+      if (alreadyChosen) continue;
+      owner.item.segment += tail[0];
+      source.item.segment = source.item.segment.slice(0,tail.index).trim();
+    }
+
   }
 
   /**
