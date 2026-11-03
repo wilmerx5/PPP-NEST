@@ -7407,7 +7407,7 @@ export class WhatsappCatalogService {
   /** Cotización de varios platos en una sola consulta de precio. */
   formatMultiProductPriceReply(
     products: WhatsappCatalogProduct[],
-    opts?: { offerAdd?: boolean },
+    opts?: { offerAdd?: boolean; quantities?: Array<{ id: number; quantity?: number }> },
   ): string {
     if (!products.length) return '';
     if (products.length === 1) return this.formatProductPriceReply(products[0], opts);
@@ -7415,8 +7415,11 @@ export class WhatsappCatalogService {
     const lines: string[] = ['💰 *Cotización:*\n'];
     let total = 0;
     for (const p of products) {
-      total += Math.round(p.price || 0);
+      const quantity = Math.max(1, Math.min(30, opts?.quantities?.find(item => item.id === p.id)?.quantity || 1));
+      const subtotal = Math.round(p.price || 0) * quantity;
+      total += subtotal;
       lines.push(this.formatProductHeader(p.name, p.price, p.code));
+      if (quantity > 1) lines.push(`   Cantidad: *${quantity}* · Subtotal: *${this.formatMoney(subtotal)}*`);
       const hints: string[] = [];
       if (p.hasAttributes && p.attributes?.length) {
         for (const a of p.attributes.filter((x) => !this.isComboOnlyAttribute(x))) {

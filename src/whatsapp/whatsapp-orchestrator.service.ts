@@ -27191,7 +27191,7 @@ export class WhatsappOrchestratorService {
       await this.savePendingAddOffer(conv, prefixProducts[0], this.catalogService.extractQuantityFromMessage(text), {
         sourceText: text, productIds: prefixProducts.map(product => product.id), quotedProducts: prefixProducts,
       });
-      await this.reply(conv, waId, this.catalogService.formatMultiProductPriceReply(prefixProducts));
+      await this.reply(conv, waId, this.catalogService.formatMultiProductPriceReply(prefixProducts, { quantities: this.conversationService.getSession(conv).pendingAddOffer?.quotedProducts }));
       return true;
     }
     const unavailable = this.catalogService.unavailableAskReply(text, products, cfg.menuUrl);
@@ -27248,7 +27248,7 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         waId,
-        this.catalogService.formatMultiProductPriceReply(priceProducts),
+        this.catalogService.formatMultiProductPriceReply(priceProducts, { quantities: this.conversationService.getSession(conv).pendingAddOffer?.quotedProducts }),
       );
       return true;
     }
@@ -28060,7 +28060,14 @@ export class WhatsappOrchestratorService {
         quantity: qty,
         ...(opts?.sourceText ? { sourceText: opts.sourceText.slice(0, 400) } : {}),
         ...(productIds ? { productIds } : {}),
-        ...(productIds && opts?.quotedProducts ? {quotedProducts:opts.quotedProducts.map(({id,name,price})=>({id,name,price}))} : {}),
+        ...(productIds && opts?.quotedProducts ? {
+          quotedProducts: opts.quotedProducts.map(({ id, name, price }) => ({
+            id, name, price,
+            quantity: Math.max(1, Math.min(30,
+              namedPackOrderQuantity(opts.sourceText || name, name) ??
+              this.catalogService.extractQuantityNearProduct(opts.sourceText || name, name) ?? 1)),
+          })),
+        } : {}),
       },
       productFocus: {
         productId: product.id,
@@ -28227,12 +28234,12 @@ export class WhatsappOrchestratorService {
       const changed = completeQuote ? offerProducts.filter(product=>Number(product.price)!==Number(quoted!.find(old=>old.id===product.id)!.price)) : [];
       if (!completeQuote || changed.length) {
         const next = {...session,pendingAddOffer:{...offer,price:offerProducts.find(product=>product.id===offer.productId)!.price,
-          quotedProducts:offerProducts.map(({id,name,price})=>({id,name,price}))}};
+          quotedProducts:offerProducts.map(({id,name,price})=>({id,name,price,quantity:quoted?.find(old=>old.id===id)?.quantity ?? namedPackOrderQuantity(sourceText,name) ?? this.catalogService.extractQuantityNearProduct(sourceText,name) ?? 1}))}};
         await this.conversationService.saveSession(conv,next);
         const notice = completeQuote ? changed.map(product=>
           `El precio de *${product.name}* cambió de ${this.catalogService.formatMoney(quoted!.find(old=>old.id===product.id)!.price)} a ${this.catalogService.formatMoney(product.price)} por unidad.`).join('\n')
           : 'Volví a revisar la cotización con los precios actuales.';
-        await this.reply(conv,waId,notice+' No agregué los productos.\n\n'+this.catalogService.formatMultiProductPriceReply(offerProducts));
+        await this.reply(conv,waId,notice+' No agregué los productos.\n\n'+this.catalogService.formatMultiProductPriceReply(offerProducts, { quantities: next.pendingAddOffer.quotedProducts }));
         return true;
       }
 
