@@ -1,5 +1,12 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda362: precio actualizado al aceptar cotización individual
+
+Baseline32/56 fallan: oferta simple agregaba usando precio distinto sin avisar.24 controles ya pasaban. Ahora cambio de precio del mismo producto conserva carrito/cantidad, actualiza oferta y exige nueva aceptación.72 regresiones:32 subida/bajada y aceptar/rechazar,16 agotado/retirado,8 precio idéntico,8 cambio/agotamiento posterior,8 respuestas de cantidad. Dos catálogos × agente off/mock;16 cierres DTO simulados. Foco224/4 y final72/1 aprobados. Código `53b782dc`.
+
+Global34342/430 aprobada;648 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue362 pendiente; runtime staging361. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Alcance: oferta individual mismo ID; tamaños distintos siguen ruta previa. Próximo prioritario: cotizaciones múltiples ante cambios de precio/agotamiento parcial; luego repetir/reformular preguntas con oferta pendiente.
+
+
 ## VIGENTE — tanda361: menú y tiempo durante cotización pendiente
 
 Baseline64/64 fallan en continuidad. Menú ahora recuerda oferta aun con carrito vacío; ETA general aislada responde y retoma decisión sin tratar cotización como orden registrada. Reconoce «cuánto tarda la entrega».72 controles nuevos:64 recorridos en dos catálogos × agente off/mock × oferta individual/múltiple × cuatro consultas × aceptar/rechazar,32 cierres DTO simulados;8 guardas de mensajes mixtos/orden concreta. Foco92/2 y final72/1 aprobados. Código `f3972949`.

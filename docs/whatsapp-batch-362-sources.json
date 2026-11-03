@@ -1,0 +1,24 @@
+{
+  "batch": 362,
+  "source": "Casos derivados de chats previos y revisi\u00f3n de aceptaci\u00f3n simple frente a combos",
+  "codeCommit": "53b782dc",
+  "baseline": {
+    "total": 56,
+    "failed": 32,
+    "passed": 24
+  },
+  "newTests": 72,
+  "journeysWithMockOrder": 16,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Sin modelo/canal real",
+    "Precio de oferta individual, mismo producto",
+    "Cotizaciones m\u00faltiples y cambios de tama\u00f1o pendientes"
+  ]
+}
