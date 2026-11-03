@@ -1,5 +1,12 @@
 # Plan unificado de corrección de pedidos
 
+## VIGENTE — tanda364: repetir cotización sin carrito
+
+Baseline60/64 fallan en claridad;4 ya pasaban. Repetir pregunta admite oferta pendiente con carrito vacío, muestra nombres cotizados y aclara que aún no se agregaron; conserva sesión y retoma sí/no.76 regresiones:64 recorridos en dos catálogos × agente off/mock × individual/múltiple × cuatro reformulaciones × aceptación/rechazo,32 cierres DTO simulados;4 cantidad individual2;8 guardas de estados cerrados/humanos. Foco240/3 y final76/1 aprobados. Código `a11dc5c2`.
+
+Global34486/432 aprobada;650 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue364 pendiente; runtime staging363. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. No cambia cálculo de cotizaciones múltiples. Próximo prioritario: reproducir cantidades distintas por producto, total mostrado y carrito/DTO al aceptar/recotizar; revisión estática detecta suma de precios unitarios en formatMultiProductPriceReply.
+
+
 ## VIGENTE — tanda363: cambios de catálogo en cotizaciones múltiples
 
 Baseline52/56 fallan:32 precio cambiado,16 disponibilidad parcial y4 oferta sin snapshot;4 sin cambios ya pasaban. Cotización guarda ID/nombre/precio de todos los productos. Al aceptar, precio cambiado o snapshot antiguo exige recotizar; disponibilidad parcial/total bloquea agregar, identifica faltantes y retira oferta para nueva selección.68 regresiones en dos catálogos × agente off/mock;16 cierres DTO simulados. Incluye cambios repetidos y recuperación explícita. Foco228/4 y final68/1 aprobados. Código `9508da43`.
