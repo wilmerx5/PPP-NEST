@@ -1,5 +1,12 @@
 ## VIGENTE — tanda334: consultar combo sin reabrir bebida (01/11)
 
+## VIGENTE — tanda359: opciones nuevas durante reemplazo con nota pendiente
+
+Baseline44/44 fallan. Reemplazo por nombre completo con origen único y opciones anteriores compatibles inicia selección explícita de las opciones nuevas. Descarta la nota pendiente sin aplicar y lo comunica; conserva el original hasta completar. No autocompleta opciones nuevas, confirmar recuerda la selección, cancelar conserva original y recupera checkout.44 controles nuevos:32 cierres DTO/recibo simulados,8 cancelaciones,4 guardas de original cambiado; dos catálogos × agente off/mock. Foco106/2 aprobado. Código `0613645b`.
+
+Global34170/427 aprobada;645 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Despliegue359 pendiente; runtime staging358. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Opciones previas incompatibles, destino ambiguo o instrucciones adicionales conservan guardas de358. Próximo: claridad al retomar ofertas tras consultas intermedias.
+
+
 ## VIGENTE — tanda358: reemplazos durante aclaración de nota
 
 Baseline28/46 fallan: cambios inequívocos bloqueados y caducidad/carrito cambiado interceptados antes de resolver la nota. Reutiliza reemplazo atómico y cambios de preparación sobre origen único/destino disponible con opciones completas; conserva cantidades, variantes, notas y checkout. Al cambiar carrito descarta nota pendiente y avisa; número antiguo no la aplica al nuevo plato. Títulos completos de catálogo no se convierten en nota.62 controles nuevos:32 cierres DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación ×4 cambios;30 guardas. Foco564/4 aprobado. Código `14919485`.

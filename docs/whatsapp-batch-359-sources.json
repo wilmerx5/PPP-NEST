@@ -1,0 +1,24 @@
+{
+  "batch": 359,
+  "source": "Casos derivados de chats previos y l\u00edmite de opciones adicionales en tanda358",
+  "codeCommit": "0613645b",
+  "baseline": {
+    "failed": 44,
+    "passed": 0,
+    "total": 44
+  },
+  "newTests": 44,
+  "journeysWithMockOrder": 32,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Sin modelo/canal real",
+    "Opciones previas incompatibles conservan bloqueo",
+    "Sin reemplazo arbitrario de m\u00faltiples l\u00edneas"
+  ]
+}
