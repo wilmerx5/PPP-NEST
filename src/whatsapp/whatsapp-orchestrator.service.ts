@@ -27181,7 +27181,7 @@ export class WhatsappOrchestratorService {
     const prefixProducts = askedPrice ? this.catalogService.findCatalogPrefixCandidates(text, products) : [];
     if (prefixProducts.length >= 2) {
       await this.savePendingAddOffer(conv, prefixProducts[0], this.catalogService.extractQuantityFromMessage(text), {
-        sourceText: text, productIds: prefixProducts.map(product => product.id),
+        sourceText: text, productIds: prefixProducts.map(product => product.id), quotedProducts: prefixProducts,
       });
       await this.reply(conv, waId, this.catalogService.formatMultiProductPriceReply(prefixProducts));
       return true;
@@ -27235,6 +27235,7 @@ export class WhatsappOrchestratorService {
       await this.savePendingAddOffer(conv, priceProducts[0], qty, {
         sourceText: text,
         productIds: priceProducts.map((p) => p.id),
+        quotedProducts: priceProducts,
       });
       await this.reply(
         conv,
@@ -28033,7 +28034,7 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation,
     product: MenuProduct,
     quantity = 1,
-    opts?: { sourceText?: string; productIds?: number[] },
+    opts?: { sourceText?: string; productIds?: number[]; quotedProducts?: MenuProduct[] },
   ): Promise<void> {
     const session = this.conversationService.getSession(conv);
     const qty = Math.max(1, Math.min(30, quantity || 1));
@@ -28051,6 +28052,7 @@ export class WhatsappOrchestratorService {
         quantity: qty,
         ...(opts?.sourceText ? { sourceText: opts.sourceText.slice(0, 400) } : {}),
         ...(productIds ? { productIds } : {}),
+        ...(productIds && opts?.quotedProducts ? {quotedProducts:opts.quotedProducts.map(({id,name,price})=>({id,name,price}))} : {}),
       },
       productFocus: {
         productId: product.id,
@@ -28204,12 +28206,25 @@ export class WhatsappOrchestratorService {
       const offerProducts = multiIds
         .map((id) => this.catalogService.getProductById(id, products) || products.find((p) => p.id === id))
         .filter((p): p is MenuProduct => !!p && p.availableNow !== false);
-      if (!offerProducts.length) {
-        await this.conversationService.saveSession(conv, {
-          ...session,
-          pendingAddOffer: undefined,
-        });
-        await this.reply(conv, waId, 'Esos platos ya no están disponibles. ¿Probamos con otros?');
+      if (offerProducts.length !== multiIds.length) {
+        const missing = multiIds.filter(id=>!offerProducts.some(product=>product.id===id)).map(id=>
+          products.find(product=>product.id===id)?.name || offer.quotedProducts?.find(product=>product.id===id)?.name ||
+          (id===offer.productId ? offer.name : `Producto #${id}`));
+        await this.conversationService.saveSession(conv, {...session,pendingAddOffer:undefined});
+        await this.reply(conv,waId,`Ya no están disponibles: *${missing.join(', ')}*. No agregué ninguno de los platos cotizados. Dime cuáles quieres pedir ahora.`);
+        return true;
+      }
+      const quoted = offer.quotedProducts;
+      const completeQuote = quoted?.length===multiIds.length && multiIds.every(id=>quoted.some(product=>product.id===id));
+      const changed = completeQuote ? offerProducts.filter(product=>Number(product.price)!==Number(quoted!.find(old=>old.id===product.id)!.price)) : [];
+      if (!completeQuote || changed.length) {
+        const next = {...session,pendingAddOffer:{...offer,price:offerProducts.find(product=>product.id===offer.productId)!.price,
+          quotedProducts:offerProducts.map(({id,name,price})=>({id,name,price}))}};
+        await this.conversationService.saveSession(conv,next);
+        const notice = completeQuote ? changed.map(product=>
+          `El precio de *${product.name}* cambió de ${this.catalogService.formatMoney(quoted!.find(old=>old.id===product.id)!.price)} a ${this.catalogService.formatMoney(product.price)} por unidad.`).join('\n')
+          : 'Volví a revisar la cotización con los precios actuales.';
+        await this.reply(conv,waId,notice+' No agregué los productos.\n\n'+this.catalogService.formatMultiProductPriceReply(offerProducts));
         return true;
       }
 

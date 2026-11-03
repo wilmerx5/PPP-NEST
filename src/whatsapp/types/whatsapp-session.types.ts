@@ -263,6 +263,8 @@ export type WhatsappSessionData = {
     quantity: number;
     /** Texto original de la consulta (attrs / multi al decir *sí*) */
     sourceText?: string;
+    /** Prices and names shown together; compare against the live catalog at acceptance. */
+    quotedProducts?: { id: number; name: string; price: number }[];
     /** Varios SKUs cotizados juntos (sí → agregar todos) */
     productIds?: number[];
   };
