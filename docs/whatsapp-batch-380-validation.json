@@ -1,0 +1,64 @@
+{
+  "baseCommit": "01c1703fae58c2ade34a43c2d948089865de1924",
+  "batches": [
+    380
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 999.72,
+      "sourceUnchanged": true,
+      "tests": 35324,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 7.36,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 666,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 35340,
+  "suites": 448,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "focused": {
+    "baseline": {
+      "failed": 16,
+      "total": 16
+    },
+    "additionalProbe": {
+      "passed": 22,
+      "failed": 2,
+      "total": 24
+    },
+    "finalFocus": {
+      "passed": 72,
+      "suites": 2
+    },
+    "newTests": 28,
+    "fixtureCorrection": "Typed empty attribute list before adding a pending drink fixture; no product behavior change.",
+    "clarificationProbe": {
+      "passed": 22,
+      "failed": 2
+    },
+    "interruptedGlobal": "Stopped intentionally before changing clarification handling; restarted full inventory on final sources."
+  },
+  "runnerTests": 92
+}

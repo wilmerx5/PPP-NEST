@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda380: consultas encadenadas y aclaración sin compra
+
+La segunda continuación («Cómo viene…» → «Y la trucha» → «Y la mojarra») perdía la intención de consulta. Baseline16/16 fallaban. Ahora una cadena contigua de nombres exactos conserva descripción o tamaño, incluso durante opciones pendientes; una compra/respuesta/pago interrumpe la herencia. Se limita a seis turnos entrantes dentro de los últimos14 mensajes. «Y el otro» pide nombre y guarda pendingCompositionAsk con el estado de retorno: la respuesta nombrando el plato sigue siendo consulta. El render de tamaño se comparte con esa aclaración y no inventa medidas ausentes.
+
+28 regresiones nuevas en dos catálogos × agente off/mock:16 cadenas (ocho retoman preparación y cierran DTO), cuatro compras que interrumpen la consulta y cierran DTO, cuatro aclaraciones de «el otro» y cuatro aclaraciones de tamaño con/sin medida. Foco final72/2 aprobado. Exploración inicial de «el otro»:2fallos/24; al extender respuesta posterior se detectaron2fallos adicionales del recorrido. La primera global se detuvo deliberadamente para cubrir esa continuación; validación final completa desde cero:35340 pruebas/448 suites,666 fuentes congeladas, inventario exacto, TypeScript general/build y92 scripts aprobados. Evidencia `whatsapp-batch-380-validation.json`; privado `.git/codex-validation-380`. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto.
+
+Staging380 pendiente de despliegue; producción/Kamppo siguen en378. Límites: nombres exactos en la cadena, ventana acotada, sin audio/modelo real ni garantías de toda referencia coloquial. Próximo: distinguir medidas del plato frente a bebidas/acompañamientos y consultas combinadas. El aviso tardío de expiración permanece pendiente, fuera del foco solicitado de tamaño/preguntas; no tratar la orden52 confirmada como venta perdida por ese aviso.
+
+
 ## VIGENTE — tanda379: tamaño y continuación de consultas
 
 Reproducido el chat «Qué tan grande es la mojarra»:32 variantes iniciales fallaban. El router ahora responde consultas de tamaño antes de interpretar compras, cita medidas registradas o indica que no están confirmadas; preserva carrito, estado y opciones pendientes. Un nombre ajeno/ambiguo no toma el peso de otro producto. «Cómo viene el churrasco» → «Y la trucha» conserva la consulta si el nombre coincide exactamente y no hay selección pendiente; la compra explícita sigue agregando normalmente.

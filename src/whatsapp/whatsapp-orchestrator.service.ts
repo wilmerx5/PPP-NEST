@@ -2757,29 +2757,59 @@ export class WhatsappOrchestratorService {
         '¿Quieres saber si alcanza para esas personas o pedir esa cantidad de unidades? El pedido sigue igual.');
       return;
     }
-    // An elliptical follow-up immediately after a description is another
-    // inquiry, not a category selection or an implicit purchase.
-    const descriptionFollowUp = this.normalizeForMatch(originalText).match(/^y (?:el|la) (.+?)[?!.]*$/);
-    if (descriptionFollowUp && conv.state === 'building_cart' &&
-        !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
-      const recent = await this.conversationService.getRecentMessageTexts(conv.id, 10);
-      const inbound = recent.filter(line => line.startsWith('Cliente: ')).map(line => line.slice(9));
-      const previous = inbound.at(-1)?.trim() === originalText.trim() ? inbound.at(-2) : inbound.at(-1);
-      if (previous && this.catalogService.isProductDescriptionInquiry(previous)) {
-        const menu = await this.catalogService.getMenuProducts();
-        const exact = menu.filter(product => this.normalizeForMatch(product.name) === descriptionFollowUp[1]);
-        if (exact.length === 1 && await this.tryHandleProductCompositionQuestion(
-          conv, msg.waId, `Cómo viene ${exact[0].name}`, menu, cfg, session)) return;
+    const sizeQuestion = /\b(?:que tan (?:grande|pequen[oa]) (?:es|son)|(?:de )?que tamano (?:es|son|tiene|tienen))\b/;
+    let inquirySource = originalText;
+    const followUpName = (value: string) => this.normalizeForMatch(value).match(/^y (?:el|la) (.+?)[?!.]*$/)?.[1];
+    const followUp = followUpName(originalText);
+    if (followUp) {
+      const menu = await this.catalogService.getMenuProducts();
+      const exactProduct = (name: string) => {
+        const matches = menu.filter(product => this.normalizeForMatch(product.name) === name);
+        return matches.length === 1 ? matches[0] : undefined;
+      };
+      const target = exactProduct(followUp);
+      if (target || /^(?:otro|otra)$/.test(followUp)) {
+        const recent = await this.conversationService.getRecentMessageTexts(conv.id, 14);
+        const inbound = recent.filter(line => line.startsWith('Cliente: ')).map(line => line.slice(9));
+        if (inbound.at(-1)?.trim() === originalText.trim()) inbound.pop();
+        // Only a contiguous chain of exact named follow-ups inherits an inquiry.
+        // A purchase, answer, payment or unrelated turn breaks the chain.
+        let kind: 'size' | 'description' | undefined;
+        for (const previous of inbound.slice(-6).reverse()) {
+          if (this.catalogService.looksLikeExplicitAddProductRequest(previous)) break;
+          if (sizeQuestion.test(this.normalizeForMatch(previous))) { kind = 'size'; break; }
+          if (this.catalogService.isProductDescriptionInquiry(previous)) { kind = 'description'; break; }
+          const priorName = followUpName(previous);
+          if (!priorName || !exactProduct(priorName)) break;
+        }
+        if (kind && !target) {
+          session = {...session, pendingCompositionAsk: {
+            originalText: kind === 'size' ? 'Qué tan grande es' : 'Cómo viene',
+            resumeState: conv.state,
+          }};
+          await this.conversationService.saveSession(conv, session);
+          await this.reply(conv, msg.waId, '¿Qué otro plato quieres consultar? Escribe su nombre; el pedido sigue igual.');
+          return;
+        }
+        if (kind === 'description' && target) {
+          captureInquiryDecision(turn.decision, 'composition', [target.id]);
+          const reminder = this.formatInterruptedStepReminder(conv, session);
+          await this.reply(conv, msg.waId, this.buildProductCompositionReply(
+            `Cómo viene ${target.name}`, target, cfg, session, { offerAdd: false }) +
+            (reminder ? `\n\n${reminder}` : ''));
+          return;
+        }
+        if (kind === 'size' && target) inquirySource = `Qué tan grande es ${target.name}`;
       }
     }
 
-    // Serving yield and deposits are business facts, never inferred from order size.
-    const inquiryText = this.normalizeForMatch(originalText);
+    // Serving yield and dimensions are facts, never authorization to add items.
+    const inquiryText = this.normalizeForMatch(inquirySource);
     // Asking for dimensions does not authorize a purchase, including when a
     // checkout field or an unrelated product choice is pending.
-    if (/\b(?:que tan (?:grande|pequen[oa]) (?:es|son)|(?:de )?que tamano (?:es|son|tiene|tienen))\b/.test(inquiryText)) {
+    if (sizeQuestion.test(inquiryText)) {
       const menu = await this.catalogService.getMenuProducts();
-      const mentioned = menu.filter(product => this.catalogService.productFullyNamedIn(originalText, [product]));
+      const mentioned = menu.filter(product => this.catalogService.productFullyNamedIn(inquirySource, [product]));
       const named = mentioned.filter(product => !mentioned.some(other => other.id !== product.id &&
         this.normalizeForMatch(other.name) !== this.normalizeForMatch(product.name) &&
         this.normalizeForMatch(other.name).includes(this.normalizeForMatch(product.name))));
@@ -2788,12 +2818,7 @@ export class WhatsappOrchestratorService {
       const product = named.length === 1 ? named[0] : !named.length && bareReference && references.length === 1
         ? menu.find(candidate => candidate.id === references[0]) : undefined;
       captureInquiryDecision(turn.decision, 'composition', product ? [product.id] : []);
-      const fact = product?.description?.split(/(?<=[.!?])\s+/).find(sentence =>
-        /\b\d+(?:[.,]\d+)?\s*(?:g|gr|gramos?|kg|kilogramos?|cm|centimetros?|ml|mililitros?|litros?)\b/i.test(this.normalizeForMatch(sentence)))?.trim();
-      const reply = !product
-        ? '¿De cuál plato quieres saber el tamaño? Dime el nombre completo. El pedido sigue igual.'
-        : fact ? `La carta de *${product.name}* indica: ${fact}\n\nEl pedido sigue igual.`
-        : `No tengo el tamaño o peso confirmado de *${product.name}* en la carta. El pedido sigue igual.`;
+      const reply = this.formatProductSizeReply(product);
       const reminder = this.formatInterruptedStepReminder(conv, session);
       await this.reply(conv, msg.waId, reply + (reminder ? `\n\n${reminder}` : ''));
       return;
@@ -12615,6 +12640,15 @@ export class WhatsappOrchestratorService {
     return false;
   }
 
+  private formatProductSizeReply(product: MenuProduct | null | undefined): string {
+    const fact = product?.description?.split(/(?<=[.!?])\s+/).find(sentence =>
+      /\b\d+(?:[.,]\d+)?\s*(?:g|gr|gramos?|kg|kilogramos?|cm|centimetros?|ml|mililitros?|litros?)\b/i.test(this.normalizeForMatch(sentence)))?.trim();
+    return !product
+      ? '¿De cuál plato quieres saber el tamaño? Dime el nombre completo. El pedido sigue igual.'
+      : fact ? `La carta de *${product.name}* indica: ${fact}\n\nEl pedido sigue igual.`
+      : `No tengo el tamaño o peso confirmado de *${product.name}* en la carta. El pedido sigue igual.`;
+  }
+
   private buildProductCompositionReply(
     text: string,
     product: MenuProduct | null,
@@ -12628,6 +12662,9 @@ export class WhatsappOrchestratorService {
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
 
+    if (/\b(?:que tan (?:grande|pequen[oa]) (?:es|son)|(?:de )?que tamano (?:es|son|tiene|tienen))\b/.test(q)) {
+      return this.formatProductSizeReply(product);
+    }
     if (product) {
       const alreadyInCart = !!session?.cart.some((c) => c.productId === product.id);
       let msg = this.catalogService.formatProductPriceReply(product, {
