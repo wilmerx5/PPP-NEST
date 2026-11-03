@@ -2000,7 +2000,7 @@ export class WhatsappOrchestratorService {
       return;
     }
     const replacing = pendingSelection.pendingAttribute?.replacement || pendingSelection.pendingMatch?.replacement;
-    const rejectSelection = explicitPurchaseWithdrawal || (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto|esa bebida))$/.test(cancellationText);
+    const rejectSelection = explicitPurchaseWithdrawal || (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto|ese plato|esa bebida))$/.test(cancellationText);
     const currentQueue = pendingSelection.pendingMultiOrder;
     const queuedAttributeCancellation = !!pendingSelection.pendingAttribute && !!currentQueue &&
       !currentQueue.confident.length && !currentQueue.ambiguous.length && !currentQueue.unresolved.length &&
