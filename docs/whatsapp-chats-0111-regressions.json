@@ -129,8 +129,8 @@
       "priority": "P0",
       "utterance": "todos pierna pernil, 3 ajiacos y una menudencia",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_375_local_pending_global",
+      "note": "Encabezado breve seguido de opciones compartidas y reparto completo en otro mensaje;16 cierres DTO en dos catálogos × agente off/mock.64regresiones totales. No acredita reparto arbitrario por varios mensajes ni canal/modelo real. Global/despliegue pendientes."
     },
     {
       "id": "0111-burst-idempotency-01",
