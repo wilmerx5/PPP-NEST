@@ -1,5 +1,12 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda365: cantidades por producto en cotizaciones
+
+Baseline48/64 fallan en total mostrado;16 controles ya pasaban. Guarda cantidades por SKU, presenta cantidad/subtotal y recalcula ante cambios de precio sin agregar hasta nueva aceptación. Ampliación detectó2 fallos de paquetes: «Pack 6 Empanadas» podía añadir6 paquetes; reconocimiento de contenido del SKU ampliado.76 regresiones nuevas, dos catálogos × agente off/mock,64 cierres DTO simulados, cantidades2/3,3/2,1/4,1/1, dígitos/palabras, menú intermedio, cambio de precio, cantidad implícita, paquetes y rechazo. Foco220/3 aprobado. Código `f4e8e2a2`.
+
+Global34562/433 aprobada;651 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue365 pendiente; runtime staging364. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Alcance: precios base, SKUs distintos sin opciones obligatorias. Próximo: cantidades con opciones obligatorias y notas por plato; ofertas antiguas sin cantidades y consultas largas.
+
+
 ## VIGENTE — tanda364: repetir cotización sin carrito
 
 Baseline60/64 fallan en claridad;4 ya pasaban. Repetir pregunta admite oferta pendiente con carrito vacío, muestra nombres cotizados y aclara que aún no se agregaron; conserva sesión y retoma sí/no.76 regresiones:64 recorridos en dos catálogos × agente off/mock × individual/múltiple × cuatro reformulaciones × aceptación/rechazo,32 cierres DTO simulados;4 cantidad individual2;8 guardas de estados cerrados/humanos. Foco240/3 y final76/1 aprobados. Código `a11dc5c2`.
