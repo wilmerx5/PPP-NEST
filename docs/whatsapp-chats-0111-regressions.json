@@ -246,8 +246,8 @@
       "priority": "P0",
       "utterance": "combo de pollo y medio pollo broaster con pepsi | 1",
       "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "covered_by_370_full_router_and_mock_dto",
+      "note": "Reproduce frase original, número1 y nombre completo, agente off/mock. Conserva Pepsi y ambos productos hasta DTO/recibo. Tanda370:40 recorridos en total, cantidades1/2 y dos catálogos adicionales/control. No acredita modelo/canal real ni catálogo/precio histórico exactos."
     },
     {
       "id": "0111-pending-option-retention-02",
@@ -272,8 +272,8 @@
       "priority": "P0",
       "utterance": "el combo con pepsi y una gaseosa aparte",
       "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_370_separate_drink",
+      "note": "Cuatro controles de combo + medio pollo + gaseosa aparte, con/sin bebida Ginger explícita del combo y Pepsi en la gaseosa; agente off/mock, DTO de3ítems. Referencia abreviada literal y otras combinaciones pendientes."
     },
     {
       "id": "0111-pending-option-retention-04",

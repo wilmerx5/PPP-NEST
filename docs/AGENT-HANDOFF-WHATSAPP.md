@@ -1,5 +1,12 @@
 # Relevo del agente: PPP WhatsApp
 
+## VIGENTE — tanda370: bebida al elegir variante con varios productos
+
+Código `2f5d2a00`. Reproducido chat01/11 mensajes448–459: Pepsi se perdía al elegir combo. Conserva bebida final en un único grupo compatible y segmento propio al elegir variante, manteniendo cantidades y bebidas aparte. Baseline final14/40 fallan;26 controles ya pasaban.40 regresiones/40 cierres DTO simulados, agente off/mock, fixturePPP y catálogos sintéticos pollo/pescado; número/nombre, cantidades1/2, posición de bebida y Pepsi/Ginger. Foco108/4 aprobado. Global34804/438 aprobada;656 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue staging pendiente.
+
+Ledger01/11 actualiza pending-option-retention01 y parcialmente03. Próximo: reparación de cantidades repartidas, chat438–447 (4ejecutivos:3fritos/1broaster); referencias abreviadas/condiciones y múltiples dueños de bebida pendientes. Producción349/Kamppo321 sin cambios; cero inferencia pagada/Meta/órdenes externas, presupuesto267/256/11 intacto. No acredita modelo/canal real.
+
+
 ## VIGENTE — tanda369: reparación de combo y bebida por línea
 
 Código `304b9341`.26 pruebas nuevas:16 recorridos completos (dos catálogos × agente off/mock × carrito/revisión final × dos retiradas),16 cierres DTO y10 guardas. Baseline inicial16/16 fallan en cambio de bebida. Corregida prioridad frente a preparación, retirada «que va con» y bloqueo de eliminación por aproximación cuando falta la opción indicada. Foco170/5 aprobado. Global34764/437 aprobada,655 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging369 desplegado/verificado: `0f1ee73c`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41585064291; evidencia369-staging-deployment. Controles compilados existentes aprobados; cobertura369 local.

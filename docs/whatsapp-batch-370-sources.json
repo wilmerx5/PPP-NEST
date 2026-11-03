@@ -1,0 +1,37 @@
+{
+  "batch": 370,
+  "codeCommit": "2f5d2a00201367c4078a8e729770c966c70f1a9f",
+  "source": "11-1-2026.zip chat.txt messages448–459; docs/whatsapp-chats-0111-review.md",
+  "initialBaseline": {
+    "tests": 2,
+    "failed": 2
+  },
+  "expandedBaseline": {
+    "tests": 40,
+    "failed": 14,
+    "passed": 26
+  },
+  "newTests": 40,
+  "mockOrderClosures": 40,
+  "affected": {
+    "tests": 108,
+    "suites": 4,
+    "failed": 0
+  },
+  "catalogs": [
+    "PPP fixture",
+    "synthetic chicken",
+    "synthetic fish"
+  ],
+  "modes": [
+    "agent off",
+    "agent mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Synthetic router and DTO; no real model, Meta or production DB",
+    "Drink redistribution requires one compatible group and exact trailing option; no guessing among multiple owners",
+    "Does not cover conditional availability or every abbreviated follow-up"
+  ]
+}
