@@ -116,8 +116,8 @@
       "priority": "P0",
       "utterance": "solo eran 3 fritos y uno rboaster",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "partially_covered_by_371_full_router",
-      "note": "Frase exacta con rboaster preserva reparto pendiente o carrito correcto; corrección de7a3con una línea por preparación en fixtures conserva notas/bebida/extras/checkout.20 cierres DTO en48controles totales. Familia errónea o varias líneas con opciones distintas requieren aclaración; no acredita reparación automática de todo el carrito histórico ni modelo/canal reales."
+      "status": "partially_covered_by_371_373_full_router",
+      "note": "Frase exacta con rboaster preserva reparto pendiente o carrito correcto; corrección de7a3con una línea por preparación en fixtures conserva notas/bebida/extras/checkout.20 cierres DTO en48controles totales. Familia errónea o varias líneas con opciones distintas requieren aclaración; no acredita reparación automática de todo el carrito histórico ni modelo/canal reales. Tanda373 añade aclaración persistida y reparto completo por sopa/nota entre líneas preparadas de la misma familia;52 cierres simulados, firmas/vencimiento/repetición. No reproduce inflación original ni corrige automáticamente una familia ajena."
     },
     {
       "id": "0111-executive-distribution-04",

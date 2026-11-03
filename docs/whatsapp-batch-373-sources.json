@@ -1,0 +1,34 @@
+{
+  "batches": [
+    373
+  ],
+  "codeCommit": "390b64ec7549d98aadd534ad178a721fdf802c04",
+  "source": "Derived from 01/11 messages438\u2013447 and batches371/372; seeded-cart continuation, not literal historical inflation replay",
+  "baselineInitial": {
+    "tests": 4,
+    "failed": 4,
+    "assertion": "clarification must show soup options"
+  },
+  "newTests": 76,
+  "primaryJourneys": 24,
+  "interruptionAndGuardCases": 40,
+  "twoAmbiguousPreparationCases": 4,
+  "staleCompletedReplyCases": 8,
+  "mockOrderClosures": 52,
+  "focused": {
+    "tests": 349,
+    "suites": 5
+  },
+  "intermediateFindings": [
+    "Comma delimiter lost before split",
+    "12 repeat-answer failures, including note on unrelated product and checkout regression"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Positive counts1..30 per line",
+    "Every ambiguous line in one complete reply",
+    "Exact normalized recent reply only",
+    "Literal compact heading and original historical inflation not covered"
+  ]
+}

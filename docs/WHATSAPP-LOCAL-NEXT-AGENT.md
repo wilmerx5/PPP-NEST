@@ -1,5 +1,12 @@
 ## Hoja de ruta operativa actualizada — 29/10/2026
 
+## VIGENTE — tanda373: reparto atómico entre líneas con opciones
+
+Código `390b64ec`. Baseline inicial4/4 fallan por aclaración sin líneas; ampliación detecta separador coma y12 fallos al repetir respuesta sobre la implementación intermedia.76 regresiones:24 recorridos de reparto/repetición,40 controles de interrupción/cancelación/suma/obsolescencia,4 repartos con dos preparaciones ambiguas y8 controles de repetición antigua.52 cierres DTO simulados. Dos catálogos × agente off/mock; compra/revisión final. Foco349/5 aprobado. Global final: 34996 pruebas / 441 suites aprobadas; 659 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Despliegue staging pendiente.
+
+Guarda totales por preparación, muestra las líneas y aplica todas las cantidades juntas solo al resolver cada línea y coincidir las sumas. Conserva notas/bebidas/productos aparte y paso de checkout. Respuesta repetida reciente no se convierte en nota de otro producto; firma/10min protegen selección y repetición. Ledger executive-distribution03 amplía cobertura sintética; entrada literal compacta e inflación histórica siguen pendientes. Próximo: encabezados y repartos en una sola frase, después notas multiproducto202–216/368–385. No cubre cantidades cero ni redistribución parcial por varios mensajes. Producción349/Kamppo321 sin cambios; cero inferencia pagada/Meta/órdenes externas, presupuesto267/256/11 intacto. No acredita modelo/canal real.
+
+
 ## VIGENTE — tanda372: resolver la línea y retomar confirmación
 
 Código inicial `019fbf55`, guarda final `3bb48cbf`. Baseline final:28/68 fallan,40 controles ya pasaban.68 regresiones nuevas en dos catálogos, agente off/mock y compra/revisión final: selección por número, ordinal, sopa y nota exacta; consulta de total, opción compartida y carrito obsoleto; controles de polaridad, pregunta y nota duplicada. 48 cierres DTO simulados conservan notas, bebida y producto aparte. Foco final273/4 aprobado. Global inicial interrumpida tras6 fallos con selección incompleta; corregida la entrada para exigir lista de opciones válida. Global final: 34920 pruebas / 440 suites aprobadas; 658 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging372 desplegado/verificado: `9e5e2489`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41644822140; evidencia372-staging-deployment. Controles compilados existentes aprobados; cobertura372 local.
