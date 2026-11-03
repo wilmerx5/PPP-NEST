@@ -1,5 +1,12 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda368: cancelar solo el plato pendiente
+
+Baseline16/48 fallan;32 controles ya pasaban. «Cancela ese plato» ahora usa la retirada de selección existente, igual que «ese producto», manteniendo compras válidas y cola.48 controles en dos catálogos × agente off/mock × antes/después de agregar primera compra ×6 frases;40 cierres DTO simulados y8 cancelaciones totales con respuesta tardía. Foco176/3 aprobado. Código `14d6a5c3`.
+
+Global34738/436 aprobada;654 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue368 pendiente; runtime staging367. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Próximo: volver a recorridos completos críticos de chats, reparación de carrito/reemplazos compuestos y conservación de bebida/notas; duplicaciones históricas sin reproducción requieren trazas. Ofertas antiguas/consultas largas secundarias.
+
+
 ## VIGENTE — tanda367: disponibilidad al responder opciones
 
 Baseline32/48 fallan;16 controles ya pasaban. El producto activo agotado podía agregarse y el retirado dejaba la cola sin retomar. Ahora valida disponibilidad, avisa, retira solo la fila activa y continúa con las siguientes válidas sin perder el carrito.48 regresiones en dos catálogos × agente off/mock: activo/siguiente/segunda fila/todos/restantes agotados o retirados; cancelación total y respuesta tardía.32 cierres DTO simulados. Foco892/3 aprobado. Código `26a4fddd`.

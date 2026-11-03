@@ -1,5 +1,30 @@
 # Plan unificado de corrección de pedidos
 
+## VIGENTE — tanda368: cancelar solo el plato pendiente
+
+Baseline16/48 fallan;32 controles ya pasaban. «Cancela ese plato» ahora usa la retirada de selección existente, igual que «ese producto», manteniendo compras válidas y cola.48 controles en dos catálogos × agente off/mock × antes/después de agregar primera compra ×6 frases;40 cierres DTO simulados y8 cancelaciones totales con respuesta tardía. Foco176/3 aprobado. Código `14d6a5c3`.
+
+Global34738/436 aprobada;654 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue368 pendiente; runtime staging367. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Próximo: volver a recorridos completos críticos de chats, reparación de carrito/reemplazos compuestos y conservación de bebida/notas; duplicaciones históricas sin reproducción requieren trazas. Ofertas antiguas/consultas largas secundarias.
+
+
+## Balance de los chats revisado al cierre de368
+
+Las revisiones documentadas cubren467 mensajes del31/10 y500 del01/11 (967 mensajes; no967 clientes/conversaciones), además de casos pegados en el chat. Fuentes: `whatsapp-chats-3110-review.md`, `whatsapp-chats-0111-review.md`. Este balance relee la evidencia registrada; no supone nuevos ZIP ni un nuevo análisis de audio/fotos. Los ZIP no aportan todas las trazas, medios y catálogo histórico necesarios para atribuir causas.
+
+Avances concretos con regresiones: aceptación de ofertas (326,360–368), atributos/adicionales y reparto (328–332,340), reemplazos/notas (333–334,344–352,355,358–359), contacto/nombre (327,343,353–354), información de pago (356–357). Son coberturas parciales por comportamiento; no cierran íntegramente U1–U7. Consultar cada patterns para límites; no deducir cobertura total del número de tests.
+
+Pendientes priorizados:
+
+1. U1/U3/U4: reproducir recorridos completos de reparación de carrito incorrecto, reemplazos compuestos, reparto mayor y bebida/notas a través de cambios; comprobar texto, carrito y DTO. Volver a los casos originales antes de multiplicar variantes cosméticas.
+2. U2: compras inesperadas/duplicación histórica no reproducidas.342 cubre reentrega con claim simulado, no caída entre claim/aplicación, persistencia real ni concurrencia entre instancias. Obtener trazas; no declarar origen solucionado por tests que nunca lo reprodujeron.
+3. U5/U6: cambios de contexto durante selección, ofertas antiguas y mensajes largos; teléfono/nombre/dirección entre turnos, mapas discrepantes y datos en medios. Mantener controles existentes y ampliar solo huecos verificables.
+4. U7: jergas y errores de escritura derivados de nuevos chats, con negación/condición/consulta como guardas. Mezcla de idiomas mantiene prioridad baja por instrucción del usuario.
+5. U8: validación aislada con modelo real y luego canal controlado, sin cocina/pedidos reales no autorizados; medir resultados sobre chats nuevos. Los34mil tests simulados no son tasa de éxito comercial.
+6. Promoción separada: producción349 y Kamppo321 siguen por detrás de staging. Publicar en staging no prueba paridad ni migración. No promover automáticamente por este balance.
+
+No hay porcentaje auditado de incidentes cerrados: faltan mapa completo actualizado por incidente y validación real. El total de pruebas mide cobertura ejecutada, no porcentaje de chats resueltos.
+
+
 ## VIGENTE — tanda367: disponibilidad al responder opciones
 
 Baseline32/48 fallan;16 controles ya pasaban. El producto activo agotado podía agregarse y el retirado dejaba la cola sin retomar. Ahora valida disponibilidad, avisa, retira solo la fila activa y continúa con las siguientes válidas sin perder el carrito.48 regresiones en dos catálogos × agente off/mock: activo/siguiente/segunda fila/todos/restantes agotados o retirados; cancelación total y respuesta tardía.32 cierres DTO simulados. Foco892/3 aprobado. Código `26a4fddd`.

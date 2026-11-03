@@ -1,0 +1,28 @@
+{
+  "batch": 368,
+  "codeCommit": "14d6a5c3a44f5e9651256f28aebb8260eb7f615f",
+  "source": "Follow-up to multi-product customer chat failures and batches366-367; scoped cancellation variants",
+  "baseline": {
+    "failed": 16,
+    "passed": 32,
+    "tests": 48
+  },
+  "newTests": 48,
+  "affected": {
+    "tests": 176,
+    "suites": 3
+  },
+  "journeysWithMockOrder": 40,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Only unambiguous active purchase withdrawal; not arbitrary named cart removal",
+    "No real model or channel validation",
+    "Staging only; production349 and Kamppo321 unchanged"
+  ]
+}
