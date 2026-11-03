@@ -1,0 +1,26 @@
+{
+  "batches": [
+    377
+  ],
+  "codeCommit": "c773c7cfd2b4efc89aa69e40b32351d3609281ce",
+  "source": "Derived from 30/10 churrasco subset and 01/11 notes scope; not literal historical replay",
+  "newTests": 60,
+  "mockOrderClosures": 48,
+  "baselineNamed": {
+    "tests": 48,
+    "failed": 16,
+    "passed": 32
+  },
+  "additionalQuestionFailures": 2,
+  "focused": {
+    "tests": 194,
+    "suites": 3
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "One named line with3units, two modified",
+    "Ambiguity asks clarification; continuation not covered",
+    "Global and deployment pending"
+  ]
+}
