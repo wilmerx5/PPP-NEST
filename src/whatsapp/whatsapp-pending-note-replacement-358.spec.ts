@@ -49,5 +49,6 @@ for(const agent of [false,true])for(const scenario of ['ambiguous','ordinal','un
  const before=structuredClone(h.conv.sessionData.cart);
  await h.sendQueued(commands[scenario]||`cambia el de ${choice} por ${target}`);
  expect(h.conv.sessionData.cart).toEqual(before);expect(h.service.ordersService.create).not.toHaveBeenCalled();
- if(['expired','changed'].includes(scenario))expect(h.conv.sessionData.pendingSubsetKitchenNote).toBeUndefined();else expect(h.conv.sessionData.pendingSubsetKitchenNote).toBeDefined();
+ if(scenario==='missing option'){expect(h.conv.state).toBe('awaiting_attribute');expect(h.conv.sessionData.pendingAttribute?.replacement?.originalLine).toEqual(before[0]);}
+ if(['expired','changed','missing option'].includes(scenario))expect(h.conv.sessionData.pendingSubsetKitchenNote).toBeUndefined();else expect(h.conv.sessionData.pendingSubsetKitchenNote).toBeDefined();
 });

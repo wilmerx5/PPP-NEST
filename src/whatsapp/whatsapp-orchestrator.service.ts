@@ -1984,6 +1984,11 @@ export class WhatsappOrchestratorService {
         return;
       }
     }
+    if (pendingSelection.pendingAttribute?.requireExplicitOptions && this.isConfirmKeyword(originalText)) {
+      await this.reply(conv,msg.waId,'Antes de confirmar, completa las opciones del reemplazo o di «cancela ese cambio». El producto original sigue en el carrito.\n\n' +
+        this.formatPendingPurchaseReminder(pendingSelection));
+      return;
+    }
     const replacing = pendingSelection.pendingAttribute?.replacement || pendingSelection.pendingMatch?.replacement;
     const rejectSelection = explicitPurchaseWithdrawal || (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto|esa bebida))$/.test(cancellationText);
     const currentQueue = pendingSelection.pendingMultiOrder;
@@ -4911,7 +4916,7 @@ export class WhatsappOrchestratorService {
           pa.selected || [],
           attrOpts,
         );
-        if (step.status === 'complete' || step.status === 'partial') {
+        if (!pa.requireExplicitOptions && (step.status === 'complete' || step.status === 'partial')) {
           const filled = this.catalogService.fillDefaultAttributes(
             product,
             step.attributes,
@@ -16355,9 +16360,23 @@ export class WhatsappOrchestratorService {
       const explicit = this.catalogService.resolveAttributesFromMessage(target,destination,[]);
       const selected = explicit.status==='complete' || explicit.status==='partial'
         ? [...compatible.filter(old=>!explicit.attributes.some(next=>next.attributeName===old.attributeName)),...explicit.attributes] : compatible;
-      if (this.catalogService.getRemainingAttributes(target,selected).length)
-        return ask('El reemplazo necesita aclarar sus opciones; primero termina o retira esta nota pendiente.\n');
       const editable = {...session,pendingSubsetKitchenNote:undefined,lastKitchenNoteSelection:undefined};
+      if (this.catalogService.getRemainingAttributes(target,selected).length) {
+        // Transfer ownership of the clarification only for a fully named replacement
+        // whose existing choices can all be preserved. Keep the original until done.
+        if (targets.length !== 1 || compatible.length !== (original.attributes || []).length)
+          return ask('El reemplazo necesita aclarar sus opciones; primero termina o retira esta nota pendiente.\n');
+        const next = this.buildPendingAttributeSession(editable,target,selected,{
+          replacement:{originalLine:structuredClone(original)},
+        });
+        next.pendingAttribute!.quantity = original.quantity;
+        next.pendingAttribute!.requireExplicitOptions = true;
+        next.pendingCheckoutResume = conv.state as NonNullable<WhatsappSessionData['pendingCheckoutResume']>;
+        await this.conversationService.saveSession(conv,next,'awaiting_attribute');
+        await this.reply(conv,waId,'Dejé la nota pendiente sin aplicar para aclarar este cambio. El producto original se conserva hasta completar el reemplazo. Puedes decir «cancela ese cambio».\n\n' +
+          this.catalogService.formatProductOptionsPrompt(target,selected));
+        return true;
+      }
       const handled = replacement && targets.length===1
         ? await this.tryHandleAtomicCartReplacement(conv,waId,editable,text,products,cfg,{sourceIsCatalogTitle:true})
         : await this.tryHandleReferencedCookingChange(conv,waId,editable,text,cfg);

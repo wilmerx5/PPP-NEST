@@ -28,6 +28,8 @@ export type WhatsappProductCandidate = {
 };
 
 export type WhatsappPendingAttribute = {
+  /** Newly required replacement options must be chosen, never defaulted. */
+  requireExplicitOptions?: boolean;
   /** Validated partial option groups; cart stays unchanged until their quantities sum to the order. */
   distributionParts?: string[];
   /** Explicitly offered alternatives for replacing this pending drink by name. */
