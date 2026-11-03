@@ -2395,7 +2395,7 @@ export class WhatsappOrchestratorService {
       }
     }
     // Resolve the active quantity list before interpreting its note labels as new notes.
-    if (session.pendingCartQuantity && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+    if (session.pendingCartQuantity?.options?.length && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
         !session.pendingSubsetKitchenNote && !session.pendingPriceInquiry &&
         !CART_EDIT_SELECTION_KEYS.some(key => key !== 'pendingCartQuantity' && !!session[key]) &&
         ['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state) &&
