@@ -1690,9 +1690,19 @@ export class WhatsappOrchestratorService {
     // It never supplies a name/address/payment or clears a pending selection.
     if (this.isPoliteMenuLinkRequest(originalText)) {
       const current = this.conversationService.getSession(conv);
-      const reminder = current.cart.length ? this.formatInterruptedStepReminder(conv,current) : '';
+      const reminder = current.cart.length || current.pendingAddOffer ? this.formatInterruptedStepReminder(conv,current) : '';
       await this.reply(conv,msg.waId,(cfg.menuLinkMessage || cfg.menuUrl || this.formatContinueShoppingPrompt(current)) +
         (reminder ? `\n\n${reminder}` : ''));
+      return;
+    }
+    // An unaccepted quote is not an existing order. Answer general ETA without
+    // losing its add/decline decision or consuming it as checkout input.
+    const quotedSession = this.conversationService.getSession(conv);
+    if (!quotedSession.cart.length && quotedSession.pendingAddOffer && !conv.humanTakeover &&
+        !['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state) &&
+        isStandaloneDeliveryEtaInquiry(originalText)) {
+      await this.reply(conv,msg.waId,this.formatDeliveryEtaSentence(cfg) + '\n\n' +
+        this.formatInterruptedStepReminder(conv,quotedSession));
       return;
     }
     // Do not strip the condition and execute an otherwise recognizable option.

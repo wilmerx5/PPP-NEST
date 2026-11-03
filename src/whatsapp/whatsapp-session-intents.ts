@@ -475,7 +475,7 @@ export function isStandaloneDeliveryEtaInquiry(text: string): boolean {
   const t = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[¿?¡!.,]/g, ' ').replace(/\b(?:veci|vecino|vecina|por favor|porfa)\b/g, ' ')
     .replace(/\s+/g, ' ').trim();
-  return /^(?:y )?(?:mas o menos )?(?:cuanto (?:se )?(?:demora|demoran|tarda|tardan)(?: (?:el )?(?:domicilio|envio|pedido))?|en cuanto (?:llega|llegaria)(?: (?:el )?domicilio)?|(?:cual es el )?tiempo de (?:entrega|domicilio))$/.test(t);
+  return /^(?:y )?(?:mas o menos )?(?:cuanto (?:se )?(?:demora|demoran|tarda|tardan)(?: (?:(?:el|la) )?(?:domicilio|envio|pedido|entrega))?|en cuanto (?:llega|llegaria)(?: (?:el )?domicilio)?|(?:cual es el )?tiempo de (?:entrega|domicilio))$/.test(t);
 }
 
 export function isDeliveryEtaInquiry(text: string): boolean {
