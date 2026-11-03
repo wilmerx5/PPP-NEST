@@ -1,5 +1,12 @@
 # Plan unificado de corrección de pedidos
 
+## VIGENTE — tanda363: cambios de catálogo en cotizaciones múltiples
+
+Baseline52/56 fallan:32 precio cambiado,16 disponibilidad parcial y4 oferta sin snapshot;4 sin cambios ya pasaban. Cotización guarda ID/nombre/precio de todos los productos. Al aceptar, precio cambiado o snapshot antiguo exige recotizar; disponibilidad parcial/total bloquea agregar, identifica faltantes y retira oferta para nueva selección.68 regresiones en dos catálogos × agente off/mock;16 cierres DTO simulados. Incluye cambios repetidos y recuperación explícita. Foco228/4 y final68/1 aprobados. Código `9508da43`.
+
+Global34410/431 aprobada;649 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue363 pendiente; runtime staging362. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Límites: precios base, no nuevas reglas de tamaño/cantidades diferentes por línea. Próximo: repetición/reformulación y cantidades distintas en una cotización múltiple, revisando cobertura existente.
+
+
 ## VIGENTE — tanda362: precio actualizado al aceptar cotización individual
 
 Baseline32/56 fallan: oferta simple agregaba usando precio distinto sin avisar.24 controles ya pasaban. Ahora cambio de precio del mismo producto conserva carrito/cantidad, actualiza oferta y exige nueva aceptación.72 regresiones:32 subida/bajada y aceptar/rechazar,16 agotado/retirado,8 precio idéntico,8 cambio/agotamiento posterior,8 respuestas de cantidad. Dos catálogos × agente off/mock;16 cierres DTO simulados. Foco224/4 y final72/1 aprobados. Código `53b782dc`.

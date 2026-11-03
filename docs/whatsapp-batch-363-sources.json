@@ -1,0 +1,24 @@
+{
+  "batch": 363,
+  "source": "Derivado de chats previos y revisi\u00f3n de aceptaci\u00f3n m\u00faltiple del plan362",
+  "codeCommit": "9508da43",
+  "baseline": {
+    "total": 56,
+    "failed": 52,
+    "passed": 4
+  },
+  "newTests": 68,
+  "journeysWithMockOrder": 16,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Sin modelo/canal real",
+    "Precios base, no cambios de tama\u00f1o",
+    "Cantidades distintas por l\u00ednea pendientes"
+  ]
+}
