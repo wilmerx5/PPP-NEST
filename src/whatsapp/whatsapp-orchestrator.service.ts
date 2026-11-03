@@ -16446,8 +16446,11 @@ export class WhatsappOrchestratorService {
       return ask(this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n');
     if (/[¿?]/.test(text) || /\b(?:si|no|confirmar|confirmo|ambos|todos|agrega|quita|cambia|quiero|dame)\b/.test(said)) return ask();
     const numeric = /^\d{1,2}$/.test(said);
+    const namedFirst = said.match(/^(?:(?:al|a la|el|la) )?(?:primero|primer|primera|pimer)(?: (.+))?$/);
+    const namedFirstIndex = namedFirst && scope.indices.length &&
+      (!namedFirst[1] || this.normalizeForMatch(session.cart[scope.indices[0]].name)===namedFirst[1]) ? scope.indices[0] : undefined;
     const match = numeric ? null : this.uniqueClarificationLine(session,scope.indices.map(cartIndex=>({cartIndex})),text);
-    const index = numeric ? scope.indices[Number(said)-1] : match && match !== 'ambiguous' ? match.index : undefined;
+    const index = numeric ? scope.indices[Number(said)-1] : namedFirstIndex ?? (match && match !== 'ambiguous' ? match.index : undefined);
     if (index === undefined) return ask();
     const line = session.cart[index];
     if (scope.preserve.some(reference=>correctionMatchesLine(line,reference)) || kitchenNotesConflict(line.note,pending.note))
@@ -17494,6 +17497,15 @@ export class WhatsappOrchestratorService {
           productIds: [...new Set(indices.map(index => session.cart[index].productId))], byUnits: true } };
         await this.conversationService.saveSession(conv, next);
         await this.reply(conv, waId, this.formatSubsetKitchenNoteQuestion(next));
+        return true;
+      }
+      if (edit.kind === 'append' && !otherSelection &&
+          ['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) {
+        const next = {...session,pendingSubsetKitchenNote:{quantity:0,note:edit.note,
+          productIds:[...new Set(indices.map(index=>session.cart[index].productId))],
+          preparationScope:{cartSignature:JSON.stringify(session.cart),createdAt:Date.now(),indices,preserve:edit.preserve}}};
+        await this.conversationService.saveSession(conv,next);
+        await this.reply(conv,waId,this.formatPreparationNoteClarification(next));
         return true;
       }
       await this.reply(conv, waId, `Tienes varias líneas de ese plato: ${indices.map(index => this.formatCartLineLabel(session.cart[index]) +
