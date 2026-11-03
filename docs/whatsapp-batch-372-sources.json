@@ -1,0 +1,39 @@
+{
+  "batches": [
+    372
+  ],
+  "codeCommit": "3bb48cbf1a4dd9e79b8b1ee8d82b97ec35961b69",
+  "source": "Derived from 01/11 messages438\u2013447 and batch371 next-step; seeded cart, not literal historical replay",
+  "baselineInitial": {
+    "tests": 4,
+    "failed": 4
+  },
+  "baselineFinal": {
+    "tests": 68,
+    "failed": 28,
+    "passed": 40
+  },
+  "newTests": 68,
+  "selectionJourneys": 32,
+  "interruptionCases": 24,
+  "noteGuards": 12,
+  "mockOrderClosures": 48,
+  "focused": {
+    "tests": 273,
+    "suites": 4
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Does not resolve compound redistribution across preparations in one reply",
+    "Model/channel/persistence simulated",
+    "Historical duplication root cause not reproduced"
+  ],
+  "initialCodeCommit": "019fbf55ccd238e42f356a2aedaf6564be6f9488",
+  "interruptedGlobal": {
+    "failedSuite": "whatsapp-shared-serving-interruptions.spec.ts",
+    "failedCases": 6,
+    "reason": "Early routing entered incomplete pending quantity selection without options; fixed by requiring nonempty options",
+    "completed": false
+  }
+}

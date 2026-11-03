@@ -1,0 +1,24 @@
+{
+  "batch": 358,
+  "source": "Casos derivados de chats aportados previamente sobre cambio de preparación, combinados con aclaración348 y edición355",
+  "codeCommit": "14919485",
+  "baseline": {
+    "failed": 28,
+    "passed": 18,
+    "total": 46
+  },
+  "newTests": 62,
+  "journeysWithMockOrder": 32,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Sin modelo/canal real",
+    "Opciones adicionales requieren resolver o retirar nota primero",
+    "Sin reemplazo arbitrario de múltiples productos"
+  ]
+}

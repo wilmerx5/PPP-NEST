@@ -1,5 +1,219 @@
 ## VIGENTE — tanda334: consultar combo sin reabrir bebida (01/11)
 
+## VIGENTE — tanda378: conservar la aclaración de nota entre líneas del mismo plato
+
+Código integrado `285b551e` (original aislado `4bb4e2ce`). Dos líneas del mismo SKU pedían aclarar sin guardar nota/candidatos. Ahora guardan firma/vencimiento/lista y reutilizan el resolver protegido. Acepta «al primero», «al primer Churrasco» y «al pimer Churrasco»; si hay nombre, debe coincidir con el primer candidato.40 regresiones nuevas:24 recorridos DTO y16guardas; dos catálogos × agente off/mock × carrito/confirmación. Baseline24/24 fallan por estado ausente; ajuste intermedio detectó8casos de «al primero». Foco146/3 y TypeScript general aprobados. Validación consolidada: global inicial con1fallo en un simulador antiguo (outboundHoldByWaId ausente); solo se reparó ese fixture y se amplió su aserción de resolución. Sin cambios en producción desde la global. Repetición173/4 aprobada,440suites reutilizadas con fuentes idénticas; temporizadores, TypeScript general/build y scripts ejecutados después. Reparación `a0c04607`. Global final: 35268 pruebas / 446 suites aprobadas; 664 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging378 desplegado/verificado: `82a2acf2`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41681992091; evidencia378-staging-deployment. Controles compilados existentes aprobados; cobertura378 local.
+
+Global378 consolidada en worktree persistente `/home/levi/Documents/programming/PPP/ppp-staging-374-recovery`; evidencia/runner `.git/codex-validation-378`. Fuentes integradas verificadas iguales a las de la copia probada. Validación terminada. Staging378 verificado: `82a2acf2`, healthy, cero reinicios, API local/pública ok, modelos/configuración preservados; workflow41681992091. Global377:35228/445 aprobada, TypeScript general/build y scripts ok. Producción349/Kamppo321 sin cambios. Sin inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto.
+
+Límite: selección de la primera línea completa, no una unidad dentro de una línea múltiple ni todos los ordinales/typos. Consultas, nombres ajenos, acciones mezcladas, conflicto, firma obsoleta, vencimiento, cancelación y repetición conservan el carrito. Próximo: alcance por unidades en líneas repetidas y notas diferentes/repetidas en varios productos, sin borrar opciones ni duplicar pedidos.
+
+
+## VIGENTE — tanda377: nota para algunas unidades sin añadir productos
+
+Código `c773c7cf`. «A dos de los tres churrascos sin arroz y el otro normal» podía pasar de3a6unidades. Reconoce la preposición inicial únicamente ante cantidad+«de los/las» y reutiliza el reparto existente. La variante interrogativa también podía agregar3unidades; ahora conserva el carrito y pide indicar el cambio. Sin nombres/IDs/precios del restaurante en producción.
+
+60 regresiones nuevas:48 recorridos con DTO en PPP/catálogo sintético × agente off/mock × carrito/confirmación × nota previa presente/ausente × dígito/palabra/preposición;8guardas de ambigüedad/sumas/pregunta y4contrastes del parser. Baseline con referencia explícita:16/48fallan;32pasaban. Ampliación detectó2fallos de pregunta; foco final194/3 aprobado. Global final: 35228 pruebas / 445 suites aprobadas; 663 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging377 desplegado/verificado: `fd83887e`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41678556101; evidencia377-staging-deployment. Controles compilados existentes aprobados; cobertura377 local.
+
+Fuentes congeladas; runner privado `.git/codex-validation-377`, worktree persistente `/home/levi/Documents/programming/PPP/ppp-staging-374-recovery`. Global completa; fuentes verificadas. Staging377 (`fd83887e`), controles376 integrados; producción349/Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto.
+
+Alcance: una línea de3unidades identificada por nombre,2con nota y1sin esa nota; preserva atributos, nota previa, bebida aparte, total de unidades y checkout. Frase sin producto en carrito múltiple pide aclaración. No acredita resolución posterior de esa aclaración, múltiples líneas del mismo SKU con opciones distintas ni toda la gramática coloquial. La exploración inicial exigía modificación sin nombrar producto en carrito múltiple; esa premisa se descartó y no se contabiliza como fallo corregido. Casos derivados del problema de churrascos30/10 y de alcance de notas01/11, no replay literal de todos los chats.
+
+Próximo: referencias «al pimer churrasco», notas distintas en varias líneas y correcciones/repeticiones tras repartir notas, verificando que no dupliquen ni borren opciones.
+
+
+## VIGENTE — tanda376: controles de conservación tras cambiar una opción
+
+Ocho regresiones adicionales aprobadas: tras repartir sopas y elegir la preparación, «todos con quinoa» conserva4platos, sopa minoritaria y notas. Catálogo sintético × agente off/mock × ambas selecciones × nota presente/ausente. No requiere cambio de producción. No hubo8bugs corregidos: el comportamiento final ya funcionaba; la primera exploración asumía erróneamente que Base no tenía default.
+
+Staging375 desplegado y verificado en `e1256172`: healthy, cero reinicios, API local/pública ok, modelos/configuración preservados; workflow41674059548. Global375:35160pruebas/443suites, TypeScript general/build y scripts aprobados. Los8controles376 se ejecutaron aparte: no se suman como una nueva global conjunta. Solo pruebas/documentación después del runtime validado. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. Producción349/Kamppo321 sin cambios.
+
+Próximo: notas multiproducto de los chats01/11, mensajes202–216/368–385, priorizando alcance exacto por unidad, sin duplicar productos ni perder opciones. Repartos fragmentados con atributos obligatorios sin defaults siguen sin acreditarse.
+
+
+## VIGENTE — tanda375: conservar encabezados mientras llegan opciones
+
+Código `6d7f7943`. Una entrada abreviada como «4 ejecutivos:3 fritos y1 broster» queda pendiente cuando no trae ninguna opción explícita, en vez de añadir inmediatamente los defaults. Conserva el total y pide opciones; acepta después «todos pierna pernil,3 ajiacos y una menudencia» y pregunta qué preparación lleva la sopa minoritaria. Reutiliza validación atómica por catálogo; cancelación y firma de carrito protegen el borrador.
+
+Baseline inicial48/48 fallan: el fixture PPP podía añadir opciones predeterminadas inmediatamente; no son48carritos vacíos ni48duplicaciones.64 regresiones nuevas en dos catálogos × agente off/mock:16 recorridos con cierre DTO,32 guardas y16 recuperaciones tras nota/entrada inválida/consulta. Foco280/4 aprobado; después se reforzaron aserciones DTO y suma sintética, suite final64/64 aprobada. Global final: 35160 pruebas / 443 suites aprobadas; 661 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging375 desplegado/verificado: `e1256172`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41674059548; evidencia375-staging-deployment. Controles compilados existentes aprobados; cobertura375 local.
+
+Ejecución global en carpeta persistente `/home/levi/Documents/programming/PPP/ppp-staging-374-recovery`; runner/evidencia privada en `.git/codex-validation-375`. Global completada y fuentes verificadas. Sin inferencia pagada, Meta ni órdenes externas; presupuesto267/256/11 intacto. Runtime staging375 (`e1256172`); producción349/Kamppo321 sin cambios.
+
+Alcance: encabezado abreviado y opciones compartidas/repartidas completas en un mensaje posterior, notas intermedias y selección de sopa. No acredita todos los repartos fragmentados opción por opción ni modificaciones posteriores a una orden confirmada. Si una opción explícita completa el producto mediante defaults existentes, no se espera indefinidamente otro mensaje. Consultas durante este borrador mantienen el reparto y recuerdan opciones; no se acredita respuesta de cotización. Próximo: validar reparto fragmentado por varios mensajes y conservación de una asignación ya resuelta cuando falta otra opción; luego notas multiproducto202–216/368–385.
+
+
+## VIGENTE — tanda374: encabezados y repartos compactos
+
+Código `138a99da`. Reconoce total y preparaciones separados por dos puntos, comas, punto y coma o un total al final. Reutiliza la validación por catálogo y mantiene la aclaración de sopa antes de agregar, sin contar el encabezado como otro producto. 100 regresiones nuevas:64 recorridos completos,32 guardas y4 controles literales abreviados; dos catálogos × agente off/mock.64 cierres DTO simulados. Baseline final92/100 fallan;8 controles ya pasaban. Foco292/4 aprobado. Global final: 35096 pruebas / 442 suites aprobadas; 660 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging374 desplegado/verificado: `9a0c9727`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41670255474; evidencia374-staging-deployment. Controles compilados existentes aprobados; cobertura374 local.
+
+La ejecución global anterior se interrumpió y desapareció el worktree temporal. Recuperado el commit en carpeta persistente; las660 fuentes coinciden con los hashes congelados. La repetición completa del inventario global terminó aprobada. Sin inferencia pagada, Meta ni órdenes externas; presupuesto267/256/11 intacto. Producción349/Kamppo321 sin cambios. No acredita modelo/canal real.
+
+Límites: separadores explícitos y total mínimo3; los4 controles abreviados admiten una solicitud clara de opciones, no acreditan captura progresiva ni cierre. Próximo: opciones compartidas/distribuidas en mensajes siguientes («todos pierna pernil,3ajiacos y una menudencia»), luego notas multiproducto202–216/368–385. La causa de la inflación histórica no está demostrada.
+
+
+## VIGENTE — tanda373: reparto atómico entre líneas con opciones
+
+Código `390b64ec`. Baseline inicial4/4 fallan por aclaración sin líneas; ampliación detecta separador coma y12 fallos al repetir respuesta sobre la implementación intermedia.76 regresiones:24 recorridos de reparto/repetición,40 controles de interrupción/cancelación/suma/obsolescencia,4 repartos con dos preparaciones ambiguas y8 controles de repetición antigua.52 cierres DTO simulados. Dos catálogos × agente off/mock; compra/revisión final. Foco349/5 aprobado. Global final: 34996 pruebas / 441 suites aprobadas; 659 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging373 desplegado/verificado: `658ea3c3`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41656152898; evidencia373-staging-deployment. Controles compilados existentes aprobados; cobertura373 local.
+
+Guarda totales por preparación, muestra las líneas y aplica todas las cantidades juntas solo al resolver cada línea y coincidir las sumas. Conserva notas/bebidas/productos aparte y paso de checkout. Respuesta repetida reciente no se convierte en nota de otro producto; firma/10min protegen selección y repetición. Ledger executive-distribution03 amplía cobertura sintética; entrada literal compacta e inflación histórica siguen pendientes. Próximo: encabezados y repartos en una sola frase, después notas multiproducto202–216/368–385. No cubre cantidades cero ni redistribución parcial por varios mensajes. Producción349/Kamppo321 sin cambios; cero inferencia pagada/Meta/órdenes externas, presupuesto267/256/11 intacto. No acredita modelo/canal real.
+
+
+## VIGENTE — tanda372: resolver la línea y retomar confirmación
+
+Código inicial `019fbf55`, guarda final `3bb48cbf`. Baseline final:28/68 fallan,40 controles ya pasaban.68 regresiones nuevas en dos catálogos, agente off/mock y compra/revisión final: selección por número, ordinal, sopa y nota exacta; consulta de total, opción compartida y carrito obsoleto; controles de polaridad, pregunta y nota duplicada. 48 cierres DTO simulados conservan notas, bebida y producto aparte. Foco final273/4 aprobado. Global inicial interrumpida tras6 fallos con selección incompleta; corregida la entrada para exigir lista de opciones válida. Global final: 34920 pruebas / 440 suites aprobadas; 658 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging372 desplegado/verificado: `9e5e2489`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41644822140; evidencia372-staging-deployment. Controles compilados existentes aprobados; cobertura372 local.
+
+Corregido retorno a «¿algo más?» después de cambiar cantidades en revisión final: muestra total actualizado y pide confirmar de nuevo. La lista pendiente se resuelve antes de interpretar sus notas como nuevas instrucciones; coincidencia exacta conserva con/sin. No completa aún la redistribución compuesta entre varias preparaciones de371: esta tanda resuelve la aclaración existente por línea. Próximo: cantidades explícitas por varias líneas en una frase, luego notas multiproducto202–216/368–385. Producción349/Kamppo321 sin cambios; cero inferencia pagada/Meta/órdenes externas, presupuesto267/256/11 intacto. No acredita modelo/canal real.
+
+
+## VIGENTE — tanda371: reiteración y reparación de cantidades por preparación
+
+Código `d16ba238`. Baseline final42/48 fallan (respuesta/estado/carrito),6controles ya pasaban. Reconoce total agregado existente, preserva/corrige reparto entre preparaciones de una misma familia y libera cancelación pendiente sin tocar una orden anterior.48regresiones:4recorridos originales,32carritos preparados en dos familias × agente off/mock × compra/revisión final y12controles cancelación/pago.20 cierres DTO; notas, bebidas y el producto aparte conservados. Foco543/4 aprobado. Global: 34.852 pruebas / 439 suites aprobadas; 657 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging371 desplegado/verificado: `dddc9747`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41591181896; evidencia371-staging-deployment. Controles compilados existentes aprobados; cobertura371 local.
+
+Ledger01/11 actualiza executive-distribution01/03 parcialmente. Cantidad7es un fixture de recuperación; no reproduce la inflación histórica original. Varias líneas con distintas opciones/familia equivocada exigen aclaración. Próximo: completar aclaración de cantidades por línea, conservando sopas/bebidas; luego notas en varios platos202–216/368–385. Producción349/Kamppo321 sin cambios; cero inferencia pagada/Meta/órdenes externas, presupuesto267/256/11 intacto. No acredita modelo/canal real.
+
+
+## VIGENTE — tanda370: bebida al elegir variante con varios productos
+
+Código `2f5d2a00`. Reproducido chat01/11 mensajes448–459: Pepsi se perdía al elegir combo. Conserva bebida final en un único grupo compatible y segmento propio al elegir variante, manteniendo cantidades y bebidas aparte. Baseline final14/40 fallan;26 controles ya pasaban.40 regresiones/40 cierres DTO simulados, agente off/mock, fixturePPP y catálogos sintéticos pollo/pescado; número/nombre, cantidades1/2, posición de bebida y Pepsi/Ginger. Foco108/4 aprobado. Global34804/438 aprobada;656 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging370 desplegado/verificado: `5afe0c3f`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41587846053; evidencia370-staging-deployment. Controles compilados existentes aprobados; cobertura370 local.
+
+Ledger01/11 actualiza pending-option-retention01 y parcialmente03. Próximo: reparación de cantidades repartidas, chat438–447 (4ejecutivos:3fritos/1broaster); referencias abreviadas/condiciones y múltiples dueños de bebida pendientes. Producción349/Kamppo321 sin cambios; cero inferencia pagada/Meta/órdenes externas, presupuesto267/256/11 intacto. No acredita modelo/canal real.
+
+
+## VIGENTE — tanda369: reparación de combo y bebida por línea
+
+Código `304b9341`.26 pruebas nuevas:16 recorridos completos (dos catálogos × agente off/mock × carrito/revisión final × dos retiradas),16 cierres DTO y10 guardas. Baseline inicial16/16 fallan en cambio de bebida. Corregida prioridad frente a preparación, retirada «que va con» y bloqueo de eliminación por aproximación cuando falta la opción indicada. Foco170/5 aprobado. Global34764/437 aprobada,655 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging369 desplegado/verificado: `0f1ee73c`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41585064291; evidencia369-staging-deployment. Controles compilados existentes aprobados; cobertura369 local.
+
+Ledger01/11 actualiza únicamente combo-edit-remove01/02 con alcance sintético explícito. Próximo: combo + medio pollo con bebida explícita durante opciones pendientes; luego reparar cantidades repartidas. Duplicaciones históricas aún requieren trazas. Producción349/Kamppo321 sin cambios; cero inferencia pagada/Meta/órdenes externas, presupuesto267/256/11 intacto. No acredita modelo/canal real.
+
+
+## VIGENTE — tanda368: cancelar solo el plato pendiente
+
+Baseline16/48 fallan;32 controles ya pasaban. «Cancela ese plato» ahora usa la retirada de selección existente, igual que «ese producto», manteniendo compras válidas y cola.48 controles en dos catálogos × agente off/mock × antes/después de agregar primera compra ×6 frases;40 cierres DTO simulados y8 cancelaciones totales con respuesta tardía. Foco176/3 aprobado. Código `14d6a5c3`.
+
+Global34738/436 aprobada;654 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging368 desplegado/verificado: `d61dfdfa`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41582127210; evidencia368-staging-deployment. Controles compilados existentes aprobados; cobertura368 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Próximo: volver a recorridos completos críticos de chats, reparación de carrito/reemplazos compuestos y conservación de bebida/notas; duplicaciones históricas sin reproducción requieren trazas. Ofertas antiguas/consultas largas secundarias.
+
+
+## VIGENTE — tanda367: disponibilidad al responder opciones
+
+Baseline32/48 fallan;16 controles ya pasaban. El producto activo agotado podía agregarse y el retirado dejaba la cola sin retomar. Ahora valida disponibilidad, avisa, retira solo la fila activa y continúa con las siguientes válidas sin perder el carrito.48 regresiones en dos catálogos × agente off/mock: activo/siguiente/segunda fila/todos/restantes agotados o retirados; cancelación total y respuesta tardía.32 cierres DTO simulados. Foco892/3 aprobado. Código `26a4fddd`.
+
+Global34690/435 aprobada;653 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging367 desplegado/verificado: `d1df0fdc`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41579862848; evidencia367-staging-deployment. Controles compilados existentes aprobados; cobertura367 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Catálogo vacío conserva fallback previo; disponibilidad respeta ignoreBusinessHours. Próximo: cancelar solo plato frente a pedido completo con opciones parciales y respuestas tardías; ofertas antiguas/consultas largas.
+
+
+## VIGENTE — tanda366: conservar productos cotizados al elegir opciones
+
+Baseline final76/80 fallan;4 controles ya pasaban. La cotización retiraba el producto activo antes de completar opciones y la finalización podía saltarse el siguiente. Ahora conserva la cola hasta completar por ID y asigna a cada producto su segmento, separando cantidades/notas/opciones.80 regresiones nuevas en dos catálogos × agente off/mock, platos con defaults y bebidas de sabor obligatorio; respuestas por nombre/número, menú intermedio, opciones explícitas y tres productos.80 cierres DTO simulados. Foco224/3 aprobado. Código `559784c7`.
+
+Global34642/434 aprobada;652 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging366 desplegado/verificado: `1da7a1cb`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41576822468; evidencia366-staging-deployment. Controles compilados existentes aprobados; cobertura366 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Mantiene defaults existentes. Próximo: interrupciones/cancelación/disponibilidad al elegir opciones, ofertas antiguas y consultas largas.
+
+
+## VIGENTE — tanda365: cantidades por producto en cotizaciones
+
+Baseline48/64 fallan en total mostrado;16 controles ya pasaban. Guarda cantidades por SKU, presenta cantidad/subtotal y recalcula ante cambios de precio sin agregar hasta nueva aceptación. Ampliación detectó2 fallos de paquetes: «Pack 6 Empanadas» podía añadir6 paquetes; reconocimiento de contenido del SKU ampliado.76 regresiones nuevas, dos catálogos × agente off/mock,64 cierres DTO simulados, cantidades2/3,3/2,1/4,1/1, dígitos/palabras, menú intermedio, cambio de precio, cantidad implícita, paquetes y rechazo. Foco220/3 aprobado. Código `f4e8e2a2`.
+
+Global34562/433 aprobada;651 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging365 desplegado/verificado: `2eca246b`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41572847637; evidencia365-staging-deployment. Controles compilados existentes aprobados; cobertura365 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Alcance: precios base, SKUs distintos sin opciones obligatorias. Próximo: cantidades con opciones obligatorias y notas por plato; ofertas antiguas sin cantidades y consultas largas.
+
+
+## VIGENTE — tanda364: repetir cotización sin carrito
+
+Baseline60/64 fallan en claridad;4 ya pasaban. Repetir pregunta admite oferta pendiente con carrito vacío, muestra nombres cotizados y aclara que aún no se agregaron; conserva sesión y retoma sí/no.76 regresiones:64 recorridos en dos catálogos × agente off/mock × individual/múltiple × cuatro reformulaciones × aceptación/rechazo,32 cierres DTO simulados;4 cantidad individual2;8 guardas de estados cerrados/humanos. Foco240/3 y final76/1 aprobados. Código `a11dc5c2`.
+
+Global34486/432 aprobada;650 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging364 desplegado/verificado: `b151e57c`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41569950036; evidencia364-staging-deployment. Controles compilados existentes aprobados; cobertura364 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. No cambia cálculo de cotizaciones múltiples. Próximo prioritario: reproducir cantidades distintas por producto, total mostrado y carrito/DTO al aceptar/recotizar; revisión estática detecta suma de precios unitarios en formatMultiProductPriceReply.
+
+
+## VIGENTE — tanda363: cambios de catálogo en cotizaciones múltiples
+
+Baseline52/56 fallan:32 precio cambiado,16 disponibilidad parcial y4 oferta sin snapshot;4 sin cambios ya pasaban. Cotización guarda ID/nombre/precio de todos los productos. Al aceptar, precio cambiado o snapshot antiguo exige recotizar; disponibilidad parcial/total bloquea agregar, identifica faltantes y retira oferta para nueva selección.68 regresiones en dos catálogos × agente off/mock;16 cierres DTO simulados. Incluye cambios repetidos y recuperación explícita. Foco228/4 y final68/1 aprobados. Código `9508da43`.
+
+Global34410/431 aprobada;649 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging363 desplegado/verificado: `6322b444`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41567153690; evidencia363-staging-deployment. Controles compilados existentes aprobados; cobertura363 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Límites: precios base, no nuevas reglas de tamaño/cantidades diferentes por línea. Próximo: repetición/reformulación y cantidades distintas en una cotización múltiple, revisando cobertura existente.
+
+
+## VIGENTE — tanda362: precio actualizado al aceptar cotización individual
+
+Baseline32/56 fallan: oferta simple agregaba usando precio distinto sin avisar.24 controles ya pasaban. Ahora cambio de precio del mismo producto conserva carrito/cantidad, actualiza oferta y exige nueva aceptación.72 regresiones:32 subida/bajada y aceptar/rechazar,16 agotado/retirado,8 precio idéntico,8 cambio/agotamiento posterior,8 respuestas de cantidad. Dos catálogos × agente off/mock;16 cierres DTO simulados. Foco224/4 y final72/1 aprobados. Código `53b782dc`.
+
+Global34342/430 aprobada;648 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging362 desplegado/verificado: `73619687`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41563702440; evidencia362-staging-deployment. Controles compilados existentes aprobados; cobertura362 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Alcance: oferta individual mismo ID; tamaños distintos siguen ruta previa. Próximo prioritario: cotizaciones múltiples ante cambios de precio/agotamiento parcial; luego repetir/reformular preguntas con oferta pendiente.
+
+
+## VIGENTE — tanda361: menú y tiempo durante cotización pendiente
+
+Baseline64/64 fallan en continuidad. Menú ahora recuerda oferta aun con carrito vacío; ETA general aislada responde y retoma decisión sin tratar cotización como orden registrada. Reconoce «cuánto tarda la entrega».72 controles nuevos:64 recorridos en dos catálogos × agente off/mock × oferta individual/múltiple × cuatro consultas × aceptar/rechazar,32 cierres DTO simulados;8 guardas de mensajes mixtos/orden concreta. Foco92/2 y final72/1 aprobados. Código `f3972949`.
+
+Global34270/429 aprobada;647 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Staging361 desplegado/verificado: `bb0b9cc4`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41560854089; evidencia361-staging-deployment. Controles compilados existentes aprobados; cobertura361 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni tiempos reales de llegada. Próximo: repetición/reformulación con oferta pendiente, cantidades cotizadas y cambios de disponibilidad/precio entre consulta y aceptación.
+
+
+## VIGENTE — tanda360: retomar cotizaciones tras consultas de pago
+
+Oferta conservada pero recordatorio genérico tras preguntar datáfono/tarjeta/efectivo. Ahora recuerda producto/cantidad, o todos los productos de la cotización, y pide sí/no para agregar/rechazar. Baseline exploratoria:24 fallos reales de claridad y24 preparaciones inválidas retiradas; ver patterns360.28 regresiones nuevas en dos catálogos × agente off/mock, aceptación/rechazo y12 cierres simulados. Foco151/3 y final28/1 aprobados. Código `1f81890e`.
+
+Global34198/428 aprobada;646 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Staging360 desplegado/verificado: `d54591ce`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41558191922; evidencia360-staging-deployment. Controles compilados existentes aprobados; cobertura360 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Próximo: consultas informativas de menú/tiempo con carrito vacío y oferta pendiente; coherencia entre recordatorio y decisión posterior.
+
+
+## VIGENTE — tanda359: opciones nuevas durante reemplazo con nota pendiente
+
+Baseline44/44 fallan. Reemplazo por nombre completo con origen único y opciones anteriores compatibles inicia selección explícita de las opciones nuevas. Descarta la nota pendiente sin aplicar y lo comunica; conserva el original hasta completar. No autocompleta opciones nuevas, confirmar recuerda la selección, cancelar conserva original y recupera checkout.44 controles nuevos:32 cierres DTO/recibo simulados,8 cancelaciones,4 guardas de original cambiado; dos catálogos × agente off/mock. Foco106/2 aprobado. Código `0613645b`.
+
+Global34170/427 aprobada;645 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Staging359 desplegado/verificado: `b2131279`, healthy, cero reinicios, API local/pública ok, modelos/configuración preservados. Workflow41555190121; evidencia359-staging-deployment. Controles compilados existentes aprobados; cobertura359 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Opciones previas incompatibles, destino ambiguo o instrucciones adicionales conservan guardas de358. Próximo: claridad al retomar ofertas tras consultas intermedias.
+
+
+## VIGENTE — tanda358: reemplazos durante aclaración de nota
+
+Baseline28/46 fallan: cambios inequívocos bloqueados y caducidad/carrito cambiado interceptados antes de resolver la nota. Reutiliza reemplazo atómico y cambios de preparación sobre origen único/destino disponible con opciones completas; conserva cantidades, variantes, notas y checkout. Al cambiar carrito descarta nota pendiente y avisa; número antiguo no la aplica al nuevo plato. Títulos completos de catálogo no se convierten en nota.62 controles nuevos:32 cierres DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación ×4 cambios;30 guardas. Foco564/4 aprobado. Código `14919485`.
+
+Global34126/426 aprobada;644 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging358 desplegado/verificado: `3c4a3c2c`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41551895056; evidencia358-staging-deployment. Controles compilados existentes aprobados; cobertura358 local. Producción349 sin cambios. Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Destinos con opciones nuevas o indicaciones extra requieren terminar/retirar primero la nota pendiente; no se inicia otra selección superpuesta. Próximo: recuperación guiada cuando el reemplazo requiere opciones adicionales, conservando el original hasta completarlas; luego claridad al retomar ofertas tras consultas.
+
+
+## VIGENTE — tanda357: datáfono y preguntas de capacidad de pago
+
+Baseline60/64 fallan: «manejan datáfono» podía buscar productos; consultas de tarjeta podían contestarse por efectivo seleccionado. Ahora las preguntas aisladas se resuelven antes de consumir campos de checkout; no seleccionan pago ni descartan ofertas. Reconoce maneja/manejan, recibe/reciben y consulta corta; distingue enlace de datáfono, muestra condiciones de métodos presenciales explícitos y reconoce disponibilidad no confirmada.73 controles nuevos,6 estados,2 catálogos, agente off/mock,MP configurado/ausente y4 cierres simulados. Foco164/3; final73/1. Primera global detectó4 fallos de claridad en consulta sobre efectivo: se restauró «no lo dejo elegido» y pasaron4/4; ejecución incompleta descartada. Código final `131b2c33` sobre `4c58f6d1`.
+
+Repetición global34064/425 aprobada;643 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging357 desplegado/verificado: `09721b38`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41547862031; evidencia357-staging-deployment. Controles compilados existentes aprobados; cobertura357 local. Producción349 sin cambios. Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni disponibilidad física de datáfono. Mensajes mixtos: probado límite de intercepción, no resolución de todas las intenciones. Próximo: sustitución de producto/preparación durante aclaración de nota, preservando identidad y evitando aplicar selección antigua sobre carrito cambiado.
+
+
+## VIGENTE — tanda356: datos de transferencia antes de confirmar
+
+Chat02/11: elección anticipada de transferencia omitía datos de cuenta al completar nombre/dirección; también al cambiar desde efectivo en revisión final. Baseline20/20 fallan. Ahora revisión final muestra datos configurados o aviso explícito de cuenta ausente, sin duplicar el prefacio del mismo turno.28 controles nuevos en dos catálogos × agente off/mock;16 cierres DTO simulados. Foco28/1 y124 controles relacionados aprobados. Código `8a02d021`. Incluye despedida de domicilio `f692d43e`: «Te lo enviaremos lo más pronto posible».
+
+Global33991/424 aprobada;642 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging356 desplegado/verificado: `b648c6e1`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41522483566; evidencia356-staging-deployment. Controles compilados existentes aprobados; cobertura356 local. Producción349 sin cambios. Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni pago realizado. Próximo: «manejan datáfono», distinguir equipo físico de enlace usando configuración; luego sustituciones durante aclaración de notas.
+
+
+## VIGENTE — tanda355: retirada/cantidad durante aclaración de nota
+
+Baseline16/36 fallan: la aclaración348 bloqueaba retiradas/correcciones nominales inequívocas. Ahora usa los manejadores existentes con referencia única; un cambio real descarta la nota pendiente y lo explica. Respuestas numéricas antiguas no la aplican. Ambigüedad, ordinales, pago, caducidad, condiciones y cantidades inválidas conservan las guardas.44 controles nuevos:24 cierres DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación × retirada completa/parcial/cantidad;20 guardas. Foco232/4 y44/1 aprobado. Código `87122f5b`.
+
+Global aislada33963/423 aprobada,641 fuentes congeladas e inventario exacto;4 workers, TypeScript general/build y scripts aprobados. Staging355 desplegado/verificado: `f6f5159e`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41515895462; evidencia355-staging-deployment. Controles compilados existentes aprobados; cobertura355 local. Producción349 `932f60b7` y Kamppo321 sin cambios; Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni cierra U3/U4. Próximo: sustitución de producto/preparación durante aclaración, conservando identidad y evitando aplicar notas sobre carrito cambiado.
+
+
+## VIGENTE — tanda354: teléfono y etiqueta fuera de dirección
+
+Chat02/11: etiqueta «celular» posterior al número quedaba en dirección/recibo. Reconocimiento acotado extrae móvil validado y etiqueta juntos, incluyendo +57/espacios, sin borrar referencias con esas palabras. Conserva conjunto, torre, apto y contacto al recibir la calle después. Baseline28/40 fallan;44 controles nuevos,32 cierres DTO/recibo simulado en dos catálogos × agente off/mock × calle presente/pendiente ×4 formatos. Foco258/5 y44/1 aprobados. Código `3d0aca67`.
+
+Global aislada33919/422 aprobada,640 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Primer intento interrumpido por SIGTERM/143 tras11 suites sin fallos registrados; descartado, repetición completa con4 workers aprobada. Staging354 desplegado/verificado: `101cb2a5`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41511183882; evidencia354-staging-deployment. Controles compilados existentes aprobados; cobertura354 local. Producción349 `932f60b7` y Kamppo321 sin cambios; Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No sanea órdenes históricas ni acredita modelo/canal real. Próximo: cambios/retiradas de productos durante aclaración de nota, evitando selección sobre carrito desactualizado. U3/U4 siguen abiertos.
+
+
+## VIGENTE — tandas352–353: total+demora y cierre que no es nombre
+
+352:84 controles nuevos; consulta combinada de total/ETA durante aclaración, selección y «no, el otro» conservan notas, opciones y cantidades. Baseline66/80 fallan; foco334/5 y84/1; global propia33805/420 aprobada. Código `6a5c9d7f`.
+
+353 priorizada por chat real02/11 13:18–13:23: «No así no más» se guardaba como nombre. Detector acotado compartido reconoce cierre y rechaza identidad; si estaba guardado obliga a pedir nombre real antes de confirmar. Baseline46/66 fallan;70 controles nuevos, foco431/5 y70/1 aprobados. Incluye56 cierres DTO simulados, dos catálogos y agente off/mock. Código `f64e0114`. No modifica órdenes históricas.
+
+Global conjunta33875/421 aprobada,639 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging352–353 desplegado/verificado: `5850d12f`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41504255082; evidencia353-staging-deployment. Controles compilados existentes aprobados; cobertura352–353 local. Producción349 `932f60b7` y Kamppo321 sin cambios; Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni cierra U3/U4. Próximo: limpiar etiqueta «celular» de referencia de dirección preservando conjunto/torre/apartamento y teléfono; después cambios/retiradas durante aclaración de nota.
+
+
+## VIGENTE — tanda351: demora durante aclaración de nota
+
+Baseline66/80 fallan: consultar ETA repetía candidatos sin tiempo. Detector acotado responde ETA configurada con unidades, o indica que el equipo debe confirmarla si falta configuración; conserva carrito, selección, estado y caducidad.88 controles nuevos:64 recorridos DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación × ETA presente/ausente ×4 preguntas;16 guardas y8 variantes/cortesías con cancelación posterior. Foco inicial246/4 y final88/1 aprobados.
+
+Global aislada33721/419 aprobada,637 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Código `19326414`. Staging351 desplegado/verificado: `56846fb8`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41498203435; evidencia351-staging-deployment. Controles compilados existentes aprobados; cobertura351 local. Producción349 `932f60b7` y Kamppo321 sin cambios. Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni cierra U3/U4. Próximo: consulta combinada total+demora durante aclaración y selección/corrección posterior.
+
+
+## VIGENTE — tanda350: total durante aclaración de nota
+
+Baseline50/64 fallan: al preguntar el total durante selección348, el bot repetía candidatos sin precio. Ahora responde con resumen y retoma la misma aclaración sin cambiar carrito, estado ni caducidad.68 controles nuevos:48 recorridos con DTO/recibo en dos catálogos × agente off/mock × carrito/confirmación ×6 frases;16 guardas y4 controles de domicilio. Foco inicial265/4 y final68/1 aprobados.
+
+Global aislada33633/418 aprobada,636 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Runtime `ae23d1e6`. Staging350 desplegado/verificado: `d12dd080`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41493753247; evidencia350-staging-deployment. Controles compilados existentes aprobados; cobertura350 local. Producción349 `932f60b7` y Kamppo321 sin cambios. Documentación del merge de producción sincronizada; Bold/auth locales preservados. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real ni cierra U3/U4. Próximo: tiempo de entrega durante aclaración y retomarla.
+
+
 ## VIGENTE — producción349: merge de staging a Main (02/11/2026)
 
 Solicitud explícita del usuario: merge con Main y despliegue. Runtime producción `932f60b7d31957378d054295a9bd154742171621`: incorpora tandas334–349 y preserva íntegros los cambios Bold/auth de Main `b4647a9e`. Merge sin conflictos, validado en worktree aislado; cambios locales ajenos de staging preservados.

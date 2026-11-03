@@ -1,0 +1,31 @@
+{
+  "batch": 366,
+  "codeCommit": "559784c702b38ad3d9141cebafea69339feb7ce5",
+  "source": "Batch365 follow-up; synthetic full-router cases derived from customer multi-product option/quantity failures",
+  "baseline": {
+    "failed": 76,
+    "passed": 4,
+    "tests": 80
+  },
+  "newTests": 80,
+  "affected": {
+    "tests": 224,
+    "suites": 3
+  },
+  "journeysWithMockOrder": 80,
+  "catalogFamilies": [
+    "food with default included drink",
+    "drinks with mandatory flavor"
+  ],
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "No live model or channel validation",
+    "No new defaults policy; existing defaults retained",
+    "Staging only; production349 and Kamppo321 unchanged"
+  ]
+}

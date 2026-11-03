@@ -7,7 +7,7 @@ function normalized(text:string):string {
 /** A count that is part of a catalog SKU name describes its contents, not copies of that SKU. */
 export function namedPackOrderQuantity(text:string,productName:string):number|null {
   const name=normalized(productName);
-  const pack=name.match(/^(\d{1,2})\s+(.+)$/);
+  const pack=name.match(/^(?:(?:pack|paquete|combo|promocion)\s+)?(\d{1,2})\s+(.+)$/);
   if(!pack || Number(pack[1])<2 || Number(pack[1])>10)return null;
   const source=normalized(text);
   const namePattern=name.split(' ').map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s+');

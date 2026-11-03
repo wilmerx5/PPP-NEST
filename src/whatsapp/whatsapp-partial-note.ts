@@ -24,6 +24,7 @@ export function isCompoundExclusionNote(text: string): boolean {
 export function parsePartialNote(text: string): { quantity: number; note: string; remainder?: number; query?: string; total?: number; implied?: boolean } | null {
   if (/[¿?;]/.test(text) || text.length > 250) return null;
   const normalized = normalizeCorrection(text).replace(/[.!]+$/, '').trim()
+    .replace(/^a (?=(?:\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+de\s+(?:los|las)\s+)/, '')
     .replace(/\by (?:el otro|la otra) normal$/, 'y los otros uno normales');
   const amount = '(?:\\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
   const tail = '(sin\\s+.+?)\\s+y\\s+(?:los|las)\\s+(?:(?:otros|otras)\\s+(' + amount + ')|(?:demas|resto))\\s+normales?$';

@@ -1,0 +1,33 @@
+{
+  "batch": 365,
+  "codeCommit": "f4e8e2a26b3263a2de0ee9a33b47d7f9ef0f06c2",
+  "source": "Derived from batch364 follow-up and earlier quantity/quote customer patterns; synthetic full-router fixtures",
+  "baseline": {
+    "failed": 48,
+    "passed": 16,
+    "tests": 64
+  },
+  "additionalExploration": {
+    "passed": 214,
+    "failed": 2,
+    "cause": "Pack 6 Empanadas accepted as six copies"
+  },
+  "newTests": 76,
+  "affected": {
+    "tests": 220,
+    "suites": 3
+  },
+  "journeysWithMockOrder": 64,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Base prices, distinct SKUs without mandatory options",
+    "No live model or messaging channel validation",
+    "Staging only; production349 and Kamppo321 unchanged"
+  ]
+}

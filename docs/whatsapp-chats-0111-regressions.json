@@ -90,8 +90,8 @@
       "priority": "P0",
       "utterance": "4 ejecutivos: 3 fritos y 1 broster",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "partially_covered_by_340",
-      "note": "68 controles del encabezado multilínea y reparto inicial; formas en una sola línea y correcciones del carrito erróneo siguen pendientes."
+      "status": "partially_covered_by_340_371_374",
+      "note": "340:entrada multilínea inicial.371:continuación con reiteración de total/reparto, nota compartida y cierre; guardas de varias líneas/familia ajena. Entrada literal en una sola línea e inflación histórica completa siguen pendientes; cantidad7en371 es fixture de recuperación. Tanda374: encabezados compactos con opciones explícitas y4controles abreviados; estos últimos no acreditan captura progresiva ni cierre."
     },
     {
       "id": "0111-executive-distribution-02",
@@ -103,8 +103,8 @@
       "priority": "P0",
       "utterance": "3 fritos y uno broaster, cuatro ejecutivos en total",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_374_with_explicit_options",
+      "note": "Tanda374: total al final con opciones explícitas en dos catálogos; no acredita todas las continuaciones abreviadas ni captura progresiva."
     },
     {
       "id": "0111-executive-distribution-03",
@@ -116,8 +116,8 @@
       "priority": "P0",
       "utterance": "solo eran 3 fritos y uno rboaster",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_371_373_full_router",
+      "note": "Frase exacta con rboaster preserva reparto pendiente o carrito correcto; corrección de7a3con una línea por preparación en fixtures conserva notas/bebida/extras/checkout.20 cierres DTO en48controles totales. Familia errónea o varias líneas con opciones distintas requieren aclaración; no acredita reparación automática de todo el carrito histórico ni modelo/canal reales. Tanda373 añade aclaración persistida y reparto completo por sopa/nota entre líneas preparadas de la misma familia;52 cierres simulados, firmas/vencimiento/repetición. No reproduce inflación original ni corrige automáticamente una familia ajena."
     },
     {
       "id": "0111-executive-distribution-04",
@@ -129,8 +129,8 @@
       "priority": "P0",
       "utterance": "todos pierna pernil, 3 ajiacos y una menudencia",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_375",
+      "note": "Encabezado breve seguido de opciones compartidas y reparto completo en otro mensaje;16 cierres DTO en dos catálogos × agente off/mock.64regresiones totales. No acredita reparto arbitrario por varios mensajes ni canal/modelo real. Global35160/443 aprobada; staging375 verificado."
     },
     {
       "id": "0111-burst-idempotency-01",
@@ -194,8 +194,8 @@
       "priority": "P0",
       "utterance": "el combo paisa lo quiero con gaseosa ginger",
       "expected": "Editar no suma; quitar elimina la línea descrita; agregar explícito sí suma; bebida incluida no se duplica como adicional.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_369_synthetic_full_journey",
+      "note": "Tanda369: 16 recorridos completos en dos catálogos × agente off/mock × carrito/revisión final × dos retiradas. Cambio de bebida por nombre completo, adición explícita, retirada por bebida, reemplazo compatible y cierre DTO conservan bebida, nota y compras aparte. 10 guardas adicionales. No reproduce literalmente el catálogo histórico ni acredita modelo/canal real; referencias abreviadas y cambio por atributo sin nombre siguen pendientes."
     },
     {
       "id": "0111-combo-edit-remove-02",
@@ -207,8 +207,8 @@
       "priority": "P0",
       "utterance": "quita el combo que va con colombiana",
       "expected": "Editar no suma; quitar elimina la línea descrita; agregar explícito sí suma; bebida incluida no se duplica como adicional.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "covered_by_369_synthetic_full_journey",
+      "note": "Tanda369: 16 recorridos completos en dos catálogos × agente off/mock × carrito/revisión final × dos retiradas. Cambio de bebida por nombre completo, adición explícita, retirada por bebida, reemplazo compatible y cierre DTO conservan bebida, nota y compras aparte. 10 guardas adicionales. No reproduce literalmente el catálogo histórico ni acredita modelo/canal real; referencias abreviadas y cambio por atributo sin nombre siguen pendientes."
     },
     {
       "id": "0111-combo-edit-remove-03",
@@ -246,8 +246,8 @@
       "priority": "P0",
       "utterance": "combo de pollo y medio pollo broaster con pepsi | 1",
       "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "covered_by_370_full_router_and_mock_dto",
+      "note": "Reproduce frase original, número1 y nombre completo, agente off/mock. Conserva Pepsi y ambos productos hasta DTO/recibo. Tanda370:40 recorridos en total, cantidades1/2 y dos catálogos adicionales/control. No acredita modelo/canal real ni catálogo/precio histórico exactos."
     },
     {
       "id": "0111-pending-option-retention-02",
@@ -272,8 +272,8 @@
       "priority": "P0",
       "utterance": "el combo con pepsi y una gaseosa aparte",
       "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_370_separate_drink",
+      "note": "Cuatro controles de combo + medio pollo + gaseosa aparte, con/sin bebida Ginger explícita del combo y Pepsi en la gaseosa; agente off/mock, DTO de3ítems. Referencia abreviada literal y otras combinaciones pendientes."
     },
     {
       "id": "0111-pending-option-retention-04",
@@ -449,8 +449,8 @@
       "priority": "P0",
       "utterance": "al pimer churrasco",
       "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_378",
+      "note": "Referencia exacta al pimer Churrasco tras nota pendiente en dos líneas preparadas del mismo SKU;40 regresiones y24cierres DTO. No replay literal completo ni unidad dentro de línea múltiple. Foco146/3 aprobado; validación consolidada35268/446 y staging378 verificados."
     },
     {
       "id": "0111-notes-and-scope-05",

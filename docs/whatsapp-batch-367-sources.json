@@ -1,0 +1,29 @@
+{
+  "batch": 367,
+  "codeCommit": "26a4fddd950df4735af6d6469742a3dd7fdae0e3",
+  "source": "Batch366 follow-up; synthetic full-router catalog availability and cancellation journeys",
+  "baseline": {
+    "failed": 32,
+    "passed": 16,
+    "tests": 48
+  },
+  "newTests": 48,
+  "affected": {
+    "tests": 892,
+    "suites": 3
+  },
+  "journeysWithMockOrder": 32,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Catalog nonempty when determining removal; empty load retains previous fallback semantics",
+    "Availability applies when ignoreBusinessHours is false",
+    "No live model or channel validation",
+    "Staging only; production349 and Kamppo321 unchanged"
+  ]
+}

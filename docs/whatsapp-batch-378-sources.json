@@ -1,0 +1,27 @@
+{
+  "batches": [
+    378
+  ],
+  "codeCommit": "4bb4e2cee4597da50f3eafdf62848d2a24b8e397",
+  "source": "Derived from 0111-notes-and-scope-04, al pimer churrasco",
+  "baseline": {
+    "tests": 24,
+    "failed": 24
+  },
+  "newTests": 40,
+  "mockOrderClosures": 24,
+  "focused": {
+    "tests": 146,
+    "suites": 3
+  },
+  "global": "35268/446 consolidated passed; production unchanged; fixture-only repair",
+  "deployment": "82a2acf202f5670cec3da98bcfb00df584dcaca9",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "integratedCodeCommit": "285b551e",
+  "testHarnessRepairCommit": "a0c04607",
+  "finalFocused": {
+    "tests": 173,
+    "suites": 4
+  }
+}

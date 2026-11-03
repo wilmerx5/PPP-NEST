@@ -279,10 +279,21 @@ export function isConfirmCurrentAddressIntent(text: string): boolean {
   );
 }
 
+/** Colloquial reply to «¿Algo más?», shared by checkout and recipient validation. */
+export function isAsiNoMasClosing(text: string): boolean {
+  if (!text || text.length > 100 || /[¿?]/.test(text)) return false;
+  const t = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¡!.,;:]/g, ' ')
+    .replace(/\b(?:senor|senora|veci|vecino|vecina|por favor|porfa|muchas gracias|gracias)\b/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return /^(?:no )?asi no\s*mas$/.test(t);
+}
+
 /**
  * Nombre usable para cocina/FE (no placeholders tipo “Pedidos”, “Cliente”).
  */
 export function isUsableWhatsappCustomerName(name: string): boolean {
+  if (isAsiNoMasClosing(name)) return false;
   const raw = (name || '').trim();
   if (raw.length < 2 || raw.length > 80) return false;
 
@@ -459,6 +470,14 @@ export function isFinalConfirmAffirmation(text: string): boolean {
 }
 
 /** “¿Cuánto demora?” / “en cuánto llega?” — ETA de domicilio. */
+/** Read-only ETA interruption: excludes purchases, conditions and existing-order status. */
+export function isStandaloneDeliveryEtaInquiry(text: string): boolean {
+  const t = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¿?¡!.,]/g, ' ').replace(/\b(?:veci|vecino|vecina|por favor|porfa)\b/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return /^(?:y )?(?:mas o menos )?(?:cuanto (?:se )?(?:demora|demoran|tarda|tardan)(?: (?:(?:el|la) )?(?:domicilio|envio|pedido|entrega))?|en cuanto (?:llega|llegaria)(?: (?:el )?domicilio)?|(?:cual es el )?tiempo de (?:entrega|domicilio))$/.test(t);
+}
+
 export function isDeliveryEtaInquiry(text: string): boolean {
   const raw = (text || '').trim();
   if (raw.length < 6) return false;

@@ -1,0 +1,32 @@
+{
+  "batch": 355,
+  "runtimeCommit": "87122f5b",
+  "source": "Synthetic follow-up to pending preparation-note clarification and user-shared cart corrections",
+  "baseline": {
+    "failed": 16,
+    "passed": 20,
+    "tests": 36
+  },
+  "focusedRelated": {
+    "tests": 232,
+    "suites": 4
+  },
+  "finalFocused": {
+    "tests": 44,
+    "suites": 1
+  },
+  "newTests": 44,
+  "testFile": "src/whatsapp/whatsapp-pending-note-cart-edit-355.spec.ts",
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Only unique named removal/absolute quantity edit",
+    "No product/preparation replacement",
+    "No real model/channel test"
+  ]
+}

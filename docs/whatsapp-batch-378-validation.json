@@ -1,0 +1,42 @@
+{
+  "baseCommit": "a0c04607e2497efb4c03e62d0e88c4eb267be3ad",
+  "batches": [
+    378
+  ],
+  "paidRequests": 0,
+  "sourceFiles": 664,
+  "validationMode": "complete original inventory plus rerun of four suites after test-harness-only repair",
+  "initialNonTimerExitCode": 1,
+  "initialFailedTests": 1,
+  "changedSinceOriginal": [
+    "src/whatsapp/whatsapp-cart-note.spec.ts"
+  ],
+  "productionSourcesUnchangedSinceOriginal": true,
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "tests": 35252,
+      "failed": 0,
+      "skipped": 0,
+      "sourceUnchanged": true,
+      "suitesReused": 440,
+      "suitesRerun": 4
+    },
+    "timers": {
+      "exitCode": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "tests": 35268,
+  "suites": 446,
+  "inventoryExact": true,
+  "sourceUnchanged": true
+}

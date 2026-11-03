@@ -1,0 +1,24 @@
+{
+  "batch": 364,
+  "source": "Derivado de chats previos con pedidos de aclaraci\u00f3n y plan363",
+  "codeCommit": "a11dc5c2",
+  "baseline": {
+    "total": 64,
+    "failed": 60,
+    "passed": 4
+  },
+  "newTests": 76,
+  "journeysWithMockOrder": 32,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Sin modelo/canal real",
+    "Cantidades distintas por producto pendientes",
+    "No cambia c\u00e1lculo de cotizaci\u00f3n m\u00faltiple"
+  ]
+}

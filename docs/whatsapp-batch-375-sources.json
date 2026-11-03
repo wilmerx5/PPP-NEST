@@ -1,0 +1,28 @@
+{
+  "batches": [
+    375
+  ],
+  "codeCommit": "6d7f79434f6f1d9c67ecc9fa34e44dfa8b28c1df",
+  "source": "01/11 executive-distribution04 and batch374 gap",
+  "baselineInitial": {
+    "tests": 48,
+    "failed": 48
+  },
+  "newTests": 64,
+  "primaryJourneys": 16,
+  "guards": 32,
+  "recoveries": 16,
+  "mockOrderClosures": 16,
+  "focused": {
+    "tests": 280,
+    "suites": 4
+  },
+  "finalStrengthenedSuite": 64,
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Options complete in a later message; not all fragmented allocations",
+    "No real model/channel/order persistence validation",
+    "Global and staging deployment pending"
+  ]
+}

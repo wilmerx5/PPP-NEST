@@ -61,7 +61,13 @@ describe('Scoped dish notes through the inbound router', () => {
   it('asks for preparation when two existing variants match', async () => {
     const initial = [line(17, 1, 'sin ensalada'), line(17, 1, 'sin arroz')]; const h = harness(initial);
     await h.inbound('A los churrascos ponles también papas crocantes.');
-    expect(h.session.cart).toEqual(initial); expect(h.service.reply.mock.calls.at(-1)[2]).toMatch(/varias líneas/);
+    expect(h.session.cart).toEqual(initial);
+    expect(h.service.reply.mock.calls.at(-1)[2]).toMatch(/Cuál línea lleva la nota/);
+    expect(h.session.pendingSubsetKitchenNote?.preparationScope?.indices).toEqual([0,1]);
+    await h.inbound('al primero');
+    expect(h.session.cart[0]).toEqual({...initial[0],note:'sin ensalada; papas crocantes'});
+    expect(h.session.cart[1]).toEqual(initial[1]);
+    expect(h.session.pendingSubsetKitchenNote).toBeUndefined();
   });
   it('keeps a payable order snapshot unchanged', async () => {
     const h = harness(cart()); h.conv.state = 'awaiting_mp_payment'; h.session.mpPreferenceId = 'synthetic-payable';
@@ -151,6 +157,7 @@ function harness(cart: WhatsappSessionData['cart'] = [line(17, 3, 'sin ensalada'
     reloadConversation: jest.fn(async () => conv), getSession: () => session,
     countInboundMessages: jest.fn(async () => 2),
   };
+  service.outboundHoldByWaId = new Map();
   service.claimedInboundIdsByWaId = new Map();
   service.orderCoverageNoticesByWaId = new Map();
   service.settingsService = { getEffectiveConfig: async () => ({ enabled: true, agentV1Enabled: true, ignoreBusinessHours: true, paymentMethods: [] }) };

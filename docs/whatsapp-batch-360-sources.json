@@ -1,0 +1,24 @@
+{
+  "batch": 360,
+  "source": "Derivado de chats previos y l\u00edmite de recordatorios de ofertas del plan359",
+  "codeCommit": "1f81890e",
+  "exploratoryBaseline": {
+    "total": 48,
+    "clarityFailures": 24,
+    "invalidSetup": 24
+  },
+  "newTests": 28,
+  "journeysWithMockOrder": 12,
+  "catalogs": 2,
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Sin modelo/canal real",
+    "Interrupciones focalizadas en consultas de pago",
+    "Casos con carrito ocupado retirados por no generar la oferta esperada"
+  ]
+}

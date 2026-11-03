@@ -28,6 +28,8 @@ export type WhatsappProductCandidate = {
 };
 
 export type WhatsappPendingAttribute = {
+  /** Newly required replacement options must be chosen, never defaulted. */
+  requireExplicitOptions?: boolean;
   /** Validated partial option groups; cart stays unchanged until their quantities sum to the order. */
   distributionParts?: string[];
   /** Explicitly offered alternatives for replacing this pending drink by name. */
@@ -77,7 +79,10 @@ export type WhatsappSessionData = {
     candidates: Array<{cartIndex: number; name: string}>;
     revision: { query?: string; quantity?: number; remainder?: number; clearAll: boolean; remove: string[]; add?: string };
   };
+  lastPreparationCountReply?: { text: string; cartSignature: string; createdAt: number };
   pendingCartQuantity?: {
+    /** Atomic totals by preparation, awaiting an explicit count for every ambiguous row. */
+    distribution?: { targets: Array<{productId: number; quantity: number}>; createdAt: number };
     quantity: number;
     options: Array<{ cartIndex: number; label: string }>;
     cartSignature: string;
@@ -141,6 +146,9 @@ export type WhatsappSessionData = {
   pendingUnitDistribution?: {productId: number; quantity: number; sourceText: string};
   lastCountedHeaderOrder?: {sourceText:string;cartSignature:string};
   pendingCountedHeaderOrder?: {
+    /** Canonical rows retained while required shared options are missing. */
+    optionsSource?: string;
+    missingOptions?: boolean;
     sourceText: string;
     cartSignature: string;
     units: Array<{productId:number;attributes:Array<{attributeName:string;attributeValue:string}>;note?:string}>;
@@ -261,6 +269,8 @@ export type WhatsappSessionData = {
     quantity: number;
     /** Texto original de la consulta (attrs / multi al decir *sí*) */
     sourceText?: string;
+    /** Prices and names shown together; compare against the live catalog at acceptance. */
+    quotedProducts?: { id: number; name: string; price: number; quantity?: number }[];
     /** Varios SKUs cotizados juntos (sí → agregar todos) */
     productIds?: number[];
   };

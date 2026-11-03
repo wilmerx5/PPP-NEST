@@ -1,0 +1,37 @@
+{
+  "batch": 350,
+  "runtimeCommit": "ae23d1e6",
+  "origin": "Synthetic continuation of preparation-note clarification348\u2013349 and user-shared cart-total questions; not a verbatim customer transcript",
+  "baseline": {
+    "tests": 64,
+    "failed": 50,
+    "passed": 14
+  },
+  "focusedRelated": {
+    "passed": 265,
+    "suites": 4
+  },
+  "finalFocused": {
+    "passed": 68,
+    "suites": 1
+  },
+  "newTests": 68,
+  "testFile": "src/whatsapp/whatsapp-note-clarification-total-350.spec.ts",
+  "catalogs": [
+    "PPP-inspired poultry fixture",
+    "synthetic tofu fixture"
+  ],
+  "agentModes": [
+    "off",
+    "mock"
+  ],
+  "externalServices": "simulated",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "limitations": [
+    "No real inference or channel verification",
+    "Scoped to preparation-note clarification",
+    "Conditional price questions remain clarification guards"
+  ]
+}
