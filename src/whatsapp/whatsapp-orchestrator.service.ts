@@ -26238,7 +26238,8 @@ export class WhatsappOrchestratorService {
     const number = (value: string) => ({un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10}[value] ?? Number(value));
     const counted = /^(\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(.+)$/;
     let pending = session.pendingCountedHeaderOrder;
-    if (!pending && !text.includes('\n')) return false;
+    if (!pending && !/[\n:;,]/.test(text)) return false;
+    if (!pending && !text.includes('\n') && !counted.test(normalize(text).replace(/^(?:(?:por favor|quiero|dame|me das|me regalas|enviame)\s+)+/,''))) return false;
     const menu = await this.catalogService.getMenuProducts();
     const unchanged = async (message: string) => { await this.reply(conv,waId,message+' El pedido sigue igual.'); return true; };
     if (pending) {
@@ -26272,7 +26273,16 @@ export class WhatsappOrchestratorService {
       }
     } else {
       if (/[¿?]/.test(text)) return false;
-      const lines = text.split(/\r?\n/).map(value=>value.trim()).filter(Boolean);
+      let lines = text.split(/\r?\n/).map(value=>value.trim()).filter(Boolean);
+      if (lines.length===1) {
+        if (this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isAvailabilityInquiry(text)) return false;
+        // Delimit rows before normalization removes punctuation. A trailing total
+        // describes the preceding preparations; it is not another purchase.
+        const chunks=text.split(/[:,;]|\s+y\s+(?=(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s)/i).map(value=>value.trim()).filter(Boolean);
+        const totals=chunks.flatMap((chunk,index)=>/ en total$/.test(normalize(chunk)) ? [index] : []);
+        if (totals.length>1) return unchanged('Indica un solo total para el reparto.');
+        lines=totals.length===1 ? [normalize(chunks[totals[0]]).replace(/ en total$/,''),...chunks.filter((_,index)=>index!==totals[0])] : chunks;
+      }
       if (lines.length<3 || lines.length>15) return false;
       const head = normalize(lines[0]).replace(/^(?:(?:por favor|quiero|dame|me das|me regalas|enviame)\s+)+/,'').match(counted);
       if (!head || number(head[1])<3 || number(head[1])>30) return false;
