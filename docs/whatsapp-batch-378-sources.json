@@ -15,11 +15,10 @@
     "suites": 3
   },
   "global": "35268/446 consolidated passed; production unchanged; fixture-only repair",
-  "deployment": "pending",
+  "deployment": "82a2acf202f5670cec3da98bcfb00df584dcaca9",
   "paidRequests": 0,
   "externalOrders": 0,
   "integratedCodeCommit": "285b551e",
-  "global_": "consolidated passed",
   "testHarnessRepairCommit": "a0c04607",
   "finalFocused": {
     "tests": 173,
