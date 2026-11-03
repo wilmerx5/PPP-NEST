@@ -18879,10 +18879,18 @@ export class WhatsappOrchestratorService {
   private async tryRepeatCheckoutQuestion(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
-    if (!session.cart.length || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm','awaiting_attribute'].includes(conv.state)) return false;
+    if ((!session.cart.length && !session.pendingAddOffer?.productId) || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm','awaiting_attribute'].includes(conv.state)) return false;
     const request = this.normalizeForMatch(text).replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim()
       .replace(/^(?:veci|vecino|vecina) /, '').replace(/ (?:veci|vecino|vecina|porfa|por favor)$/, '');
     if (!/^(?:dime|no entendi(?: bien)?|como asi|que me (?:preguntaste|habias preguntado)|me repites|puedes repetir(?: la pregunta)?)$/.test(request)) return false;
+    if (!session.cart.length && session.pendingAddOffer) {
+      const offer = session.pendingAddOffer;
+      const names = offer.quotedProducts?.length ? offer.quotedProducts.map(product=>product.name).join(', ')
+        : `${offer.name}${offer.productIds && offer.productIds.length > 1 ? ' y los demás productos de la cotización anterior' : offer.quantity > 1 ? ` ×${offer.quantity}` : ''}`;
+      await this.reply(conv,waId,`Tienes una cotización pendiente de *${names}*. Todavía no agregué esos productos.\n\n` +
+        this.formatInterruptedStepReminder(conv,session));
+      return true;
+    }
     const reminder = session.pendingRecipientOrPlace
       ? `¿*${session.pendingRecipientOrPlace}* es el nombre para el pedido o el barrio/conjunto de entrega?`
       : this.formatInterruptedStepReminder(conv, session) || '¿Quieres agregar algo más? Si terminaste, escribe *solo eso* para seguir.';
