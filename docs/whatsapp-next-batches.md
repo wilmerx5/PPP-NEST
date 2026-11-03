@@ -4,7 +4,7 @@
 
 Oferta conservada pero recordatorio genérico tras preguntar datáfono/tarjeta/efectivo. Ahora recuerda producto/cantidad, o todos los productos de la cotización, y pide sí/no para agregar/rechazar. Baseline exploratoria:24 fallos reales de claridad y24 preparaciones inválidas retiradas; ver patterns360.28 regresiones nuevas en dos catálogos × agente off/mock, aceptación/rechazo y12 cierres simulados. Foco151/3 y final28/1 aprobados. Código `1f81890e`.
 
-Global34198/428 aprobada;646 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Despliegue360 pendiente; runtime staging359. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Próximo: consultas informativas de menú/tiempo con carrito vacío y oferta pendiente; coherencia entre recordatorio y decisión posterior.
+Global34198/428 aprobada;646 fuentes congeladas, inventario exacto; TypeScript general/build y scripts aprobados. Staging360 desplegado/verificado: `d54591ce`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41558191922; evidencia360-staging-deployment. Controles compilados existentes aprobados; cobertura360 local. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Próximo: consultas informativas de menú/tiempo con carrito vacío y oferta pendiente; coherencia entre recordatorio y decisión posterior.
 
 
 ## VIGENTE — tanda359: opciones nuevas durante reemplazo con nota pendiente
