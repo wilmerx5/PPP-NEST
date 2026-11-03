@@ -12,7 +12,7 @@ Origen: chat01/11, mensajes400–437. Se priorizó un recorrido completo, no var
 
 La referencia definida resuelve la opción contra el producto nombrado y conserva estado/notas/otras compras. La retirada normaliza «que va con» para el selector existente y frena el fallback si una opción de catálogo explícita no está en el carrito. No incorpora IDs, nombres ni precios de PPP al código.
 
-26 pruebas nuevas:16 recorridos completos en dos catálogos, agente off/mock y edición antes/después de revisión final, con dos frases de retirada;10 controles de cantidad, dos líneas equivalentes, pago pendiente, opción ausente y retirada sin coincidencia. Los16 recorridos comprueban el DTO final: reemplazo, bebida Ginger, nota sin cebolla, gaseosa Colombiana aparte y acompañamiento. Foco170/5 aprobado. Global34764/437 aprobada,655 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue staging pendiente.
+26 pruebas nuevas:16 recorridos completos en dos catálogos, agente off/mock y edición antes/después de revisión final, con dos frases de retirada;10 controles de cantidad, dos líneas equivalentes, pago pendiente, opción ausente y retirada sin coincidencia. Los16 recorridos comprueban el DTO final: reemplazo, bebida Ginger, nota sin cebolla, gaseosa Colombiana aparte y acompañamiento. Foco170/5 aprobado. Global34764/437 aprobada,655 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging369 desplegado/verificado: `0f1ee73c`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41585064291; evidencia369-staging-deployment. Controles compilados existentes aprobados; cobertura369 local.
 
 ## Límites y siguiente prioridad
 

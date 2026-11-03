@@ -2,7 +2,7 @@
 
 ## VIGENTE — tanda369: reparación de combo y bebida por línea
 
-Código `304b9341`.26 pruebas nuevas:16 recorridos completos (dos catálogos × agente off/mock × carrito/revisión final × dos retiradas),16 cierres DTO y10 guardas. Baseline inicial16/16 fallan en cambio de bebida. Corregida prioridad frente a preparación, retirada «que va con» y bloqueo de eliminación por aproximación cuando falta la opción indicada. Foco170/5 aprobado. Global34764/437 aprobada,655 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue staging pendiente.
+Código `304b9341`.26 pruebas nuevas:16 recorridos completos (dos catálogos × agente off/mock × carrito/revisión final × dos retiradas),16 cierres DTO y10 guardas. Baseline inicial16/16 fallan en cambio de bebida. Corregida prioridad frente a preparación, retirada «que va con» y bloqueo de eliminación por aproximación cuando falta la opción indicada. Foco170/5 aprobado. Global34764/437 aprobada,655 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Staging369 desplegado/verificado: `0f1ee73c`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41585064291; evidencia369-staging-deployment. Controles compilados existentes aprobados; cobertura369 local.
 
 Ledger01/11 actualiza únicamente combo-edit-remove01/02 con alcance sintético explícito. Próximo: combo + medio pollo con bebida explícita durante opciones pendientes; luego reparar cantidades repartidas. Duplicaciones históricas aún requieren trazas. Producción349/Kamppo321 sin cambios; cero inferencia pagada/Meta/órdenes externas, presupuesto267/256/11 intacto. No acredita modelo/canal real.
 
