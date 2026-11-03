@@ -4778,15 +4778,44 @@ export class WhatsappOrchestratorService {
       }
       const pa = session.pendingAttribute;
       const livePendingProduct = pa ? this.catalogService.getProductById(pa.productId, products) : null;
-      if (pa && products.length && !livePendingProduct) {
+      if (pa && products.length && (!livePendingProduct ||
+          (!cfg.ignoreBusinessHours && livePendingProduct.availableNow === false))) {
         session = { ...session, pendingAttribute: undefined, pendingMatch: undefined };
-        await this.conversationService.saveSession(conv, session, 'building_cart');
-        await this.reply(
-          conv,
-          msg.waId,
-          `*${pa.name}* ya no está en la carta. No lo agregué. El resto del pedido sigue igual.` +
-            (session.cart.length ? `\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}` : ''),
-        );
+        // Some flows keep the active row in the queue; others already removed it.
+        if (session.pendingMultiOrder?.needsAttributes.some(item => item.productId === pa.productId)) {
+          session = this.popCompletedNeedsAttribute(session, pa.productId);
+        }
+        const notices = [`*${pa.name}* ${livePendingProduct ? 'no está disponible ahora' : 'ya no está en la carta'}. No lo agregué. El resto del pedido sigue igual.`];
+        let prompt = '';
+        while (session.pendingMultiOrder?.needsAttributes.length) {
+          const item = session.pendingMultiOrder.needsAttributes[0];
+          const nextProduct = products.find(product => product.id === item.productId);
+          if (!nextProduct || (!cfg.ignoreBusinessHours && nextProduct.availableNow === false)) {
+            notices.push(`*${item.name}* ${nextProduct ? 'no está disponible ahora' : 'ya no está en la carta'}. No lo agregué.`);
+            session = this.popCompletedNeedsAttribute(session, item.productId);
+            continue;
+          }
+          const parsed = this.catalogService.resolveAttributesFromMessage(nextProduct, item.segment, []);
+          const ready = this.catalogService.applyDefaultAttributeStep(nextProduct, parsed);
+          if (ready.status === 'complete') {
+            const added = this.tryAddProductToCart(session, nextProduct,
+              this.quantityForMultiSegment(item.segment, nextProduct.name), cfg,
+              this.catalogService.orderKitchenNote(item.segment, nextProduct), ready.attributes);
+            if (!added.blocked && !added.missingAttributes) {
+              session = this.popCompletedNeedsAttribute(added.session, nextProduct.id);
+              continue;
+            }
+          }
+          const selected = ready.status === 'invalid' ? [] : ready.attributes;
+          session.pendingAttribute = this.toPendingAttribute(nextProduct, {sourceText:item.segment, selected});
+          prompt = `Ahora elige opciones para *${nextProduct.name}*:\n\n` +
+            this.catalogService.formatProductOptionsPrompt(nextProduct, selected);
+          break;
+        }
+        await this.conversationService.saveSession(conv, session, prompt ? 'awaiting_attribute' : 'building_cart');
+        await this.reply(conv, msg.waId, notices.join('\n') +
+          (session.cart.length ? `\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}` : '') +
+          '\n\n' + (prompt || this.formatContinueShoppingPrompt(session)));
         return;
       }
       // Preferir catálogo vivo; si la carta no cargó, usar snapshot (evita caer a "código 2")
