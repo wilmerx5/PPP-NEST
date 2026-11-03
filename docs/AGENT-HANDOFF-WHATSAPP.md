@@ -1,5 +1,14 @@
 # Relevo del agente: PPP WhatsApp
 
+## Estado verificado 03/11 — producción PPP y Kamppo hasta tanda378
+
+PPP producción: `c1563528`, workflow41686492945; API local/pública ok, contenedor activo con cero reinicios, modelos/configuración privados preservados. Merge Main/staging con WhatsApp idéntico al validado y funcionalidades exclusivas de Main conservadas. Evidencia `whatsapp-batch-378-production-deployment.json`.
+
+Kamppo: tandas322–378 migradas y desplegadas en `708a519f71ba`, workflow41689523342; imagen y health verificados, DB up. Global local:35172 pruebas/428 suites del motor,496 pruebas/70 suites API,92 pruebas de scripts y tipos/build aprobados. Seis recorridos host nuevos; UUIDs, recargos, separación por restaurante/canal y coexistencia preservados. CI adicional registrado en evidencia; no implica una conversación real nueva. Evidencias `whatsapp-batch-378-kamppo-validation.json` y `whatsapp-batch-378-kamppo-deployment.json`.
+
+Staging conserva runtime378 `82a2acf2`. Cero inferencia pagada/Meta/órdenes externas durante esta entrega; presupuesto267/256/11 intacto. Los estados anteriores de producción349/Kamppo321 son históricos. Próximo trabajo: retomar pruebas en staging sobre alcance por unidades en líneas repetidas y notas en varios productos.
+
+
 ## VIGENTE — tanda378: conservar la aclaración de nota entre líneas del mismo plato
 
 Código integrado `285b551e` (original aislado `4bb4e2ce`). Dos líneas del mismo SKU pedían aclarar sin guardar nota/candidatos. Ahora guardan firma/vencimiento/lista y reutilizan el resolver protegido. Acepta «al primero», «al primer Churrasco» y «al pimer Churrasco»; si hay nombre, debe coincidir con el primer candidato.40 regresiones nuevas:24 recorridos DTO y16guardas; dos catálogos × agente off/mock × carrito/confirmación. Baseline24/24 fallan por estado ausente; ajuste intermedio detectó8casos de «al primero». Foco146/3 y TypeScript general aprobados. Validación consolidada: global inicial con1fallo en un simulador antiguo (outboundHoldByWaId ausente); solo se reparó ese fixture y se amplió su aserción de resolución. Sin cambios en producción desde la global. Repetición173/4 aprobada,440suites reutilizadas con fuentes idénticas; temporizadores, TypeScript general/build y scripts ejecutados después. Reparación `a0c04607`. Global final: 35268 pruebas / 446 suites aprobadas; 664 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Staging378 desplegado/verificado: `82a2acf2`, healthy, cero reinicios, API local/pública ok y modelos/configuración preservados. Workflow41681992091; evidencia378-staging-deployment. Controles compilados existentes aprobados; cobertura378 local.
