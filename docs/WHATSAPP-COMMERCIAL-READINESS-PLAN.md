@@ -2,9 +2,9 @@
 
 ## VIGENTE — tanda374: encabezados y repartos compactos
 
-Código `138a99da`. Reconoce total y preparaciones separados por dos puntos, comas, punto y coma o un total al final. Reutiliza la validación por catálogo y mantiene la aclaración de sopa antes de agregar, sin contar el encabezado como otro producto. 100 regresiones nuevas:64 recorridos completos,32 guardas y4 controles literales abreviados; dos catálogos × agente off/mock.64 cierres DTO simulados. Baseline final92/100 fallan;8 controles ya pasaban. Foco292/4 aprobado. Global y despliegue pendientes.
+Código `138a99da`. Reconoce total y preparaciones separados por dos puntos, comas, punto y coma o un total al final. Reutiliza la validación por catálogo y mantiene la aclaración de sopa antes de agregar, sin contar el encabezado como otro producto. 100 regresiones nuevas:64 recorridos completos,32 guardas y4 controles literales abreviados; dos catálogos × agente off/mock.64 cierres DTO simulados. Baseline final92/100 fallan;8 controles ya pasaban. Foco292/4 aprobado. Global final: 35096 pruebas / 442 suites aprobadas; 660 fuentes congeladas e inventario exacto. TypeScript general/build y scripts aprobados. Despliegue staging pendiente.
 
-La ejecución global anterior se interrumpió y desapareció el worktree temporal. Recuperado el commit en carpeta persistente; las660 fuentes coinciden con los hashes congelados. Se repite el inventario global completo. Sin inferencia pagada, Meta ni órdenes externas; presupuesto267/256/11 intacto. Producción349/Kamppo321 sin cambios. No acredita modelo/canal real.
+La ejecución global anterior se interrumpió y desapareció el worktree temporal. Recuperado el commit en carpeta persistente; las660 fuentes coinciden con los hashes congelados. La repetición completa del inventario global terminó aprobada. Sin inferencia pagada, Meta ni órdenes externas; presupuesto267/256/11 intacto. Producción349/Kamppo321 sin cambios. No acredita modelo/canal real.
 
 Límites: separadores explícitos y total mínimo3; los4 controles abreviados admiten una solicitud clara de opciones, no acreditan captura progresiva ni cierre. Próximo: opciones compartidas/distribuidas en mensajes siguientes («todos pierna pernil,3ajiacos y una menudencia»), luego notas multiproducto202–216/368–385. La causa de la inflación histórica no está demostrada.
 
