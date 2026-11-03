@@ -1,5 +1,12 @@
 # Plan operativo de calidad — 29/10/2026
 
+## VIGENTE — tanda366: conservar productos cotizados al elegir opciones
+
+Baseline final76/80 fallan;4 controles ya pasaban. La cotización retiraba el producto activo antes de completar opciones y la finalización podía saltarse el siguiente. Ahora conserva la cola hasta completar por ID y asigna a cada producto su segmento, separando cantidades/notas/opciones.80 regresiones nuevas en dos catálogos × agente off/mock, platos con defaults y bebidas de sabor obligatorio; respuestas por nombre/número, menú intermedio, opciones explícitas y tres productos.80 cierres DTO simulados. Foco224/3 aprobado. Código `559784c7`.
+
+Global34642/434 aprobada;652 fuentes congeladas e inventario exacto; TypeScript general/build y scripts aprobados. Despliegue366 pendiente; runtime staging365. Producción349 y Kamppo321 sin cambios. Cero inferencia pagada/Meta/órdenes externas; presupuesto267/256/11 intacto. No acredita modelo/canal real. Mantiene defaults existentes. Próximo: interrupciones/cancelación/disponibilidad al elegir opciones, ofertas antiguas y consultas largas.
+
+
 ## VIGENTE — tanda365: cantidades por producto en cotizaciones
 
 Baseline48/64 fallan en total mostrado;16 controles ya pasaban. Guarda cantidades por SKU, presenta cantidad/subtotal y recalcula ante cambios de precio sin agregar hasta nueva aceptación. Ampliación detectó2 fallos de paquetes: «Pack 6 Empanadas» podía añadir6 paquetes; reconocimiento de contenido del SKU ampliado.76 regresiones nuevas, dos catálogos × agente off/mock,64 cierres DTO simulados, cantidades2/3,3/2,1/4,1/1, dígitos/palabras, menú intermedio, cambio de precio, cantidad implícita, paquetes y rechazo. Foco220/3 aprobado. Código `f4e8e2a2`.
