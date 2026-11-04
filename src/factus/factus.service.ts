@@ -91,10 +91,13 @@ export class FactusService {
   private readonly taxQueue = new Set<string>();
   private taxWorkerRunning = false;
   private taxRetryAt = 0;
+  private readonly taxUnavailableUntil = new Map<string, number>();
 
   private queueInvoiceTaxes(numbers: string[]) {
     if (Date.now() < this.taxRetryAt) return;
-    for (const number of numbers) this.taxQueue.add(number);
+    for (const number of numbers) {
+      if ((this.taxUnavailableUntil.get(number) ?? 0) <= Date.now()) this.taxQueue.add(number);
+    }
     if (!this.taxWorkerRunning && this.taxQueue.size) void this.drainInvoiceTaxes();
   }
 
@@ -111,7 +114,13 @@ export class FactusService {
              VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE consumption_tax = VALUES(consumption_tax)`,
             [this.auth.getBaseUrl(), number, value],
           );
-        } catch {
+        } catch (error) {
+          if ((error as { factusStatus?: number })?.factusStatus === 404) {
+            this.taxUnavailableUntil.set(number, Date.now() + 86400000);
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            this.taxQueue.delete(number);
+            continue;
+          }
           // Stop on provider/DB failure rather than multiplying errors across the report.
           this.taxRetryAt = Date.now() + 65000;
           this.taxQueue.clear();

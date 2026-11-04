@@ -35,7 +35,7 @@ describe('paced tax hydration', () => {
   afterEach(() => jest.useRealTimers());
   function worker() {
     return Object.assign(Object.create(FactusService.prototype), {
-      taxQueue: new Set(), taxWorkerRunning: false, taxRetryAt: 0,
+      taxQueue: new Set(), taxUnavailableUntil: new Map(), taxWorkerRunning: false, taxRetryAt: 0,
       auth: { getBaseUrl: () => 'production' }, logger: { warn: jest.fn() },
       orderRepo: { query: jest.fn().mockResolvedValue([]) },
       api: { getBill: jest.fn().mockResolvedValue({ taxes: [{ tribute: { code: '04' }, rates: [{ tax_amount: '80.25' }] }] }) },
@@ -50,6 +50,15 @@ describe('paced tax hydration', () => {
     await jest.advanceTimersByTimeAsync(1501);
     expect(sut.api.getBill.mock.calls).toEqual([['A'], ['B']]);
     expect(sut.taxWorkerRunning).toBe(false);
+  });
+  it('skips a missing historical document without blocking valid invoices', async () => {
+    const sut = worker();
+    sut.api.getBill.mockRejectedValueOnce({ factusStatus: 404 });
+    sut.queueInvoiceTaxes(['OLD', 'B']); await jest.advanceTimersByTimeAsync(3000);
+    expect(sut.api.getBill.mock.calls).toEqual([['OLD'], ['B']]);
+    sut.queueInvoiceTaxes(['OLD']);
+    expect(sut.api.getBill).toHaveBeenCalledTimes(2);
+    expect(sut.orderRepo.query).toHaveBeenCalledTimes(1);
   });
   it('stops the queue on 429 and prevents immediate retries', async () => {
     const sut = worker(); sut.api.getBill.mockRejectedValue(new Error('429'));
