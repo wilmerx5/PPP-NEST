@@ -77,5 +77,10 @@
     "sourceUnchanged": true
   },
   "scriptsTests": 92,
-  "deployment": "Pending staging deployment"
+  "deployment": {
+    "environment": "staging",
+    "commit": "acc1bddd39da1f2c85112c14e9a4357a092332fc",
+    "verified": true,
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/41751618591"
+  }
 }
