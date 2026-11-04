@@ -142,29 +142,7 @@ export class WhatsappConversationService {
     state: string,
     opts?: { ignorePriorHistory?: boolean; rememberDeliveryAddress?: boolean },
   ): Promise<WhatsappConversation> {
-    const current = this.getSession(conv);
-    const currentAddr = (current.address || '').trim();
-    const isPickupPlaceholder = /^recoge en el local/i.test(currentAddr);
-    const remembered =
-      opts?.rememberDeliveryAddress &&
-      current.orderType === 'delivery' &&
-      currentAddr &&
-      !isPickupPlaceholder
-        ? currentAddr
-        : current.lastDeliveryAddress ?? null;
-
-    const next: WhatsappSessionData = {
-      cart: [],
-      orderType: 'delivery',
-      linkedUserId: current.linkedUserId ?? null,
-      linkedUserName: current.linkedUserName ?? null,
-      ignorePriorOrderHistory: opts?.ignorePriorHistory !== false,
-      fulfillmentChosen: false,
-      addressConfirmed: false,
-      phoneConfirmed: false,
-      contactPhone: null,
-      lastDeliveryAddress: remembered,
-    };
+    const next = this.buildResetSession(conv, opts);
     // Asignación directa: no mergear con el carrito viejo
     conv.sessionData = next;
     conv.state = state;
@@ -178,6 +156,62 @@ export class WhatsappConversationService {
       conv.humanTakeover = fresh.humanTakeover;
     }
     return conv;
+  }
+
+  private buildResetSession(
+    conv: WhatsappConversation,
+    opts?: { ignorePriorHistory?: boolean; rememberDeliveryAddress?: boolean },
+  ): WhatsappSessionData {
+    const current = this.getSession(conv);
+    const currentAddr = (current.address || '').trim();
+    const isPickupPlaceholder = /^recoge en el local/i.test(currentAddr);
+    const remembered =
+      opts?.rememberDeliveryAddress &&
+      current.orderType === 'delivery' &&
+      currentAddr &&
+      !isPickupPlaceholder
+        ? currentAddr
+        : current.lastDeliveryAddress ?? null;
+
+    return {
+      cart: [],
+      orderType: 'delivery',
+      linkedUserId: current.linkedUserId ?? null,
+      linkedUserName: current.linkedUserName ?? null,
+      ignorePriorOrderHistory: opts?.ignorePriorHistory !== false,
+      fulfillmentChosen: false,
+      addressConfirmed: false,
+      phoneConfirmed: false,
+      contactPhone: null,
+      lastDeliveryAddress: remembered,
+    };
+  }
+
+  /** Expiry must never overwrite a conversation changed since it was inspected. */
+  async resetIdleOrderDraft(conv: WhatsappConversation): Promise<boolean> {
+    if (conv.humanTakeover || conv.state === 'confirming' ||
+        !['building_cart', 'awaiting_name', 'awaiting_fulfillment', 'awaiting_address',
+          'awaiting_phone', 'awaiting_payment', 'awaiting_notes',
+          'awaiting_final_confirm'].includes(conv.state)) return false;
+    const next = this.buildResetSession(conv, { ignorePriorHistory: true });
+    const result = await this.convRepo.createQueryBuilder()
+      .update(WhatsappConversation)
+      .set({ sessionData: () => ':nextSession', state: 'building_cart', lastMessageAt: new Date() })
+      .setParameter('nextSession', JSON.stringify(next))
+      .where('id = :id', { id: conv.id })
+      .andWhere('state = :state', { state: conv.state })
+      .andWhere('human_takeover = 0')
+      // DB microseconds exceed JavaScript Date precision; compare its millisecond.
+      .andWhere('updated_at >= :updatedAt AND updated_at < DATE_ADD(:updatedAt, INTERVAL 1000 MICROSECOND)', { updatedAt: conv.updatedAt })
+      .andWhere('last_inbound_at <=> :lastInboundAt', { lastInboundAt: conv.lastInboundAt })
+      .andWhere('last_message_at <=> :lastMessageAt', { lastMessageAt: conv.lastMessageAt })
+      // MariaDB stores JSON as text. Exact comparison also guards same-second
+      // cart changes; differing serialization fails closed, without clearing.
+      .andWhere('BINARY session_data <=> BINARY :snapshot', {
+        snapshot: conv.sessionData == null ? null : JSON.stringify(conv.sessionData),
+      })
+      .execute();
+    return result.affected === 1;
   }
 
   async reloadConversation(id: number): Promise<WhatsappConversation> {

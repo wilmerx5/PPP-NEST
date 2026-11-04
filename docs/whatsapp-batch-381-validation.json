@@ -1,0 +1,108 @@
+{
+  "batch": 381,
+  "baseCommit": "040df66bbca35d536eb62bae001310a490b368d2",
+  "status": "passed",
+  "scope": "Late order-draft expiry notices and conditional persistence; historical order52 root cause not established",
+  "newUnitTests": 27,
+  "focus": {
+    "tests": 125,
+    "suites": 3,
+    "passed": true
+  },
+  "mariaDb": {
+    "version": "10.11",
+    "isolated": true,
+    "tests": 8,
+    "passed": true,
+    "sourceSha256": "7f9897a2c5f45a6d9250e071538db15e1f8c04603497e51534fcbff21dd9ef5d"
+  },
+  "baseline": [
+    {
+      "name": "confirmed",
+      "beforeNotices": 1,
+      "afterNotices": 0
+    },
+    {
+      "name": "confirming",
+      "beforeNotices": 1,
+      "afterNotices": 0
+    },
+    {
+      "name": "human",
+      "beforeNotices": 1,
+      "afterNotices": 0
+    },
+    {
+      "name": "recent",
+      "beforeNotices": 1,
+      "afterNotices": 0
+    },
+    {
+      "name": "empty",
+      "beforeNotices": 1,
+      "afterNotices": 0
+    },
+    {
+      "name": "two-days",
+      "beforeNotices": 1,
+      "afterNotices": 0
+    }
+  ],
+  "paidRequests": 0,
+  "externalMessages": 0,
+  "externalOrders": 0,
+  "deployment": {
+    "environment": "staging",
+    "commit": "1a21c1de49f5a9a29ce548ee261ee56b06f82805",
+    "verified": true,
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/41746741896"
+  },
+  "limitations": [
+    "No incident database/log audit",
+    "External notification and state check are not one transaction",
+    "Pending-choice, takeover and MP expiry not changed",
+    "Main and Kamppo unchanged"
+  ],
+  "global": {
+    "baseCommit": "040df66bbca35d536eb62bae001310a490b368d2",
+    "batches": [
+      381
+    ],
+    "phases": {
+      "nonTimer": {
+        "exitCode": 0,
+        "seconds": 2630.36,
+        "sourceUnchanged": true,
+        "tests": 35351,
+        "failed": 0,
+        "skipped": 0
+      },
+      "timers": {
+        "exitCode": 0,
+        "seconds": 6.43,
+        "sourceUnchanged": true,
+        "tests": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "node": {
+        "exitCode": 0
+      }
+    },
+    "paidRequests": 0,
+    "sourceFiles": 667,
+    "workers": 4,
+    "nonTimerTestTimeoutMs": 20000,
+    "tests": 35367,
+    "suites": 449,
+    "inventoryExact": true,
+    "sourceUnchanged": true
+  },
+  "scriptsTests": 92
+}

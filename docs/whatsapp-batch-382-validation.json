@@ -1,0 +1,86 @@
+{
+  "batch": 382,
+  "baseCommit": "0ef1172f28295c7656477341b23168d1857af8f6",
+  "status": "passed",
+  "newTests": 72,
+  "newDtoJourneys": 56,
+  "baseline": {
+    "tests": 32,
+    "failed": 22,
+    "passed": 10,
+    "note": "DTO assertion corrected to expanded units before this baseline"
+  },
+  "wordOrderProbe": {
+    "tests": 16,
+    "failed": 12,
+    "passed": 4
+  },
+  "focus": {
+    "passed": 275,
+    "suites": 5
+  },
+  "catalogReadOnlyCheck": {
+    "source": "https://api.prontopolloportal.com/api/products",
+    "checkedAt": "2026-11-04T00:46:54.841193+00:00",
+    "products": [
+      {
+        "id": 6,
+        "code": 6,
+        "name": "1/4 Pollo Broaster",
+        "description": "1/4 de pollo broaster, acompañado de papas saladas y arepas."
+      }
+    ],
+    "readOnly": true
+  },
+  "paidRequests": 0,
+  "externalMessages": 0,
+  "externalOrders": 0,
+  "globalValidation": {
+    "baseCommit": "0ef1172f28295c7656477341b23168d1857af8f6",
+    "batches": [
+      382
+    ],
+    "phases": {
+      "nonTimer": {
+        "exitCode": 0,
+        "seconds": 1065.76,
+        "sourceUnchanged": true,
+        "tests": 35423,
+        "failed": 0,
+        "skipped": 0
+      },
+      "timers": {
+        "exitCode": 0,
+        "seconds": 10.13,
+        "sourceUnchanged": true,
+        "tests": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "node": {
+        "exitCode": 0
+      }
+    },
+    "paidRequests": 0,
+    "sourceFiles": 668,
+    "workers": 4,
+    "nonTimerTestTimeoutMs": 20000,
+    "tests": 35439,
+    "suites": 450,
+    "inventoryExact": true,
+    "sourceUnchanged": true
+  },
+  "scriptsTests": 92,
+  "deployment": {
+    "environment": "staging",
+    "commit": "acc1bddd39da1f2c85112c14e9a4357a092332fc",
+    "verified": true,
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/41751618591"
+  }
+}
