@@ -61,6 +61,8 @@
   "externalOrders": 0,
   "deployment": {
     "environment": "staging",
-    "verified": false
+    "commit": "fd931dc9fcdc653f7fe88644fc1a17dc9d371fa7",
+    "verified": true,
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/41880013453"
   }
 }

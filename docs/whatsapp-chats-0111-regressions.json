@@ -260,7 +260,7 @@
       "utterance": "combo con pepsi | broaster",
       "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
       "status": "partially_covered_by_384_focused_suite",
-      "note": "384: compra genérica con Pepsi seguida de preparación/número, cantidades1/2 y DTO en dos catálogos; estado de selección duradero. No replay literal completo de combo y medio pollo juntos. Foco y global35552/454 aprobados; despliegue staging pendiente."
+      "note": "384: compra genérica con Pepsi seguida de preparación/número, cantidades1/2 y DTO en dos catálogos; estado de selección duradero. No replay literal completo de combo y medio pollo juntos. Foco y global35552/454 aprobados; staging384 desplegado/verificado en fd931dc9."
     },
     {
       "id": "0111-pending-option-retention-03",
@@ -465,7 +465,7 @@
       "utterance": "la bebida bien fría",
       "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
       "status": "partially_covered_by_384_focused_suite",
-      "note": "384: nota de temperatura dirigida a bebida separada o incluida; dos catálogos y agente off/mock, repetición, ambigüedad y cierre DTO. Foco y global35552/454 aprobados; despliegue staging pendiente. No acredita toda la reconstrucción de combo histórico312–333."
+      "note": "384: nota de temperatura dirigida a bebida separada o incluida; dos catálogos y agente off/mock, repetición, ambigüedad y cierre DTO. Foco y global35552/454 aprobados; staging384 desplegado/verificado en fd931dc9. No acredita toda la reconstrucción de combo histórico312–333."
     },
     {
       "id": "0111-address-context-01",
