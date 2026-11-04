@@ -1,3 +1,11 @@
+## Tanda385 — reparto de opciones en mensajes separados (validada localmente)
+
+Reproducción: 16/16 casos fallaban al conservar «3 ajiacos» antes de recibir «una menudencia». Ahora el borrador conserva cantidades parciales, pregunta cuántos platos faltan por resolver y espera el reparto completo antes de asignar opciones o añadir unidades. Repetir el mismo fragmento no suma cantidades. Sobrepasar el total o indicar una opción desconocida conserva el borrador válido.
+
+44 regresiones nuevas: dos catálogos × agente desactivado/simulado;16 cierres DTO con cuatro unidades y reparto3+1; controles de repetición, preguntas, sí/número prematuros, exceso, opción desconocida, cancelación y nota compartida. Foco inicial180/3 aprobado; suite ampliada44/44 aprobada. Inventario completo validado:35596 pruebas/455 suites. La primera ejecución tuvo4 fallos de expectativas340 que exigían descartar opciones incompletas; se actualizaron solo esas pruebas y se repitieron340+385 (112/112), sin cambiar runtime. Temporizadores, TypeScript general/build y92 pruebas de scripts aprobados. Evidencia whatsapp-batch-385-validation.json. Despliegue de staging pendiente. Cero llamadas pagadas, Meta u órdenes externas.
+
+Alcance acotado: esta tanda conserva conteos fragmentados antes de asignarlos. No acredita opciones obligatorias sin defaults después de una asignación ya resuelta ni cambios arbitrarios del reparto a mitad del flujo. Esos casos siguen pendientes, junto a reconstrucción de combos conservando notas, opciones retiradas y consultas combinadas de medidas. Producción y Kamppo sin cambios.
+
 ## Tanda384 — revisión de pendientes reales del01/11 (validada)
 
 Se contrastó el ledger con el router actual. Baseline inicial16casos:5fallos/11ya correctos. «La bebida bien fría» se perdía como producto desconocido o cambio de sabor; con combo+Pepsi faltante de preparación el agente podía preguntar sin persistir elección. La nota se dirige ahora a la bebida separada o al plato que la incluye, conserva sabor/cantidad/estado y pide una selección persistida si hay varias candidatas. Pedido explícito con opción y variante pendiente conserva texto/cantidad hasta la elección; una pregunta o condición no autoriza compra.

@@ -26495,7 +26495,7 @@ export class WhatsappOrchestratorService {
         return unchanged('El carrito cambió. Repite el reparto completo para revisarlo.');
       }
       if (pending.missingOptions && pending.optionsSource) {
-        if (normalize(text)===pending.sourceText || /[¿?]/.test(text) || this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isAvailabilityInquiry(text)) {
+        if (normalize(text)===pending.sourceText || pending.optionsSource.split('\n').some(row=>normalize(row)===normalize(text)) || /[¿?]/.test(text) || this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isAvailabilityInquiry(text)) {
           return unchanged(`Conservo los ${pending.units.length} platos. Faltan opciones; dime cuáles quieres para todos o cómo las repartimos.`);
         }
         const extra=text.split(/[:,;]|\s+y\s+(?=(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s)/i).map(row=>row.trim()).filter(Boolean).join('\n');
@@ -26578,7 +26578,7 @@ export class WhatsappOrchestratorService {
       const total=number(head[1]);
       if (units.length!==total) return unchanged(`Pediste ${total} en total, pero las preparaciones suman ${units.length}. Indica las cantidades correctas.`);
       for (const allocation of allocations) {
-        if (allocation.counts.reduce((sum,item)=>sum+item.quantity,0)!==total || new Set(allocation.counts.map(item=>item.value)).size!==allocation.counts.length) return unchanged(`El reparto de ${allocation.attributeName} debe sumar ${total}.`);
+        if (allocation.counts.reduce((sum,item)=>sum+item.quantity,0)>total || new Set(allocation.counts.map(item=>item.value)).size!==allocation.counts.length) return unchanged(`El reparto de ${allocation.attributeName} debe sumar ${total}.`);
         allocation.counts.sort((a,b)=>a.quantity-b.quantity);
       }
       for (const unit of units) {
@@ -26591,6 +26591,20 @@ export class WhatsappOrchestratorService {
       }
       pending={sourceText:normalize(text),optionsSource:lines.join("\n"),cartSignature:JSON.stringify(session.cart),units,allocations};
     }
+    // Keep incomplete option counts across messages, before assigning any of
+    // them. Re-parsing optionsSource is safe here because no allocation has
+    // been applied yet. A partial count never authorizes defaulting the rest.
+    const incomplete = pending.allocations.find(allocation => {
+      const remaining = pending!.units.filter(unit => !unit.attributes.some(attr => attr.attributeName === allocation.attributeName)).length;
+      return allocation.counts.reduce((sum, item) => sum + item.quantity, 0) < remaining;
+    });
+    if (incomplete) {
+      const remaining = pending.units.filter(unit => !unit.attributes.some(attr => attr.attributeName === incomplete.attributeName)).length;
+      const missing = remaining - incomplete.counts.reduce((sum, item) => sum + item.quantity, 0);
+      await this.conversationService.saveSession(conv, {...session, pendingCountedHeaderOrder: {...pending, missingOptions: true}});
+      return unchanged(`Conservo los ${pending.units.length} platos y el reparto indicado. Falta elegir ${incomplete.attributeName} para ${missing} plato${missing === 1 ? '' : 's'}; ¿cuál quieres?`);
+    }
+    pending.missingOptions = false;
     // Complete the final option only when its count exactly matches the remaining units.
     while (pending.allocations.length) {
       const allocation=pending.allocations[0];

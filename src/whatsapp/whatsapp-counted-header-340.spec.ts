@@ -44,7 +44,17 @@ for(const other of [false,true])for(const agent of [false,true])for(const scenar
  it(`header guard ${other}/${agent}/${scenario}`,async()=>{
   const {h,request,menu,ids}=setup(other,agent);
   await h.sendQueued(scenario==='total'?request.replace('4 ','5 '):scenario==='soup-total'?request.replace('3 ajiacos','2 ajiacos').replace('3 tomates','2 tomates'):request);
-  if(['total','soup-total'].includes(scenario)) {expect(h.conv.sessionData.cart).toEqual([]);expect(h.conv.sessionData.pendingCountedHeaderOrder).toBeUndefined();return;}
+  if(scenario==='total') {expect(h.conv.sessionData.cart).toEqual([]);expect(h.conv.sessionData.pendingCountedHeaderOrder).toBeUndefined();return;}
+  if(scenario==='soup-total') {
+    expect(h.conv.sessionData.cart).toEqual([]);
+    expect(h.conv.sessionData.pendingCountedHeaderOrder?.missingOptions).toBe(true);
+    expect(h.conv.sessionData.pendingCountedHeaderOrder?.units).toHaveLength(4);
+    expect(h.conv.sessionData.pendingCountedHeaderOrder?.allocations[0].counts.reduce((sum,item)=>sum+item.quantity,0)).toBe(3);
+    await h.sendQueued('reiniciar');
+    expect(h.conv.sessionData.pendingCountedHeaderOrder).toBeUndefined();
+    expect(h.conv.sessionData.cart).toEqual([]);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();return;
+  }
   expect(h.conv.sessionData.pendingCountedHeaderOrder).toBeDefined();
   if(scenario==='stock') menu.find(p=>p.id===ids[1])!.availableNow=false;
   if(scenario==='option') menu.find(p=>p.id===ids[1])!.attributes.find(a=>a.attributeName==='Sopa')!.options=[];
