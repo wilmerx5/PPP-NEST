@@ -15,6 +15,8 @@ describe('durable invoice tax reporting', () => {
       [{ number: 'A', value: '800.25' }, { number: 'B', value: '800.25' }]);
     const result = await sut.electronicInvoiceTotals(opts);
     expect(result.totals.consumptionTaxAmount).toBe(1600.5);
+    expect(result.totals.consumptionTaxEstimatedAmount).toBe(0);
+    expect(result.totals.consumptionTaxTotalWithEstimate).toBe(1600.5);
     expect(result.totals.netAmount).toBe(21600);
     expect(result.totals.voidedAmount).toBe(10800);
     expect(sut.api.getBill).not.toHaveBeenCalled();
@@ -22,7 +24,12 @@ describe('durable invoice tax reporting', () => {
   });
   it('returns promptly and queues only missing distinct invoices', async () => {
     const sut = fixture([row('accepted', 'A'), row('accepted', 'B')], [row('accepted', 'B')], [{ number: 'A', value: 800 }]);
-    expect((await sut.electronicInvoiceTotals(opts)).totals.consumptionTaxAmount).toBeNull();
+    const {totals} = await sut.electronicInvoiceTotals(opts);
+    expect(totals.consumptionTaxAmount).toBeNull();
+    expect(totals.consumptionTaxVerifiedAmount).toBe(800);
+    expect(totals.consumptionTaxEstimatedAmount).toBe(1600);
+    expect(totals.consumptionTaxEstimatedCount).toBe(2);
+    expect(totals.consumptionTaxTotalWithEstimate).toBe(2400);
     expect(sut.queueInvoiceTaxes).toHaveBeenCalledWith(['B']);
     expect(sut.api.getBill).not.toHaveBeenCalled();
   });
