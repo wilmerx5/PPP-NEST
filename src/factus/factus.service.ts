@@ -51,6 +51,7 @@ import {
   formatToBogotaISO,
   getBogotaDateRange,
 } from '../common/utils/date.util';
+import { consumptionTax } from './factus-tax-total.util';
 import { formatYmdInTimeZone } from './factus-invoice.mapper';
 
 /** Adquiriente genérico DIAN para emisión en lote. */
@@ -87,6 +88,22 @@ type InvoiceCustomerRow = {
 @Injectable()
 export class FactusService {
   private readonly logger = new Logger(FactusService.name);
+  private readonly invoiceTaxCache = new Map<string, { value: number; expires: number }>();
+
+  private async invoiceConsumptionTax(number?: string): Promise<number | null> {
+    if (!number) return null;
+    const cached = this.invoiceTaxCache.get(number);
+    if (cached && cached.expires > Date.now()) return cached.value;
+    try {
+      const value = consumptionTax(await this.api.getBill(number));
+      if (value !== null) {
+        if (this.invoiceTaxCache.size >= 2000) this.invoiceTaxCache.delete(this.invoiceTaxCache.keys().next().value!);
+        this.invoiceTaxCache.set(number, { value, expires: Date.now() + 3600000 });
+      }
+      return value;
+    } catch { return null; }
+  }
+
   /** Cache del rango NC auto-detectado (como Loggro: sin obligar .env si hay uno solo). */
   private creditNoteRangeCache: { id: number; expiresAt: number } | null = null;
   private static readonly NC_RANGE_CACHE_MS = 10 * 60 * 1000;
@@ -861,6 +878,7 @@ export class FactusService {
     to: string;
     groupBy: 'day' | 'month' | 'year';
     totals: {
+      consumptionTaxAmount: number | null;
       invoicedAmount: number;
       invoicedCount: number;
       voidedAmount: number;
@@ -871,6 +889,7 @@ export class FactusService {
     };
     buckets: Array<{
       key: string;
+      consumptionTaxAmount: number | null;
       invoicedAmount: number;
       invoicedCount: number;
       voidedAmount: number;
@@ -891,11 +910,12 @@ export class FactusService {
     const { start } = getBogotaDateRange(opts.from);
     const { end } = getBogotaDateRange(opts.to);
 
-    const orderRows: Array<{ status: string; issuedAt: Date | string; amount: string | number }> =
+    const orderRows: Array<{ status: string; issuedAt: Date | string; amount: string | number; number?: string; consumptionTax?: number | null }> =
       await this.orderRepo.query(
         `
         SELECT
           o.electronic_invoice_status AS status,
+          o.electronic_invoice_number AS number,
           COALESCE(o.electronic_invoice_issued_at, o.created_at) AS issuedAt,
           (
             COALESCE((
@@ -921,11 +941,12 @@ export class FactusService {
         [start, end, start, end],
       );
 
-    const bulkRows: Array<{ status: string; issuedAt: Date | string; amount: string | number }> =
+    const bulkRows: Array<{ status: string; issuedAt: Date | string; amount: string | number; number?: string; consumptionTax?: number | null }> =
       await this.standaloneInvoiceRepo.query(
         `
         SELECT
           s.invoice_status AS status,
+          s.invoice_number AS number,
           COALESCE(s.issued_at, s.created_at) AS issuedAt,
           COALESCE(s.planned_sum, 0) AS amount
         FROM ppp_factus_standalone_invoices s
@@ -938,6 +959,12 @@ export class FactusService {
         [start, end, start, end],
       );
 
+    // Read only issued tax values; unavailable breakdowns remain unknown, never zero.
+    // Sequential requests avoid a burst against the external invoice API.
+    for (const row of [...orderRows, ...bulkRows]) {
+      if (row.status === 'accepted') row.consumptionTax = await this.invoiceConsumptionTax(row.number);
+    }
+
     const bucketKey = (at: Date | string) => {
       const ymd = formatYmdInTimeZone(new Date(at));
       if (groupBy === 'year') return ymd.slice(0, 4);
@@ -948,6 +975,7 @@ export class FactusService {
     const map = new Map<
       string,
       {
+        consumptionTaxAmount: number | null;
         invoicedAmount: number;
         invoicedCount: number;
         voidedAmount: number;
@@ -957,7 +985,7 @@ export class FactusService {
     const ensure = (key: string) => {
       let row = map.get(key);
       if (!row) {
-        row = { invoicedAmount: 0, invoicedCount: 0, voidedAmount: 0, voidedCount: 0 };
+        row = { consumptionTaxAmount: 0, invoicedAmount: 0, invoicedCount: 0, voidedAmount: 0, voidedCount: 0 };
         map.set(key, row);
       }
       return row;
@@ -966,7 +994,7 @@ export class FactusService {
     let orderAmount = 0;
     let bulkAmount = 0;
     const addRow = (
-      row: { status: string; issuedAt: Date | string; amount: string | number },
+      row: { status: string; issuedAt: Date | string; amount: string | number; number?: string; consumptionTax?: number | null },
       source: 'order' | 'bulk',
     ) => {
       const amount = Math.round(Number(row.amount) || 0);
@@ -976,6 +1004,8 @@ export class FactusService {
         bucket.voidedCount += 1;
         return;
       }
+      bucket.consumptionTaxAmount = bucket.consumptionTaxAmount === null || row.consumptionTax == null
+        ? null : Math.round((bucket.consumptionTaxAmount + row.consumptionTax) * 100) / 100;
       bucket.invoicedAmount += amount;
       bucket.invoicedCount += 1;
       if (source === 'order') orderAmount += amount;
@@ -989,7 +1019,7 @@ export class FactusService {
       .map(([key, row]) => ({
         key,
         ...row,
-        netAmount: row.invoicedAmount - row.voidedAmount,
+        netAmount: row.invoicedAmount, // accepted already excludes credit-noted invoices
       }));
 
     const invoicedAmount = buckets.reduce((s, b) => s + b.invoicedAmount, 0);
@@ -1002,11 +1032,13 @@ export class FactusService {
       to: opts.to,
       groupBy,
       totals: {
+        consumptionTaxAmount: buckets.some(b => b.consumptionTaxAmount === null) ? null :
+          Math.round(buckets.reduce((sum, b) => sum + (b.consumptionTaxAmount ?? 0), 0) * 100) / 100,
         invoicedAmount,
         invoicedCount,
         voidedAmount,
         voidedCount,
-        netAmount: invoicedAmount - voidedAmount,
+        netAmount: invoicedAmount,
         orderAmount,
         bulkAmount,
       },
