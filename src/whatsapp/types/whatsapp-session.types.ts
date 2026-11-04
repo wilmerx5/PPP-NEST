@@ -148,6 +148,8 @@ export type WhatsappSessionData = {
   pendingCountedHeaderOrder?: {
     /** Canonical rows retained while required shared options are missing. */
     optionsSource?: string;
+    /** Replaying the purchase would discard unit-level choices after this point. */
+    assignmentsStarted?: boolean;
     missingOptions?: boolean;
     sourceText: string;
     cartSignature: string;

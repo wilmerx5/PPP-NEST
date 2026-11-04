@@ -1,3 +1,13 @@
+## Tanda386 — elecciones sucesivas sin perder asignaciones (validada localmente)
+
+Baseline reproducible12/12 fallos: «todos Pepsi» durante asignación de sopa se ignoraba; una vez asignado endulzante de cuatro jugos, «todos mango» reconstruía el pedido y volvía a preguntar por la asignación ya resuelta. El fixture exploratorio Smoothie Natural/Vegetal no alcanzaba este flujo; se sustituyó por Jugo Natural En Agua/Leche, familias reconocidas, antes de acreditar el fallo de continuidad.
+
+Ahora una opción compartida exacta y válida para todas las unidades se guarda aunque otra asignación esté pendiente. Si ya hubo asignaciones, completar una opción obligatoria conserva esas unidades en vez de interpretar otra vez el pedido inicial. Opciones incompatibles con elecciones anteriores o con repartos pendientes no sobrescriben datos. Se mantiene validación atómica de disponibilidad antes de añadir productos.
+
+52 regresiones nuevas, tres catálogos (PPP, bowls, jugos) × agente off/mock;36 cierres DTO. Incluye reparto de sopa completo/fragmentado, bebida repetida, nota compartida, elección de línea1/2, sabor obligatorio posterior, preguntas, desconocidos, conflicto, reiteración original, cancelar, producto/opción retirados y carrito cambiado. Foco328/5 suites aprobado. Global35648/456 aprobada sin fallos ni omitidas;675 fuentes congeladas e inventario exacto. TypeScript general/build y92 pruebas de scripts aprobados. Evidencia whatsapp-batch-386-validation.json. Despliegue staging pendiente; cero inferencia pagada, Meta u órdenes externas.
+
+Límites: no resuelve cambios arbitrarios de asignaciones ni repartos nuevos por cantidades después de terminar otra asignación; pide conservar o cancelar para rehacer. Tampoco cubre todos los mensajes compuestos de varias opciones a la vez. Próximos pendientes: notas durante reconstrucción/reemplazo de combos, especialmente «bien fría»; disponibilidad dinámica ampliada; preguntas combinadas de tamaño. Producción/Kamppo sin cambios.
+
 ## Tanda385 — reparto de opciones en mensajes separados (staging verificado)
 
 Reproducción: 16/16 casos fallaban al conservar «3 ajiacos» antes de recibir «una menudencia». Ahora el borrador conserva cantidades parciales, pregunta cuántos platos faltan por resolver y espera el reparto completo antes de asignar opciones o añadir unidades. Repetir el mismo fragmento no suma cantidades. Sobrepasar el total o indicar una opción desconocida conserva el borrador válido.

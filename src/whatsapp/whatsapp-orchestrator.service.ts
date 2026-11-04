@@ -26494,7 +26494,32 @@ export class WhatsappOrchestratorService {
         await this.conversationService.saveSession(conv,{...session,pendingCountedHeaderOrder:undefined});
         return unchanged('El carrito cambió. Repite el reparto completo para revisarlo.');
       }
-      if (pending.missingOptions && pending.optionsSource) {
+      pending = structuredClone(pending);
+      // A shared, exact catalog option can arrive while another option is
+      // being allocated. Keep the unit assignments instead of replaying the
+      // original purchase and losing already resolved choices.
+      const sharedText = normalize(text).replace(/^(?:todos|todas|para todos|para todas)(?: con)?\s+/, '');
+      const sharedChoices = pending.units.map(unit => {
+        const product = menu.find(item => item.id === unit.productId);
+        const hits = (product?.attributes || []).flatMap(attribute => attribute.options
+          .filter(value => [normalize(value), `${normalize(attribute.attributeName)} ${normalize(value)}`].includes(sharedText))
+          .map(value => ({attributeName: attribute.attributeName, attributeValue: value})));
+        return hits.length === 1 ? hits[0] : undefined;
+      });
+      const sharedChoice = sharedChoices[0];
+      const sharedAccepted = !/[¿?]/.test(text) && !!sharedChoice && sharedChoices.every(choice =>
+        choice?.attributeName === sharedChoice.attributeName && choice?.attributeValue === sharedChoice.attributeValue) &&
+        !pending.allocations.some(allocation => allocation.attributeName === sharedChoice.attributeName) &&
+        pending.units.every(unit => !unit.attributes.some(attribute => attribute.attributeName === sharedChoice.attributeName && attribute.attributeValue !== sharedChoice.attributeValue));
+      if (sharedAccepted && sharedChoice) {
+        for (const unit of pending.units) {
+          if (!unit.attributes.some(attribute => attribute.attributeName === sharedChoice.attributeName)) unit.attributes.push({...sharedChoice});
+        }
+        if (pending.optionsSource && !pending.optionsSource.split('\n').some(row => normalize(row) === normalize(text))) pending.optionsSource += '\n' + text;
+      }
+      if (pending.missingOptions && pending.optionsSource && !sharedAccepted) {
+        if (pending.assignmentsStarted) return unchanged('Conservo las opciones ya elegidas. Dime la opción que falta para todos; para rehacer el reparto, cancélalo primero.');
+
         if (normalize(text)===pending.sourceText || pending.optionsSource.split('\n').some(row=>normalize(row)===normalize(text)) || /[¿?]/.test(text) || this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isAvailabilityInquiry(text)) {
           return unchanged(`Conservo los ${pending.units.length} platos. Faltan opciones; dime cuáles quieres para todos o cómo las repartimos.`);
         }
@@ -26526,6 +26551,7 @@ export class WhatsappOrchestratorService {
         if (targets.length < choice.quantity) return unchanged('Esa línea no tiene suficientes unidades para esa opción. Elige otra línea o cancela el reparto.');
         for (const unit of targets.slice(0,choice.quantity)) unit.attributes.push({attributeName:allocation.attributeName,attributeValue:choice.value});
         allocation.counts.shift();
+        pending.assignmentsStarted = true;
       }
     } else {
       if (/[¿?]/.test(text)) return false;
@@ -26614,6 +26640,7 @@ export class WhatsappOrchestratorService {
       if (last.quantity!==remaining.length) return unchanged('Falta aclarar las cantidades de las opciones.');
       for(const unit of remaining) unit.attributes.push({attributeName:allocation.attributeName,attributeValue:last.value});
       pending.allocations.shift();
+      pending.assignmentsStarted = true;
     }
     if (pending.allocations.length) {
       const allocation=pending.allocations[0];const choice=allocation.counts[0];

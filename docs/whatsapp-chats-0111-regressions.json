@@ -90,8 +90,8 @@
       "priority": "P0",
       "utterance": "4 ejecutivos: 3 fritos y 1 broster",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "partially_covered_through_385",
-      "note": "340:entrada multilínea inicial.371:continuación con reiteración de total/reparto, nota compartida y cierre; guardas de varias líneas/familia ajena. Entrada literal en una sola línea e inflación histórica completa siguen pendientes; cantidad7en371 es fixture de recuperación. Tanda374: encabezados compactos con opciones explícitas y4controles abreviados; estos últimos no acreditan captura progresiva ni cierre. Tanda385: 44 regresiones locales; conteos de sopa en mensajes separados, repetición, controles y16 cierres DTO. No cubre toda captura sin defaults después de resolver asignaciones. Inventario global validado con reejecución340+385 tras actualizar solo expectativas antiguas; runtime intacto. Staging385 verificado en05d158d5; producción/Kamppo pendientes."
+      "status": "partially_covered_through_386_local",
+      "note": "340:entrada multilínea inicial.371:continuación con reiteración de total/reparto, nota compartida y cierre; guardas de varias líneas/familia ajena. Entrada literal en una sola línea e inflación histórica completa siguen pendientes; cantidad7en371 es fixture de recuperación. Tanda374: encabezados compactos con opciones explícitas y4controles abreviados; estos últimos no acreditan captura progresiva ni cierre. Tanda385: 44 regresiones locales; conteos de sopa en mensajes separados, repetición, controles y16 cierres DTO. No cubre toda captura sin defaults después de resolver asignaciones. Inventario global validado con reejecución340+385 tras actualizar solo expectativas antiguas; runtime intacto. Staging385 verificado en05d158d5; producción/Kamppo pendientes. Tanda386: elecciones compartidas durante reparto de sopa y sabor obligatorio después de asignar endulzante;52 pruebas/36 cierres simulados en3 catálogos. Foco328 y global35648/456 aprobados; TypeScript/scripts aprobados. Despliegue pendiente. No cubre cambios arbitrarios de asignaciones."
     },
     {
       "id": "0111-executive-distribution-02",
@@ -129,8 +129,8 @@
       "priority": "P0",
       "utterance": "todos pierna pernil, 3 ajiacos y una menudencia",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "partially_covered_through_385",
-      "note": "Encabezado breve seguido de opciones compartidas y reparto completo en otro mensaje;16 cierres DTO en dos catálogos × agente off/mock.64regresiones totales. No acredita reparto arbitrario por varios mensajes ni canal/modelo real. Global35160/443 aprobada; staging375 verificado. Tanda385: 44 regresiones locales; conteos de sopa en mensajes separados, repetición, controles y16 cierres DTO. No cubre toda captura sin defaults después de resolver asignaciones. Inventario global validado con reejecución340+385 tras actualizar solo expectativas antiguas; runtime intacto. Staging385 verificado en05d158d5; producción/Kamppo pendientes."
+      "status": "partially_covered_through_386_local",
+      "note": "Encabezado breve seguido de opciones compartidas y reparto completo en otro mensaje;16 cierres DTO en dos catálogos × agente off/mock.64regresiones totales. No acredita reparto arbitrario por varios mensajes ni canal/modelo real. Global35160/443 aprobada; staging375 verificado. Tanda385: 44 regresiones locales; conteos de sopa en mensajes separados, repetición, controles y16 cierres DTO. No cubre toda captura sin defaults después de resolver asignaciones. Inventario global validado con reejecución340+385 tras actualizar solo expectativas antiguas; runtime intacto. Staging385 verificado en05d158d5; producción/Kamppo pendientes. Tanda386: elecciones compartidas durante reparto de sopa y sabor obligatorio después de asignar endulzante;52 pruebas/36 cierres simulados en3 catálogos. Foco328 y global35648/456 aprobados; TypeScript/scripts aprobados. Despliegue pendiente. No cubre cambios arbitrarios de asignaciones."
     },
     {
       "id": "0111-burst-idempotency-01",
