@@ -9015,7 +9015,7 @@ export class WhatsappOrchestratorService {
     const explicitOrder = this.catalogService.looksLikeExplicitAddProductRequest(text) ||
       /^(?:quiero|quieor|qiero|kiero|dame|ponme|me das|me regalas|regalame|pido)\b/.test(this.normalizeForMatch(text)
         .replace(/^(?:(?:h?ola|buenas|buenos|buen)(?:\s+(?:tardes|noches|dias|dia))?[\s,!.]*)+/, ''));
-    if (quantity < 2 && !explicitOrder) return false;
+    if (quantity < 2 && !explicitOrder && !/^(?:un|una|uno)\s+\p{L}+[.!]?$/u.test(this.normalizeForMatch(text))) return false;
     const query = this.catalogService.stripQuantityFromSearchQuery(
       this.catalogService.extractProductSearchQuery(text),
     ).replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '').trim();
@@ -9024,11 +9024,17 @@ export class WhatsappOrchestratorService {
     if (family && this.catalogService.pickVariantFromFamilyText(text, family)) return false;
     const scored = this.catalogService.searchByNameScored(query, products, 8);
     const prefixCandidates = this.catalogService.findCatalogPrefixCandidates(text, products);
-    const candidates = family?.variants || (prefixCandidates.length >= 2 ? prefixCandidates : null) || scored
+    const categoryCandidates = products.filter(product =>
+      this.normalizeForMatch(product.categoryName || '').replace(/s$/, '') === this.normalizeForMatch(query).replace(/s$/, ''));
+    const candidates = (family?.variants && family.variants.length >= 2 ? family.variants : null) || (categoryCandidates.length >= 2 ? categoryCandidates : null) || family?.variants || (prefixCandidates.length >= 2 ? prefixCandidates : null) || scored
       .filter(hit => hit.score >= 60 && hit.score >= (scored[0]?.score || 0) - 12)
       .map(hit => hit.p);
     const available = candidates.filter(p => p.availableNow !== false);
-    if (available.length < 2) return false;
+    if (available.length < 2 && categoryCandidates.length < 2) return false;
+    if (!available.length) {
+      await this.reply(conv, waId, 'Por ahora no hay opciones disponibles de esa categoría. Tu pedido sigue igual.');
+      return true;
+    }
     session = {
       ...session,
       pendingMatch: { query: text, candidates: available, intent: 'order', quantity,
@@ -25163,6 +25169,7 @@ export class WhatsappOrchestratorService {
 
     captureActionDecision(params.decision,'proposed',agent.actions);
     const agentReply = (agent.reply || '').trim();
+    if (!/[\p{L}\p{N}]/u.test(agentReply) && !Object.values(agent.actions || {}).some(value => Array.isArray(value) ? value.length : !!value)) return false;
     const offMenuQuery = this.offMenuErrandQuery(originalText || text, products);
     const randomAside = offMenuQuery ? null : this.randomAsideLabel(originalText || text, products);
     if (offMenuQuery || randomAside) {
@@ -25612,12 +25619,21 @@ export class WhatsappOrchestratorService {
       if (!product || !detail.length) return [];
       return [{detail: [...new Set(detail)].join(' '), name: product.name}];
     }) : [];
+    const rejectedOfferAttempt = rejectedProductIds.length === 1
+      ? agent.purchaseAttempts?.find(attempt => attempt.productId === rejectedProductIds[0] && !attempt.accepted &&
+        attempt.reason === 'dish_not_on_menu' && attempt.uncoveredWords?.length) : undefined;
+    const rejectedOfferProduct = rejectedOfferAttempt
+      ? products.find(product => product.id === rejectedOfferAttempt.productId && product.availableNow !== false) : undefined;
     const unappliedToolLines = [
       ...rejectedProductIds.flatMap(id => {
         const product = products.find(candidate => candidate.id === id);
         if (!product) return [];
         const fragment = this.catalogService.orderSegmentForProduct(text, product, products).trim();
-        return [`No pude añadir *${fragment || product.name}* como lo pediste.`];
+        const attempt = agent.purchaseAttempts?.find(item => item.productId === id && !item.accepted);
+        if (attempt?.reason === 'dish_not_on_menu' && attempt.uncoveredWords?.length) {
+          return [`No añadí *${product.name}*: esa opción no incluye *${attempt.uncoveredWords.join(', ')}* en el menú.`];
+        }
+        return [`No pude añadir *${fragment || product.name}* como lo pediste; necesito aclarar cómo lo quieres.`];
       }),
       ...sameSkuRejections.map(item => `No pude añadir *${item.name}* con *${item.detail}*. El resto del pedido sí quedó.`),
     ];
@@ -25972,6 +25988,13 @@ export class WhatsappOrchestratorService {
         ? `No agregué ni reemplacé *${omission}*.` : null;
       const misses = [missLine || unlistedOmission, ...intentMisses, ...unappliedToolLines].filter(Boolean);
       reply = misses.length ? `${misses.join('\n')}\n\n${cartReply}` : cartReply;
+      if (rejectedOfferProduct && !/no\s+(?:(?:lo|la|los|las)\s+)?(?:reemplac|cambi|sustit)/i.test(text) && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
+        const product = rejectedOfferProduct;
+        session = {...session, pendingAddOffer: {productId:product.id,name:product.name,code:product.code,
+          price:product.price,quantity:1,sourceText:`1 ${product.name}`}};
+        reply = reply.replace(/\n\n¿\*?Algo más\*?\?/g, '') +
+          `\n\nTenemos *${product.name}* · ${this.catalogService.formatMoney(product.price)}. ¿Te agrego una unidad de esta alternativa?`;
+      }
     } else if (guarded.actions?.updateAttributes?.length) {
       reply =
         guarded.actions.updateAttributes
@@ -29770,6 +29793,22 @@ export class WhatsappOrchestratorService {
         }
       }
 
+      const alternatives = multi.unresolved.length === 1 && !/no\s+(?:(?:lo|la|los|las)\s+)?(?:reemplac|cambi|sustit)/i.test(text)
+        ? this.catalogService.relatedProductsForMissingDish(multi.unresolved[0], products)
+          .filter(product => product.availableNow !== false && !next.cart.some(line => line.productId === product.id)) : [];
+      if (alternatives.length === 1 && addResult.addedNames.length) {
+        const product = alternatives[0];
+        const quantity = this.catalogService.extractQuantityFromMessage(multi.unresolved[0], products);
+        const offered = {...next, pendingMultiOrder:undefined, pendingAddOffer: {
+          productId:product.id,name:product.name,code:product.code,price:product.price,quantity,
+          sourceText:`${quantity} ${product.name}`}};
+        await this.conversationService.saveSession(conv, offered, 'building_cart');
+        const ack = this.buildCartAddReply(next, this.deliveryFeeFor(next, cfg), addResult.addedNames, {
+          extraLine: deliveryTail ? `\nDomicilio anotado: _${deliveryTail}_` : undefined,
+        }).replace(/\n\n¿\*?Algo más\*?\?/g, '');
+        await this.reply(conv, waId, missNote + ack + `\n\n¿Te agrego ${quantity} de *${product.name}* como alternativa?`);
+        return true;
+      }
       await this.conversationService.saveSession(conv, { ...next, pendingMultiOrder: undefined }, 'building_cart');
       // A resolved edit at final review needs a refreshed summary, not a new shopping loop.
       // Re-enter through building_cart so this cannot submit the revised order.

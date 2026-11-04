@@ -40,7 +40,7 @@ const PHRASE_REWRITES: Array<{
   { re: /\bpap[aá]\s+a\s+la\s+francesa\b/gi, to: 'papa a la francesa' },
   // En PPP “papa(s) frita(s)” = papa francesa (no yuca frita)
   { re: /\bporci[oó]n(?:es)?\s+(?:de\s+)?papas?\s+fritas?\b/gi, to: 'porcion de papa francesa' },
-  { re: /\bunas?\s+papas?\s+fritas?\b/gi, to: 'papa francesa' },
+  { re: /\bunas?\s+papas?\s+fritas?\b/gi, to: 'una porcion de papa francesa' },
   { re: /\bpapas?\s+fritas?\b/gi, to: 'papa francesa' },
   // Precio coloquial CO: "a como" / "acomo el pollo" = ¿a cómo / cuánto cuesta?
   { re: /\ba\s*c[oó]mo\b/gi, to: 'a cuanto' },

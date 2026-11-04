@@ -1,0 +1,72 @@
+{
+  "batch": 383,
+  "baseCommit": "279f6153ea53a54ca92c79d6bd95b08e334f6807",
+  "status": "passed",
+  "newTests": 40,
+  "newDtoJourneys": 12,
+  "baseline": {
+    "tests": 6,
+    "failed": 4,
+    "passed": 2,
+    "note": "PPP mock fixture reproduced missing category options, punctuation reply and lost fries portion; exact Kamppo mini mutation was not reproduced"
+  },
+  "focus": {
+    "passed": 40,
+    "suites": 1
+  },
+  "relatedFocus": {
+    "passed": 163,
+    "suites": 5,
+    "note": "Before final eight phrasing variants; final global includes all40"
+  },
+  "globalValidation": {
+    "baseCommit": "279f6153ea53a54ca92c79d6bd95b08e334f6807",
+    "batches": [
+      383
+    ],
+    "phases": {
+      "nonTimer": {
+        "exitCode": 0,
+        "seconds": 3319.41,
+        "sourceUnchanged": true,
+        "tests": 35472,
+        "failed": 0,
+        "skipped": 0
+      },
+      "timers": {
+        "exitCode": 0,
+        "seconds": 17.18,
+        "sourceUnchanged": true,
+        "tests": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "node": {
+        "exitCode": 0
+      }
+    },
+    "paidRequests": 0,
+    "sourceFiles": 672,
+    "workers": 2,
+    "nonTimerTestTimeoutMs": 20000,
+    "tests": 35488,
+    "suites": 453,
+    "inventoryExact": true,
+    "sourceUnchanged": true
+  },
+  "scriptsTests": 92,
+  "paidRequests": 0,
+  "externalMessages": 0,
+  "externalOrders": 0,
+  "previousAttempt": "Four-worker run deliberately stopped due shared-memory pressure; frozen source rerun fully with two workers",
+  "deployment": {
+    "environment": "staging",
+    "verified": false
+  }
+}
