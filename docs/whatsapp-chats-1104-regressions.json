@@ -2,7 +2,7 @@
   "date": "2026-11-04",
   "batch": 387,
   "environment": "staging",
-  "status": "validated-awaiting-staging-deployment",
+  "status": "deployed-and-verified-in-staging",
   "paidRequests": 0,
   "productionChanged": false,
   "evidence": {
@@ -68,5 +68,7 @@
     "No production or Kamppo migration in this batch.",
     "An unfinished transcript is not proof of a lost sale; one pasted attempt ended with explicit draft cancellation.",
     "The audit snapshot does not establish outcomes through other channels."
-  ]
+  ],
+  "runtimeCommit": "7269908b347cb7efd8328147e730dd259b9a985f",
+  "deploymentEvidence": "whatsapp-batch-387-staging-deployment.json"
 }
