@@ -88,20 +88,40 @@ type InvoiceCustomerRow = {
 @Injectable()
 export class FactusService {
   private readonly logger = new Logger(FactusService.name);
-  private readonly invoiceTaxCache = new Map<string, { value: number; expires: number }>();
+  private readonly taxQueue = new Set<string>();
+  private taxWorkerRunning = false;
+  private taxRetryAt = 0;
 
-  private async invoiceConsumptionTax(number?: string): Promise<number | null> {
-    if (!number) return null;
-    const cached = this.invoiceTaxCache.get(number);
-    if (cached && cached.expires > Date.now()) return cached.value;
+  private queueInvoiceTaxes(numbers: string[]) {
+    if (Date.now() < this.taxRetryAt) return;
+    for (const number of numbers) this.taxQueue.add(number);
+    if (!this.taxWorkerRunning && this.taxQueue.size) void this.drainInvoiceTaxes();
+  }
+
+  private async drainInvoiceTaxes() {
+    this.taxWorkerRunning = true;
     try {
-      const value = consumptionTax(await this.api.getBill(number));
-      if (value !== null) {
-        if (this.invoiceTaxCache.size >= 2000) this.invoiceTaxCache.delete(this.invoiceTaxCache.keys().next().value!);
-        this.invoiceTaxCache.set(number, { value, expires: Date.now() + 3600000 });
+      while (this.taxQueue.size) {
+        const number = this.taxQueue.values().next().value!;
+        // Keep the in-flight number in the set to deduplicate concurrent reports.
+        try {
+          const value = consumptionTax(await this.api.getBill(number));
+          if (value !== null) await this.orderRepo.query(
+            `INSERT INTO ppp_factus_tax_cache (environment, invoice_number, consumption_tax)
+             VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE consumption_tax = VALUES(consumption_tax)`,
+            [this.auth.getBaseUrl(), number, value],
+          );
+        } catch {
+          // Stop on provider/DB failure rather than multiplying errors across the report.
+          this.taxRetryAt = Date.now() + 65000;
+          this.taxQueue.clear();
+          this.logger.warn('[FE totals] Tax sync paused; retry available in 65 seconds');
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        this.taxQueue.delete(number);
       }
-      return value;
-    } catch { return null; }
+    } finally { this.taxWorkerRunning = false; }
   }
 
   /** Cache del rango NC auto-detectado (como Loggro: sin obligar .env si hay uno solo). */
@@ -959,11 +979,19 @@ export class FactusService {
         [start, end, start, end],
       );
 
-    // Read only issued tax values; unavailable breakdowns remain unknown, never zero.
-    // Sequential requests avoid a burst against the external invoice API.
+    // Reports read durable snapshots. Missing invoices hydrate in one paced background
+    // queue, so a year report never issues hundreds of HTTP requests on its critical path.
+    const numbers = [...new Set([...orderRows, ...bulkRows]
+      .filter(row => row.status === 'accepted' && row.number).map(row => row.number!))];
+    const cached: Array<{ number: string; value: string | number }> = numbers.length
+      ? await this.orderRepo.query(
+        `SELECT invoice_number AS number, consumption_tax AS value FROM ppp_factus_tax_cache
+         WHERE environment = ? AND invoice_number IN (?)`, [this.auth.getBaseUrl(), numbers]) : [];
+    const taxByNumber = new Map(cached.map(row => [row.number, Number(row.value)]));
     for (const row of [...orderRows, ...bulkRows]) {
-      if (row.status === 'accepted') row.consumptionTax = await this.invoiceConsumptionTax(row.number);
+      row.consumptionTax = row.number ? taxByNumber.get(row.number) ?? null : null;
     }
+    this.queueInvoiceTaxes(numbers.filter(number => !taxByNumber.has(number)));
 
     const bucketKey = (at: Date | string) => {
       const ymd = formatYmdInTimeZone(new Date(at));
