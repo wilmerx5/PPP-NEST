@@ -2757,6 +2757,11 @@ export class WhatsappOrchestratorService {
         '¿Quieres saber si alcanza para esas personas o pedir esa cantidad de unidades? El pedido sigue igual.');
       return;
     }
+    if (session.cart.length && await this.tryHandleExistingCartContentsInquiry(
+      conv, msg.waId, session, originalText)) {
+      captureInquiryDecision(turn.decision, 'composition', []);
+      return;
+    }
     const sizeQuestion = /\b(?:que tan (?:grande|pequen[oa]) (?:es|son)|(?:de )?que tamano (?:es|son|tiene|tienen))\b/;
     let inquirySource = originalText;
     const followUpName = (value: string) => this.normalizeForMatch(value).match(/^y (?:el|la) (.+?)[?!.]*$/)?.[1];
@@ -3409,7 +3414,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryDescribePendingListOption(conv,msg.waId,session,originalText)) return;
     const pendingQuantityChoice = !!session.pendingAttribute && /^(?:mejor(?: solo)?|solo|que sean|(?:una?|uno|dos|tres|cuatro|cinco) mas)\s+(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco)?\s*(?:con|sin)\b/.test(this.normalizeForMatch(originalText));
     // "Solo una" changes units, whereas "solo, sin combo" changes a variant.
-    const shortCartQuantity = /^(?:mejor\s+)?(?:solo|solamente)\s+(?:\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)(?:\s+por\s+favor)?$/.test(this.normalizeForMatch(originalText));
+    const shortCartQuantity = /^(?:mejor\s+)?(?:solo|solamente)\s+(?:\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)(?:\s+.+)?$/.test(this.normalizeForMatch(originalText));
     if (shortCartQuantity && session.cart.length && !['completed','closed','human','human_takeover'].includes(conv.state) &&
       await this.tryHandleCartQuantityCorrection(conv,msg.waId,session,originalText,cfg)) return;
     if (session.cart.length && !pendingQuantityChoice && !session.pendingMultiOrder && !/[¿?]/.test(originalText) &&
@@ -13816,6 +13821,64 @@ export class WhatsappOrchestratorService {
   }
 
   /** "Ese viene con papa a la francesa?" about a dish in the cart: answer from its listed contents, never with the side's card. */
+  /** Contents of an existing order are information, including a repeated quantity. */
+  private async tryHandleExistingCartContentsInquiry(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string,
+  ): Promise<boolean> {
+    if (text.length > 180 || !session.cart.length ||
+        !['building_cart', 'awaiting_name', 'awaiting_address', 'awaiting_phone',
+          'awaiting_payment', 'awaiting_final_confirm', 'awaiting_attribute'].includes(conv.state)) return false;
+    const q = this.normalizeForMatch(text).replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim();
+    // Explicit edits/additions remain in their existing routes.
+    if (/\b(?:quiero|dame|agrega\w*|anade\w*|quita\w*|cambia\w*|ponme|dejame|sin)\b/.test(q)) return false;
+    const inclusion = q.match(/^(?:(.*?)\s+)?(?:vienen? (?:solo )?con|traen?|incluyen?|llevan?)\s+(.+)$/);
+    const sideFollowup = /[¿?]/.test(text) ? q.match(/^(?:y|pero) (?:el|la|los|las) (.+)$/) : null;
+    if (!inclusion && !sideFollowup) return false;
+    if (/\b(?:gaseosas?|bebidas?|refrescos?|jugos?|sodas?)\b/.test(inclusion?.[2] || sideFollowup?.[1] || '')) return false;
+    // Established singular inclusion/drink replies keep their evidence-aware flow.
+    if (inclusion && !/\bsolo\b/.test(q) &&
+        !/^(?:vienen con|traen|incluyen|llevan|son)\b/.test(q)) return false;
+    if (!/[¿?]/.test(text) && !/\b(?:vienen (?:solo )?con|traen|incluyen|llevan)\b/.test(q)) return false;
+    const menu = await this.catalogService.getMenuProducts();
+    const pool = [...new Map(session.cart.map(line => menu.find(product => product.id === line.productId))
+      .filter((product): product is MenuProduct => !!product && product.availableNow !== false)
+      .map(product => [product.id, product])).values()];
+    let candidates = pool;
+    if (inclusion) {
+      const reference = (inclusion[1] || '').replace(/^(?:son|eran)\s+/, '')
+        .replace(/^(?:los|las|esos|esas|estos|estas)\s+/, '')
+        .replace(/^(?:\d+|dos|tres|cuatro|cinco)\s+/, '').replace(/\s+y$/, '').trim();
+      if (reference && !/^(?:y|pero|solo|ese|esa|eso|este|esta|esto)$/.test(reference)) {
+        candidates = pool.filter(product => correctionMatchesLine({ productId: product.id,
+          name: product.name, code: product.code, unitPrice: product.price, quantity: 1 }, reference));
+      }
+    } else {
+      const words = this.sideTokens(sideFollowup![1]);
+      if (!words.length) return false;
+      candidates = pool.filter(product => this.sideTokensCovered(words, this.sideTokens(product.description || '')));
+      // A bare product/side mention without evidence is not enough to infer this question.
+      if (!candidates.length) return false;
+    }
+    const reminder = this.formatInterruptedStepReminder(conv, session);
+    if (candidates.length !== 1) {
+      await this.conversationService.saveSession(conv, { ...session, pendingCompositionAsk: {
+        originalText: 'Cómo viene', resumeState: conv.state, productIds: candidates.map(product => product.id),
+      } }, conv.state);
+      await this.reply(conv, waId, '¿De cuál plato quieres saber los acompañamientos? Dime el nombre. El pedido sigue igual.' +
+        (reminder ? `\n\n${reminder}` : ''));
+      return true;
+    }
+    const product = candidates[0];
+    const description = product.description?.trim();
+    const body = description
+      ? `La carta de *${product.name}* indica: ${description}`
+      : `No tengo los acompañamientos confirmados de *${product.name}* en la carta.`;
+    await this.reply(conv, waId, `${body}\n\nEl pedido sigue igual.` +
+      (reminder ? `\n\n${reminder}` : ''));
+    return true;
+  }
+
   private async tryHandleCartSideInclusionQuestion(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, products: MenuProduct[],
   ): Promise<boolean> {
@@ -17978,6 +18041,15 @@ export class WhatsappOrchestratorService {
     let correction = parseCartQuantityCorrection(text);
     const shortText = this.normalizeForMatch(text).replace(/\s+(?:por favor|porfa|gracias)$/, '');
     const shortAmount = '(\\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
+    // A restricted quantity naming an existing dish is absolute, even when its
+    // kitchen note gives the existing line a different signature from a new add.
+    const restricted = !correction && !/[¿?]/.test(text)
+      ? shortText.match(new RegExp(`^(?:solo|solamente|unicamente)\\s+${shortAmount}\\s+(.+)$`)) : null;
+    if (restricted && session.cart.some(line => correctionMatchesLine(
+      { ...line, attributes: [], note: undefined }, restricted[2]))) {
+      correction = { quantity: /^\d+$/.test(restricted[1]) ? Number(restricted[1])
+        : this.catalogService.extractQuantityFromSegment(`${restricted[1]} unidades`), query: restricted[2] };
+    }
     const decrement = !/[¿?]/.test(text) && !this.catalogService.isPriceInquiryIntent(text)
       ? shortText.match(new RegExp(`^${shortAmount}\\s+menos\\s+(?:de|del)\\s+(.+)$`)) ||
         shortText.match(new RegExp(`^(?:quita|retira)\\s+${shortAmount}\\s+unidades?\\s+(?:de|del)\\s+(.+)$`)) : null;
