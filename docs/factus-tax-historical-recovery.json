@@ -1,0 +1,78 @@
+{
+  "range": {
+    "from": "2026-08-01",
+    "to": "2026-11-30"
+  },
+  "verifiedInvoices": 228,
+  "unavailableInvoices": 3,
+  "http429DuringRecovery": 0,
+  "fallback": "displayed total * 8 / 108, rounded per invoice; explicit estimate, never persisted as verified",
+  "buckets": [
+    {
+      "key": "2026-11",
+      "consumptionTaxVerifiedAmount": 213296.28,
+      "consumptionTaxEstimatedAmount": 0,
+      "consumptionTaxEstimatedCount": 0,
+      "consumptionTaxAmount": 213296.28,
+      "invoicedAmount": 2879500,
+      "invoicedCount": 6,
+      "voidedAmount": 0,
+      "voidedCount": 0,
+      "consumptionTaxTotalWithEstimate": 213296.28,
+      "netAmount": 2879500
+    },
+    {
+      "key": "2026-10",
+      "consumptionTaxVerifiedAmount": 1340555.39,
+      "consumptionTaxEstimatedAmount": 0,
+      "consumptionTaxEstimatedCount": 0,
+      "consumptionTaxAmount": 1340555.39,
+      "invoicedAmount": 18097500,
+      "invoicedCount": 95,
+      "voidedAmount": 0,
+      "voidedCount": 0,
+      "consumptionTaxTotalWithEstimate": 1340555.39,
+      "netAmount": 18097500
+    },
+    {
+      "key": "2026-09",
+      "consumptionTaxVerifiedAmount": 1391370.31,
+      "consumptionTaxEstimatedAmount": 0,
+      "consumptionTaxEstimatedCount": 0,
+      "consumptionTaxAmount": 1391370.31,
+      "invoicedAmount": 18783500,
+      "invoicedCount": 89,
+      "voidedAmount": 0,
+      "voidedCount": 0,
+      "consumptionTaxTotalWithEstimate": 1391370.31,
+      "netAmount": 18783500
+    },
+    {
+      "key": "2026-08",
+      "consumptionTaxVerifiedAmount": 283037.08,
+      "consumptionTaxEstimatedAmount": 7851.85,
+      "consumptionTaxEstimatedCount": 3,
+      "consumptionTaxAmount": null,
+      "invoicedAmount": 1988000,
+      "invoicedCount": 41,
+      "voidedAmount": 4000,
+      "voidedCount": 2,
+      "consumptionTaxTotalWithEstimate": 290888.93,
+      "netAmount": 1988000
+    }
+  ],
+  "totals": {
+    "consumptionTaxVerifiedAmount": 3228259.06,
+    "consumptionTaxEstimatedAmount": 7851.85,
+    "consumptionTaxEstimatedCount": 3,
+    "consumptionTaxTotalWithEstimate": 3236110.91,
+    "consumptionTaxAmount": null,
+    "invoicedAmount": 41748500,
+    "invoicedCount": 231,
+    "voidedAmount": 4000,
+    "voidedCount": 2,
+    "netAmount": 41748500,
+    "orderAmount": 2103500,
+    "bulkAmount": 39645000
+  }
+}
