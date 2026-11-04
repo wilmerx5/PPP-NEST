@@ -1,3 +1,9 @@
+## Estado actual — producción PPP hasta tanda382
+
+Main integrado y producción desplegada en `7ddfa96cc2167033713917f752099581e4fa1939`; workflow41753867381 aprobado. Incluye tandas379–382: consultas de tamaño/acompañamientos sin compras accidentales, continuación informativa, corrección absoluta de cantidad con notas y protección frente a expiraciones tardías. Código WhatsApp idéntico a staging382 validado (35439 pruebas/450 suites); merge con178 pruebas/6 suites y TypeScript general/build aprobados. Funcionalidades exclusivas de Main conservadas; conflictos solo documentales, ambos historiales conservados.
+
+Versión e imagen activas verificadas, contenedor ejecutándose con cero reinicios, API local/pública ok y DB conectada, modelos/configuración preservados y controles compilados existentes aprobados. Docker health devuelve null; la salud se acredita con las APIs, no con un estado Docker healthy. Evidencia `whatsapp-batch-382-production-deployment.json`. Sin mensajes ni órdenes reales de prueba. Staging sigue382; Kamppo sigue378, sin migración en esta entrega. Próximo: retomar medidas del plato frente a bebidas/acompañamientos y consultas combinadas en staging. Los estados inferiores son históricos.
+
 ## VIGENTE — tanda382: acompañamientos sin compra y cantidad con notas (validada)
 
 Reproducido el chat de2 pollos: «Son dos pollos Broaster y vienen con solo arepa???» abría menú de compra. La ruta nueva contesta desde la descripción del producto existente, sin oferta ni lista para agregar, preservando carrito/estado/notas/opciones. Incluye «vienen solo con…», «solo vienen con…» y referencias cortas con interrogación («y las papas?») sustentadas por la descripción. Con varios platos pide nombre; descripción ausente se declara desconocida. Conserva las rutas anteriores de inclusión singular/bebidas y las compras explícitas.
