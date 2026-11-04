@@ -1,0 +1,66 @@
+{
+  "batch": 384,
+  "baseCommit": "ac77f60dbab72e251e7161a2b53ba4b7ccda5bb3",
+  "status": "passed",
+  "newTests": 64,
+  "newDtoJourneys": 32,
+  "baseline": {
+    "tests": 16,
+    "failed": 5,
+    "passed": 11,
+    "note": "Initial scoped probe; later synthetic fixture uses two recognized cooking styles, not evidence that all historical incidents are reproduced"
+  },
+  "focus": {
+    "passed": 384,
+    "suites": 8
+  },
+  "globalValidation": {
+    "baseCommit": "ac77f60dbab72e251e7161a2b53ba4b7ccda5bb3",
+    "batches": [
+      384
+    ],
+    "phases": {
+      "nonTimer": {
+        "exitCode": 0,
+        "seconds": 991.78,
+        "sourceUnchanged": true,
+        "tests": 35536,
+        "failed": 0,
+        "skipped": 0
+      },
+      "timers": {
+        "exitCode": 0,
+        "seconds": 6.44,
+        "sourceUnchanged": true,
+        "tests": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "node": {
+        "exitCode": 0
+      }
+    },
+    "paidRequests": 0,
+    "sourceFiles": 673,
+    "workers": 4,
+    "nonTimerTestTimeoutMs": 20000,
+    "tests": 35552,
+    "suites": 454,
+    "inventoryExact": true,
+    "sourceUnchanged": true
+  },
+  "scriptsTests": 92,
+  "paidRequests": 0,
+  "externalMessages": 0,
+  "externalOrders": 0,
+  "deployment": {
+    "environment": "staging",
+    "verified": false
+  }
+}

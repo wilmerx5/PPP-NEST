@@ -1549,6 +1549,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleSharedCatalogFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleSpokenPortionDelivery(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandlePairedIncludedLabels(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleDrinkTemperatureNote(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleIncludedDrinkFollowup(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleSpokenCookingTypo(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     const removalText = /^(?:elimina|qu[ií]ta|retira|saca|borra)(?:me)?\b/i.test(inboundText) ? inboundText : text;
@@ -6142,6 +6143,33 @@ export class WhatsappOrchestratorService {
       )
     ) {
       return;
+    }
+
+    // An included option belongs to the unresolved dish, even when its style is missing.
+    // Persist the choice before a model can ask an untracked clarification.
+    if (businessOpenForBot && conv.state==='building_cart' && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+        /^(?:(?:quiero|dame|me das|me regalas)\s+)?(?:un|una|dos|tres|\d+)\s+.+\bcon\b/i.test(originalText) && !/[¿?]/.test(originalText) &&
+        !this.catalogService.isPriceInquiryIntent(originalText) && !this.catalogService.isAvailabilityInquiry(originalText) &&
+        !this.catalogService.isProductDescriptionInquiry(originalText) && !this.catalogService.requiresConditionalOrderInterpretation(originalText,products)) {
+      const proposal=this.catalogService.resolveMultiProductOrder(originalText,products);
+      if (proposal && proposal.ambiguous.length===1 && !proposal.confident.length && !proposal.needsAttributes.length && !proposal.unresolved.length &&
+          proposal.ambiguous[0].candidates.some(product=>this.catalogService.extractExplicitAttributeChoice(originalText,product)?.length) &&
+          await this.tryHandleMultiProductOrder(conv,msg.waId,session,proposal,cfg,originalText,products,originalText)) return;
+      const requestedHead=this.normalizeForMatch(originalText.split(/\bcon\b/i)[0])
+        .replace(/^(?:(?:quiero|dame|me das|me regalas)\s+)?(?:un|una|dos|tres|\d+)\s+/,'').replace(/\bcombos\b/g,'combo');
+      const candidates=products.filter(product=>product.availableNow!==false &&
+        this.normalizeForMatch(product.name).startsWith(requestedHead+' '));
+      const optionTail=this.normalizeForMatch(originalText.split(/\bcon\b/i).slice(1).join(' con '));
+      if (candidates.length>=2 && candidates.every(product=>{
+        const choices=this.catalogService.extractExplicitAttributeChoice(originalText,product);
+        return choices?.length===1 && this.normalizeForMatch(choices[0].attributeValue)===optionTail;
+      })) {
+        const quantity=this.catalogService.extractQuantityFromMessage(originalText,products);
+        const next={...session,pendingMatch:{query:originalText,candidates,intent:'order' as const,quantity}};
+        await this.conversationService.saveSession(conv,next);
+        await this.reply(conv,msg.waId,`Pediste ${quantity}. ¿Cuál prefieres?\n`+candidates.map((product,index)=>`${index+1}. ${product.name} · ${this.catalogService.formatMoney(product.price)}`).join('\n'));
+        return;
+      }
     }
 
     // Generic orders need a durable choice before any model can pick a SKU or
@@ -21901,6 +21929,35 @@ export class WhatsappOrchestratorService {
     });
     const next={...pending,unresolved};
     return !next.unresolved.length&&!next.ambiguous.length&&!next.confident.length&&!next.needsAttributes.length?undefined:next;
+  }
+
+  private async tryHandleDrinkTemperatureNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!session.cart.length || !['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
+        CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
+    const request = text.trim().match(/^(?:por favor\s+)?la bebida\s+(bien fr[ií]a|fr[ií]a|sin hielo|al clima)(?:\s+por favor)?[.!]*$/i);
+    if (!request) return false;
+    const products = await this.catalogService.getMenuProducts();
+    const indices = session.cart.flatMap((line,index)=>{
+      const product=products.find(p=>p.id===line.productId);
+      return product && (this.catalogService.isLikelyDrinkProduct(product) ||
+        line.attributes?.some(attribute=>this.normalizeForMatch(attribute.attributeName)==='bebida')) ? [index] : [];
+    });
+    const note = `Bebida ${request[1]}`;
+    if (!indices.length) {
+      await this.reply(conv,waId,'No identifico una bebida en tu pedido. ¿A qué producto le ponemos esa nota? El pedido sigue igual.');
+      return true;
+    }
+    if (indices.length!==1 || session.cart[indices[0]].quantity!==1) {
+      const next={...session,pendingSubsetKitchenNote:{quantity:0,note,productIds:[...new Set(indices.map(index=>session.cart[index].productId))],
+        preparationScope:{cartSignature:JSON.stringify(session.cart),createdAt:Date.now(),indices,preserve:[]}}};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,this.formatPreparationNoteClarification(next));
+      return true;
+    }
+    const line=session.cart[indices[0]];
+    if (await this.tryBlockKitchenNoteConflict(conv,waId,[line],note)) return true;
+    return this.tryHandleNamedCartKitchenNote(conv,waId,session,`Anota para ${line.name} que vaya ${note}`,cfg);
   }
 
   private async tryHandleNamedCartKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {

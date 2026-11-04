@@ -155,8 +155,8 @@
       "priority": "P0",
       "utterance": "por fis",
       "expected": "Contacto/cortesía no agrega unidades; cada compra se aplica una vez; no omitir otros productos. Probar cola y ráfaga efectiva por separado.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_384_focused_suite",
+      "note": "384: «por Fis» como mensaje separado conserva carrito y no se guarda como nombre, dos catálogos × agente off/mock. Ya pasaba en baseline. No acredita duplicación histórica ni ráfaga/DB/Meta reales."
     },
     {
       "id": "0111-burst-idempotency-03",
@@ -259,8 +259,8 @@
       "priority": "P0",
       "utterance": "combo con pepsi | broaster",
       "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_384_focused_suite",
+      "note": "384: compra genérica con Pepsi seguida de preparación/número, cantidades1/2 y DTO en dos catálogos; estado de selección duradero. No replay literal completo de combo y medio pollo juntos. Foco y global35552/454 aprobados; despliegue staging pendiente."
     },
     {
       "id": "0111-pending-option-retention-03",
@@ -464,8 +464,8 @@
       "priority": "P0",
       "utterance": "la bebida bien fría",
       "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_384_focused_suite",
+      "note": "384: nota de temperatura dirigida a bebida separada o incluida; dos catálogos y agente off/mock, repetición, ambigüedad y cierre DTO. Foco y global35552/454 aprobados; despliegue staging pendiente. No acredita toda la reconstrucción de combo histórico312–333."
     },
     {
       "id": "0111-address-context-01",
@@ -633,8 +633,8 @@
       "priority": "audit",
       "utterance": "producto retirado mientras elige",
       "expected": "Oferta y compra coherentes con catálogo efectivo; no inventar disponibilidad ni mostrar basura. Auditar origen antes de atribuir fallo.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_384_focused_suite",
+      "note": "384: cotización de una sopa, producto agotado antes del sí; respuesta explícita sin añadir al carrito, dos catálogos × agente off/mock. Ya pasaba en baseline. No acredita opciones retiradas ni origen del catálogo histórico."
     },
     {
       "id": "0111-stock-snapshot-03",
