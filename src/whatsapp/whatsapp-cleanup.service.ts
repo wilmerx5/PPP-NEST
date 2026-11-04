@@ -151,28 +151,32 @@ export class WhatsappCleanupService implements OnModuleInit, OnModuleDestroy {
         'awaiting_final_confirm',
         'confirming',
       ]);
-      for (const conv of drafts) {
-        if (lateCheckout.has(conv.state) && draftIdle > 0) {
-          const last = conv.lastInboundAt || conv.lastMessageAt || conv.updatedAt;
-          const ageMin = last ? (Date.now() - new Date(last).getTime()) / 60000 : draftIdle;
-          if (ageMin < draftIdle * 2) continue;
-        }
+      for (const candidate of drafts) {
+        const conv = await this.conversations.reloadConversation(candidate.id);
+        // Query results may predate a confirmation, new inbound or takeover.
+        // Never expire an order while confirmation is in flight.
+        if (draftIdle <= 0 || conv.humanTakeover || conv.state === 'confirming' ||
+            (conv.state !== 'building_cart' && !lateCheckout.has(conv.state))) continue;
+        const last = conv.lastInboundAt || conv.lastMessageAt || conv.updatedAt;
+        const ageMs = last ? Date.now() - new Date(last).getTime() : NaN;
+        const thresholdMs = draftIdle * (lateCheckout.has(conv.state) ? 2 : 1) * 60000;
+        if (!Number.isFinite(ageMs) || ageMs < thresholdMs) continue;
         const session = this.conversations.getSession(conv);
-        const hasDraft =
-          session.cart.length > 0 ||
-          !!session.address ||
-          !!session.paymentMethod ||
-          !!session.pendingMatch ||
-          !!session.pendingAttribute ||
-          lateCheckout.has(conv.state);
+        // A saved address/payment or an empty checkout is not a pending order.
+        const hasDraft = session.cart.length > 0 ||
+          !!session.pendingMatch || !!session.pendingAttribute;
         if (!hasDraft) continue;
-        await this.conversations.resetOrderSession(conv, 'building_cart', {
-          ignorePriorHistory: true,
-        });
+        if (!await this.conversations.resetIdleOrderDraft(conv)) continue;
         this.logger.log(`Order draft idle → reset conv=#${conv.id}`);
-        if (notify) {
+        // Do not deliver a backlog of yesterday's expiry notices after downtime.
+        if (notify && ageMs < DAY_MS && ageMs <= thresholdMs + 10 * 60000) {
+          const live = await this.conversations.reloadConversation(conv.id);
+          const liveSession = this.conversations.getSession(live);
+          const sameInbound = String(live.lastInboundAt) === String(conv.lastInboundAt);
+          if (!sameInbound || live.humanTakeover || live.state !== 'building_cart' ||
+              liveSession.cart.length || liveSession.pendingMatch || liveSession.pendingAttribute) continue;
           await this.safeNotify(
-            conv,
+            live,
             'Tu pedido a medias expiró por inactividad. Cuando quieras, empezamos de nuevo 🍗',
           );
         }

@@ -1,3 +1,15 @@
+## VIGENTE — tanda381: expiración tardía de borradores (validada)
+
+El usuario reabrió los pendientes de los chats. El pedido52 sí se confirmó; su aviso de «pedido a medias» llegó uno o dos días después, y no acredita una venta perdida. La causa histórica exacta requiere logs/DB del incidente; se corrigen riesgos reproducibles del limpiador.
+
+La limpieza de borradores recarga la conversación, comprueba actividad/estado/humano y exige carrito u opción pendiente (una dirección/pago guardados no bastan). No actúa durante `confirming` ni sobre pedidos cerrados/completados. El reset usa actualización condicional por estado, timestamps y JSON exacto para evitar sobrescribir cambios concurrentes, incluidos cambios de carrito dentro del mismo segundo. Revisa el estado otra vez antes de avisar. Los borradores realmente abandonados se limpian, pero el aviso solo sale dentro de los10min posteriores al umbral y nunca a partir de24h de inactividad. El plazo doble de checkout se conserva.
+
+27 regresiones de limpieza/persistencia y8 pruebas contra MariaDB10.11 local desechable;125 pruebas focales aprobadas, incluidas98 de dirección dictada/corrección posconfirmación. La prueba real de DB detectó microsegundos que Date no conserva: se compara el intervalo del milisegundo junto a estado/sesión, sin migración de esquema. Comparación con el código anterior:6/6 escenarios emitían un aviso indebido; corregido0/6. Global completa:35367 pruebas/449 suites,667 fuentes congeladas e inventario exacto; TypeScript general/build y92 pruebas de scripts aprobados. Evidencia `whatsapp-batch-381-validation.json`; privado `.git/codex-validation-381`. Ninguna llamada a OpenAI/Meta ni órdenes externas. Presupuesto267/256/11 intacto.
+
+Despliegue381 pendiente. La conexión Git falló inicialmente; el conector confirmó la base `040df66b` y el fetch final ya funcionó. Publicación por Git normal, sin mover ramas mediante el conector. Último staging desplegado/verificado380 `7fb086fe`. Producción/Kamppo siguen378. No confundir implementación local con cambio activo.
+
+Límites y siguiente orden: (1) verificar publicación y desplegar381 cuando vuelva el acceso al ejecutor; (2) medidas del plato frente a bebidas/acompañamientos y consultas combinadas; (3) auditar por separado vencimiento de opciones, atención humana y MP, no modificados en381. La comprobación previa a Meta reduce avisos obsoletos pero no es una transacción atómica con el envío externo; no prometer ausencia absoluta de carreras de envío. No se auditó el incidente real ni todo el histórico de chats en esta tanda.
+
 # Plan unificado de corrección de pedidos
 
 ## VIGENTE — tanda380: consultas encadenadas y aclaración sin compra
