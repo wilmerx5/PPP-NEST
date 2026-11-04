@@ -133,6 +133,8 @@ export type FactusBillDetailCustomer = {
 };
 
 export type FactusBillDetail = {
+  taxes?: Array<{ tribute?: { code?: string }; is_excluded?: boolean; rates?: Array<{ tax_amount?: string }> }>;
+
   reference_code?: string;
   number?: string;
   cufe?: string;
