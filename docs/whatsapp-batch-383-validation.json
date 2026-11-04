@@ -67,6 +67,8 @@
   "previousAttempt": "Four-worker run deliberately stopped due shared-memory pressure; frozen source rerun fully with two workers",
   "deployment": {
     "environment": "staging",
-    "verified": false
+    "commit": "f05899108f83a9166c4bf695f5e16a7b89206946",
+    "verified": true,
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/41863830951"
   }
 }
