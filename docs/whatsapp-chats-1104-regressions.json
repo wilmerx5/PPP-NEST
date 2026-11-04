@@ -1,0 +1,72 @@
+{
+  "date": "2026-11-04",
+  "batch": 387,
+  "environment": "staging",
+  "status": "validated-awaiting-staging-deployment",
+  "paidRequests": 0,
+  "productionChanged": false,
+  "evidence": {
+    "routerTests": 40,
+    "cleanupTests": 10,
+    "isolatedMariaDbTests": 7,
+    "globalTests": 35698,
+    "globalSuites": 458,
+    "validation": "whatsapp-batch-387-validation.json"
+  },
+  "cases": [
+    {
+      "case": "quoted-half-chicken-courtesy",
+      "observed": "Acceptance followed by courtesy duplicated the chicken; old offer resurfaced repeatedly.",
+      "covered": "Acceptance with catalog options consumes offer; courtesy cannot add; cart mutation retires old offers; dated or previous-visit offers expire. Full simulated checkout keeps one chicken.",
+      "severity": "high"
+    },
+    {
+      "case": "explicit-beverage-price",
+      "observed": "Gaseosa liter price inquiry returned chicken price.",
+      "covered": "Named beverage gets available catalog presentations and read-only numbered follow-up. Dish plus gaseosa quote presents separate prices and one purchase question.",
+      "severity": "high"
+    },
+    {
+      "case": "explicit-combo-price",
+      "observed": "Explicit combo with price selected plain chicken.",
+      "covered": "Unique available catalog combo with matching description and price is selected, including another restaurant fixture.",
+      "severity": "high"
+    },
+    {
+      "case": "unconfirmed-draft-eta",
+      "observed": "Incomplete delivery draft received delivery-time answers and order-number request.",
+      "covered": "Unresolved-address draft explicitly states it is not confirmed and requests location; existing active order keeps tracking. No-more continuation keeps missing address visible.",
+      "severity": "high"
+    },
+    {
+      "case": "pay-cancel-ambiguity",
+      "observed": "Cancelar before sending meant paying, not annulling.",
+      "covered": "With payment already selected, ambiguous request asks pay versus annul. Explicit cancellation still clears draft.",
+      "severity": "medium"
+    },
+    {
+      "case": "human-idle-reset",
+      "observed": "Human attention repeatedly closed and order context was reset despite recent agent activity.",
+      "covered": "Conditional release uses latest inbound, human outbound and takeover timestamps; never resets session or order state; confirmed conversations do not receive misleading closure notice. Real MariaDB concurrency checks.",
+      "severity": "high"
+    },
+    {
+      "case": "prior-half-price-followup",
+      "observed": "Historic quarter-chicken quote followed by half selected rice with half chicken.",
+      "covered": "Current router control retains chicken family and does not purchase. Already passes; not claimed as newly fixed.",
+      "severity": "high"
+    },
+    {
+      "case": "address-burst-name",
+      "observed": "Bare house word and a possible customer name were combined with the address; map remained unresolved.",
+      "covered": "Does not invent geolocation. This batch fixes missing-confirmation warning while location remains unresolved. Ambiguous house/name interpretation remains to investigate.",
+      "severity": "medium"
+    }
+  ],
+  "limits": [
+    "External models mocked; no live customer messages or orders created.",
+    "No production or Kamppo migration in this batch.",
+    "An unfinished transcript is not proof of a lost sale; one pasted attempt ended with explicit draft cancellation.",
+    "The audit snapshot does not establish outcomes through other channels."
+  ]
+}

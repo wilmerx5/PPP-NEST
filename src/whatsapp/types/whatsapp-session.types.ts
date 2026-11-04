@@ -264,6 +264,7 @@ export type WhatsappSessionData = {
     cartSignature?: string;
   };
   pendingAddOffer?: {
+    createdAt?: number;
     productId: number;
     name: string;
     code: number;
