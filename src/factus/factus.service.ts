@@ -907,6 +907,10 @@ export class FactusService {
     to: string;
     groupBy: 'day' | 'month' | 'year';
     totals: {
+      consumptionTaxVerifiedAmount: number;
+      consumptionTaxEstimatedAmount: number;
+      consumptionTaxEstimatedCount: number;
+      consumptionTaxTotalWithEstimate: number;
       consumptionTaxAmount: number | null;
       invoicedAmount: number;
       invoicedCount: number;
@@ -918,6 +922,10 @@ export class FactusService {
     };
     buckets: Array<{
       key: string;
+      consumptionTaxVerifiedAmount: number;
+      consumptionTaxEstimatedAmount: number;
+      consumptionTaxEstimatedCount: number;
+      consumptionTaxTotalWithEstimate: number;
       consumptionTaxAmount: number | null;
       invoicedAmount: number;
       invoicedCount: number;
@@ -1012,6 +1020,9 @@ export class FactusService {
     const map = new Map<
       string,
       {
+        consumptionTaxVerifiedAmount: number;
+        consumptionTaxEstimatedAmount: number;
+        consumptionTaxEstimatedCount: number;
         consumptionTaxAmount: number | null;
         invoicedAmount: number;
         invoicedCount: number;
@@ -1022,7 +1033,7 @@ export class FactusService {
     const ensure = (key: string) => {
       let row = map.get(key);
       if (!row) {
-        row = { consumptionTaxAmount: 0, invoicedAmount: 0, invoicedCount: 0, voidedAmount: 0, voidedCount: 0 };
+        row = { consumptionTaxVerifiedAmount: 0, consumptionTaxEstimatedAmount: 0, consumptionTaxEstimatedCount: 0, consumptionTaxAmount: 0, invoicedAmount: 0, invoicedCount: 0, voidedAmount: 0, voidedCount: 0 };
         map.set(key, row);
       }
       return row;
@@ -1041,6 +1052,12 @@ export class FactusService {
         bucket.voidedCount += 1;
         return;
       }
+      if (row.consumptionTax == null) {
+        // Explicit reporting fallback requested by the operator: assume 8% included.
+        // Never store this estimate in the issued-tax cache.
+        bucket.consumptionTaxEstimatedAmount += Math.round(amount * 8 / 108 * 100) / 100;
+        bucket.consumptionTaxEstimatedCount += 1;
+      } else bucket.consumptionTaxVerifiedAmount += row.consumptionTax;
       bucket.consumptionTaxAmount = bucket.consumptionTaxAmount === null || row.consumptionTax == null
         ? null : Math.round((bucket.consumptionTaxAmount + row.consumptionTax) * 100) / 100;
       bucket.invoicedAmount += amount;
@@ -1056,6 +1073,9 @@ export class FactusService {
       .map(([key, row]) => ({
         key,
         ...row,
+        consumptionTaxVerifiedAmount: Math.round(row.consumptionTaxVerifiedAmount * 100) / 100,
+        consumptionTaxEstimatedAmount: Math.round(row.consumptionTaxEstimatedAmount * 100) / 100,
+        consumptionTaxTotalWithEstimate: Math.round((row.consumptionTaxVerifiedAmount + row.consumptionTaxEstimatedAmount) * 100) / 100,
         netAmount: row.invoicedAmount, // accepted already excludes credit-noted invoices
       }));
 
@@ -1069,6 +1089,10 @@ export class FactusService {
       to: opts.to,
       groupBy,
       totals: {
+        consumptionTaxVerifiedAmount: Math.round(buckets.reduce((s, b) => s + b.consumptionTaxVerifiedAmount, 0) * 100) / 100,
+        consumptionTaxEstimatedAmount: Math.round(buckets.reduce((s, b) => s + b.consumptionTaxEstimatedAmount, 0) * 100) / 100,
+        consumptionTaxEstimatedCount: buckets.reduce((s, b) => s + b.consumptionTaxEstimatedCount, 0),
+        consumptionTaxTotalWithEstimate: Math.round(buckets.reduce((s, b) => s + b.consumptionTaxTotalWithEstimate, 0) * 100) / 100,
         consumptionTaxAmount: buckets.some(b => b.consumptionTaxAmount === null) ? null :
           Math.round(buckets.reduce((sum, b) => sum + (b.consumptionTaxAmount ?? 0), 0) * 100) / 100,
         invoicedAmount,
