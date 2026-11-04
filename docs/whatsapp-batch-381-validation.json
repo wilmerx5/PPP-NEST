@@ -51,7 +51,12 @@
   "paidRequests": 0,
   "externalMessages": 0,
   "externalOrders": 0,
-  "deployment": "Pending; Git connectivity recovered after local validation; normal staging push planned",
+  "deployment": {
+    "environment": "staging",
+    "commit": "1a21c1de49f5a9a29ce548ee261ee56b06f82805",
+    "verified": true,
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/41746741896"
+  },
   "limitations": [
     "No incident database/log audit",
     "External notification and state check are not one transaction",
