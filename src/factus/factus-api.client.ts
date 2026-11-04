@@ -229,7 +229,7 @@ export class FactusApiClient {
         (json as { error?: string })?.error ||
         `Error Factus (${res.status})`;
       if (res.status >= 400 && res.status < 500) {
-        throw new BadRequestException(msg);
+        throw Object.assign(new BadRequestException(msg), { factusStatus: res.status });
       }
       throw new ServiceUnavailableException(msg);
     }
