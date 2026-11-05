@@ -52,11 +52,12 @@
   },
   "runnersPassed": 92,
   "externalOrders": 0,
-  "deploymentVerified": false,
+  "deploymentVerified": true,
   "limits": [
     "New journeys exercise an existing composed-product proposal at final checkout, two catalogs and agent off/mock",
     "Acceptance changes the cart only; final order confirmation remains separate",
     "Mixed, conditional or quoted acknowledgments request clarification; arbitrary new compound reconstruction remains outside scope",
     "Mocks do not validate real customer conversion or external transport"
-  ]
+  ],
+  "deploymentScope": "PPP staging only"
 }
