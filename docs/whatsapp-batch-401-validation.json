@@ -54,12 +54,13 @@
   },
   "runnersPassed": 92,
   "externalOrders": 0,
-  "deploymentVerified": false,
+  "deploymentVerified": true,
   "limits": [
     "Acknowledged single contact messages during a composed-product recovery proposal; existing routes still validate the data",
     "Data messages never accept the product proposal or register an order",
     "Fixed delivery fee in new journeys; existing distance-pricing tests remain separate",
     "Several contact fields in one burst and explicit product acceptance plus data in one message remain outside this scope",
     "Mocks do not validate real customer conversion or external transport"
-  ]
+  ],
+  "deploymentScope": "PPP staging only"
 }
