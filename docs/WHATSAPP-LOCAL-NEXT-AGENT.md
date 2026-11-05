@@ -1,4 +1,4 @@
-## Tanda 388 — piloto activo: cierre y dirección fragmentada (validada, despliegue de staging pendiente)
+## Tanda 388 — piloto activo: cierre y dirección fragmentada (staging desplegado y verificado)
 
 El piloto ya está activo. Esta tanda protege el cierre: una consulta de demora/estado durante checkout informa que el borrador no se ha confirmado y retoma el dato pendiente. Una orden activa conserva seguimiento. Confirmaciones explícitas con pregunta de demora siguen cerrando una sola vez; condicionales y consultas no autorizan una orden. Compra explícita más pregunta independiente de demora conserva ambas intenciones.
 
@@ -6,7 +6,7 @@ En dirección fragmentada se separan los nombres etiquetados; «Casa / Carolina�
 
 Baseline: 18/18 fallos. 58 regresiones nuevas, 30 cierres DTO simulados, agente off/mock y catálogo PPP/sintético. Focos 1338/3 y 272/4 aprobados; el último incluye las tres suites que habían fallado y las 58 nuevas. Las pasadas previas detectaron variantes de confirmación absorbidas por el aviso, compra más ETA omitida y consultas total/ETA o aclaración de nota interceptadas; se corrigieron antes de congelar la versión final. Global 35756/459 aprobada sin fallos ni omitidas, inventario exacto y fuentes congeladas. TypeScript general/build y 92 pruebas de scripts aprobados. Evidencia whatsapp-batch-388-validation.json. Cero inferencia pagada, Meta u órdenes externas; modelos/presupuesto 267/256/11 sin cambios.
 
-Pendiente: publicar y verificar staging. Producción/Main/Kamppo no modificados por esta tanda. No presentar la corrección local como protección ya activa del piloto.
+Staging desplegado y verificado en e127c6b9: imagen activa con código 388, healthy, cero reinicios, API local/pública y DB ok; modelos/configuración privada preservados. Controles compilados existentes aprobados; regresiones 388 locales. Workflow: https://github.com/wilmerx5/kamppo/actions/runs/41948106624. Evidencia whatsapp-batch-388-staging-deployment.json. Producción/Main/Kamppo no modificados por esta tanda: falta promoción para que estos cambios protejan el piloto de producción.
 
 ## Tanda387 — chats del04/11: ofertas, duplicación y atención humana (staging desplegado y verificado)
 

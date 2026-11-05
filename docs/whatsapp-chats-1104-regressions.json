@@ -72,7 +72,7 @@
   "runtimeCommit": "7269908b347cb7efd8328147e730dd259b9a985f",
   "deploymentEvidence": "whatsapp-batch-387-staging-deployment.json",
   "followUp388": {
-    "status": "validated-staging-deployment-pending",
+    "status": "deployed-and-verified-in-staging",
     "productionChanged": false,
     "cases": [
       "draft tracking while awaiting name, phone, payment or approval",
@@ -92,6 +92,8 @@
     ],
     "validation": "whatsapp-batch-388-validation.json",
     "globalTests": 35756,
-    "globalSuites": 459
+    "globalSuites": 459,
+    "runtimeCommit": "e127c6b949cf418127ec528b5a86a5929b4ea4ed",
+    "deploymentEvidence": "whatsapp-batch-388-staging-deployment.json"
   }
 }
