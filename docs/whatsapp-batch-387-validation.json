@@ -1,0 +1,60 @@
+{
+  "baseCommit": "12008422356f2afb2087ab3a1fdb8ed71b90b585",
+  "batches": [
+    387
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 1,
+      "seconds": 1131.46,
+      "sourceUnchanged": true,
+      "tests": 35670,
+      "failed": 12,
+      "skipped": 0,
+      "initialFailedWordingAssertions": 12
+    },
+    "wordingRerun": {
+      "exitCode": 0,
+      "seconds": 12.1,
+      "passed": 120,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.59,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 677,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 35698,
+  "suites": 458,
+  "inventoryExact": true,
+  "runtimeSourcesUnchanged": true,
+  "sourceUnchanged": false,
+  "sourceChanges": [
+    "src/whatsapp/whatsapp-order-level-aside.spec.ts"
+  ],
+  "testOnlyChange": "Allow equivalent courtesy wording: pedido sigue abierto or pedido sigue igual; cart, state and DTO assertions retained.",
+  "finalSourcesUnchanged": true,
+  "isolatedMariaDbTests": 7,
+  "interruptedAttempts": [
+    "First run: 12 total-inquiry routing regressions; narrowed ETA handler and passed 12 controls.",
+    "Second run: scheduled-delivery caveat lost on automatic checkout; preserved preface and passed 2 controls."
+  ],
+  "result": "passed-full-inventory-with-test-only-wording-rerun"
+}

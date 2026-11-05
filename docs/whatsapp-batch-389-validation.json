@@ -1,0 +1,57 @@
+{
+  "baseCommit": "e7751bb83c5eaa0eea9403053225ced21ba46222",
+  "batches": [
+    389
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1376.92,
+      "sourceUnchanged": true,
+      "tests": 35776,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 23.05,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 679,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 35792,
+  "suites": 460,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRouterTests": 36,
+  "simulatedCheckoutClosures": 12,
+  "focusedTests": 126,
+  "focusedSuites": 3,
+  "scriptTests": 92,
+  "sourceManifestSha256": "72409578ac8d11871f85b6f8e24772ab18648522043616d813a7f595c052b220",
+  "earlierAttempts": [
+    "Baseline: 8/8 failed because pending drink notes were dropped.",
+    "Intermediate focused runs exposed two storage paths and loss during candidate-to-cart transfer; corrected before full inventory.",
+    "Two final focused assertions required the exact prefix Bebida although existing normalization retained Sin hielo; changed to semantic note assertions in cart and final DTO."
+  ],
+  "limitations": [
+    "External AI, messaging and orders simulated; no real customer messages or orders.",
+    "One pending purchase unit and one candidate group with drink attribute; multiple groups, replacements and arbitrary reconstruction remain outside scope."
+  ],
+  "runtimeCommit": "df1078df829bb775488258ca6f65480907ab82a0"
+}

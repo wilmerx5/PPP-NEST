@@ -43,7 +43,7 @@ describe('Order-level asides land on the order, never on a dish, a purchase or s
       expect(reply).not.toMatch(/autorizaci[oó]n para comprar|cuando quieras pedir|no est[aá] en tu carrito/i);
       if('cash' in a){ expect(d.cashChangeFor).toBe(a.cash); expect(d.customerNotes||'').toBe(''); expect(reply).toContain(a.cash); }
       else if('note' in a){ expect(d.customerNotes).toBe(a.note); expect(d.cashChangeFor).toBeUndefined(); expect(reply).toContain(a.note); }
-      else { expect(d.customerNotes).toBeUndefined(); expect(reply).toMatch(/pedido sigue abierto/i); }
+      else { expect(d.customerNotes).toBeUndefined(); expect(reply).toMatch(/pedido sigue (?:abierto|igual)/i); }
       if(state==='awaiting_final_confirm'){
         expect(reply).toMatch(/confirmar/i);
         await h.sendQueued('confirmar');

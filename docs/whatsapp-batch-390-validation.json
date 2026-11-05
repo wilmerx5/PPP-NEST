@@ -1,0 +1,58 @@
+{
+  "baseCommit": "b00474cd91ac48ae991b81f01f40a676a41cef3e",
+  "batches": [
+    390
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 2568.0,
+      "sourceUnchanged": true,
+      "tests": 35800,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 14.1,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 680,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 35816,
+  "suites": 461,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRouterTests": 24,
+  "simulatedCheckoutClosures": 16,
+  "focusedTests": 86,
+  "focusedSuites": 3,
+  "scriptTests": 92,
+  "sourceManifestSha256": "35fd56ba25840d5a43aa3f385301b5ee73ab6eb339f9a9ea602518f2a7e848cc",
+  "earlierAttempts": [
+    "Initial fixture failed TypeScript for missing pending-attribute snapshot fields; corrected before baseline.",
+    "Baseline 4/4 failed: replacement discarded answer note while preserving original note.",
+    "Withdrawn-product negative control initially used ignoreBusinessHours=true. Fixed fixture; existing availability protection passes, no runtime stock change retained.",
+    "Full Jest completed before user interruption; resumed TypeScript and scripts after verifying frozen source hashes and exact Jest inventory."
+  ],
+  "limitations": [
+    "External AI, messages and orders simulated; no paid calls or external orders.",
+    "New fixtures start at valid pending replacement; not all natural-language replacement initiation or multi-product reconstruction covered."
+  ],
+  "runtimeCommit": "adcf59af147aa2af4da904ffd55829a7be206f17"
+}

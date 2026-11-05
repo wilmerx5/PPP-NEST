@@ -1,0 +1,47 @@
+{
+  "batch": 385,
+  "environment": "staging",
+  "head": "05d158d58a66e818d10113e76b7794d0eb96ef7a",
+  "image": "sha256:2f7c9e1955d4d064cd8c3e4d120e2d99f775bdd51e276d83fff4e7f3a7347c91",
+  "running": true,
+  "health": "healthy",
+  "restarts": 0,
+  "models": {
+    "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+    "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+    "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+    "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+    "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol"
+  },
+  "privateConfigurationPreserved": true,
+  "compiledSmoke": "4 compiled batch292 dictated-address and incomplete-street checks passed\n13 compiled context and note boundary checks passed\n3 compiled compound selection, unit split and conflict-recovery journeys passed\nCompiled batch283 ni-exclusion parsing, conflict and recovery passed\n4 compiled multi-line redirection, clarification, cancellation and expiry journeys passed\n6 compiled pending-note ordinal repair and negative guards passed\n6 compiled router note-conflict and repeat checks passed\n7 compiled note redirection, repetition, stale, expiry, interruption and conflict checks passed\n8 compiled regional payment and wait checks passed\n8 compiled basic total/drink intent checks passed\n4 compiled category-boundary and closing-typo checks passed\n3 compiled greeting checks passed: default, stored invitation, legacy stored invitation\n3 compiled repeat-question checks passed: role repeated without mutation, specific question not swallowed, closed conversation excluded\n3 compiled role-pin checks passed: quote preserved, rejection preserved, mismatched pin discarded\n9 compiled colloquial account-question and mixed-request guards passed\n3 compiled interruption checks passed: fresh street tracked, pickup clears role, clarification preserves street\n3 compiled role checks passed: direct confirmation block, question preserved, place resolved\n7 compiled checkout checks passed: merchant questions, choice/mixed-request guards, ETA units and burst boundaries\n18 compiled referenced preparation routing, negated removal, atomic multiple-removal, short clarification, stale cart, direct guard, paired-plan, negation, atomic split, combo, supply, idempotency, repeated substitution, labelled drink, receipt notes and central-confirmation checks passed; external services isolated\n",
+  "batch385CompiledPresence": true,
+  "verified": true,
+  "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/41887326350",
+  "checkedAt": "2026-11-04T18:29:06.727463+00:00",
+  "localHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "cacheSize": 0,
+    "memory": {
+      "heapUsed": 51.09,
+      "heapTotal": 55.73,
+      "rss": 117.94
+    },
+    "timestamp": "2026-11-04T18:29:06.650Z"
+  },
+  "publicHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "cacheSize": 0,
+    "memory": {
+      "heapUsed": 51.23,
+      "heapTotal": 55.73,
+      "rss": 118.06
+    },
+    "timestamp": "2026-11-04T18:29:06.721Z"
+  },
+  "verificationNote": "New385 journeys validated locally; existing compiled smoke passed and385 implementation checked in active image. Workflow succeeded; direct SSH verified runtime, health and configuration."
+}

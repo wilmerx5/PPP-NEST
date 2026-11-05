@@ -70,35 +70,25 @@ export class WhatsappCleanupService implements OnModuleInit, OnModuleDestroy {
         cfg.humanAgentIdleMinutes,
       );
       for (const conv of agentIdle) {
-        await this.conversations.releaseHumanTakeover(conv.id);
+        if (!await this.conversations.releaseIdleHumanTakeover(conv.id, cfg.humanAgentIdleMinutes)) continue;
         this.logger.log(`Takeover liberado (agente idle) conv=#${conv.id}`);
         if (notify) {
           // Recargar: no notificar con snapshot que aún tiene humanTakeover=true
           const live = await this.conversations.reloadConversation(conv.id);
-          await this.safeNotify(live, botResumeCustomerMessage('agent_idle'));
+          if (!live.humanTakeover && !['completed', 'closed', 'confirming'].includes(live.state)) {
+            await this.safeNotify(live, botResumeCustomerMessage('agent_idle'));
+          }
         }
       }
 
-      // 2) Cliente no responde con humano al mando → liberar + soft reset
-      const clientIdle = await this.conversations.findClientIdleTakeovers(
-        cfg.humanClientIdleMinutes,
-      );
+      // 2) Inactivity can release human attention, never erase order context.
+      const clientIdle = await this.conversations.findClientIdleTakeovers(cfg.humanClientIdleMinutes);
       for (const conv of clientIdle) {
-        // Puede haber sido liberado en el paso 1
-        const fresh = await this.conversations.reloadConversation(conv.id);
-        if (!fresh.humanTakeover) continue;
-        await this.conversations.releaseHumanTakeover(fresh.id);
-        const afterRelease = await this.conversations.reloadConversation(fresh.id);
-        await this.conversations.resetOrderSession(afterRelease, 'building_cart', {
-          ignorePriorHistory: true,
-        });
-        this.logger.log(`Takeover + carrito limpios (cliente idle) conv=#${conv.id}`);
-        if (notify) {
-          const live = await this.conversations.reloadConversation(fresh.id);
-          await this.safeNotify(
-            live,
-            'Como no hubo respuesta, cerramos esta atención por ahora. Cuando quieras pedir, escríbenos de nuevo 👍',
-          );
+        if (!await this.conversations.releaseIdleHumanTakeover(conv.id, cfg.humanClientIdleMinutes)) continue;
+        this.logger.log(`Takeover liberado (cliente idle) conv=#${conv.id}`);
+        const live = await this.conversations.reloadConversation(conv.id);
+        if (notify && !live.humanTakeover && !['completed', 'closed', 'confirming'].includes(live.state)) {
+          await this.safeNotify(live, botResumeCustomerMessage('agent_idle'));
         }
       }
 

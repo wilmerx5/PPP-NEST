@@ -561,6 +561,17 @@ export class WhatsappConversationService {
     return this.setHumanTakeover(id, false);
   }
 
+  /** Release only an actually idle takeover; never reset an order or overwrite newer activity. */
+  async releaseIdleHumanTakeover(id: number, minutes: number): Promise<boolean> {
+    if (!(minutes > 0)) return false;
+    const result = await this.convRepo.createQueryBuilder().update(WhatsappConversation)
+      .set({ humanTakeover: false, humanAgentId: null, humanAgentName: null, humanTakeoverAt: null })
+      .where('id = :id', { id }).andWhere('human_takeover = 1')
+      .andWhere('GREATEST(COALESCE(last_inbound_at, created_at), COALESCE(last_human_outbound_at, created_at), COALESCE(human_takeover_at, created_at)) < DATE_SUB(NOW(), INTERVAL :m MINUTE)', { m: minutes })
+      .execute();
+    return (result.affected || 0) > 0;
+  }
+
   /** Limpia solo pendingMatch / pendingAttribute. */
   async clearPendingChoices(conv: WhatsappConversation) {
     const session = this.getSession(conv);
@@ -600,7 +611,7 @@ export class WhatsappConversationService {
       .createQueryBuilder('c')
       .where('c.humanTakeover = 1')
       .andWhere(
-        'COALESCE(c.lastInboundAt, c.humanTakeoverAt, c.createdAt) < DATE_SUB(NOW(), INTERVAL :m MINUTE)',
+        'GREATEST(COALESCE(c.lastInboundAt, c.createdAt), COALESCE(c.lastHumanOutboundAt, c.createdAt), COALESCE(c.humanTakeoverAt, c.createdAt)) < DATE_SUB(NOW(), INTERVAL :m MINUTE)',
         { m: minutes },
       )
       .orderBy('c.updatedAt', 'ASC')

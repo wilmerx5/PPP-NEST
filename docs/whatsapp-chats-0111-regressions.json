@@ -90,8 +90,8 @@
       "priority": "P0",
       "utterance": "4 ejecutivos: 3 fritos y 1 broster",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "partially_covered_by_340_371_374",
-      "note": "340:entrada multilínea inicial.371:continuación con reiteración de total/reparto, nota compartida y cierre; guardas de varias líneas/familia ajena. Entrada literal en una sola línea e inflación histórica completa siguen pendientes; cantidad7en371 es fixture de recuperación. Tanda374: encabezados compactos con opciones explícitas y4controles abreviados; estos últimos no acreditan captura progresiva ni cierre."
+      "status": "partially_covered_through_386",
+      "note": "340:entrada multilínea inicial.371:continuación con reiteración de total/reparto, nota compartida y cierre; guardas de varias líneas/familia ajena. Entrada literal en una sola línea e inflación histórica completa siguen pendientes; cantidad7en371 es fixture de recuperación. Tanda374: encabezados compactos con opciones explícitas y4controles abreviados; estos últimos no acreditan captura progresiva ni cierre. Tanda385: 44 regresiones locales; conteos de sopa en mensajes separados, repetición, controles y16 cierres DTO. No cubre toda captura sin defaults después de resolver asignaciones. Inventario global validado con reejecución340+385 tras actualizar solo expectativas antiguas; runtime intacto. Staging385 verificado en05d158d5; producción/Kamppo pendientes. Tanda386: elecciones compartidas durante reparto de sopa y sabor obligatorio después de asignar endulzante;52 pruebas/36 cierres simulados en3 catálogos. Foco328 y global35648/456 aprobados; TypeScript/scripts aprobados. Staging386 verificado en ddc8c59f. No cubre cambios arbitrarios de asignaciones."
     },
     {
       "id": "0111-executive-distribution-02",
@@ -129,8 +129,8 @@
       "priority": "P0",
       "utterance": "todos pierna pernil, 3 ajiacos y una menudencia",
       "expected": "Cuatro ejecutivos, nunca pollo completo ni encabezado sumado; preguntar asignación de sopa si es ambigua.",
-      "status": "partially_covered_by_375",
-      "note": "Encabezado breve seguido de opciones compartidas y reparto completo en otro mensaje;16 cierres DTO en dos catálogos × agente off/mock.64regresiones totales. No acredita reparto arbitrario por varios mensajes ni canal/modelo real. Global35160/443 aprobada; staging375 verificado."
+      "status": "partially_covered_through_386",
+      "note": "Encabezado breve seguido de opciones compartidas y reparto completo en otro mensaje;16 cierres DTO en dos catálogos × agente off/mock.64regresiones totales. No acredita reparto arbitrario por varios mensajes ni canal/modelo real. Global35160/443 aprobada; staging375 verificado. Tanda385: 44 regresiones locales; conteos de sopa en mensajes separados, repetición, controles y16 cierres DTO. No cubre toda captura sin defaults después de resolver asignaciones. Inventario global validado con reejecución340+385 tras actualizar solo expectativas antiguas; runtime intacto. Staging385 verificado en05d158d5; producción/Kamppo pendientes. Tanda386: elecciones compartidas durante reparto de sopa y sabor obligatorio después de asignar endulzante;52 pruebas/36 cierres simulados en3 catálogos. Foco328 y global35648/456 aprobados; TypeScript/scripts aprobados. Staging386 verificado en ddc8c59f. No cubre cambios arbitrarios de asignaciones."
     },
     {
       "id": "0111-burst-idempotency-01",
@@ -155,8 +155,8 @@
       "priority": "P0",
       "utterance": "por fis",
       "expected": "Contacto/cortesía no agrega unidades; cada compra se aplica una vez; no omitir otros productos. Probar cola y ráfaga efectiva por separado.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_384_focused_suite",
+      "note": "384: «por Fis» como mensaje separado conserva carrito y no se guarda como nombre, dos catálogos × agente off/mock. Ya pasaba en baseline. No acredita duplicación histórica ni ráfaga/DB/Meta reales."
     },
     {
       "id": "0111-burst-idempotency-03",
@@ -259,8 +259,8 @@
       "priority": "P0",
       "utterance": "combo con pepsi | broaster",
       "expected": "Conservar opción a través de aclaración y DTO; no sustituir por default; preguntar si no está disponible.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_384_focused_suite",
+      "note": "384: compra genérica con Pepsi seguida de preparación/número, cantidades1/2 y DTO en dos catálogos; estado de selección duradero. No replay literal completo de combo y medio pollo juntos. Foco y global35552/454 aprobados; staging384 desplegado/verificado en fd931dc9."
     },
     {
       "id": "0111-pending-option-retention-03",
@@ -464,8 +464,36 @@
       "priority": "P0",
       "utterance": "la bebida bien fría",
       "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_through_391",
+      "note": "384: nota de temperatura dirigida a bebida separada o incluida; dos catálogos y agente off/mock, repetición, ambigüedad y cierre DTO. Foco y global35552/454 aprobados; staging384 desplegado/verificado en fd931dc9. No acredita toda la reconstrucción de combo histórico312–333.",
+      "followUp389": {
+        "status": "staging_deployed_verified",
+        "tests": 36,
+        "focusedTests": 126,
+        "simulatedClosures": 12,
+        "scope": "Una nota de temperatura para una unidad pendiente de compra con candidatos de combo y atributo bebida; conserva nota al resolver elección. Cantidad mayor, otra bebida, contradicción, pregunta y candidato retirado no asignan automáticamente.",
+        "remaining": "Reconstrucción arbitraria de combos, reemplazos y varios grupos de productos pendientes.",
+        "globalTests": 35792,
+        "runtimeCommit": "df1078df829bb775488258ca6f65480907ab82a0"
+      },
+      "followUp390": {
+        "status": "staging_deployed_verified",
+        "tests": 24,
+        "globalTests": 35816,
+        "simulatedClosures": 16,
+        "scope": "Nota nueva en respuesta de atributo durante reemplazo se conserva junto con nota original; dos catálogos, agente off/mock, cantidades 1/2 y selección por nombre/número.",
+        "remaining": "Inicios arbitrarios de reemplazo y reconstrucción de varios combos; fixtures nuevos parten de reemplazo pendiente válido.",
+        "runtimeCommit": "adcf59af147aa2af4da904ffd55829a7be206f17"
+      },
+      "followUp391": {
+        "status": "staging_deployed_verified",
+        "tests": 26,
+        "globalTests": 35842,
+        "simulatedClosures": 12,
+        "scope": "Redirección explícita de preparación de un reemplazo pendiente conserva notas/cantidad/opciones; pregunta y cancelación conservan original.",
+        "remaining": "Referencias abreviadas y reconstrucción arbitraria entre familias o múltiples combos.",
+        "runtimeCommit": "b9281d239258d75762b358317779104d7c49a021"
+      }
     },
     {
       "id": "0111-address-context-01",
@@ -633,8 +661,8 @@
       "priority": "audit",
       "utterance": "producto retirado mientras elige",
       "expected": "Oferta y compra coherentes con catálogo efectivo; no inventar disponibilidad ni mostrar basura. Auditar origen antes de atribuir fallo.",
-      "status": "planned",
-      "note": "Ejemplo sanitizado; requiere fixture de estado/catálogo y aserciones ejecutables."
+      "status": "partially_covered_by_384_focused_suite",
+      "note": "384: cotización de una sopa, producto agotado antes del sí; respuesta explícita sin añadir al carrito, dos catálogos × agente off/mock. Ya pasaba en baseline. No acredita opciones retiradas ni origen del catálogo histórico."
     },
     {
       "id": "0111-stock-snapshot-03",

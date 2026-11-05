@@ -1,0 +1,37 @@
+{
+  "batch": 385,
+  "baseCommit": "3712797b56d81c63d7aeeec31c2d09c11749e035",
+  "tests": 35596,
+  "suites": 455,
+  "inventoryExact": true,
+  "runtimeUnchangedDuringValidation": true,
+  "sourceFiles": 674,
+  "testOnlyExpectationUpdate": [
+    "src/whatsapp/whatsapp-counted-header-340.spec.ts"
+  ],
+  "initialRun": {
+    "passed": 35576,
+    "failed": 4,
+    "skipped": 0
+  },
+  "recheck": {
+    "tests": 112,
+    "suites": 2
+  },
+  "validationMethod": "Full inventory, then rerun changed test suite and new385 suite. Only340 test expectations changed after full run; runtime unchanged. Timers and compiler/scripts separately passed.",
+  "phases": {
+    "timers": {
+      "exitCode": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0
+}

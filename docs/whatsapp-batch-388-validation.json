@@ -1,0 +1,63 @@
+{
+  "baseCommit": "c6a2b26a1b79a6ab78e8b437ed1fb4368d020543",
+  "batches": [
+    388
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1148.55,
+      "sourceUnchanged": true,
+      "tests": 35740,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 9.65,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 678,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 35756,
+  "suites": 459,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRouterTests": 58,
+  "simulatedCheckoutClosures": 30,
+  "focusedTests": 1338,
+  "focusedSuites": 3,
+  "focusedAfterLastFix": {
+    "tests": 272,
+    "suites": 4
+  },
+  "sourceManifestSha256": "b29c23cfe5eb15fb3dd0f54845e36cbdcc93281d9bcfbae0d40f37136cee6c70",
+  "limitations": [
+    "External AI, messaging and order creation are simulated. No live customer order or Meta send.",
+    "House/name clarification covers a 3–4 line burst with complete street, Casa/Local, possible name and optional phone.",
+    "Purchase plus ETA separation covers counted catalog products and an independent punctuation-delimited timing question."
+  ],
+  "earlierAttempts": [
+    "Initial 18-case baseline: all failed.",
+    "First global interrupted after four explicit approval plus ETA regressions; fixed and covered.",
+    "Second global stopped after a separate probe reproduced omitted purchase plus ETA in both baseline and candidate; added handling and six tests.",
+    "Third global interrupted after two Lo confirmo plus ETA regressions; delegated confirmation language to existing approval handling.",
+    "Fourth global completed: 35640 passed, 100 failed across total/ETA and pending-note clarification suites (336/351/352). Preserve those specialized routes; full final inventory rerun."
+  ],
+  "runtimeCommit": "e127c6b949cf418127ec528b5a86a5929b4ea4ed"
+}
