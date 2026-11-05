@@ -58,5 +58,6 @@
     "globalRerun": false,
     "globalNote": "PPP full inventory validates shared delta; Kamppo full prior397 plus targeted engine and native host journeys"
   },
-  "deploymentVerified": false
+  "deploymentVerified": true,
+  "deploymentScope": "PPP staging and Kamppo production; PPP production unchanged"
 }
