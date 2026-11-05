@@ -1,0 +1,27 @@
+{
+  "targetMain": "38234cefd8cdf9c2ce3c67333a7264b90bc6210f",
+  "sourceStaging": "aa946dbc053aab40c982af140f85b2fa30a5212a",
+  "sourceFiles": 703,
+  "whatsappSourcesExactlyMatchValidatedStaging": true,
+  "otherRuntimeSourcesUnchangedFromMain": true,
+  "allSourcesMatchPreviouslyValidatedManifest": true,
+  "stagingFullTests": 35970,
+  "stagingValidation": "whatsapp-batch-396-validation.json",
+  "productionBaselineValidation": "whatsapp-batch-391-production-validation.json",
+  "scope": "Source provenance plus focused merged-tree validation; no new full merged-tree Jest run.",
+  "batch": 396,
+  "focused": {
+    "passed": 238,
+    "suites": 10,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typescript": {
+    "general": "passed",
+    "build": "passed"
+  },
+  "scriptTests": 92,
+  "sourceUnchanged": true,
+  "paidRequests": 0,
+  "externalOrders": 0
+}

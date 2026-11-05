@@ -1,0 +1,27 @@
+{
+  "batch": 394,
+  "kind": "regression-only",
+  "baseCommit": "0c7c666c9a5149636874ae969d49ba83889c24f1",
+  "newTests": 24,
+  "simulatedOrderClosures": 24,
+  "focused": {
+    "passed": 132,
+    "suites": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typescript": {
+    "general": "passed",
+    "build": "passed"
+  },
+  "runtimeChanged": false,
+  "runtimeDeployment": false,
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "testFileSha256": "f41ba759f545b8fe0aad66587a77cee09c4ffc4d04ae05137f900ebfd6c9ce55",
+  "limits": [
+    "Starts from a valid pending replacement; does not test all ways of initiating it.",
+    "External AI and order creation mocked.",
+    "Cross-family changes and reconstruction of multiple combos remain pending."
+  ]
+}

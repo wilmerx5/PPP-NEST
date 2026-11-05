@@ -2084,7 +2084,15 @@ export class WhatsappOrchestratorService {
       return;
     }
     const replacing = pendingSelection.pendingAttribute?.replacement || pendingSelection.pendingMatch?.replacement;
-    const rejectSelection = explicitPurchaseWithdrawal || (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto|ese plato|esa bebida))$/.test(cancellationText);
+    // "Ese combo" refers to the active configurable combo, not the whole order.
+    const rejectsPendingCombo = /^(?:cancela|no quiero) ese combo$/.test(cancellationText) &&
+      /\bcombo\b/.test(this.normalizeForMatch(pendingSelection.pendingAttribute?.name || ''));
+    if (activeSelection && rejectsPendingCombo && /[¿?"“”«»]/.test(originalText)) {
+      await this.reply(conv,msg.waId,'Puedes cancelar solo ese combo sin cancelar los demás productos. Conservé la selección pendiente. Para retirarlo, escribe «cancela ese combo».\n\n' +
+        this.formatPendingPurchaseReminder(pendingSelection));
+      return;
+    }
+    const rejectSelection = rejectsPendingCombo || explicitPurchaseWithdrawal || (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto|ese plato|esa bebida))$/.test(cancellationText);
     const currentQueue = pendingSelection.pendingMultiOrder;
     const queuedAttributeCancellation = !!pendingSelection.pendingAttribute && !!currentQueue &&
       !currentQueue.confident.length && !currentQueue.ambiguous.length && !currentQueue.unresolved.length &&
@@ -13275,10 +13283,34 @@ export class WhatsappOrchestratorService {
       const products = cfg.ignoreBusinessHours ? raw.map(item=>({...item,availableNow:true})) : raw;
       const product = products.find(item=>item.id===pendingReplacement.productId);
       if (!product) return false;
-      const targets = products.filter(item => this.normalizeForMatch(item.name) === this.normalizeForMatch(redirect));
+      let targets = products.filter(item => this.normalizeForMatch(item.name) === this.normalizeForMatch(redirect));
+      // A bare preparation refers to the pending family, never to a new dish.
+      // Match names (not preparation attributes), including unavailable SKUs so
+      // stock validation below cannot silently substitute another product.
+      const shortStyle = /^[a-z]+$/.test(this.normalizeForMatch(redirect)) &&
+        !this.catalogService.stripCookingStyleTokens(redirect)
+        ? this.normalizeForMatch(redirect) : null;
+      if (!targets.length && shortStyle) {
+        const family = this.catalogService.stripCookingStyleTokens(pendingReplacement.name);
+        targets = products.filter(item =>
+          this.catalogService.stripCookingStyleTokens(item.name) === family &&
+          this.catalogService.resolveBareCookingStyleProduct(`el ${shortStyle}`, [{...item,availableNow:true}]));
+        if (targets.length !== 1) {
+          await this.reply(conv,waId,targets.length
+            ? 'Hay varias opciones para esa preparación. Dime el nombre completo del producto. Conservé el cambio pendiente y el pedido original.\n\n' + targets.map(item=>`• *${item.name}*`).join('\n')
+            : 'No encontré esa preparación para el producto pendiente. Conservé el cambio y el pedido original.\n\n' + this.catalogService.formatProductOptionsPrompt(product,pendingReplacement.selected || []));
+          return true;
+        }
+      }
       const target = targets.length === 1 ? targets[0] : undefined;
+      if (shortStyle && target?.id === pendingReplacement.productId) {
+        await this.reply(conv,waId,this.catalogService.formatProductOptionsPrompt(product,pendingReplacement.selected || []));
+        return true;
+      }
+      // An exact catalogue name after an explicit change command can redirect
+      // to another family. A bare preparation remains restricted to its family.
       if (target && target.id !== pendingReplacement.productId &&
-          this.catalogService.stripCookingStyleTokens(pendingReplacement.name) === this.catalogService.stripCookingStyleTokens(target.name)) {
+          (!shortStyle || this.catalogService.stripCookingStyleTokens(pendingReplacement.name) === this.catalogService.stripCookingStyleTokens(target.name))) {
         if (target.availableNow === false) {
           await this.reply(conv,waId,`*${target.name}* no está disponible ahora. Conservé el cambio pendiente y el producto original.`);
           return true;
