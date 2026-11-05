@@ -1,0 +1,53 @@
+{
+  "baseCommit": "d7242392eefb712bef7ab7a0aada7f6331fa551a",
+  "batches": [
+    397
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 961.53,
+      "sourceUnchanged": true,
+      "tests": 35974,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.55,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 687,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 468,
+  "tests": 35990,
+  "suites": 468,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 20,
+  "simulatedOrderClosures": 10,
+  "baseline": {
+    "failed": 8,
+    "total": 8
+  },
+  "focused": {
+    "passed": 94,
+    "suites": 5
+  },
+  "scriptTests": 92
+}

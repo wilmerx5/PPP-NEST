@@ -2153,6 +2153,8 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (activeSelection && await this.tryRemoveNamedQueuedPurchase(conv,msg.waId,pendingSelection,originalText,cancellationText)) return;
+
     if (this.isCancelIntent(originalText)) {
       await this.handleCancelRequest(conv, msg.waId, cfg, pendingSelection.cart.length > 0 || !!pendingSelection.pendingCountedHeaderOrder);
       return;
@@ -4356,13 +4358,15 @@ export class WhatsappOrchestratorService {
     // Primer mensaje de la conversación — aviso IA + bienvenida
     const inboundCount = await this.conversationService.countInboundMessages(conv.id);
     const isFirstInbound = inboundCount <= 1;
+    // A greeting plus an unspecified order is one welcome, even when several
+    // inbound bubbles were already persisted before this turn was processed.
+    const orderStartWithoutGreeting = this.stripLeadingGreeting(text);
+    if (!session.cart.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+        this.isVagueOrderIntent(text) && (isFirstInbound || orderStartWithoutGreeting !== text)) {
+      await this.replyFirstContactWelcome(conv, msg.waId, cfg, inboundText);
+      return;
+    }
     if (isFirstInbound) {
-      // Audio/texto tipo “quiero pedir” sin producto → no inundar con menú completo
-      if (!cfg.agentV1Enabled && this.isVagueOrderIntent(text)) {
-        await this.replyFirstContactWelcome(conv, msg.waId, cfg, inboundText);
-        await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
-        return;
-      }
       // Solo saludo → bienvenida y listo (un mensaje)
       if (this.isGreetingKeyword(text) || text.length < 2) {
         await this.replyFirstContactWelcome(conv, msg.waId, cfg, inboundText);
@@ -6015,9 +6019,10 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // "Hola, quiero hacer un pedido" → preguntar qué ordenar (no listar porciones/productos).
-    // Con el agente encendido, él lee esa intención primero.
-    if (!cfg.agentV1Enabled && this.isVagueOrderIntent(text)) {
+    // An unspecified order needs one concrete question, including with the agent.
+    // Keep existing carts and pending choices on their established paths.
+    if (this.isVagueOrderIntent(text) && (!cfg.agentV1Enabled ||
+        (!session.cart.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder))) {
       // isVagueOrderIntent ya excluye frases con comida; no usar searchByName
       // (matcheaba basura y caía en “Entendí varios… _pedido_”).
       await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
@@ -13272,6 +13277,39 @@ export class WhatsappOrchestratorService {
     return `Siguen aparte en tu pedido: ${drinks.map(line=>this.formatCartLineLabel(line)).join(', ')}. Si no las quieres, dime cuál quitamos.`;
   }
 
+  /** Remove a uniquely named later purchase without answering the active option. */
+  private async tryRemoveNamedQueuedPurchase(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    originalText: string, cancellationText: string,
+  ): Promise<boolean> {
+    const queue = session.pendingMultiOrder;
+    if (!session.pendingAttribute || !queue || queue.confident.length || queue.ambiguous.length || queue.unresolved.length ||
+        queue.needsAttributes[0]?.productId !== session.pendingAttribute.productId) return false;
+    const named = cancellationText.match(/^(?:cancela|no quiero|quita|elimina) (?:(?:el|la) )?(?:compra pendiente de )?(.+)$/)?.[1];
+    if (!named) return false;
+    const matches = queue.needsAttributes.map((item,index)=>({item,index}))
+      .filter(({item})=>this.normalizeForMatch(item.name) === named);
+    if (!matches.length || (matches.length === 1 && matches[0].index === 0)) return false;
+    const reminder = this.formatPendingPurchaseReminder(session);
+    if (matches.length !== 1) {
+      await this.reply(conv,waId,'Hay varias compras pendientes con ese nombre. Conservé todas. Primero completa la selección actual para poder distinguirlas en el carrito.\n\n'+reminder);
+      return true;
+    }
+    if (session.cart.some(item=>item.productId === matches[0].item.productId) && !/\bcompra pendiente de\b/.test(cancellationText)) {
+      await this.reply(conv,waId,`*${matches[0].item.name}* está tanto en el carrito como en las compras pendientes. Conservé ambos. Para retirar solo la compra pendiente, escribe «cancela la compra pendiente de ${matches[0].item.name}».\n\n`+reminder);
+      return true;
+    }
+    const {item,index} = matches[0];
+    if (/[¿?"“”«»]/.test(originalText)) {
+      await this.reply(conv,waId,`Para retirar solo *${item.name}* de las compras pendientes, escribe «cancela el ${item.name}». Conservé las selecciones.\n\n`+reminder);
+      return true;
+    }
+    const next = {...session,pendingMultiOrder:{...queue,needsAttributes:queue.needsAttributes.filter((_,i)=>i !== index)}};
+    await this.conversationService.saveSession(conv,next,'awaiting_attribute');
+    await this.reply(conv,waId,`Retiré *${item.name}* de las compras pendientes. El carrito y las otras selecciones siguen igual.\n\n`+this.formatPendingPurchaseReminder(next));
+    return true;
+  }
+
   private async tryRedirectPendingReplacement(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, cfg: EffectiveWhatsappConfig,
@@ -18984,6 +19022,8 @@ export class WhatsappOrchestratorService {
       .trim();
     if (!t) return false;
 
+    if (/^(?:hola\s+)?(?:buen dia|buena tarde|buena noche)(?:\s+(?:veci(?:no|na|o)?|parce))?$/.test(t)) return true;
+
     // Cortesía colombiana suelta: "veci", "vecio", "parce"
     if (
       /^(veci(?:no|na|o)?|parce|compadre)(\s+(hola|hey|hi|buenas|buenos))*(\s+(dias|tardes|noches))?$/.test(
@@ -19012,6 +19052,7 @@ export class WhatsappOrchestratorService {
     const raw = (text || '').trim();
     if (!raw) return raw;
     const stripped = raw
+      .replace(/^(?:hola\s+)?(?:buen d[ií]a|buena tarde|buena noche)\b[\s,!.:;]*/i, '')
       .replace(
         /^(hola|hey|hi|buenas|buenos|veci(?:no|na|o)?|parce)(\s+(hola|hey|hi|buenas|buenos|veci(?:no|na|o)?|parce))*(\s+(días|dias|tardes|noches))?[^\w\n]*/i,
         '',
@@ -24666,11 +24707,11 @@ export class WhatsappOrchestratorService {
       .replace(/\s+/g, ' ')
       .trim();
     const neighbor = /\bvecina\b/.test(t) ? 'vecina' : /\bvecino\b/.test(t) ? 'vecino' : /\bveci(?:o)?\b/.test(t) ? 'veci' : '';
-    const day = /\bbuenos dias\b/.test(t)
+    const day = /\b(?:buenos dias|buen dia)\b/.test(t)
       ? 'Buenos días'
-      : /\bbuenas tardes\b/.test(t)
+      : /\bbuenas? tardes?\b/.test(t)
         ? 'Buenas tardes'
-        : /\bbuenas noches\b/.test(t)
+        : /\bbuenas? noches?\b/.test(t)
           ? 'Buenas noches'
           : /\bbuenas\b/.test(t)
             ? 'Buenas'
