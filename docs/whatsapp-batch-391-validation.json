@@ -53,5 +53,6 @@
     "External AI, messages and orders simulated. No paid calls or real customer orders.",
     "Named catalog destination must share preparation-stripped name with pending replacement. Abbreviated references, different families and arbitrary multi-combo reconstruction remain uncovered.",
     "Fixtures start at a valid pending replacement."
-  ]
+  ],
+  "runtimeCommit": "b9281d239258d75762b358317779104d7c49a021"
 }
