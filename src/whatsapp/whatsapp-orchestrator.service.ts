@@ -13299,8 +13299,10 @@ export class WhatsappOrchestratorService {
         await this.reply(conv,waId,this.catalogService.formatProductOptionsPrompt(product,pendingReplacement.selected || []));
         return true;
       }
+      // An exact catalogue name after an explicit change command can redirect
+      // to another family. A bare preparation remains restricted to its family.
       if (target && target.id !== pendingReplacement.productId &&
-          this.catalogService.stripCookingStyleTokens(pendingReplacement.name) === this.catalogService.stripCookingStyleTokens(target.name)) {
+          (!shortStyle || this.catalogService.stripCookingStyleTokens(pendingReplacement.name) === this.catalogService.stripCookingStyleTokens(target.name))) {
         if (target.availableNow === false) {
           await this.reply(conv,waId,`*${target.name}* no está disponible ahora. Conservé el cambio pendiente y el producto original.`);
           return true;
