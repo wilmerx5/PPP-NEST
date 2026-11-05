@@ -1220,6 +1220,43 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Preserve an ambiguous house/name bubble until the customer identifies its role.
+    if (['awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) && text.includes('\n')) {
+      const lines=text.split(/\n+/).map(line=>line.trim()).filter(Boolean);
+      if ((lines.length===3 || lines.length===4) && this.isStrongExplicitAddress(lines[0]) &&
+          /^(?:casa|local)$/i.test(lines[1]) && isUsableWhatsappCustomerName(lines[2]) &&
+          !this.looksLikeAddressRejectingPersonName(lines[2]) && !/[¿?:]/.test(lines[2]) &&
+          (lines.length===3 || this.looksLikePhoneNumber(lines[3]))) {
+        const original=this.conversationService.getSession(conv);
+        if (original.cart.length && !original.pendingAttribute && !original.pendingMatch && !original.pendingMultiOrder &&
+            !CART_EDIT_SELECTION_KEYS.some(key=>!!original[key])) {
+          const address=lines.slice(0,2).join(' ');
+          const phone=lines[3] ? this.normalizeContactPhone(lines[3],conv.phoneE164) : undefined;
+          const next={...this.withDeliveryAddress(original,address),pendingRecipientOrPlace:lines[2],pendingRecipientOrPlaceAddress:address,pendingRecipientOrPlacePin:undefined,
+            ...(phone ? {contactPhone:phone,phoneConfirmed:true} : {})};
+          await this.conversationService.saveSession(conv,next,'awaiting_name');
+          await this.reply(conv,msg.waId,`¿*${lines[2]}* es el nombre para el pedido o una referencia de la casa? Ya guardé la dirección${phone ? ' y el teléfono' : ''}.`);
+          return;
+        }
+      }
+    }
+
+    // A labelled name in a multiline address is contact data, not part of the street.
+    if (['awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) && text.includes('\n')) {
+      const lines = text.split(/\n+/).map(line=>line.trim()).filter(Boolean);
+      const names = lines.map((line,index)=>({index,match:line.match(/^(?:nombre\s*:|a nombre de|me llamo|mi nombre es)\s*(.+)$/i)})).filter(item=>item.match);
+      if (names.length===1) {
+        const name=names[0].match![1].trim();
+        const remaining=lines.filter((_,index)=>index!==names[0].index).join('\n');
+        if (isUsableWhatsappCustomerName(name) && !this.looksLikeAddressRejectingPersonName(name) &&
+            this.isStrongExplicitAddress(remaining)) {
+          await this.conversationService.updateCustomerName(conv,name);
+          Object.assign(conv,await this.conversationService.reloadConversation(conv.id));
+          text=remaining;
+        }
+      }
+    }
+
     const spokenCombo = text.match(/^(?:(?:quiero|dame|me das)\s+)?(un|una|\d{1,2})\s+(.+?)\s+en combo\s+(.+?)(?:\s+de\s+(\d+(?:[.,]\d+)?))?[.!]*$/i);
     if (spokenCombo && !/[¿?]/.test(text)) {
       const menu = await this.catalogService.getMenuProducts();
@@ -1227,6 +1264,24 @@ export class WhatsappOrchestratorService {
       const matches = menu.filter(product=>product.availableNow!==false && /\bcombo\b/i.test(product.name) && words.every(word=>this.normalizeForMatch(product.name).split(' ').includes(word)));
       const amount = spokenCombo[4] ? Number(spokenCombo[4].replace(',','.')) : undefined;
       if (matches.length===1 && (!amount || Number(matches[0].price)===amount || Number(matches[0].price)===amount*1000)) text = `${spokenCombo[1]} ${matches[0].name}`;
+    }
+    // Keep an explicit purchase separate from its independent delivery-time question.
+    if (['awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) {
+      const current = this.conversationService.getSession(conv);
+      const after = text.match(/^(.+?)[.;]\s*(¿?[^?]+\?)$/s);
+      const before = text.match(/^(¿?[^?]+\?)\s+(.+)$/s);
+      const pair = after ? {purchase:after[1].trim(),question:after[2]} : before ? {purchase:before[2].trim(),question:before[1]} : undefined;
+      if (current.cart.length && current.orderType==='delivery' && pair && isStandaloneDeliveryEtaInquiry(pair.question) &&
+          /^(?:(?:quiero|dame|me das|agrega)\s+)?(?:un|una|dos|tres|cuatro|cinco|\d{1,2})\s+/i.test(pair.purchase) &&
+          !/[¿?;]|\b(?:no|si|pero|cancelar|cambia|quita)\b/i.test(pair.purchase)) {
+        const menu = await this.catalogService.getMenuProducts();
+        if (this.catalogService.productFullyNamedIn(pair.purchase,menu)) {
+          const answer='El pedido todavía no se ha confirmado. Tiempo estimado después de confirmar: '+this.formatDeliveryEtaSentence(cfg);
+          turn.independentInquiryAnswer=answer;
+          await this.reply(conv,msg.waId,answer);
+          text=pair.purchase;
+        }
+      }
     }
     if (await this.tryHandleQuoteAndDraftRecovery(conv,msg.waId,text,cfg)) return;
     let checkoutSession = this.conversationService.getSession(conv);
@@ -24368,7 +24423,7 @@ export class WhatsappOrchestratorService {
     if (!label || !session.cart.length || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
     const said = this.normalizeForMatch(text).replace(/[.!]+$/, '').trim();
     const nameRole = /^(?:es |ese es |eso es )?(?:mi nombre|el nombre|el destinatario)$/.test(said);
-    const placeRole = /^(?:es |ese es |eso es )?(?:el barrio|el conjunto|la urbanizacion|el lugar de entrega)$/.test(said);
+    const placeRole = /^(?:es |ese es |eso es )?(?:el barrio|el conjunto|la urbanizacion|el lugar de entrega|la casa|una referencia|la referencia(?: de entrega)?)$/.test(said);
     if ((nameRole || placeRole) && /[¿?]/.test(text)) {
       await this.reply(conv, waId, `Necesito que aclares si *${label}* es tu nombre o el barrio/conjunto de entrega. El pedido sigue igual.`);
       return true;
@@ -26532,15 +26587,27 @@ export class WhatsappOrchestratorService {
         }
       }
     }
-    if (session.cart.length && session.orderType==='delivery' && session.address && session.deliveryFeeCalculated===null &&
-        !this.catalogService.isPriceInquiryIntent(text) && !cartTotalFollowupIntent(text, !!session.pendingPriceInquiry) &&
+    const unresolvedDestination = session.orderType==='delivery' && !!session.address && session.deliveryFeeCalculated===null;
+    const awaitingCheckout = ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state);
+    const checkoutApproval = /\b(?:confirmar|confirmo|confirma|confirmado|apruebo|aprobar|aprobado|finalizar|terminar|cerrar)\b/.test(q) ||
+      text.split(/[.!?¿;\n]/).some(part=>this.isConfirmKeyword(part.trim()) || isFinalConfirmAffirmation(part.trim()));
+    if (session.cart.length && (unresolvedDestination || awaitingCheckout) && !checkoutApproval &&
+        !session.pendingSubsetKitchenNote && !CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]) &&
+        !isCartTotalAndEtaInquiry(text) &&
+        (!this.catalogService.isPriceInquiryIntent(text) || isDeliveryEtaInquiry(text)) && !cartTotalFollowupIntent(text, !!session.pendingPriceInquiry) &&
+        !/\b(?:nombre|telefono|celular|cambia|cambiar|calle|carrera|apartamento|agrega|quitar|cancelar|pago|pagar)\b/.test(q) &&
         (isDeliveryEtaInquiry(text)||/\b(?:en que va|donde (?:va|esta)|estado de(?:l)?|ya salio|va en camino)\b/.test(q)||/^(?:que tiempo demora|solo pregunto si se demoran|oye que demora|que demora|ya mas de una hora)$/.test(q))) {
       let found = false;
       try { found = (await this.ordersService.findTodayOrdersByPhone(conv.phoneE164)).some(order=>!['canceled','completed'].includes(order.orderStatus)); } catch { /* The current draft still has no confirmation. */ }
       if (found) return this.replyOrderProgressOrAskNumber(conv,waId,text,cfg);
       session={...session,pendingAddOffer:undefined,pendingOrderStatusLookup:undefined};
-      await this.conversationService.saveSession(conv,session,'awaiting_address');
-      await this.reply(conv,waId,'Este pedido todavía no se ha confirmado ni enviado a cocina. Falta ubicar la dirección. ¿Me compartes la ubicación de WhatsApp o la calle y el número?');
+      await this.conversationService.saveSession(conv,session,unresolvedDestination ? 'awaiting_address' : conv.state);
+      const next = unresolvedDestination
+        ? 'Falta ubicar la dirección. ¿Me compartes la ubicación de WhatsApp o la calle y el número?'
+        : this.formatInterruptedStepReminder(conv,session);
+      const estimate = !unresolvedDestination && session.orderType==='delivery' && isDeliveryEtaInquiry(text)
+        ? ' Después de confirmar, el tiempo estimado es: '+this.formatDeliveryEtaSentence(cfg)+' ' : ' ';
+      await this.reply(conv,waId,'Este pedido todavía no se ha confirmado ni enviado a cocina.'+estimate+next);
       return true;
     }
     if (session.cart.length && session.paymentMethod && /^(?:se puede|puedo) cancelar antes de (?:enviar|que envien)(?: el pedido)?$/.test(q)) {

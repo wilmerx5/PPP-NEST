@@ -70,5 +70,28 @@
     "The audit snapshot does not establish outcomes through other channels."
   ],
   "runtimeCommit": "7269908b347cb7efd8328147e730dd259b9a985f",
-  "deploymentEvidence": "whatsapp-batch-387-staging-deployment.json"
+  "deploymentEvidence": "whatsapp-batch-387-staging-deployment.json",
+  "followUp388": {
+    "status": "validated-staging-deployment-pending",
+    "productionChanged": false,
+    "cases": [
+      "draft tracking while awaiting name, phone, payment or approval",
+      "labelled name inside address burst",
+      "house versus recipient clarification preserving phone and cart",
+      "explicit purchase plus separate delivery-time question"
+    ],
+    "routerTests": 58,
+    "simulatedCheckoutClosures": 30,
+    "focusedTests": 1338,
+    "focusedSuites": 3,
+    "paidRequests": 0,
+    "limits": [
+      "Address burst clarification covers 3–4 lines with a complete street, Casa/Local, a possible name and optional phone.",
+      "Purchase plus ETA separation covers an explicit counted catalog product and a standalone question separated by punctuation.",
+      "No production or Kamppo promotion in this batch."
+    ],
+    "validation": "whatsapp-batch-388-validation.json",
+    "globalTests": 35756,
+    "globalSuites": 459
+  }
 }

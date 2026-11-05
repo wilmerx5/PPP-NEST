@@ -1,3 +1,13 @@
+## Tanda 388 — piloto activo: cierre y dirección fragmentada (validada, despliegue de staging pendiente)
+
+El piloto ya está activo. Esta tanda protege el cierre: una consulta de demora/estado durante checkout informa que el borrador no se ha confirmado y retoma el dato pendiente. Una orden activa conserva seguimiento. Confirmaciones explícitas con pregunta de demora siguen cerrando una sola vez; condicionales y consultas no autorizan una orden. Compra explícita más pregunta independiente de demora conserva ambas intenciones.
+
+En dirección fragmentada se separan los nombres etiquetados; «Casa / Carolina» conserva calle/teléfono y pide aclarar nombre frente a referencia. No inventa geolocalización. Alcance de esa aclaración: burst de 3–4 líneas con calle completa, Casa/Local, posible nombre y teléfono opcional. La separación compra/ETA cubre producto contado del catálogo y pregunta independiente delimitada; no acredita cualquier mensaje compuesto.
+
+Baseline: 18/18 fallos. 58 regresiones nuevas, 30 cierres DTO simulados, agente off/mock y catálogo PPP/sintético. Focos 1338/3 y 272/4 aprobados; el último incluye las tres suites que habían fallado y las 58 nuevas. Las pasadas previas detectaron variantes de confirmación absorbidas por el aviso, compra más ETA omitida y consultas total/ETA o aclaración de nota interceptadas; se corrigieron antes de congelar la versión final. Global 35756/459 aprobada sin fallos ni omitidas, inventario exacto y fuentes congeladas. TypeScript general/build y 92 pruebas de scripts aprobados. Evidencia whatsapp-batch-388-validation.json. Cero inferencia pagada, Meta u órdenes externas; modelos/presupuesto 267/256/11 sin cambios.
+
+Pendiente: publicar y verificar staging. Producción/Main/Kamppo no modificados por esta tanda. No presentar la corrección local como protección ya activa del piloto.
+
 ## Tanda387 — chats del04/11: ofertas, duplicación y atención humana (staging desplegado y verificado)
 
 Se reprodujeron fallos de combo explícito con precio, aceptación con opciones, consulta de gaseosa, seguimiento de borrador y oferta antigua. Baseline20:12 fallos/8 controles correctos. La cortesía aislada ya estaba protegida en algunos recorridos; la evidencia de producción sí mostró una segunda alta tras «Por favor». Ahora la aceptación con opciones consume la oferta, las mutaciones retiran ofertas anteriores y una cortesía no puede ejecutar un alta. Cotizar una gaseosa mantiene su referente y permite una continuación numérica de consulta sin compra. Combo con precio se resuelve por catálogo, sin IDs/nombres/precios especiales en runtime.
