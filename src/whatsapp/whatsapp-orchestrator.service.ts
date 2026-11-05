@@ -2153,6 +2153,8 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (activeSelection && await this.tryRemoveNamedQueuedPurchase(conv,msg.waId,pendingSelection,originalText,cancellationText)) return;
+
     if (this.isCancelIntent(originalText)) {
       await this.handleCancelRequest(conv, msg.waId, cfg, pendingSelection.cart.length > 0 || !!pendingSelection.pendingCountedHeaderOrder);
       return;
@@ -13270,6 +13272,39 @@ export class WhatsappOrchestratorService {
     const drinks=session.cart.filter(line=>line.productId!==combo.id && products.some(product=>product.id===line.productId && this.catalogService.isLikelyDrinkProduct(product)));
     if(!drinks.length)return undefined;
     return `Siguen aparte en tu pedido: ${drinks.map(line=>this.formatCartLineLabel(line)).join(', ')}. Si no las quieres, dime cuál quitamos.`;
+  }
+
+  /** Remove a uniquely named later purchase without answering the active option. */
+  private async tryRemoveNamedQueuedPurchase(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    originalText: string, cancellationText: string,
+  ): Promise<boolean> {
+    const queue = session.pendingMultiOrder;
+    if (!session.pendingAttribute || !queue || queue.confident.length || queue.ambiguous.length || queue.unresolved.length ||
+        queue.needsAttributes[0]?.productId !== session.pendingAttribute.productId) return false;
+    const named = cancellationText.match(/^(?:cancela|no quiero|quita|elimina) (?:(?:el|la) )?(?:compra pendiente de )?(.+)$/)?.[1];
+    if (!named) return false;
+    const matches = queue.needsAttributes.map((item,index)=>({item,index}))
+      .filter(({item})=>this.normalizeForMatch(item.name) === named);
+    if (!matches.length || (matches.length === 1 && matches[0].index === 0)) return false;
+    const reminder = this.formatPendingPurchaseReminder(session);
+    if (matches.length !== 1) {
+      await this.reply(conv,waId,'Hay varias compras pendientes con ese nombre. Conservé todas. Primero completa la selección actual para poder distinguirlas en el carrito.\n\n'+reminder);
+      return true;
+    }
+    if (session.cart.some(item=>item.productId === matches[0].item.productId) && !/\bcompra pendiente de\b/.test(cancellationText)) {
+      await this.reply(conv,waId,`*${matches[0].item.name}* está tanto en el carrito como en las compras pendientes. Conservé ambos. Para retirar solo la compra pendiente, escribe «cancela la compra pendiente de ${matches[0].item.name}».\n\n`+reminder);
+      return true;
+    }
+    const {item,index} = matches[0];
+    if (/[¿?"“”«»]/.test(originalText)) {
+      await this.reply(conv,waId,`Para retirar solo *${item.name}* de las compras pendientes, escribe «cancela el ${item.name}». Conservé las selecciones.\n\n`+reminder);
+      return true;
+    }
+    const next = {...session,pendingMultiOrder:{...queue,needsAttributes:queue.needsAttributes.filter((_,i)=>i !== index)}};
+    await this.conversationService.saveSession(conv,next,'awaiting_attribute');
+    await this.reply(conv,waId,`Retiré *${item.name}* de las compras pendientes. El carrito y las otras selecciones siguen igual.\n\n`+this.formatPendingPurchaseReminder(next));
+    return true;
   }
 
   private async tryRedirectPendingReplacement(
