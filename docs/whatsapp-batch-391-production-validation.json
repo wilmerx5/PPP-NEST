@@ -1,0 +1,55 @@
+{
+  "baseCommit": "091fe4234d8ff976f7311f9ec2dc74578a534b24",
+  "batches": [
+    391
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1364.68,
+      "sourceUnchanged": true,
+      "tests": 35839,
+      "failed": 0,
+      "skipped": 11
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.9,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 698,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 35855,
+  "suites": 468,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "environment": "production",
+  "mergedStagingCommit": "ea41461d4430d510b3e9c6373245d8ae4f681977",
+  "uniquePassedTests": 35866,
+  "isolatedBold": {
+    "tests": 24,
+    "suites": 6,
+    "includesPreviouslySkippedTests": 11,
+    "exitCode": 0,
+    "database": "Disposable local MariaDB10.11, external gateway mocked"
+  },
+  "scriptTests": 92,
+  "sourceManifestSha256": "72122273d999d162159fe3bc70cb8b4588a21af7cdd44ddf96cc60bc07f298b2",
+  "coverageNote": "General inventory passed 35855 tests, skipped 11 explicit opt-in database tests. Separate isolated Bold run passed all 24 tests including those 11; unique passed total35866, no outstanding skipped cases. No production customer orders or paid calls.",
+  "runtimeCommit": "b509f046d8593091f412921107131873dc49f461"
+}
