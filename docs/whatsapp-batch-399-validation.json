@@ -56,10 +56,11 @@
   },
   "runnersPassed": 92,
   "externalOrders": 0,
-  "deploymentVerified": false,
+  "deploymentVerified": true,
   "limits": [
     "Recovery proposal only for two single-unit lines without attributes, with a drink exclusion note and one exact composed product in the current catalog",
     "Question/quoted/negative/conditional/additional-product messages never authorize this proposal",
     "Mocks do not validate real customer conversion or external transport"
-  ]
+  ],
+  "deploymentScope": "PPP staging only"
 }
