@@ -22013,12 +22013,45 @@ export class WhatsappOrchestratorService {
   }
 
   private async tryHandleDrinkTemperatureNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
-    if (!session.cart.length || !['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
-        session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
+    if (!['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        session.pendingAttribute || session.pendingSubsetKitchenNote || session.mpPreferenceId ||
         CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
-    const request = text.trim().match(/^(?:por favor\s+)?la bebida\s+(bien fr[ií]a|fr[ií]a|sin hielo|al clima)(?:\s+por favor)?[.!]*$/i);
+    const request = text.trim().match(/^(?:por favor\s+)?la (?:bebida|gaseosa)\s+(bien fr[ií]a|fr[ií]a|sin hielo|al clima)(?:\s+por favor)?[.!]*$/i);
     if (!request) return false;
     const products = await this.catalogService.getMenuProducts();
+    const multi=session.pendingMultiOrder;
+    if (multi && (session.pendingMatch || multi.ambiguous.length!==1 || multi.confident.length || multi.needsAttributes.length || multi.unresolved.length)) return false;
+    const group=multi?.ambiguous[0];
+    const pending: WhatsappSessionData['pendingMatch'] = session.pendingMatch || (group ? {
+      ...group,query:group.segment,intent:'order',quantity:this.catalogService.extractQuantityFromSegment(group.segment),
+    } : undefined);
+    if (pending) {
+      if (pending.intent!=='order' || pending.selectionAdded || pending.replacement || pending.alsoAdd?.length ||
+          !pending.candidates.length) return false;
+      const candidates=pending.candidates.map(candidate=>products.find(product=>product.id===candidate.id));
+      if (!candidates.every(product=>product && product.availableNow!==false &&
+          product.attributes?.some(attribute=>/^(?:bebida|gaseosa|refresco)s?$/.test(this.normalizeForMatch(attribute.attributeName))))) return false;
+      const ambiguous=(pending.correctedQuantity ?? pending.quantity ?? 1)!==1 || session.cart.some(line=>{
+        const product=products.find(item=>item.id===line.productId);
+        return product && (this.catalogService.isLikelyDrinkProduct(product) || product.attributes?.some(attribute=>
+          /^(?:bebida|gaseosa|refresco)s?$/.test(this.normalizeForMatch(attribute.attributeName))));
+      });
+      const note=`Bebida ${request[1]}`;
+      const conflictingTemperature=pending.note && /\b(?:fr[ií]a|al clima)\b/i.test(pending.note) &&
+        /\b(?:fr[ií]a|al clima)\b/i.test(note) && /al clima/i.test(pending.note)!==/al clima/i.test(note);
+      if (ambiguous || conflictingTemperature || kitchenNotesConflict(pending.note,note)) {
+        await this.reply(conv,waId,'No cambié la nota: hay varias bebidas o una indicación anterior que debemos aclarar. Primero terminemos de elegir el producto.\n\n'+this.formatInterruptedStepReminder(conv,session));
+        return true;
+      }
+      const combined=joinKitchenNotes(pending.note,note);
+      if ((combined||'').length>200) return false;
+      const next=multi && group ? {...session,pendingMultiOrder:{...multi,ambiguous:[{...group,note:combined}]}}
+        : {...session,pendingMatch:{...pending,note:combined}};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,'Anoté para la bebida del producto pendiente: '+request[1]+'.\n\n'+this.formatInterruptedStepReminder(conv,next));
+      return true;
+    }
+    if (!session.cart.length) return false;
     const indices = session.cart.flatMap((line,index)=>{
       const product=products.find(p=>p.id===line.productId);
       return product && (this.catalogService.isLikelyDrinkProduct(product) ||
@@ -30578,13 +30611,19 @@ export class WhatsappOrchestratorService {
       const chosenRaw = textChosen || chosenFromNum;
       if (chosenRaw) {
         const full = products.find((p) => p.id === chosenRaw.id) || (chosenRaw as MenuProduct);
+        const chosenNote=this.catalogService.extractProductModificationNote(text) || undefined;
+        if (chosenNote && kitchenNotesConflict(group.note,chosenNote)) {
+          await this.reply(conv,waId,'La indicación nueva contradice la nota anterior. ¿Cuál conservamos? El pedido sigue igual.');
+          return true;
+        }
+        const note=joinKitchenNotes(group.note,chosenNote);
         const nextAmb = pending.ambiguous.slice(1);
         if (!nextAmb.length && !pending.unresolved.length) {
           const extras = [...pending.confident, ...pending.needsAttributes].filter(
             (item) => item.productId !== full.id,
           );
           const items = [
-            { product: full, segment: group.segment || full.name, note: this.catalogService.extractProductModificationNote(text) || undefined },
+            { product: full, segment: group.segment || full.name, note },
             ...extras.map((item) => {
               const product =
                 products.find((p) => p.id === item.productId) ||
@@ -30604,7 +30643,7 @@ export class WhatsappOrchestratorService {
         }
         const nextConfident = [
           ...pending.confident,
-          { segment: group.segment, ...this.toPendingMultiProduct(full), note:this.catalogService.extractProductModificationNote(text) || undefined },
+          { segment: group.segment, ...this.toPendingMultiProduct(full), note },
         ];
         session = {
           ...session,

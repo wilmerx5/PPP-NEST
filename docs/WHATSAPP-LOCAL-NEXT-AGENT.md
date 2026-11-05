@@ -1,3 +1,11 @@
+## Tanda 389 — notas de bebida durante elección de combo (validado; despliegue staging pendiente)
+
+Se reprodujo pérdida de «la bebida bien fría» / «la gaseosa al clima» al elegir la preparación de un combo. La nota ahora queda en la elección pendiente y se transfiere al producto seleccionado. «Sin hielo» conserva su significado también cuando la selección abre una pregunta de bebida. Notas anteriores se unen sin duplicarse; una contradicción pide aclarar antes de reemplazarla.
+
+Alcance: una unidad pendiente de compra, un único grupo de candidatos disponibles con atributo de bebida y ninguna otra bebida en carrito. No se asigna automáticamente con varias bebidas, cantidades mayores, consultas, reemplazos u opciones retiradas. Los casos de reconstrucción arbitraria de combos y varios grupos siguen pendientes.
+
+Baseline 8/8 fallos. Foco final 126/3 suites aprobado: 36 regresiones nuevas, 12 cierres DTO simulados, catálogo PPP/sintético y agente off/mock. La normalización existente puede guardar «sin hielo» sin el prefijo «Bebida»; se comprueba el contenido de la nota en carrito y DTO. Cero inferencia pagada, Meta u órdenes externas; modelos/presupuesto 267/256/11 sin cambios. Global 35792/460 aprobada sin fallos ni omitidas; 679 fuentes congeladas e inventario exacto. TypeScript general/build y 92 scripts aprobados. Evidencia whatsapp-batch-389-validation.json. Despliegue staging 389 pendiente; producción/Main/Kamppo sin cambios.
+
 ## Tanda 388 — piloto activo: cierre y dirección fragmentada (staging desplegado y verificado)
 
 El piloto ya está activo. Esta tanda protege el cierre: una consulta de demora/estado durante checkout informa que el borrador no se ha confirmado y retoma el dato pendiente. Una orden activa conserva seguimiento. Confirmaciones explícitas con pregunta de demora siguen cerrando una sola vez; condicionales y consultas no autorizan una orden. Compra explícita más pregunta independiente de demora conserva ambas intenciones.
