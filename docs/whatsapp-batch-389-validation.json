@@ -52,5 +52,6 @@
   "limitations": [
     "External AI, messaging and orders simulated; no real customer messages or orders.",
     "One pending purchase unit and one candidate group with drink attribute; multiple groups, replacements and arbitrary reconstruction remain outside scope."
-  ]
+  ],
+  "runtimeCommit": "df1078df829bb775488258ca6f65480907ab82a0"
 }
