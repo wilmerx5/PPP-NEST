@@ -53,5 +53,6 @@
   "limitations": [
     "External AI, messages and orders simulated; no paid calls or external orders.",
     "New fixtures start at valid pending replacement; not all natural-language replacement initiation or multi-product reconstruction covered."
-  ]
+  ],
+  "runtimeCommit": "adcf59af147aa2af4da904ffd55829a7be206f17"
 }

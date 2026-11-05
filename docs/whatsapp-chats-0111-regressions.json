@@ -464,7 +464,7 @@
       "priority": "P0",
       "utterance": "la bebida bien fría",
       "expected": "Notas y opciones llegan completas al recibo; aclarar alcance ambiguo; no comprar ingredientes ni replicar nombres como notas.",
-      "status": "partially_covered_through_389",
+      "status": "partially_covered_through_390",
       "note": "384: nota de temperatura dirigida a bebida separada o incluida; dos catálogos y agente off/mock, repetición, ambigüedad y cierre DTO. Foco y global35552/454 aprobados; staging384 desplegado/verificado en fd931dc9. No acredita toda la reconstrucción de combo histórico312–333.",
       "followUp389": {
         "status": "staging_deployed_verified",
@@ -477,12 +477,13 @@
         "runtimeCommit": "df1078df829bb775488258ca6f65480907ab82a0"
       },
       "followUp390": {
-        "status": "global_passed_staging_pending",
+        "status": "staging_deployed_verified",
         "tests": 24,
         "globalTests": 35816,
         "simulatedClosures": 16,
         "scope": "Nota nueva en respuesta de atributo durante reemplazo se conserva junto con nota original; dos catálogos, agente off/mock, cantidades 1/2 y selección por nombre/número.",
-        "remaining": "Inicios arbitrarios de reemplazo y reconstrucción de varios combos; fixtures nuevos parten de reemplazo pendiente válido."
+        "remaining": "Inicios arbitrarios de reemplazo y reconstrucción de varios combos; fixtures nuevos parten de reemplazo pendiente válido.",
+        "runtimeCommit": "adcf59af147aa2af4da904ffd55829a7be206f17"
       }
     },
     {
