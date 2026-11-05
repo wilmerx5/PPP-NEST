@@ -18764,6 +18764,18 @@ export class WhatsappOrchestratorService {
     const busy=session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
       session.pendingUnitDistribution || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]);
     if (pending) {
+      // An acknowledgment followed by contact data is not approval of this edit.
+      // Let the existing data routes validate it, keeping the proposal pending.
+      const contactAck = text.match(/^s[ií]\s*[,;:]\s*(.+)$/i);
+      if (contactAck && !/[¿?«»“”"]/.test(text)) {
+        const contact = this.normalizeForMatch(contactAck[1]);
+        const labelled = /^(?:a nombre(?: de)?|me llamo|mi nombre es|(?:(?:este es )?(?:mi|el) )?(?:celular|telefono|whatsapp)(?: es)?|(?:(?:la|mi) )?direccion(?: es)?|(?:pago|pagamos|lo pago|voy a pagar) (?:por|con|en))\s+\S/.test(contact);
+        const phone = /^\+?[\d\s()-]{7,24}$/.test(contactAck[1]) && this.looksLikePhoneNumber(contactAck[1]);
+        const street = this.isStrongExplicitAddress(contactAck[1]) && this.isPlausibleDeliveryAddress(contactAck[1]);
+        const payment = getEnabledPaymentMethods(cfg.paymentMethods || []).some(method =>
+          [method.id, method.label, ...method.keywords].some(value => this.normalizeForMatch(value) === contact));
+        if (!/\b(?:si|solo si|siempre que|a menos que)\b/.test(contact) && (labelled || phone || street || payment)) return false;
+      }
       const answer = said.replace(/ (?:por favor|porfa|gracias)$/, '');
       const direct = !/[¿?«»“”"']/.test(text);
       const accept = direct && /^(?:si(?: ese| esa)?|dale|de una|correcto|exacto|asi es|eso mismo)$/.test(answer);
