@@ -1,0 +1,57 @@
+{
+  "baseCommit": "524c840635b9c36f1d2bd1398eec9dd2dd69a924",
+  "batches": [
+    391
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1070.33,
+      "sourceUnchanged": true,
+      "tests": 35826,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.82,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 681,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 35842,
+  "suites": 462,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRouterTests": 26,
+  "simulatedCheckoutClosures": 12,
+  "focusedTests": 76,
+  "focusedSuites": 3,
+  "scriptTests": 92,
+  "sourceManifestSha256": "c5bb323283f7508423f434a45624e58e19f413d3883399040f74f7cba8b86b29",
+  "earlierAttempts": [
+    "Baseline 4/4 failed: explicit preparation redirect completed previous product instead.",
+    "Expanded cases exposed alternate routing for Mejor el and Cambialo por; unified explicit pending replacement redirect before generic handlers.",
+    "Question control exposed discarded pending choice; preserved original selection without purchase."
+  ],
+  "limitations": [
+    "External AI, messages and orders simulated. No paid calls or real customer orders.",
+    "Named catalog destination must share preparation-stripped name with pending replacement. Abbreviated references, different families and arbitrary multi-combo reconstruction remain uncovered.",
+    "Fixtures start at a valid pending replacement."
+  ]
+}

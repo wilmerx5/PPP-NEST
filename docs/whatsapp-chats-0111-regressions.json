@@ -484,6 +484,14 @@
         "scope": "Nota nueva en respuesta de atributo durante reemplazo se conserva junto con nota original; dos catálogos, agente off/mock, cantidades 1/2 y selección por nombre/número.",
         "remaining": "Inicios arbitrarios de reemplazo y reconstrucción de varios combos; fixtures nuevos parten de reemplazo pendiente válido.",
         "runtimeCommit": "adcf59af147aa2af4da904ffd55829a7be206f17"
+      },
+      "followUp391": {
+        "status": "global_passed_staging_pending",
+        "tests": 26,
+        "globalTests": 35842,
+        "simulatedClosures": 12,
+        "scope": "Redirección explícita de preparación de un reemplazo pendiente conserva notas/cantidad/opciones; pregunta y cancelación conservan original.",
+        "remaining": "Referencias abreviadas y reconstrucción arbitraria entre familias o múltiples combos."
       }
     },
     {

@@ -2077,6 +2077,7 @@ export class WhatsappOrchestratorService {
         return;
       }
     }
+    if (await this.tryRedirectPendingReplacement(conv,msg.waId,pendingSelection,originalText,cfg)) return;
     if (pendingSelection.pendingAttribute?.requireExplicitOptions && this.isConfirmKeyword(originalText)) {
       await this.reply(conv,msg.waId,'Antes de confirmar, completa las opciones del reemplazo o di «cancela ese cambio». El producto original sigue en el carrito.\n\n' +
         this.formatPendingPurchaseReminder(pendingSelection));
@@ -13261,6 +13262,54 @@ export class WhatsappOrchestratorService {
     const drinks=session.cart.filter(line=>line.productId!==combo.id && products.some(product=>product.id===line.productId && this.catalogService.isLikelyDrinkProduct(product)));
     if(!drinks.length)return undefined;
     return `Siguen aparte en tu pedido: ${drinks.map(line=>this.formatCartLineLabel(line)).join(', ')}. Si no las quieres, dime cuál quitamos.`;
+  }
+
+  private async tryRedirectPendingReplacement(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const pendingReplacement = session.pendingAttribute;
+    const redirect = text.replace(/[¿?]/g,'').trim().match(/^(?:mejor(?:\s+quiero)?|c[aá]mbialo\s+por)\s+(?:el\s+|la\s+)?([^?¿]+?)[.!]*$/i)?.[1];
+    if (pendingReplacement?.replacement && redirect && !session.pendingMultiOrder) {
+      const raw = await this.catalogService.getMenuProducts();
+      const products = cfg.ignoreBusinessHours ? raw.map(item=>({...item,availableNow:true})) : raw;
+      const product = products.find(item=>item.id===pendingReplacement.productId);
+      if (!product) return false;
+      const targets = products.filter(item => this.normalizeForMatch(item.name) === this.normalizeForMatch(redirect));
+      const target = targets.length === 1 ? targets[0] : undefined;
+      if (target && target.id !== pendingReplacement.productId &&
+          this.catalogService.stripCookingStyleTokens(pendingReplacement.name) === this.catalogService.stripCookingStyleTokens(target.name)) {
+        if (target.availableNow === false) {
+          await this.reply(conv,waId,`*${target.name}* no está disponible ahora. Conservé el cambio pendiente y el producto original.`);
+          return true;
+        }
+        if (/[¿?]/.test(text)) {
+          await this.reply(conv,waId,`*${target.name}* está disponible. Para cambiar, escribe «cámbialo por ${target.name}». Por ahora conservé la selección pendiente.\n\n`+
+            this.catalogService.formatProductOptionsPrompt(product,pendingReplacement.selected || []));
+          return true;
+        }
+        const selected = (pendingReplacement.selected || []).filter(choice => target.attributes?.some(attribute =>
+          this.normalizeForMatch(attribute.attributeName) === this.normalizeForMatch(choice.attributeName) &&
+          attribute.options.some(option => this.normalizeForMatch(option) === this.normalizeForMatch(choice.attributeValue))));
+        const answerNote = joinKitchenNotes(pendingReplacement.answerNote,
+          this.catalogService.orderKitchenNote(pendingReplacement.sourceText || '',product));
+        const next = this.buildPendingAttributeSession(session,target,selected,{sourceText:text,replacement:pendingReplacement.replacement});
+        next.pendingAttribute = {...next.pendingAttribute!,quantity:pendingReplacement.quantity || pendingReplacement.replacement.originalLine.quantity,answerNote,requireExplicitOptions:pendingReplacement.requireExplicitOptions};
+        if (target.hasAttributes && !this.catalogService.isAttributeSelectionComplete(target,selected)) {
+          await this.conversationService.saveSession(conv,next,'awaiting_attribute');
+          await this.reply(conv,waId,`Cambiamos la opción pendiente a *${target.name}*.\n\n`+this.catalogService.formatProductOptionsPrompt(target,selected));
+          return true;
+        }
+        const added = this.tryAddProductToCart(next,target,next.pendingAttribute.quantity || 1,cfg,undefined,selected,{sourceText:text,replacement:pendingReplacement.replacement});
+        if (added.blocked) { await this.handleCartLimitBlocked(conv,waId,added.blocked,cfg);return true; }
+        if (added.missingAttributes) return false;
+        const completed = {...added.session,pendingAttribute:undefined,pendingMatch:undefined};
+        await this.conversationService.saveSession(conv,completed,'building_cart');
+        await this.reply(conv,waId,this.buildCartAddReply(completed,this.deliveryFeeFor(completed,cfg),target.name));
+        return true;
+      }
+    }
+    return false;
   }
 
   private async tryApplyVariantPreferenceToProduct(
