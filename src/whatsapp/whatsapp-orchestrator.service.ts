@@ -2084,7 +2084,15 @@ export class WhatsappOrchestratorService {
       return;
     }
     const replacing = pendingSelection.pendingAttribute?.replacement || pendingSelection.pendingMatch?.replacement;
-    const rejectSelection = explicitPurchaseWithdrawal || (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto|ese plato|esa bebida))$/.test(cancellationText);
+    // "Ese combo" refers to the active configurable combo, not the whole order.
+    const rejectsPendingCombo = /^(?:cancela|no quiero) ese combo$/.test(cancellationText) &&
+      /\bcombo\b/.test(this.normalizeForMatch(pendingSelection.pendingAttribute?.name || ''));
+    if (activeSelection && rejectsPendingCombo && /[¿?"“”«»]/.test(originalText)) {
+      await this.reply(conv,msg.waId,'Puedes cancelar solo ese combo sin cancelar los demás productos. Conservé la selección pendiente. Para retirarlo, escribe «cancela ese combo».\n\n' +
+        this.formatPendingPurchaseReminder(pendingSelection));
+      return;
+    }
+    const rejectSelection = rejectsPendingCombo || explicitPurchaseWithdrawal || (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto|ese plato|esa bebida))$/.test(cancellationText);
     const currentQueue = pendingSelection.pendingMultiOrder;
     const queuedAttributeCancellation = !!pendingSelection.pendingAttribute && !!currentQueue &&
       !currentQueue.confident.length && !currentQueue.ambiguous.length && !currentQueue.unresolved.length &&
