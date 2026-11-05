@@ -1,0 +1,62 @@
+{
+  "baseCommit": "c64b0e6b55c8ba97ab886f3f8d374717da746fb3",
+  "batches": [
+    398
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1020.16,
+      "sourceUnchanged": true,
+      "tests": 35994,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.61,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 688,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 469,
+  "tests": 36010,
+  "suites": 469,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "baseline": {
+    "failed": 16,
+    "cases": 16
+  },
+  "newRegressions": 20,
+  "focus": {
+    "tests": 42,
+    "suites": 3
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "kamppo": {
+    "focusedTests": 38,
+    "hostIntegrationTests": 61,
+    "historicalCompoundCancellationRecheck": 69,
+    "buildApiPassed": true,
+    "globalRerun": false,
+    "globalNote": "PPP full inventory validates shared delta; Kamppo full prior397 plus targeted engine and native host journeys"
+  },
+  "deploymentVerified": false
+}

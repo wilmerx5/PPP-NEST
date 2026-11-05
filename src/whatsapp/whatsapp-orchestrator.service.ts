@@ -4358,13 +4358,15 @@ export class WhatsappOrchestratorService {
     // Primer mensaje de la conversación — aviso IA + bienvenida
     const inboundCount = await this.conversationService.countInboundMessages(conv.id);
     const isFirstInbound = inboundCount <= 1;
+    // A greeting plus an unspecified order is one welcome, even when several
+    // inbound bubbles were already persisted before this turn was processed.
+    const orderStartWithoutGreeting = this.stripLeadingGreeting(text);
+    if (!session.cart.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+        this.isVagueOrderIntent(text) && (isFirstInbound || orderStartWithoutGreeting !== text)) {
+      await this.replyFirstContactWelcome(conv, msg.waId, cfg, inboundText);
+      return;
+    }
     if (isFirstInbound) {
-      // Audio/texto tipo “quiero pedir” sin producto → no inundar con menú completo
-      if (!cfg.agentV1Enabled && this.isVagueOrderIntent(text)) {
-        await this.replyFirstContactWelcome(conv, msg.waId, cfg, inboundText);
-        await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
-        return;
-      }
       // Solo saludo → bienvenida y listo (un mensaje)
       if (this.isGreetingKeyword(text) || text.length < 2) {
         await this.replyFirstContactWelcome(conv, msg.waId, cfg, inboundText);
@@ -6017,9 +6019,10 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // "Hola, quiero hacer un pedido" → preguntar qué ordenar (no listar porciones/productos).
-    // Con el agente encendido, él lee esa intención primero.
-    if (!cfg.agentV1Enabled && this.isVagueOrderIntent(text)) {
+    // An unspecified order needs one concrete question, including with the agent.
+    // Keep existing carts and pending choices on their established paths.
+    if (this.isVagueOrderIntent(text) && (!cfg.agentV1Enabled ||
+        (!session.cart.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder))) {
       // isVagueOrderIntent ya excluye frases con comida; no usar searchByName
       // (matcheaba basura y caía en “Entendí varios… _pedido_”).
       await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
@@ -19019,6 +19022,8 @@ export class WhatsappOrchestratorService {
       .trim();
     if (!t) return false;
 
+    if (/^(?:hola\s+)?(?:buen dia|buena tarde|buena noche)(?:\s+(?:veci(?:no|na|o)?|parce))?$/.test(t)) return true;
+
     // Cortesía colombiana suelta: "veci", "vecio", "parce"
     if (
       /^(veci(?:no|na|o)?|parce|compadre)(\s+(hola|hey|hi|buenas|buenos))*(\s+(dias|tardes|noches))?$/.test(
@@ -19047,6 +19052,7 @@ export class WhatsappOrchestratorService {
     const raw = (text || '').trim();
     if (!raw) return raw;
     const stripped = raw
+      .replace(/^(?:hola\s+)?(?:buen d[ií]a|buena tarde|buena noche)\b[\s,!.:;]*/i, '')
       .replace(
         /^(hola|hey|hi|buenas|buenos|veci(?:no|na|o)?|parce)(\s+(hola|hey|hi|buenas|buenos|veci(?:no|na|o)?|parce))*(\s+(días|dias|tardes|noches))?[^\w\n]*/i,
         '',
@@ -24701,11 +24707,11 @@ export class WhatsappOrchestratorService {
       .replace(/\s+/g, ' ')
       .trim();
     const neighbor = /\bvecina\b/.test(t) ? 'vecina' : /\bvecino\b/.test(t) ? 'vecino' : /\bveci(?:o)?\b/.test(t) ? 'veci' : '';
-    const day = /\bbuenos dias\b/.test(t)
+    const day = /\b(?:buenos dias|buen dia)\b/.test(t)
       ? 'Buenos días'
-      : /\bbuenas tardes\b/.test(t)
+      : /\bbuenas? tardes?\b/.test(t)
         ? 'Buenas tardes'
-        : /\bbuenas noches\b/.test(t)
+        : /\bbuenas? noches?\b/.test(t)
           ? 'Buenas noches'
           : /\bbuenas\b/.test(t)
             ? 'Buenas'
