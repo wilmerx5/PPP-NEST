@@ -18764,17 +18764,22 @@ export class WhatsappOrchestratorService {
     const busy=session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
       session.pendingUnitDistribution || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]);
     if (pending) {
-      if (!/^(?:si|si por favor|si porfa|dale|no|no gracias)$/.test(said)) {
-        if (this.isConfirmKeyword(text)) {
+      const answer = said.replace(/ (?:por favor|porfa|gracias)$/, '');
+      const direct = !/[¿?«»“”"']/.test(text);
+      const accept = direct && /^(?:si(?: ese| esa)?|dale|de una|correcto|exacto|asi es|eso mismo)$/.test(answer);
+      const decline = direct && /^(?:no|no dejalos separados|no mejor separados)$/.test(answer);
+      if (!accept && !decline) {
+        if (this.isConfirmKeyword(text) || isFinalConfirmAffirmation(text) || /^(?:si|no|asi|eso|correcto|exacto)\b/.test(said)) {
           await this.reply(conv,waId,'Primero aclaremos el cambio: responde sí para reunir los productos en el plato propuesto o no para conservarlos separados.');
           return true;
         }
         return false;
       }
       const clear={...session,pendingComposedDishRecovery:undefined};
-      if (/^no\b/.test(said)) {
+      if (decline) {
         await this.conversationService.saveSession(conv,clear);
-        await this.reply(conv,waId,'Listo, conservé los dos productos separados. El pedido sigue igual.');
+        await this.reply(conv,waId,'Listo, conservé los dos productos separados. El pedido sigue igual.\n\n' +
+          (this.formatInterruptedStepReminder(conv,clear)||this.formatContinueShoppingPrompt(clear)));
         return true;
       }
       const menu=await this.catalogService.getMenuProducts();
