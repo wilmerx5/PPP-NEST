@@ -1,3 +1,9 @@
+## Tanda 394 — recuperación después de aclarar preparación (pruebas publicadas en staging)
+
+24 recorridos nuevos: pregunta «¿mejor broaster?», preparación inexistente «mejor sudado» y reiteración «mejor frito», seguidos de cambio abreviado válido, completar/cancelar y cierre. Dos catálogos × agente off/mock. Los24 cierres DTO conservan dos unidades, producto correcto y notas; la cortesía no duplica, no reaparece una oferta antigua y se crea exactamente una orden simulada. No se reprodujo un fallo nuevo en este alcance.
+
+Foco132/5 aprobado sin fallos ni omitidas, TypeScript general/build aprobados. Evidencia: whatsapp-batch-394-validation.json. Solo pruebas/documentación; runtime sin cambios, no requiere nuevo despliegue. Staging mantiene runtime627eacfb de393 y producciónb509f046 hasta391, según las verificaciones anteriores. Cero inferencia pagada, mensajes Meta u órdenes externas; presupuesto267/256/11 intacto. Alcance: reemplazo pendiente válido sembrado en fixture y misma familia de producto. Siguen pendientes cambios entre familias, reconstrucción de varios combos y observación de chats reales posteriores a la promoción391. No se acredita que esos pendientes estén resueltos por esta tanda.
+
 ## Tanda 393 — preparación abreviada durante reemplazo (staging desplegado y verificado)
 
 Baseline12/12 fallos: «mejor broaster», «mejor quiero broaster» y «cámbialo por broaster» podían conservar el original o terminar con el combo frito. La preparación abreviada ahora se busca dentro de la familia del producto pendiente, usando catálogo. Conserva cantidad, opciones compatibles, notas y reemplazo original; la modificación del carrito ocurre al completar opciones. Preparación inexistente, ambigua o retirada mantiene el pedido; una pregunta no autoriza el cambio y repetir la preparación conserva la elección pendiente.
