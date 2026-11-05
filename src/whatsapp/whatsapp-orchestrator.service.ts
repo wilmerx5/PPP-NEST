@@ -8442,6 +8442,8 @@ export class WhatsappOrchestratorService {
         attrOpts.sourceText.split(/\r?\n/).map((line) => this.catalogService.extractProductModificationNote(line)).filter(Boolean).join(', ') ||
         undefined;
     }
+    const answerNote = session.pendingAttribute?.productId === product.id ? session.pendingAttribute.answerNote : undefined;
+    if (answerNote) note = [note, answerNote].filter(Boolean).join(', ');
     const replacement = attrOpts?.replacement || (session.pendingAttribute?.productId === product.id
       ? session.pendingAttribute.replacement : undefined);
     if (replacement) {
@@ -8457,8 +8459,6 @@ export class WhatsappOrchestratorService {
       const check = evaluateCartLimits(next.cart, this.toCartLimitsConfig(cfg,next), {orderType:next.orderType});
       return check.ok ? {session:next} : {session,blocked:check};
     }
-    const answerNote = session.pendingAttribute?.productId === product.id ? session.pendingAttribute.answerNote : undefined;
-    if (answerNote) note = [note, answerNote].filter(Boolean).join(', ');
     note = omitRedundantAttributeNote(dedupeKitchenNoteParts(note), selected);
     if (/^(?:con )?(?:un|una|dos|tres|\d+) porcion(?:es)? de$/i.test(this.normalizeForMatch(note || ''))) note=undefined;
     const incomingKey = this.cartLineKey({

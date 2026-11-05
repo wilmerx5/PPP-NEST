@@ -475,6 +475,14 @@
         "remaining": "Reconstrucción arbitraria de combos, reemplazos y varios grupos de productos pendientes.",
         "globalTests": 35792,
         "runtimeCommit": "df1078df829bb775488258ca6f65480907ab82a0"
+      },
+      "followUp390": {
+        "status": "global_passed_staging_pending",
+        "tests": 24,
+        "globalTests": 35816,
+        "simulatedClosures": 16,
+        "scope": "Nota nueva en respuesta de atributo durante reemplazo se conserva junto con nota original; dos catálogos, agente off/mock, cantidades 1/2 y selección por nombre/número.",
+        "remaining": "Inicios arbitrarios de reemplazo y reconstrucción de varios combos; fixtures nuevos parten de reemplazo pendiente válido."
       }
     },
     {

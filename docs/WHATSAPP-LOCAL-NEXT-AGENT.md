@@ -1,3 +1,9 @@
+## Tanda 390 — notas al completar reemplazos (validado; despliegue staging pendiente)
+
+Reproducción: al responder «Limonada sin azúcar» durante un reemplazo pendiente de opciones, se conservaba «Sin cebolla» del producto original pero se perdía «sin azúcar». Cuatro reproducciones fallaban en dos catálogos y agente off/mock. La nota de respuesta ahora se incorpora antes de sustituir el producto. El control de producto retirado requiere desactivar ignoreBusinessHours del harness; los primeros dos fallos provenían de ese override de prueba. No se atribuyen al runtime ni se añade una regla nueva de disponibilidad.
+
+24 regresiones nuevas: respuesta por nombre/número, una/dos unidades, notas originales y nuevas hasta DTO, repetición de nota, carrito cambiado, pregunta y producto retirado. 16 cierres simulados. Los fixtures parten de un reemplazo pendiente válido; no acreditan todas las formas de iniciar/reconstruir combos. Cero llamadas pagadas, Meta u órdenes externas; modelos y presupuesto 267/256/11 sin cambios. Foco 86/3 aprobado. Global 35816/461 aprobada sin fallos ni omitidas; 680 fuentes congeladas e inventario exacto. TypeScript general/build y 92 scripts aprobados. Tras interrupción se retomaron solo compilación/scripts y se verificó inventario y fuentes. Evidencia whatsapp-batch-390-validation.json. Despliegue staging pendiente; producción/Main/Kamppo sin cambios.
+
 ## Tanda 389 — notas de bebida durante elección de combo (staging desplegado y verificado)
 
 Se reprodujo pérdida de «la bebida bien fría» / «la gaseosa al clima» al elegir la preparación de un combo. La nota ahora queda en la elección pendiente y se transfiere al producto seleccionado. «Sin hielo» conserva su significado también cuando la selección abre una pregunta de bebida. Notas anteriores se unen sin duplicarse; una contradicción pide aclarar antes de reemplazarla.
