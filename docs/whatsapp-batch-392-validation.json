@@ -1,0 +1,32 @@
+{
+  "batch": 392,
+  "kind": "regression-only",
+  "baseCommit": "4ec58117",
+  "runtimeChanged": false,
+  "newTests": 24,
+  "simulatedOrderClosures": 24,
+  "focused": {
+    "passed": 172,
+    "failed": 0,
+    "suites": 5
+  },
+  "typescript": {
+    "general": "passed",
+    "build": "passed"
+  },
+  "testFileSha256": "2b0bd35493a7ff57017609c9b35a27c065a7fdcd0b1bc0ecce57494e3e4218ba",
+  "externalInferenceCalls": 0,
+  "externalOrders": 0,
+  "stagingReadOnlyCheck": {
+    "runtimeCommit": "b9281d239258d75762b358317779104d7c49a021",
+    "container": "running healthy",
+    "restarts": 0,
+    "api": "ok",
+    "database": "connected"
+  },
+  "limits": [
+    "Replacement state is seeded; initiation of arbitrary combo changes is not covered.",
+    "Tests use real router and simulated external services, not customer WhatsApp traffic.",
+    "No runtime deployment necessary; production and Kamppo unchanged."
+  ]
+}
