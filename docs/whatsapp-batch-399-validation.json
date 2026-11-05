@@ -1,0 +1,65 @@
+{
+  "baseCommit": "079d3a9d0878a5b08c481064b725a1b4107895ea",
+  "batches": [
+    399
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1396.8,
+      "sourceUnchanged": true,
+      "tests": 36042,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.13,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 689,
+  "workers": 4,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 470,
+  "tests": 36058,
+  "suites": 470,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 48,
+  "newSimulatedClosures": 24,
+  "baseline": {
+    "failed": 20,
+    "passed": 20,
+    "cases": 40,
+    "fixtureCorrections": [
+      "Routing quote mock receives customerAddress in an object",
+      "Order DTO expands units into item rows and has no quantity field"
+    ]
+  },
+  "focus": {
+    "passed": 117,
+    "suites": 3
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "limits": [
+    "Recovery proposal only for two single-unit lines without attributes, with a drink exclusion note and one exact composed product in the current catalog",
+    "Question/quoted/negative/conditional/additional-product messages never authorize this proposal",
+    "Mocks do not validate real customer conversion or external transport"
+  ]
+}

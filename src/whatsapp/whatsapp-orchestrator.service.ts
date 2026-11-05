@@ -18798,7 +18798,9 @@ export class WhatsappOrchestratorService {
         (this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
       return true;
     }
-    if (busy || !/^(?:en combo|el combo|en combo sin gaseosa)$/.test(said) || session.cart.length!==2 ||
+    const asksToCombine = !/[¿?«»“”"]/.test(text) &&
+      /^(?:en combo|el combo|en combo sin gaseosa|es un solo (?:plato|producto)|los quiero juntos|va todo junto|es el mismo plato)$/.test(said);
+    if (busy || !asksToCombine || session.cart.length!==2 ||
         session.cart.some(line=>line.quantity!==1 || line.attributes?.length)) return false;
     const notes=session.cart.map(line=>(line.note||'').trim()).filter(Boolean);
     if (!notes.length || notes.some(note=>!/^sin (?:gaseosa|bebida|refresco)[.!]*$/i.test(note))) return false;
