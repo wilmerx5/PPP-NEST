@@ -1,0 +1,71 @@
+{
+  "baseCommit": "b594ca4e5728da866c417c0ab43dcf841356aca2",
+  "batches": [
+    405
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 862.08,
+      "sourceUnchanged": true,
+      "tests": 36774,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.27,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 695,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 476,
+  "tests": 36790,
+  "suites": 476,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 192,
+  "newSimulatedClosures": 72,
+  "baseline": {
+    "initialCases": 188,
+    "failed": 108,
+    "passed": 80,
+    "router": 404,
+    "additionalPlainRejectionCases": 4,
+    "additionalPlainRejectionFailed": 4
+  },
+  "focus": {
+    "passed": 736,
+    "suites": 6
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "scope": [
+    "Explicit rejection of pending composed-dish proposal with bounded contact form",
+    "Plain dejalos separados resumes checkout",
+    "Preserve current cart while clearing only the declined proposal, including stale proposal cases",
+    "Invalid forms retain prior fields and proposal; final order confirmation remains separate"
+  ],
+  "limits": [
+    "Only bounded explicit rejection phrases and supported fields; arbitrary mixed negatives remain pending",
+    "Quoted form data rejected",
+    "Fixed delivery fees in new closures; no live geocoding or customer conversion evidence",
+    "General reconstruction of multiple combos not covered"
+  ]
+}

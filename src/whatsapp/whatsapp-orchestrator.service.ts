@@ -193,6 +193,8 @@ type EffectiveWhatsappConfig = Awaited<
 /** Common nouns that open an address; any other word after a leading article is a place name. */
 const COMPOSED_DISH_CONTACT_ACCEPTANCE = /^(?:s[ií],?\s+ese(?: plato)?|reemplaza los dos por ese plato)\s*[,;:\n]\s*([\s\S]+)$/i;
 
+const COMPOSED_DISH_CONTACT_REJECTION = /^(?:no,?\s+(?:d[eé]jalos|mejor)\s+separados|d[eé]jalos separados)\s*[,;:\n]\s*([\s\S]+)$/i;
+
 const GENERIC_ADDRESS_NOUN_RE = /calle|carrera|cra|cll|kra|avenida|av|autopista|diagonal|dg|transversal|tv|circular|v[ií]a|esquina|direcci[oó]n|misma|mism[oa]|casa|apartamento|apto|torre|bloque|interior|manzana|mz|porter[ií]a|conjunto|conj|barrio|urbanizaci[oó]n|urb|edificio|unidad|vereda|finca|hospital|cl[ií]nica|hotel|hostal|colegio|universidad|iglesia|parque|plaza|centro|portal|estaci[oó]n|tienda|local|oficina|bodega|droguer[ií]a|panader[ií]a|supermercado|entrada|parqueadero|cancha|salida|que|de|del/;
 
 const NEGATED_CART_CORRECTION = /^no[,\s]+(?:era\s+|es\s+)?(?!quiero\b)(.+?)(?:\s*[,;]\s*|\s+)(?:no[,\s]+|sino\s+|era\s+|es\s+)(?:(?:era|es)\s+)?(.+?)[.!]*$/i;
@@ -1222,11 +1224,11 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // An explicit dish acceptance plus contact form must be validated before
+    // An explicit dish decision plus contact form must be validated before
     // multiline name/payment routes can save only part of the same message.
     const pendingContactAcceptance = this.conversationService.getSession(conv);
     if (pendingContactAcceptance.pendingComposedDishRecovery &&
-        COMPOSED_DISH_CONTACT_ACCEPTANCE.test(text.trim()) && !this.isCancelIntent(text) &&
+        (COMPOSED_DISH_CONTACT_ACCEPTANCE.test(text.trim()) || COMPOSED_DISH_CONTACT_REJECTION.test(text.trim())) && !this.isCancelIntent(text) &&
         await this.tryRecoverComposedDish(conv, msg.waId, pendingContactAcceptance, text, cfg)) return;
 
     // Preserve an ambiguous house/name bubble until the customer identifies its role.
@@ -18781,17 +18783,19 @@ export class WhatsappOrchestratorService {
     const busy=session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
       session.pendingUnitDistribution || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]);
     if (pending) {
-      // Only an explicit reference to the proposed dish can approve it with contact data.
+      // An explicit decision about the proposal can accompany contact data.
       const explicitContactAcceptance = text.trim().match(COMPOSED_DISH_CONTACT_ACCEPTANCE);
+      const explicitContactRejection = text.trim().match(COMPOSED_DISH_CONTACT_REJECTION);
+      const explicitContactReply = explicitContactAcceptance || explicitContactRejection;
       let applyContactDetails: ((next: WhatsappSessionData) => Promise<WhatsappSessionData>) | undefined;
       // Validate the complete form before mutating either contact or cart.
-      const contactForm = explicitContactAcceptance?.[1] || text.trim().replace(/^(?:s[ií]|claro|listo)\s*[,;:]\s*/i, '');
+      const contactForm = explicitContactReply?.[1] || text.trim().replace(/^(?:s[ií]|claro|listo)\s*[,;:]\s*/i, '');
       const clauses = contactForm.split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b)/i)
         .map(value => value.trim()).filter(Boolean);
-      if (explicitContactAcceptance || (clauses.length >= 2 && clauses.some(value => /^(?:a nombre|mi celular|la direcci[oó]n|pago por)\b/i.test(value)))) {
+      if (explicitContactReply || (clauses.length >= 2 && clauses.some(value => /^(?:a nombre|mi celular|la direcci[oó]n|pago por)\b/i.test(value)))) {
         let name: string | undefined, phone: string | undefined, address: string | undefined, payment: string | undefined;
         let valid = clauses.length <= 4 && !/[¿?«»“”"]/.test(text) &&
-          (!explicitContactAcceptance || !/'/.test(text)) &&
+          (!explicitContactReply || !/'/.test(text)) &&
           !/\b(?:si|solo si|siempre que|a menos que)\b/.test(this.normalizeForMatch(contactForm));
         for (const clause of clauses) {
           const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
@@ -18821,7 +18825,7 @@ export class WhatsappOrchestratorService {
           if (address) next = this.withDeliveryAddress({...next, address: undefined, addressConfirmed: false}, address);
           return next;
         };
-        if (!explicitContactAcceptance) {
+        if (!explicitContactReply) {
           await this.conversationService.saveSession(conv, await applyContactDetails({...session}));
           await this.reply(conv, waId, 'Anoté los datos de contacto. El carrito sigue igual. ¿Reúno los productos en el plato propuesto? Responde sí para cambiarlo o no para conservarlos separados.');
           return true;
@@ -18830,7 +18834,7 @@ export class WhatsappOrchestratorService {
       // An acknowledgment followed by contact data is not approval of this edit.
       // Let the existing data routes validate it, keeping the proposal pending.
       const contactAck = text.match(/^s[ií]\s*[,;:]\s*(.+)$/i);
-      if (!explicitContactAcceptance && contactAck && !/[¿?«»“”"]/.test(text)) {
+      if (!explicitContactReply && contactAck && !/[¿?«»“”"]/.test(text)) {
         const contact = this.normalizeForMatch(contactAck[1]);
         const labelled = /^(?:a nombre(?: de)?|me llamo|mi nombre es|(?:(?:este es )?(?:mi|el) )?(?:celular|telefono|whatsapp)(?: es)?|(?:(?:la|mi) )?direccion(?: es)?|(?:pago|pagamos|lo pago|voy a pagar) (?:por|con|en))\s+\S/.test(contact);
         const phone = /^\+?[\d\s()-]{7,24}$/.test(contactAck[1]) && this.looksLikePhoneNumber(contactAck[1]);
@@ -18839,10 +18843,10 @@ export class WhatsappOrchestratorService {
           [method.id, method.label, ...method.keywords].some(value => this.normalizeForMatch(value) === contact));
         if (!/\b(?:si|solo si|siempre que|a menos que)\b/.test(contact) && (labelled || phone || street || payment)) return false;
       }
-      const answer = explicitContactAcceptance && applyContactDetails ? 'si' : said.replace(/ (?:por favor|porfa|gracias)$/, '');
+      const answer = explicitContactReply && applyContactDetails ? (explicitContactRejection ? 'no' : 'si') : said.replace(/ (?:por favor|porfa|gracias)$/, '');
       const direct = !/[¿?«»“”"']/.test(text);
       const accept = direct && /^(?:si(?: ese| esa)?|dale|de una|correcto|exacto|asi es|eso mismo)$/.test(answer);
-      const decline = direct && /^(?:no|no dejalos separados|no mejor separados)$/.test(answer);
+      const decline = direct && /^(?:no|no dejalos separados|no mejor separados|dejalos separados)$/.test(answer);
       if (!accept && !decline) {
         if (this.isConfirmKeyword(text) || isFinalConfirmAffirmation(text) || /^(?:si|no|asi|eso|correcto|exacto)\b/.test(said)) {
           await this.reply(conv,waId,'Primero aclaremos el cambio: responde sí para reunir los productos en el plato propuesto o no para conservarlos separados.');
@@ -18852,9 +18856,10 @@ export class WhatsappOrchestratorService {
       }
       const clear={...session,pendingComposedDishRecovery:undefined};
       if (decline) {
-        await this.conversationService.saveSession(conv,clear);
+        const next = applyContactDetails ? await applyContactDetails(clear) : clear;
+        await this.conversationService.saveSession(conv,next);
         await this.reply(conv,waId,'Listo, conservé los dos productos separados. El pedido sigue igual.\n\n' +
-          (this.formatInterruptedStepReminder(conv,clear)||this.formatContinueShoppingPrompt(clear)));
+          (this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
         return true;
       }
       const menu=await this.catalogService.getMenuProducts();
