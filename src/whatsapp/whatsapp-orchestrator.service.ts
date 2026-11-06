@@ -29157,7 +29157,7 @@ export class WhatsappOrchestratorService {
   /** Do not buy an option before validating the contact bubbles that follow it. */
   private isAttributeContactBurst(session: WhatsappSessionData, parts: string[]): boolean {
     const pending = session.pendingAttribute;
-    if (!pending || !pending.name || !pending.attributes?.length || parts.length < 2 || pending.replacement || pending.distributionParts?.length ||
+    if (!pending || !pending.name || !pending.attributes?.length || parts.length < 2 || pending.distributionParts?.length ||
         session.pendingMatch || session.pendingAddOffer || session.pendingMultiOrder || session.pendingPriceInquiry ||
         session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
     if (!this.resolveContactAttributeSelection(parts[0], pending) && pending.attributes.some(attribute =>
@@ -29222,7 +29222,7 @@ export class WhatsappOrchestratorService {
     if (!['building_cart','awaiting_attribute','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
         [session.pendingAddOffer,list,attribute].filter(Boolean).length !== 1 || session.pendingMultiOrder ||
         list && (list.selectionAdded || list.replacement || list.includesRequestedAccompaniment || !list.candidates?.length) ||
-        attribute && (!attribute.name || !attribute.attributes?.length || attribute.replacement || attribute.distributionParts?.length || session.pendingPriceInquiry || session.pendingAddressConflict) ||
+        attribute && (!attribute.name || !attribute.attributes?.length || attribute.distributionParts?.length || session.pendingPriceInquiry || session.pendingAddressConflict) ||
         session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
     // Whole courtesy replies belong to the existing route, before form parsing can backtrack.
     if (/^no(?:,?\s+gracias)?[.!]*$/i.test(text.trim())) return false;

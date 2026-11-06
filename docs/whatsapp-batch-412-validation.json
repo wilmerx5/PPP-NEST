@@ -1,0 +1,66 @@
+{
+  "baseCommit": "4e40f84b6ebb2138494cd05463bd2cdfd21b291c",
+  "batches": [
+    412
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 2319.05,
+      "sourceUnchanged": true,
+      "tests": 38452,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 13.23,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 702,
+  "workers": 8,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 483,
+  "tests": 38468,
+  "suites": 483,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 232,
+  "newSimulatedClosures": 32,
+  "initialBaseline": {
+    "cases": 160,
+    "failed": 104,
+    "passed": 56,
+    "router": 411
+  },
+  "focus": {
+    "initialPassed": 634,
+    "initialSuites": 5,
+    "expandedPassed": 338,
+    "expandedSuites": 5
+  },
+  "limits": [
+    "External ports mocked; no paid inference, Meta or real orders.",
+    "Replacement target prepared at session boundary; answers and closures run through full router.",
+    "Fixed delivery fee, no live geocoding.",
+    "Distributed selections and multiple competing pending decisions remain outside this batch."
+  ],
+  "production": "409 unchanged",
+  "kamppo": "398 unchanged",
+  "runnersPassed": 92,
+  "stagingDeployment": "pending"
+}
