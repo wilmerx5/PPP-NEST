@@ -1,0 +1,68 @@
+{
+  "baseCommit": "ab51b9b6977fad75db1896435e31f9764a0b6910",
+  "batches": [
+    407
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 10111.75,
+      "sourceUnchanged": true,
+      "tests": 37122,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.51,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 697,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 478,
+  "tests": 37138,
+  "suites": 478,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 132,
+  "newSimulatedClosures": 68,
+  "baseline": {
+    "initialCases": 96,
+    "failed": 72,
+    "passed": 24,
+    "router": 406
+  },
+  "focus": {
+    "passed": 292,
+    "suites": 5
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "scope": [
+    "Accept pending single/multi-product quote plus bounded contact form before partial contact handlers",
+    "Validate entire form then delegate addition to existing price/stock/quantity/attribute logic",
+    "Later courtesy does not duplicate purchased items; final order confirmation separate",
+    "Price change or unavailable product retains valid contact but does not add an unauthorized product"
+  ],
+  "limits": [
+    "Only pending quote without competing selection and delimited acceptance/contact fields",
+    "Arbitrary mixed instructions and multiple-combo reconstruction not covered",
+    "New journeys use fixed delivery fee, mocked external services and mocked agent; no live customer conversion evidence"
+  ]
+}

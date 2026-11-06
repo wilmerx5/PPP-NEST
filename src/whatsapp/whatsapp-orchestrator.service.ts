@@ -1234,6 +1234,10 @@ export class WhatsappOrchestratorService {
     if (pendingContactDecision.pendingComposedDishRecovery && !this.isCancelIntent(text) &&
         await this.tryRecoverComposedDish(conv, msg.waId, pendingContactDecision, text, cfg)) return;
 
+    const quoteContactSession = this.conversationService.getSession(conv);
+    if (quoteContactSession.pendingAddOffer && !this.isCancelIntent(text) &&
+        await this.tryHandleQuoteContactDecision(conv, msg.waId, quoteContactSession, text, cfg)) return;
+
     // Preserve an ambiguous house/name bubble until the customer identifies its role.
     if (['awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) && text.includes('\n')) {
       const lines=text.split(/\n+/).map(line=>line.trim()).filter(Boolean);
@@ -29094,6 +29098,60 @@ export class WhatsappOrchestratorService {
         (reminder ? `\n\n${reminder}` : ''),
     );
     return true;
+  }
+
+  /** A quoted product and contact details are one decision, never a final order confirmation. */
+  private async tryHandleQuoteContactDecision(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        !session.pendingAddOffer || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+        session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const match = text.trim().match(/^(?:s[ií]|dale)\s*[,;:\n]\s*([\s\S]+)$/i);
+    const clauses = (match?.[1] || text).split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b)/i)
+      .map(value => value.trim()).filter(Boolean);
+    if (!match && !(clauses.length >= 2 && /^[¿«"'“]?\s*s[ií]\b/i.test(text.trim()))) return false;
+    if (this.isMultiOrderAffirmative(text) && !/[¿?«»“”"']/.test(text)) return false;
+    const methods = getEnabledPaymentMethods(cfg.paymentMethods || []);
+    const contactSignal = clauses.some(clause =>
+      /^(?:a nombre(?: de)?|me llamo|mi nombre es|(?:mi )?(?:celular|tel[eé]fono|whatsapp)|(?:(?:la|mi) )?direcci[oó]n|pago (?:por|con|en))\b/i.test(clause) ||
+      /^(?:calle|cll?|carrera|cra|diagonal|dg|transversal|avenida)\.?\s*\d/i.test(clause) ||
+      /^\+?[\d ()-]{7,24}$/.test(clause) && this.looksLikePhoneNumber(clause) ||
+      methods.some(method => [method.id,method.label,...method.keywords].some(value => this.normalizeForMatch(value) === this.normalizeForMatch(clause))));
+    if (!contactSignal) return false;
+
+    let name: string | undefined, phone: string | undefined, address: string | undefined, payment: string | undefined;
+    let valid = !!match && clauses.length <= 4 && !/[¿?«»“”"']/.test(text) &&
+      !/\b(?:si|solo si|siempre que|a menos que)\b/.test(this.normalizeForMatch(match?.[1] || text));
+    for (const clause of clauses) {
+      const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
+      const street = clause.replace(/^(?:(?:la|mi) )?direcci[oó]n(?: es)?\s*:?\s*/i, '');
+      const number = clause.replace(/^(?:mi )?(?:celular|tel[eé]fono|whatsapp)(?: es)?\s*:?\s*/i, '');
+      const pay = this.normalizeForMatch(clause.replace(/^pago (?:por|con|en)\s+/i, ''));
+      const method = methods.find(item =>
+        [item.id,item.label,...item.keywords].some(value => this.normalizeForMatch(value) === pay));
+      if (named && !name && isUsableWhatsappCustomerName(named[1]) && !this.looksLikeAddressRejectingPersonName(named[1])) name = named[1].trim();
+      else if (!address && this.isStrongExplicitAddress(street) && this.isPlausibleDeliveryAddress(street) &&
+          !this.hasIncompleteNumberedStreet({cart: [], orderType: 'delivery', address: street})) address = street;
+      else if (!phone && /^\+?[\d ()-]{7,24}$/.test(number) && this.looksLikePhoneNumber(number)) phone = this.normalizeContactPhone(number,conv.phoneE164) || undefined;
+      else if (!payment && method) payment = method.id;
+      else valid = false;
+    }
+    if (!valid) {
+      await this.reply(conv,waId,'No cambié el carrito ni los datos. Para añadir lo cotizado, envía sí con los datos de contacto sin condiciones ni instrucciones adicionales.');
+      return true;
+    }
+    let next: WhatsappSessionData = {...session};
+    if (name) {
+      await this.conversationService.updateCustomerName(conv,name);
+      Object.assign(conv,await this.conversationService.reloadConversation(conv.id));
+    }
+    if (phone) next = {...next,contactPhone:phone,phoneConfirmed:true};
+    if (payment) next = {...next,paymentMethod:payment};
+    if (address) next = this.withDeliveryAddress({...next,address:undefined,addressConfirmed:false},address);
+    await this.conversationService.saveSession(conv,next);
+    return this.tryHandlePendingAddOffer(conv,waId,next,'sí',await this.catalogService.getMenuProducts(),cfg);
   }
 
   private async tryHandlePendingAddOffer(
