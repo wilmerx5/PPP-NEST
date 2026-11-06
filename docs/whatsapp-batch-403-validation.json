@@ -1,0 +1,74 @@
+{
+  "baseCommit": "345a75f5a6730be2b0d1e6d9294d1d541ba90187",
+  "batches": [
+    403
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1055.77,
+      "sourceUnchanged": true,
+      "tests": 36394,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 14.16,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 693,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 474,
+  "tests": 36410,
+  "suites": 474,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 44,
+  "newSimulatedClosures": 12,
+  "baseline": {
+    "initialCases": 24,
+    "failed": 14,
+    "passed": 10,
+    "router": 402
+  },
+  "focus": {
+    "passed": 284,
+    "suites": 5
+  },
+  "interruptedFirstGlobal": {
+    "completedSuites": 145,
+    "passed": 22287,
+    "failed": 4,
+    "reason": "Single-category selection intercepted an exact side product; fixed exact menu name precedence and reran complete inventory"
+  },
+  "fixtureCorrection": "Single SKU initially assumed automatic addition; corrected to conservative selection, then exposed the empty agent response and fixed routing",
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": true,
+  "scope": [
+    "Short Para plus one-word family resolved against catalog category",
+    "Single SKU category lists its option; exact menu name keeps direct purchase",
+    "Read-only price and cart-charge questions resume current checkout or shopping step"
+  ],
+  "limits": [
+    "No live catalog/transport or inference evidence",
+    "Explicit product acceptance plus contact fields remains pending",
+    "Arbitrary colloquial or mixed requests not exhaustively covered"
+  ]
+}

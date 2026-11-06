@@ -1,0 +1,39 @@
+{
+  "productionBase": "3f5e27a2ddeb3400c9d377f152ce61b6a4b1ca84",
+  "stagingSource": "9a3014173bf1a34e7deee8befdf54623079ae3f2",
+  "batches": [
+    399,
+    400,
+    401,
+    402,
+    403,
+    404,
+    405,
+    406,
+    407,
+    408,
+    409
+  ],
+  "allWhatsappSourcesIdenticalToValidatedStaging": true,
+  "nonWhatsappSourcesPreservedFromProduction": true,
+  "priorSharedGlobal": {
+    "tests": 37502,
+    "suites": 480,
+    "evidence": "whatsapp-batch-409-validation.json"
+  },
+  "fullMergedInventoryRerun": false,
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "focus": {
+    "passed": 1492,
+    "suites": 11,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheckPassed": true,
+  "buildTypecheckPassed": true,
+  "runnersPassed": 92,
+  "productionSourceFiles": 716,
+  "sourceUnchanged": true
+}

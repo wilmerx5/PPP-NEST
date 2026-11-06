@@ -1,0 +1,63 @@
+{
+  "baseCommit": "b4248fb8252db5db789580aa388f8feb4b95c961",
+  "batches": [
+    400
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1001.16,
+      "sourceUnchanged": true,
+      "tests": 36094,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 7.04,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 690,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 471,
+  "tests": 36110,
+  "suites": 471,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 52,
+  "newSimulatedClosures": 32,
+  "baseline": {
+    "failed": 40,
+    "passed": 12,
+    "cases": 52
+  },
+  "focus": {
+    "passed": 138,
+    "suites": 3
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": true,
+  "limits": [
+    "New journeys exercise an existing composed-product proposal at final checkout, two catalogs and agent off/mock",
+    "Acceptance changes the cart only; final order confirmation remains separate",
+    "Mixed, conditional or quoted acknowledgments request clarification; arbitrary new compound reconstruction remains outside scope",
+    "Mocks do not validate real customer conversion or external transport"
+  ],
+  "deploymentScope": "PPP staging only"
+}

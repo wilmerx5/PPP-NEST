@@ -1,0 +1,66 @@
+{
+  "baseCommit": "c360eeaabc84a299302ee24a1d9f3c285b67a78c",
+  "batches": [
+    401
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 921.48,
+      "sourceUnchanged": true,
+      "tests": 36242,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.08,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 691,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 472,
+  "tests": 36258,
+  "suites": 472,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 148,
+  "newSimulatedClosures": 128,
+  "baseline": {
+    "failed": 32,
+    "passed": 116,
+    "cases": 148,
+    "router": "400",
+    "sourceRestoredBeforeFocus": true
+  },
+  "focus": {
+    "passed": 248,
+    "suites": 3
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": true,
+  "limits": [
+    "Acknowledged single contact messages during a composed-product recovery proposal; existing routes still validate the data",
+    "Data messages never accept the product proposal or register an order",
+    "Fixed delivery fee in new journeys; existing distance-pricing tests remain separate",
+    "Several contact fields in one burst and explicit product acceptance plus data in one message remain outside this scope",
+    "Mocks do not validate real customer conversion or external transport"
+  ],
+  "deploymentScope": "PPP staging only"
+}

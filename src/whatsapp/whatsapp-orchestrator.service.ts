@@ -191,6 +191,14 @@ type EffectiveWhatsappConfig = Awaited<
 
 /** "No coca cola, no, cola y pola" / "no era coca cola sino cola y pola": drop the first, keep the second. */
 /** Common nouns that open an address; any other word after a leading article is a place name. */
+const COMPOSED_DISH_CONTACT_ACCEPTANCE = /^(?:s[ií],?\s+ese(?: plato)?|reemplaza los dos por ese plato)\s*[,;:\n]\s*([\s\S]+)$/i;
+
+const COMPOSED_DISH_CONTACT_REJECTION = /^(?:no,?\s+(?:d[eé]jalos|mejor)\s+separados|d[eé]jalos separados)\s*[,;:\n]\s*([\s\S]+)$/i;
+
+const COMPOSED_DISH_CONTACT_SHORT_REJECTION = /^no(?:,?\s+gracias)?\s*[,;:\n]\s*([\s\S]+)$/i;
+
+const COMPOSED_DISH_DECLINE = /^(?:no|no dejalos separados|no mejor separados|dejalos separados)$/;
+
 const GENERIC_ADDRESS_NOUN_RE = /calle|carrera|cra|cll|kra|avenida|av|autopista|diagonal|dg|transversal|tv|circular|v[ií]a|esquina|direcci[oó]n|misma|mism[oa]|casa|apartamento|apto|torre|bloque|interior|manzana|mz|porter[ií]a|conjunto|conj|barrio|urbanizaci[oó]n|urb|edificio|unidad|vereda|finca|hospital|cl[ií]nica|hotel|hostal|colegio|universidad|iglesia|parque|plaza|centro|portal|estaci[oó]n|tienda|local|oficina|bodega|droguer[ií]a|panader[ií]a|supermercado|entrada|parqueadero|cancha|salida|que|de|del/;
 
 const NEGATED_CART_CORRECTION = /^no[,\s]+(?:era\s+|es\s+)?(?!quiero\b)(.+?)(?:\s*[,;]\s*|\s+)(?:no[,\s]+|sino\s+|era\s+|es\s+)(?:(?:era|es)\s+)?(.+?)[.!]*$/i;
@@ -743,6 +751,12 @@ export class WhatsappOrchestratorService {
     const corrects = /^(?:perdon|mejor|no|digo|corrijo|cambi\w*|espera|ay|ups|uy)\b/.test(restSaid);
     if (!said || /[¿?]/.test(first) || said.split(' ').length > 4) return null;
     const row = this.catalogService.extractListPickNumber(first);
+    // Keep a numbered choice and its contact form in one atomic turn. Splitting
+    // first would purchase before validating the trailing data or conditions.
+    const listContact = session.pendingMatch;
+    if (listContact && !listContact.selectionAdded && !listContact.replacement && !listContact.includesRequestedAccompaniment &&
+        !session.pendingAttribute && !session.pendingMultiOrder && /^\d{1,3}$/.test(first.trim()) &&
+        /^(?:a nombre(?: de)?|me llamo|mi nombre es|(?:mi )?(?:celular|tel[eé]fono|whatsapp)|(?:(?:la|mi) )?direcci[oó]n|pago (?:por|con|en)|calle|cll?|carrera|cra)\b/i.test(rest.trim())) return null;
     const names = (option: string) => ` ${restSaid} `.includes(` ${this.normalizeForMatch(option)} `);
     let answers = false;
     const attribute = session.pendingAttribute;
@@ -1219,6 +1233,16 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, '¿Qué se te antoja? Escribe el *plato* o el *código*.');
       return;
     }
+
+    // A pending dish decision and any contact form must be validated before
+    // multiline name/payment routes can save only part of the same message.
+    const pendingContactDecision = this.conversationService.getSession(conv);
+    if (pendingContactDecision.pendingComposedDishRecovery && !this.isCancelIntent(text) &&
+        await this.tryRecoverComposedDish(conv, msg.waId, pendingContactDecision, text, cfg)) return;
+
+    const quoteContactSession = this.conversationService.getSession(conv);
+    if ((quoteContactSession.pendingAddOffer || quoteContactSession.pendingMatch) && !this.isCancelIntent(text) &&
+        await this.tryHandleQuoteContactDecision(conv, msg.waId, quoteContactSession, text, cfg)) return;
 
     // Preserve an ambiguous house/name bubble until the customer identifies its role.
     if (['awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) && text.includes('\n')) {
@@ -3574,7 +3598,8 @@ export class WhatsappOrchestratorService {
         ? targets.map(product => `${product.name}: ${this.catalogService.formatMoney(product.price)} según la carta.`).join('\n') +
           '\n\nEl pedido sigue igual.\n' + this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))
         : '¿De cuál producto quieres saber el precio? El pedido sigue igual.' + (session.pendingPriceInquiry ? '\n' + session.pendingPriceInquiry.productIds.map((id, index) => `${index + 1}. ${menu.find(product => product.id === id)?.name || ''}`).join('\n') : '');
-      const reminder = targets.length ? this.formatInterruptedStepReminder(conv, session) : '';
+      const reminder = targets.length ? (this.formatInterruptedStepReminder(conv, session) ||
+        (conv.state === 'building_cart' ? this.formatContinueShoppingPrompt(session) : '')) : '';
       await this.reply(conv, msg.waId, reminder ? `${priceReply}\n\n${reminder}` : priceReply);
       return;
     }
@@ -9130,6 +9155,10 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
     kitchenNote?: string,
   ): Promise<boolean> {
+    // Short colloquial purchase: "para hamburguesa" names a family, not a SKU.
+    // Limit normalization to one word so destination or mixed requests stay intact.
+    const forFamily = text.trim().match(/^para\s+(\p{L}+)[.!]?$/iu);
+    if (forFamily) text = `Una ${forFamily[1]}`;
     if (this.catalogService.isGenericProductInquiry(text) ||
       this.catalogService.isCategoryBrowseQuestion(text) ||
       this.catalogService.isMenuExploreIntent(text, products) ||
@@ -9149,11 +9178,14 @@ export class WhatsappOrchestratorService {
     const prefixCandidates = this.catalogService.findCatalogPrefixCandidates(text, products);
     const categoryCandidates = products.filter(product =>
       this.normalizeForMatch(product.categoryName || '').replace(/s$/, '') === this.normalizeForMatch(query).replace(/s$/, ''));
-    const candidates = (family?.variants && family.variants.length >= 2 ? family.variants : null) || (categoryCandidates.length >= 2 ? categoryCandidates : null) || family?.variants || (prefixCandidates.length >= 2 ? prefixCandidates : null) || scored
+    // An exact dish name still uses direct purchase, even if it is its own category.
+    if (categoryCandidates.length === 1 &&
+        products.some(product => this.normalizeForMatch(product.name) === this.normalizeForMatch(query))) return false;
+    const candidates = (family?.variants && family.variants.length >= 2 ? family.variants : null) || (categoryCandidates.length ? categoryCandidates : null) || family?.variants || (prefixCandidates.length >= 2 ? prefixCandidates : null) || scored
       .filter(hit => hit.score >= 60 && hit.score >= (scored[0]?.score || 0) - 12)
       .map(hit => hit.p);
     const available = candidates.filter(p => p.availableNow !== false);
-    if (available.length < 2 && categoryCandidates.length < 2) return false;
+    if (available.length < 2 && categoryCandidates.length === 0) return false;
     if (!available.length) {
       await this.reply(conv, waId, 'Por ahora no hay opciones disponibles de esa categoría. Tu pedido sigue igual.');
       return true;
@@ -10214,8 +10246,7 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    if ((pending.replacement || pending.includesRequestedAccompaniment || pending.unitAttributeGroups) &&
-      Number.isFinite(chosenLite.price) && Number.isFinite(chosen.price) && chosenLite.price !== chosen.price) {
+    if (Number.isFinite(chosenLite.price) && Number.isFinite(chosen.price) && chosenLite.price !== chosen.price) {
       // Re-quote without purchasing. Keep list indices, quantity and replacement ownership.
       const oldPrice = chosenLite.price;
       session = {...session, pendingMatch: {...pending, priceAcceptanceProductId: chosen.id,
@@ -18764,17 +18795,85 @@ export class WhatsappOrchestratorService {
     const busy=session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
       session.pendingUnitDistribution || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]);
     if (pending) {
-      if (!/^(?:si|si por favor|si porfa|dale|no|no gracias)$/.test(said)) {
-        if (this.isConfirmKeyword(text)) {
+      // An explicit decision about the proposal can accompany contact data.
+      const explicitContactAcceptance = text.trim().match(COMPOSED_DISH_CONTACT_ACCEPTANCE);
+      const standaloneAnswer = said.replace(/ (?:por favor|porfa|gracias)$/, '');
+      const explicitContactRejection = text.trim().match(COMPOSED_DISH_CONTACT_REJECTION) ||
+        (!COMPOSED_DISH_DECLINE.test(standaloneAnswer) ? text.trim().match(COMPOSED_DISH_CONTACT_SHORT_REJECTION) : null);
+      const explicitContactReply = explicitContactAcceptance || explicitContactRejection;
+      let applyContactDetails: ((next: WhatsappSessionData) => Promise<WhatsappSessionData>) | undefined;
+      // Validate the complete form before mutating either contact or cart.
+      const contactForm = explicitContactReply?.[1] || text.trim().replace(/^(?:s[ií]|claro|listo)\s*[,;:]\s*/i, '');
+      const clauses = contactForm.split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b)/i)
+        .map(value => value.trim()).filter(Boolean);
+      if (explicitContactReply || (clauses.length >= 2 && clauses.some(value => /^(?:a nombre|mi celular|la direcci[oó]n|pago por)\b/i.test(value)))) {
+        let name: string | undefined, phone: string | undefined, address: string | undefined, payment: string | undefined;
+        let valid = clauses.length <= 4 && !/[¿?«»“”"]/.test(text) &&
+          (!explicitContactReply || !/'/.test(text)) &&
+          !/\b(?:si|solo si|siempre que|a menos que)\b/.test(this.normalizeForMatch(contactForm));
+        for (const clause of clauses) {
+          const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
+          const street = clause.replace(/^(?:(?:la|mi) )?direcci[oó]n(?: es)?\s*:?\s*/i, '');
+          const number = clause.replace(/^(?:mi )?(?:celular|tel[eé]fono|whatsapp)(?: es)?\s*:?\s*/i, '');
+          const pay = this.normalizeForMatch(clause.replace(/^pago (?:por|con|en)\s+/i, ''));
+          const method = getEnabledPaymentMethods(cfg.paymentMethods || []).find(item =>
+            [item.id, item.label, ...item.keywords].some(value => this.normalizeForMatch(value) === pay));
+          if (named && !name && isUsableWhatsappCustomerName(named[1]) && !this.looksLikeAddressRejectingPersonName(named[1])) name = named[1].trim();
+          else if (!address && this.isStrongExplicitAddress(street) && this.isPlausibleDeliveryAddress(street) &&
+              !this.hasIncompleteNumberedStreet({cart: [], orderType: 'delivery', address: street})) address = street;
+          else if (!phone && /^\+?[\d ()-]{7,24}$/.test(number) && this.looksLikePhoneNumber(number)) phone = this.normalizeContactPhone(number, conv.phoneE164) || undefined;
+          else if (!payment && method) payment = method.id;
+          else valid = false;
+        }
+        if (!valid) {
+          await this.reply(conv, waId, 'No cambié los datos ni el carrito. Envíame los datos de contacto sin condiciones ni instrucciones adicionales; el cambio de plato sigue pendiente.');
+          return true;
+        }
+        applyContactDetails = async (next: WhatsappSessionData) => {
+          if (name) {
+            await this.conversationService.updateCustomerName(conv, name);
+            Object.assign(conv, await this.conversationService.reloadConversation(conv.id));
+          }
+          if (phone) next = {...next, contactPhone: phone, phoneConfirmed: true};
+          if (payment) next = {...next, paymentMethod: payment};
+          if (address) next = this.withDeliveryAddress({...next, address: undefined, addressConfirmed: false}, address);
+          return next;
+        };
+        if (!explicitContactReply) {
+          await this.conversationService.saveSession(conv, await applyContactDetails({...session}));
+          await this.reply(conv, waId, 'Anoté los datos de contacto. El carrito sigue igual. ¿Reúno los productos en el plato propuesto? Responde sí para cambiarlo o no para conservarlos separados.');
+          return true;
+        }
+      }
+      // An acknowledgment followed by contact data is not approval of this edit.
+      // Let the existing data routes validate it, keeping the proposal pending.
+      const contactAck = text.match(/^s[ií]\s*[,;:]\s*(.+)$/i);
+      if (!explicitContactReply && contactAck && !/[¿?«»“”"]/.test(text)) {
+        const contact = this.normalizeForMatch(contactAck[1]);
+        const labelled = /^(?:a nombre(?: de)?|me llamo|mi nombre es|(?:(?:este es )?(?:mi|el) )?(?:celular|telefono|whatsapp)(?: es)?|(?:(?:la|mi) )?direccion(?: es)?|(?:pago|pagamos|lo pago|voy a pagar) (?:por|con|en))\s+\S/.test(contact);
+        const phone = /^\+?[\d\s()-]{7,24}$/.test(contactAck[1]) && this.looksLikePhoneNumber(contactAck[1]);
+        const street = this.isStrongExplicitAddress(contactAck[1]) && this.isPlausibleDeliveryAddress(contactAck[1]);
+        const payment = getEnabledPaymentMethods(cfg.paymentMethods || []).some(method =>
+          [method.id, method.label, ...method.keywords].some(value => this.normalizeForMatch(value) === contact));
+        if (!/\b(?:si|solo si|siempre que|a menos que)\b/.test(contact) && (labelled || phone || street || payment)) return false;
+      }
+      const answer = explicitContactReply && applyContactDetails ? (explicitContactRejection ? 'no' : 'si') : said.replace(/ (?:por favor|porfa|gracias)$/, '');
+      const direct = !/[¿?«»“”"']/.test(text);
+      const accept = direct && /^(?:si(?: ese| esa)?|dale|de una|correcto|exacto|asi es|eso mismo)$/.test(answer);
+      const decline = direct && COMPOSED_DISH_DECLINE.test(answer);
+      if (!accept && !decline) {
+        if (this.isConfirmKeyword(text) || isFinalConfirmAffirmation(text) || /^(?:si|no|asi|eso|correcto|exacto)\b/.test(said)) {
           await this.reply(conv,waId,'Primero aclaremos el cambio: responde sí para reunir los productos en el plato propuesto o no para conservarlos separados.');
           return true;
         }
         return false;
       }
       const clear={...session,pendingComposedDishRecovery:undefined};
-      if (/^no\b/.test(said)) {
-        await this.conversationService.saveSession(conv,clear);
-        await this.reply(conv,waId,'Listo, conservé los dos productos separados. El pedido sigue igual.');
+      if (decline) {
+        const next = applyContactDetails ? await applyContactDetails(clear) : clear;
+        await this.conversationService.saveSession(conv,next);
+        await this.reply(conv,waId,'Listo, conservé los dos productos separados. El pedido sigue igual.\n\n' +
+          (this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
         return true;
       }
       const menu=await this.catalogService.getMenuProducts();
@@ -18791,14 +18890,17 @@ export class WhatsappOrchestratorService {
         await this.reply(conv,waId,'No pude completar ese cambio. Conservé los dos productos.');
         return true;
       }
-      const next=this.rememberProductFocus(this.reconcileSubstitutionPending(result.session),product,menu);
+      let next=this.rememberProductFocus(this.reconcileSubstitutionPending(result.session),product,menu);
+      if (applyContactDetails) next = await applyContactDetails(next);
       await this.conversationService.saveSession(conv,next);
       await this.reply(conv,waId,'Listo, dejé un solo *'+product.name+'*, '+pending.note+'.\n\n'+
         this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
         (this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
       return true;
     }
-    if (busy || !/^(?:en combo|el combo|en combo sin gaseosa)$/.test(said) || session.cart.length!==2 ||
+    const asksToCombine = !/[¿?«»“”"]/.test(text) &&
+      /^(?:en combo|el combo|en combo sin gaseosa|es un solo (?:plato|producto)|los quiero juntos|va todo junto|es el mismo plato)$/.test(said);
+    if (busy || !asksToCombine || session.cart.length!==2 ||
         session.cart.some(line=>line.quantity!==1 || line.attributes?.length)) return false;
     const notes=session.cart.map(line=>(line.note||'').trim()).filter(Boolean);
     if (!notes.length || notes.some(note=>!/^sin (?:gaseosa|bebida|refresco)[.!]*$/i.test(note))) return false;
@@ -19264,7 +19366,8 @@ export class WhatsappOrchestratorService {
       : menu.find(p => pending.productIds.includes(p.id) && this.normalizeForMatch(p.name) === name);
     if (product) {
       await clear();
-      const reminder = this.formatInterruptedStepReminder(conv, session);
+      const reminder = this.formatInterruptedStepReminder(conv, session) ||
+        (conv.state === 'building_cart' ? this.formatContinueShoppingPrompt(session) : '');
       await this.reply(conv, waId, `${product.name}: ${this.catalogService.formatMoney(product.price)} según la carta. El pedido sigue igual.${reminder ? '\n\n' + reminder : ''}`);
       return true;
     }
@@ -22479,7 +22582,8 @@ export class WhatsappOrchestratorService {
     const timeReply = /\btiempo\b/i.test(text)
       ? `\n\n${cfg.localContext?.deliveryTimeNote?.trim() ? `Tiempo estimado: ${cfg.localContext.deliveryTimeNote.trim()}.` : 'El equipo debe confirmar el tiempo estimado de entrega.'}`
       : '';
-    const reminder = this.formatInterruptedStepReminder(conv, session);
+    const reminder = this.formatInterruptedStepReminder(conv, session) ||
+      (conv.state === 'building_cart' ? this.formatContinueShoppingPrompt(session) : '');
     await this.reply(
       conv,
       waId,
@@ -29001,6 +29105,76 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** A pending purchase decision and contact form are validated together, never a final order confirmation. */
+  private async tryHandleQuoteContactDecision(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const list = session.pendingMatch;
+    if (!['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        (!session.pendingAddOffer && !list) || (session.pendingAddOffer && list) || session.pendingAttribute || session.pendingMultiOrder ||
+        list && (list.selectionAdded || list.replacement || list.includesRequestedAccompaniment || !list.candidates?.length) ||
+        session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    // Whole courtesy replies belong to the existing route, before form parsing can backtrack.
+    if (/^no(?:,?\s+gracias)?[.!]*$/i.test(text.trim())) return false;
+    const rejection = text.trim().match(/^no(?:,?\s+gracias)?\s*[,;:\n]\s*([\s\S]+)$/i);
+    const listForm = list ? text.trim().match(/^([¿«"'“]?\s*\d{1,3}[?¿«»“”"']?)\s*[,;:\n]\s*([\s\S]+)$/) : null;
+    if (list && !listForm) return false;
+    const selection = listForm?.[1].trim();
+    const validSelection = !!selection && /^\d{1,3}$/.test(selection) &&
+      (Number(selection) >= 1 && Number(selection) <= (list?.candidates.length || 0) ||
+        !!list?.candidates.some(candidate => Number(candidate.code) === Number(selection)));
+    const match = listForm ? [listForm[0],listForm[2]] : rejection || text.trim().match(/^(?:s[ií]|dale)\s*[,;:\n]\s*([\s\S]+)$/i);
+    const clauses = (match?.[1] || text).split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b)/i)
+      .map(value => value.trim()).filter(Boolean);
+    if (!match && !(clauses.length >= 2 && /^[¿«"'“]?\s*(?:s[ií]|no)\b/i.test(text.trim()))) return false;
+    if (this.isMultiOrderAffirmative(text) && !/[¿?«»“”"']/.test(text)) return false;
+    const methods = getEnabledPaymentMethods(cfg.paymentMethods || []);
+    const contactSignal = clauses.some(clause =>
+      /^(?:a nombre(?: de)?|me llamo|mi nombre es|(?:mi )?(?:celular|tel[eé]fono|whatsapp)|(?:(?:la|mi) )?direcci[oó]n|pago (?:por|con|en))\b/i.test(clause) ||
+      /^(?:calle|cll?|carrera|cra|diagonal|dg|transversal|avenida)\.?\s*\d/i.test(clause) ||
+      /^\+?[\d ()-]{7,24}$/.test(clause) && this.looksLikePhoneNumber(clause) ||
+      methods.some(method => [method.id,method.label,...method.keywords].some(value => this.normalizeForMatch(value) === this.normalizeForMatch(clause))));
+    if (!contactSignal) return false;
+
+    let name: string | undefined, phone: string | undefined, address: string | undefined, payment: string | undefined;
+    let valid = !!match && (!list || validSelection) && clauses.length <= 4 && !/[¿?«»“”"']/.test(text) &&
+      !/\b(?:si|solo si|siempre que|a menos que)\b/.test(this.normalizeForMatch(match?.[1] || text));
+    for (const clause of clauses) {
+      const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
+      const street = clause.replace(/^(?:(?:la|mi) )?direcci[oó]n(?: es)?\s*:?\s*/i, '');
+      const number = clause.replace(/^(?:mi )?(?:celular|tel[eé]fono|whatsapp)(?: es)?\s*:?\s*/i, '');
+      const pay = this.normalizeForMatch(clause.replace(/^pago (?:por|con|en)\s+/i, ''));
+      const method = methods.find(item =>
+        [item.id,item.label,...item.keywords].some(value => this.normalizeForMatch(value) === pay));
+      if (named && !name && isUsableWhatsappCustomerName(named[1]) && !this.looksLikeAddressRejectingPersonName(named[1])) name = named[1].trim();
+      else if (!address && this.isStrongExplicitAddress(street) && this.isPlausibleDeliveryAddress(street) &&
+          !this.hasIncompleteNumberedStreet({cart: [], orderType: 'delivery', address: street})) address = street;
+      else if (!phone && /^\+?[\d ()-]{7,24}$/.test(number) && this.looksLikePhoneNumber(number)) phone = this.normalizeContactPhone(number,conv.phoneE164) || undefined;
+      else if (!payment && method) payment = method.id;
+      else valid = false;
+    }
+    if (!valid) {
+      await this.reply(conv,waId,list
+        ? 'No cambié el carrito ni los datos. Envía un número de la lista con los datos de contacto sin condiciones ni instrucciones adicionales.'
+        : 'No cambié el carrito ni los datos. Para aceptar o rechazar lo cotizado, envía sí o no con los datos de contacto sin condiciones ni instrucciones adicionales.');
+      return true;
+    }
+    let next: WhatsappSessionData = {...session};
+    if (name) {
+      await this.conversationService.updateCustomerName(conv,name);
+      Object.assign(conv,await this.conversationService.reloadConversation(conv.id));
+    }
+    if (phone) next = {...next,contactPhone:phone,phoneConfirmed:true};
+    if (payment) next = {...next,paymentMethod:payment};
+    if (address) next = this.withDeliveryAddress({...next,address:undefined,addressConfirmed:false},address);
+    await this.conversationService.saveSession(conv,next);
+    const products = await this.catalogService.getMenuProducts();
+    return list
+      ? this.tryResolvePendingMatchPick(conv,waId,next,selection!,products,cfg)
+      : this.tryHandlePendingAddOffer(conv,waId,next,rejection ? 'no' : 'sí',products,cfg);
+  }
+
   private async tryHandlePendingAddOffer(
     conv: WhatsappConversation,
     waId: string,
@@ -29022,7 +29196,7 @@ export class WhatsappOrchestratorService {
       });
       const suffix =
         session.cart.length > 0
-          ? `\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${this.formatContinueShoppingPrompt(session)}`
+          ? `\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${this.formatInterruptedStepReminder(conv, {...session, pendingAddOffer: undefined}) || this.formatContinueShoppingPrompt(session)}`
           : '\nEscribe el *plato* o el *código*.';
       await this.reply(conv, waId, `Listo, no lo agrego 👍${suffix}`);
       return true;
