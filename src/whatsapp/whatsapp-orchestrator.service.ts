@@ -751,11 +751,11 @@ export class WhatsappOrchestratorService {
     const corrects = /^(?:perdon|mejor|no|digo|corrijo|cambi\w*|espera|ay|ups|uy)\b/.test(restSaid);
     if (!said || /[¿?]/.test(first) || said.split(' ').length > 4) return null;
     const row = this.catalogService.extractListPickNumber(first);
-    // Keep a numbered choice and its contact form in one atomic turn. Splitting
+    // Keep a list choice and its contact form in one atomic turn. Splitting
     // first would purchase before validating the trailing data or conditions.
     const listContact = session.pendingMatch;
     if (listContact && !listContact.selectionAdded && !listContact.replacement && !listContact.includesRequestedAccompaniment &&
-        !session.pendingAttribute && !session.pendingMultiOrder && /^\d{1,3}$/.test(first.trim()) &&
+        !session.pendingAttribute && !session.pendingMultiOrder && this.resolveContactListSelection(first,listContact) != null &&
         /^(?:a nombre(?: de)?|me llamo|mi nombre es|(?:mi )?(?:celular|tel[eé]fono|whatsapp)|(?:(?:la|mi) )?direcci[oó]n|pago (?:por|con|en)|calle|cll?|carrera|cra)\b/i.test(rest.trim())) return null;
     const names = (option: string) => ` ${restSaid} `.includes(` ${this.normalizeForMatch(option)} `);
     let answers = false;
@@ -29105,6 +29105,23 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** Return only an offered row/code, bounded ordinal or unique exact catalog name. */
+  private resolveContactListSelection(text: string, pending: NonNullable<WhatsappSessionData['pendingMatch']>): string | null {
+    const said = this.normalizeForMatch(text);
+    if (/^\d{1,3}$/.test(said)) {
+      // Normalization must not turn a signed number or decorated code into approval.
+      if (!/^\d{1,3}$/.test(text.trim())) return null;
+      return Number(said) >= 1 && Number(said) <= pending.candidates.length ||
+        pending.candidates.some(candidate => Number(candidate.code) === Number(said)) ? said : null;
+    }
+    const ranks: Record<string,number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3,cuarto:4,cuarta:4};
+    const ordinal = said.replace(/^(?:el|la) /,'');
+    if (ranks[ordinal]) return pending.candidates[ranks[ordinal]-1] ? String(ranks[ordinal]) : null;
+    const named = pending.candidates.map((candidate,index)=>({candidate,index}))
+      .filter(({candidate})=>this.normalizeForMatch(candidate.name) === said);
+    return named.length === 1 ? String(named[0].index+1) : null;
+  }
+
   /** A pending purchase decision and contact form are validated together, never a final order confirmation. */
   private async tryHandleQuoteContactDecision(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
@@ -29118,12 +29135,10 @@ export class WhatsappOrchestratorService {
     // Whole courtesy replies belong to the existing route, before form parsing can backtrack.
     if (/^no(?:,?\s+gracias)?[.!]*$/i.test(text.trim())) return false;
     const rejection = text.trim().match(/^no(?:,?\s+gracias)?\s*[,;:\n]\s*([\s\S]+)$/i);
-    const listForm = list ? text.trim().match(/^([¿«"'“]?\s*\d{1,3}[?¿«»“”"']?)\s*[,;:\n]\s*([\s\S]+)$/) : null;
+    const listForm = list ? text.trim().match(/^([^,;:\n]+)[,;:\n]\s*([\s\S]+)$/) : null;
     if (list && !listForm) return false;
-    const selection = listForm?.[1].trim();
-    const validSelection = !!selection && /^\d{1,3}$/.test(selection) &&
-      (Number(selection) >= 1 && Number(selection) <= (list?.candidates.length || 0) ||
-        !!list?.candidates.some(candidate => Number(candidate.code) === Number(selection)));
+    const selection = listForm && list ? this.resolveContactListSelection(listForm[1].trim(),list) : null;
+    const validSelection = selection != null;
     const match = listForm ? [listForm[0],listForm[2]] : rejection || text.trim().match(/^(?:s[ií]|dale)\s*[,;:\n]\s*([\s\S]+)$/i);
     const clauses = (match?.[1] || text).split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b)/i)
       .map(value => value.trim()).filter(Boolean);
@@ -29156,7 +29171,7 @@ export class WhatsappOrchestratorService {
     }
     if (!valid) {
       await this.reply(conv,waId,list
-        ? 'No cambié el carrito ni los datos. Envía un número de la lista con los datos de contacto sin condiciones ni instrucciones adicionales.'
+        ? 'No cambié el carrito ni los datos. Envía el número o el nombre exacto de la lista con los datos de contacto sin condiciones ni instrucciones adicionales.'
         : 'No cambié el carrito ni los datos. Para aceptar o rechazar lo cotizado, envía sí o no con los datos de contacto sin condiciones ni instrucciones adicionales.');
       return true;
     }

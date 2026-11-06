@@ -1,0 +1,80 @@
+{
+  "baseCommit": "9a3014173bf1a34e7deee8befdf54623079ae3f2",
+  "batches": [
+    410
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1221.4,
+      "sourceUnchanged": true,
+      "tests": 37818,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.28,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 700,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 481,
+  "tests": 37834,
+  "suites": 481,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 332,
+  "newSimulatedClosures": 48,
+  "baseline": {
+    "cases": 272,
+    "failed": 196,
+    "passed": 76,
+    "router": 409
+  },
+  "signedNumberBaseline": {
+    "failed": 8,
+    "passed": 0,
+    "otherTestsFilteredOut": 324
+  },
+  "firstGlobalBeforeSignedNumberGuard": {
+    "tests": 37826,
+    "suites": 481,
+    "passed": true,
+    "note": "A subsequent final review found signed-number normalization; eight reproductions added, guard restored and entire inventory rerun. Final totals above are one complete final run."
+  },
+  "focus": {
+    "passed": 828,
+    "suites": 4
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "scope": [
+    "Unique exact offered product name or bounded ordinal plus validated contact form before partial persistence",
+    "Normalize case and accents without turning signed numeric input into approval",
+    "Keep named/ordinal choice and following contact burst atomic; conditional, quoted, question, duplicate and incomplete forms preserve selection/contact",
+    "Preserve owned quantity, existing price/stock guards, separate final confirmation and ordinary numeric quote/contact routes"
+  ],
+  "limits": [
+    "Initial unconsumed ordinary list; replacement/combo offer and competing selections retain their routes",
+    "First through fourth ordinals, with or without el/la; exact unique normalized catalog names. Arbitrary nicknames, fuzzy matches and later ordinals not newly covered",
+    "Pending quantity and duplicate-name controls prepared at session boundary; decisions/closings use full mocked router",
+    "Fixed delivery fee, mocked services/agent; no live geocoding or commercial conversion evidence"
+  ]
+}
