@@ -725,6 +725,7 @@ export class WhatsappOrchestratorService {
   ): { first: string; rest?: BurstContinuation } | null {
     if (['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state || '')) return null;
     const session = this.conversationService.getSession(conv);
+    if (this.isAttributeContactBurst(session,parts)) return null;
     if (conv.state === 'awaiting_name' && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
         !CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) && parts.length === 2 &&
         isUsableWhatsappCustomerName(parts[0]) && !this.looksLikeAddressRejectingPersonName(parts[0]) &&
@@ -800,7 +801,7 @@ export class WhatsappOrchestratorService {
   ): { first: string; rest?: BurstContinuation } | null {
     const session = this.conversationService.getSession(conv);
     const attribute = session.pendingAttribute;
-    if (!attribute || parts.length < 2) return null;
+    if (!attribute || parts.length < 2 || this.isAttributeContactBurst(session,parts)) return null;
     const options = attribute.attributes
       .filter(attr => !attribute.selected?.some(chosen => chosen.attributeName === attr.attributeName))
       .flatMap(attr => attr.options);
@@ -1102,6 +1103,8 @@ export class WhatsappOrchestratorService {
 
     // Audio / imagen → texto (Whisper / Vision); resto: avisar
     let text = (msg.text || '').trim();
+    let ownedAttributeAnswer = false;
+    let ownedAttributeChoice: {attributeName:string;attributeValue:string} | undefined;
     // Preserve bubble boundaries: a waiting acknowledgement is not a surname.
     // Only remove a separate trailing bubble, never words inside a name.
     if (conv.state === 'awaiting_name' && msg.messageType === 'text' && text.includes('\n')) {
@@ -1241,8 +1244,18 @@ export class WhatsappOrchestratorService {
         await this.tryRecoverComposedDish(conv, msg.waId, pendingContactDecision, text, cfg)) return;
 
     const quoteContactSession = this.conversationService.getSession(conv);
-    if ((quoteContactSession.pendingAddOffer || quoteContactSession.pendingMatch) && !this.isCancelIntent(text) &&
-        await this.tryHandleQuoteContactDecision(conv, msg.waId, quoteContactSession, text, cfg)) return;
+    if ((quoteContactSession.pendingAddOffer || quoteContactSession.pendingMatch || quoteContactSession.pendingAttribute) && !this.isCancelIntent(text)) {
+      const contactDecision = await this.tryHandleQuoteContactDecision(conv, msg.waId, quoteContactSession, text, cfg);
+      if (contactDecision === true) return;
+      // Contact is already validated; let the ordinary variant router consume only its option.
+      if (typeof contactDecision === 'string') {
+        text = contactDecision;
+        ownedAttributeAnswer = !!quoteContactSession.pendingAttribute;
+        const pending = quoteContactSession.pendingAttribute;
+        const open = pending ? this.getContactAttributeQuestion(pending) : undefined;
+        if (open) ownedAttributeChoice = {attributeName:open.attributeName,attributeValue:contactDecision};
+      }
+    }
 
     // Preserve an ambiguous house/name bubble until the customer identifies its role.
     if (['awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) && text.includes('\n')) {
@@ -4879,12 +4892,25 @@ export class WhatsappOrchestratorService {
           /^(?:agrega|agregame|anade|anademe|quiero|dame)\b/.test(purchaseText) &&
           namedProducts.length === 1 && namedProducts[0].id !== activeProduct.id &&
           await this.tryAddProductDuringPendingAttribute(conv, msg.waId, session, originalText || text, products, cfg, activeProduct)) return;
-      const absorbed = await this.absorbPendingOptionAnswer(conv, msg.waId, session, originalText || text, products);
+      const pricedAttribute = session.pendingAttribute;
+      if (pricedAttribute && activeProduct && (cfg.ignoreBusinessHours || activeProduct.availableNow !== false) &&
+          this.resolveContactAttributeSelection(originalText || text,pricedAttribute) != null &&
+          Number.isFinite(pricedAttribute.price) && Number.isFinite(activeProduct.price) && pricedAttribute.price !== activeProduct.price) {
+        const selected = (pricedAttribute.selected || []).filter(choice=>activeProduct.attributes?.some(attribute=>
+          this.normalizeForMatch(attribute.attributeName) === this.normalizeForMatch(choice.attributeName) &&
+          attribute.options.some(option=>this.normalizeForMatch(option) === this.normalizeForMatch(choice.attributeValue))));
+        await this.conversationService.saveSession(conv,{...session,pendingAttribute:{...pricedAttribute,price:activeProduct.price,attributes:activeProduct.attributes || [],selected}});
+        await this.reply(conv,msg.waId,`El precio de *${activeProduct.name}* cambió de ${this.catalogService.formatMoney(pricedAttribute.price)} a ${this.catalogService.formatMoney(activeProduct.price)} por unidad. No lo agregué. Si estás de acuerdo, vuelve a elegir la opción.\n\n`+
+          this.catalogService.formatProductOptionsPrompt(activeProduct,selected));
+        return;
+      }
+      const absorbed = ownedAttributeAnswer ? {session,answers:true,choiceText:undefined}
+        : await this.absorbPendingOptionAnswer(conv, msg.waId, session, originalText || text, products);
       if (!absorbed) return;
       session = absorbed.session;
       if (await this.tryApplySeveralAttributeChoices(conv, msg.waId, session, originalText || text, products, cfg)) return;
       if (
-        await this.tryHandleCartModification(
+        !ownedAttributeAnswer && await this.tryHandleCartModification(
           conv,
           msg.waId,
           session,
@@ -4897,7 +4923,7 @@ export class WhatsappOrchestratorService {
         return;
       }
       if (
-        await this.tryAbandonPendingSelection(conv, msg.waId, session, text, cfg)
+        !ownedAttributeAnswer && await this.tryAbandonPendingSelection(conv, msg.waId, session, text, cfg)
       ) {
         return;
       }
@@ -5029,7 +5055,7 @@ export class WhatsappOrchestratorService {
             availableNow: true,
           } as MenuProduct)
         : null;
-      const offeredChoice = pa && product ? this.offeredPendingChoice(pa, product, text) : null;
+      const offeredChoice = pa && product && !ownedAttributeAnswer ? this.offeredPendingChoice(pa, product, text) : null;
       const withdrawnOption = offeredChoice?.status === 'withdrawn' ? offeredChoice.name : null;
       const attributeText = offeredChoice?.status === 'kept' ? offeredChoice.name : absorbed.choiceText || text;
       if (pa && product && withdrawnOption) {
@@ -5063,10 +5089,10 @@ export class WhatsappOrchestratorService {
       if (pa && product && !progressesPendingOptions && !absorbed.answers && !multiDishUpFront &&
           /^(?:agrega|agregame|anade|anademe|quiero|dame)\b/.test(this.normalizeForMatch(text)) &&
           await this.tryAddProductDuringPendingAttribute(conv, msg.waId, session, text, products, cfg, product)) return;
-      if (pa && product && cfg.agentV1Enabled && this.looksLikeHumanIntentSentence(text) && !progressesPendingOptions && !absorbed.answers) {
+      if (pa && product && cfg.agentV1Enabled && !ownedAttributeAnswer && this.looksLikeHumanIntentSentence(text) && !progressesPendingOptions && !absorbed.answers) {
         deferHumanIntentToAgent = true;
       } else if (pa && product) {
-        if (this.catalogService.isVariantPreferenceIntent(text)) {
+        if (!ownedAttributeAnswer && this.catalogService.isVariantPreferenceIntent(text)) {
           if (
             await this.tryApplyVariantPreferenceToProduct(
               conv,
@@ -5084,7 +5110,7 @@ export class WhatsappOrchestratorService {
         }
 
         const attrOpts = this.attributeFlowOpts(pa);
-        if (this.catalogService.isLikelyDrinkProduct(product) && session.cart.length) {
+        if (!ownedAttributeAnswer && this.catalogService.isLikelyDrinkProduct(product) && session.cart.length) {
           const clarified = this.catalogService.cartDrinkClarification(
             text,
             session.cart,
@@ -5132,7 +5158,7 @@ export class WhatsappOrchestratorService {
             return;
           }
         }
-        if (this.messageRejectsPendingProduct(text, product)) {
+        if (!ownedAttributeAnswer && this.messageRejectsPendingProduct(text, product)) {
           session = {
             ...session,
             pendingAttribute: undefined,
@@ -5147,12 +5173,28 @@ export class WhatsappOrchestratorService {
           );
           return;
         }
-        let step = this.catalogService.resolveNextAttributeChoice(
-          product,
-          attributeText,
-          pa.selected || [],
-          attrOpts,
-        );
+        const ownedLive = ownedAttributeChoice && product.attributes?.find(attribute=>
+          this.normalizeForMatch(attribute.attributeName) === this.normalizeForMatch(ownedAttributeChoice!.attributeName));
+        const ownedValue = ownedLive?.options.find(option=>
+          this.normalizeForMatch(option) === this.normalizeForMatch(ownedAttributeChoice!.attributeValue));
+        if (ownedAttributeChoice && (!ownedLive || !ownedValue)) {
+          const selected = (pa.selected || []).filter(choice=>product.attributes?.some(attribute=>
+            this.normalizeForMatch(attribute.attributeName) === this.normalizeForMatch(choice.attributeName) &&
+            attribute.options.some(option=>this.normalizeForMatch(option) === this.normalizeForMatch(choice.attributeValue))));
+          const hasOptions = product.attributes?.some(attribute=>attribute.options.length);
+          await this.conversationService.saveSession(conv,{...session,pendingAttribute:hasOptions ? {...pa,attributes:product.attributes || [],selected} : undefined},hasOptions ? 'awaiting_attribute' : 'building_cart');
+          await this.reply(conv,msg.waId,`*${ownedAttributeChoice.attributeValue}* ya no está entre las opciones. No la apliqué; el pedido sigue igual.\n\n`+
+            (hasOptions ? this.catalogService.formatProductOptionsPrompt(product,selected,attrOpts) : 'Dime qué te gustaría pedir.'));
+          return;
+        }
+        const ownedSelected = ownedLive && ownedValue ? [...(pa.selected || []).filter(choice=>
+          this.normalizeForMatch(choice.attributeName) !== this.normalizeForMatch(ownedLive.attributeName)),
+          {attributeName:ownedLive.attributeName,attributeValue:ownedValue}] : [];
+        let step = ownedAttributeChoice
+          ? this.catalogService.isAttributeSelectionComplete(product,ownedSelected,attrOpts)
+            ? {status:'complete' as const,attributes:ownedSelected}
+            : {status:'partial' as const,attributes:ownedSelected}
+          : this.catalogService.resolveNextAttributeChoice(product,attributeText,pa.selected || [],attrOpts);
         if (!pa.requireExplicitOptions && (step.status === 'complete' || step.status === 'partial')) {
           const filled = this.catalogService.fillDefaultAttributes(
             product,
@@ -5172,6 +5214,7 @@ export class WhatsappOrchestratorService {
           if (stillNeed.length) {
             session.pendingAttribute = {
               ...pa,
+              attributes: ownedAttributeAnswer ? product.attributes || pa.attributes : pa.attributes,
               selected: step.attributes,
             };
             await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
@@ -5324,6 +5367,7 @@ export class WhatsappOrchestratorService {
         if (step.status === 'partial') {
           session.pendingAttribute = {
             ...pa,
+            attributes: ownedAttributeAnswer ? product.attributes || pa.attributes : pa.attributes,
             selected: step.attributes,
           };
           await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
@@ -29105,6 +29149,53 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  private isOptionContactPrefix(text: string): boolean {
+    return /^(?:a nombre(?: de)?|me llamo|mi nombre es|(?:mi )?(?:celular|tel[eé]fono|whatsapp)|(?:(?:la|mi) )?direcci[oó]n|pago (?:por|con|en)|calle|cll?|carrera|cra)\b/i.test(text.trim()) ||
+      /^\+?[\d ()-]{7,24}$/.test(text.trim()) && this.looksLikePhoneNumber(text.trim());
+  }
+
+  /** Do not buy an option before validating the contact bubbles that follow it. */
+  private isAttributeContactBurst(session: WhatsappSessionData, parts: string[]): boolean {
+    const pending = session.pendingAttribute;
+    if (!pending || !pending.name || !pending.attributes?.length || parts.length < 2 || pending.replacement || pending.distributionParts?.length ||
+        session.pendingMatch || session.pendingAddOffer || session.pendingMultiOrder || session.pendingPriceInquiry ||
+        session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
+    if (!this.resolveContactAttributeSelection(parts[0], pending) && pending.attributes.some(attribute =>
+        attribute.options.some(value => this.normalizeForMatch(value) === this.normalizeForMatch(parts[0])))) return false;
+    const next = parts.slice(1).find(part=>!/^(?:por favor|porfa|gracias)[.!]*$/i.test(part.trim()));
+    return !!next && this.isOptionContactPrefix(next);
+  }
+
+  /** Use the same attribute priority as the shown prompt, not the raw catalog order. */
+  private getContactAttributeQuestion(pending: NonNullable<WhatsappSessionData['pendingAttribute']>) {
+    const visible = this.catalogService.getRemainingAttributes({id:pending.productId,code:pending.code,name:pending.name,
+      price:pending.price,hasAttributes:true,attributes:pending.attributes},pending.selected || [],this.attributeFlowOpts(pending));
+    // Older snapshots omit category metadata; retain their unresolved question if it is hidden by that omission.
+    return visible[0] || pending.attributes.find(attribute=>!(pending.selected || []).some(selected=>
+      this.normalizeForMatch(selected.attributeName) === this.normalizeForMatch(attribute.attributeName)));
+  }
+
+  /** Resolve only the currently open attribute, keeping literal indices strict. */
+  private resolveContactAttributeSelection(text: string, pending: NonNullable<WhatsappSessionData['pendingAttribute']>): string | null {
+    const open = this.getContactAttributeQuestion(pending);
+    if (!open?.options.length) return null;
+    const raw = text.trim();
+    const numeric = raw.match(/^(\d{1,2})(?:[\s,;]+(?:por favor|porfa|gracias))*$/i);
+    if (numeric) return open.options[Number(numeric[1])-1] || null;
+    let said = this.normalizeForMatch(raw);
+    if (said.startsWith('con ')) said = said.slice(4);
+    const label = this.normalizeForMatch(open.attributeName)+' ';
+    if (said.startsWith(label)) said = said.slice(label.length);
+    if (/^\d+$/.test(said)) return null;
+    let matches = open.options.filter(option=>this.normalizeForMatch(option) === said);
+    if (!matches.length) {
+      said = said.replace(/(?: (?:por favor|porfa|gracias))+$/,'');
+      if (/^\d+$/.test(said)) return null;
+      matches = open.options.filter(option=>this.normalizeForMatch(option) === said);
+    }
+    return matches.length === 1 ? matches[0] : null;
+  }
+
   /** Return only an offered row/code, bounded ordinal or unique exact catalog name. */
   private resolveContactListSelection(text: string, pending: NonNullable<WhatsappSessionData['pendingMatch']>): string | null {
     const said = this.normalizeForMatch(text);
@@ -29126,21 +29217,43 @@ export class WhatsappOrchestratorService {
   private async tryHandleQuoteContactDecision(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, cfg: EffectiveWhatsappConfig,
-  ): Promise<boolean> {
-    const list = session.pendingMatch;
-    if (!['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
-        (!session.pendingAddOffer && !list) || (session.pendingAddOffer && list) || session.pendingAttribute || session.pendingMultiOrder ||
+  ): Promise<boolean | string> {
+    const list = session.pendingMatch, attribute = session.pendingAttribute;
+    if (!['building_cart','awaiting_attribute','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        [session.pendingAddOffer,list,attribute].filter(Boolean).length !== 1 || session.pendingMultiOrder ||
         list && (list.selectionAdded || list.replacement || list.includesRequestedAccompaniment || !list.candidates?.length) ||
+        attribute && (!attribute.name || !attribute.attributes?.length || attribute.replacement || attribute.distributionParts?.length || session.pendingPriceInquiry || session.pendingAddressConflict) ||
         session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
     // Whole courtesy replies belong to the existing route, before form parsing can backtrack.
     if (/^no(?:,?\s+gracias)?[.!]*$/i.test(text.trim())) return false;
+    if (attribute) {
+      // Questions and feedback keep their existing route, including contact recovery.
+      const head = text.split(/[,;\n]/, 1)[0];
+      if (this.catalogService.isGenericProductInquiry(head) ||
+          /^(?:no me (?:entendiste|entiendes|respondiste|contestaste|has entendido|has respondido)|no has contestado mi pregunta|eso no fue lo que te pedi)\b/.test(this.normalizeForMatch(head))) return false;
+      // A named answer for another attribute belongs to the existing multi-option collector.
+      const offered = this.getContactAttributeQuestion(attribute);
+      if (!this.resolveContactAttributeSelection(head, attribute) && attribute.attributes.some(item =>
+          item.attributeName !== offered?.attributeName && item.options.some(value =>
+            this.normalizeForMatch(value) === this.normalizeForMatch(head)))) return false;
+      // Contact-only interruptions retain their established collector and checkout resume.
+      if (this.isOptionContactPrefix(text.split(/[;\n]/,1)[0])) return false;
+      if (!/[¿?«»“”"']/.test(text)) {
+        const plain = this.resolveContactAttributeSelection(text,attribute);
+        if (plain != null) return plain;
+      }
+    }
     const rejection = text.trim().match(/^no(?:,?\s+gracias)?\s*[,;:\n]\s*([\s\S]+)$/i);
-    const listForm = list ? text.trim().match(/^([^,;:\n]+)[,;:\n]\s*([\s\S]+)$/) : null;
-    if (list && !listForm) return false;
-    const selection = listForm && list ? this.resolveContactListSelection(listForm[1].trim(),list) : null;
+    // A comma may be part of a catalog value (for example a compound cut).
+    // Prefer a separator followed by contact data instead of truncating that value.
+    const attributeForm = attribute ? text.trim().match(/^([\s\S]+?)[,;:\n]\s*((?:(?:a nombre(?: de)?|me llamo|mi nombre es|(?:mi )?(?:celular|tel[eé]fono|whatsapp)|(?:(?:la|mi) )?direcci[oó]n|pago (?:por|con|en)|calle|cll?|carrera|cra)\b|\+?\d[\d ()-]{6,})[\s\S]*)$/i) : null;
+    const listForm = attributeForm || (list || attribute ? text.trim().match(/^([^,;:\n]+)[,;:\n]\s*([\s\S]+)$/) : null);
+    if ((list || attribute) && !listForm) return false;
+    const selection = listForm && list ? this.resolveContactListSelection(listForm[1].trim(),list)
+      : listForm && attribute ? this.resolveContactAttributeSelection(listForm[1].trim(),attribute) : null;
     const validSelection = selection != null;
     const match = listForm ? [listForm[0],listForm[2]] : rejection || text.trim().match(/^(?:s[ií]|dale)\s*[,;:\n]\s*([\s\S]+)$/i);
-    const clauses = (match?.[1] || text).split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b)/i)
+    const clauses = (match?.[1] || text).split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b|\+?\d{10,12}\b|calle\b|cll?\b|carrera\b|cra\b)/i)
       .map(value => value.trim()).filter(Boolean);
     if (!match && !(clauses.length >= 2 && /^[¿«"'“]?\s*(?:s[ií]|no)\b/i.test(text.trim()))) return false;
     if (this.isMultiOrderAffirmative(text) && !/[¿?«»“”"']/.test(text)) return false;
@@ -29153,7 +29266,7 @@ export class WhatsappOrchestratorService {
     if (!contactSignal) return false;
 
     let name: string | undefined, phone: string | undefined, address: string | undefined, payment: string | undefined;
-    let valid = !!match && (!list || validSelection) && clauses.length <= 4 && !/[¿?«»“”"']/.test(text) &&
+    let valid = !!match && (!(list || attribute) || validSelection) && clauses.length <= 4 && !/[¿?«»“”"']/.test(text) &&
       !/\b(?:si|solo si|siempre que|a menos que)\b/.test(this.normalizeForMatch(match?.[1] || text));
     for (const clause of clauses) {
       const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
@@ -29170,7 +29283,7 @@ export class WhatsappOrchestratorService {
       else valid = false;
     }
     if (!valid) {
-      await this.reply(conv,waId,list
+      await this.reply(conv,waId,list || attribute
         ? 'No cambié el carrito ni los datos. Envía el número o el nombre exacto de la lista con los datos de contacto sin condiciones ni instrucciones adicionales.'
         : 'No cambié el carrito ni los datos. Para aceptar o rechazar lo cotizado, envía sí o no con los datos de contacto sin condiciones ni instrucciones adicionales.');
       return true;
@@ -29183,7 +29296,9 @@ export class WhatsappOrchestratorService {
     if (phone) next = {...next,contactPhone:phone,phoneConfirmed:true};
     if (payment) next = {...next,paymentMethod:payment};
     if (address) next = this.withDeliveryAddress({...next,address:undefined,addressConfirmed:false},address);
+    if (attribute && next.pendingCheckoutResume) next = {...next,pendingCheckoutDetailsCaptured:true};
     await this.conversationService.saveSession(conv,next);
+    if (attribute) return selection!;
     const products = await this.catalogService.getMenuProducts();
     return list
       ? this.tryResolvePendingMatchPick(conv,waId,next,selection!,products,cfg)
