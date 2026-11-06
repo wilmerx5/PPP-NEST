@@ -29108,10 +29108,13 @@ export class WhatsappOrchestratorService {
     if (!['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
         !session.pendingAddOffer || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
         session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
-    const match = text.trim().match(/^(?:s[ií]|dale)\s*[,;:\n]\s*([\s\S]+)$/i);
+    // Whole courtesy replies belong to the existing route, before form parsing can backtrack.
+    if (/^no(?:,?\s+gracias)?[.!]*$/i.test(text.trim())) return false;
+    const rejection = text.trim().match(/^no(?:,?\s+gracias)?\s*[,;:\n]\s*([\s\S]+)$/i);
+    const match = rejection || text.trim().match(/^(?:s[ií]|dale)\s*[,;:\n]\s*([\s\S]+)$/i);
     const clauses = (match?.[1] || text).split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b)/i)
       .map(value => value.trim()).filter(Boolean);
-    if (!match && !(clauses.length >= 2 && /^[¿«"'“]?\s*s[ií]\b/i.test(text.trim()))) return false;
+    if (!match && !(clauses.length >= 2 && /^[¿«"'“]?\s*(?:s[ií]|no)\b/i.test(text.trim()))) return false;
     if (this.isMultiOrderAffirmative(text) && !/[¿?«»“”"']/.test(text)) return false;
     const methods = getEnabledPaymentMethods(cfg.paymentMethods || []);
     const contactSignal = clauses.some(clause =>
@@ -29139,7 +29142,7 @@ export class WhatsappOrchestratorService {
       else valid = false;
     }
     if (!valid) {
-      await this.reply(conv,waId,'No cambié el carrito ni los datos. Para añadir lo cotizado, envía sí con los datos de contacto sin condiciones ni instrucciones adicionales.');
+      await this.reply(conv,waId,'No cambié el carrito ni los datos. Para aceptar o rechazar lo cotizado, envía sí o no con los datos de contacto sin condiciones ni instrucciones adicionales.');
       return true;
     }
     let next: WhatsappSessionData = {...session};
@@ -29151,7 +29154,7 @@ export class WhatsappOrchestratorService {
     if (payment) next = {...next,paymentMethod:payment};
     if (address) next = this.withDeliveryAddress({...next,address:undefined,addressConfirmed:false},address);
     await this.conversationService.saveSession(conv,next);
-    return this.tryHandlePendingAddOffer(conv,waId,next,'sí',await this.catalogService.getMenuProducts(),cfg);
+    return this.tryHandlePendingAddOffer(conv,waId,next,rejection ? 'no' : 'sí',await this.catalogService.getMenuProducts(),cfg);
   }
 
   private async tryHandlePendingAddOffer(
@@ -29175,7 +29178,7 @@ export class WhatsappOrchestratorService {
       });
       const suffix =
         session.cart.length > 0
-          ? `\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${this.formatContinueShoppingPrompt(session)}`
+          ? `\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${this.formatInterruptedStepReminder(conv, {...session, pendingAddOffer: undefined}) || this.formatContinueShoppingPrompt(session)}`
           : '\nEscribe el *plato* o el *código*.';
       await this.reply(conv, waId, `Listo, no lo agrego 👍${suffix}`);
       return true;

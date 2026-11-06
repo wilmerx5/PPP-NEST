@@ -1,0 +1,69 @@
+{
+  "baseCommit": "ee8174362dcfffdf72ea9dae10b1ad6bb59f274b",
+  "batches": [
+    408
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 873.66,
+      "sourceUnchanged": true,
+      "tests": 37286,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.55,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 698,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 479,
+  "tests": 37302,
+  "suites": 479,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 164,
+  "newSimulatedClosures": 36,
+  "baseline": {
+    "cases": 112,
+    "failed": 104,
+    "passed": 8,
+    "router": 407,
+    "note": "Corrected occupied-cart boundary fixture; initial setup could not generate an offer with an occupied cart and was not a valid behavioral baseline."
+  },
+  "focus": {
+    "passed": 512,
+    "suites": 3
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "scope": [
+    "Decline a pending quote plus bounded valid contact form without adding or canceling existing cart",
+    "Validate whole contact form before partial persistence; quoted/question/conditional/duplicate/incomplete forms preserve prior state",
+    "Resume existing payment/final-confirmation step; no order before separate final confirmation",
+    "Eight real five-message coalesced bursts, two catalogs, mock agent on/off, empty/occupied carts"
+  ],
+  "limits": [
+    "Existing-cart quote coexistence seeded at session boundary; decisions pass through full router",
+    "No arbitrary mixed instructions or competing selection",
+    "Fixed delivery fee, mocked services and agent; no live geocoding or commercial conversion evidence"
+  ]
+}
