@@ -1,0 +1,82 @@
+{
+  "baseCommit": "be1ed53968858e7b006282679453af78883202dc",
+  "batches": [
+    404
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 352.12,
+      "sourceUnchanged": true,
+      "tests": 20420,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 14.1,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 694,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "resumedCompletedSuites": 58,
+  "resumedPassedTests": 16162,
+  "resumeSourceHashesVerified": true,
+  "suiteCheckpoints": 475,
+  "tests": 36598,
+  "suites": 475,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 188,
+  "newSimulatedClosures": 68,
+  "baseline": {
+    "cases": 88,
+    "failed": 52,
+    "passed": 36,
+    "router": 403
+  },
+  "focus": {
+    "expandedPassed": 540,
+    "expandedSuites": 5,
+    "finalNewPassed": 188,
+    "finalNewSuites": 1,
+    "unchangedOtherRegressions": 356
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "validationResumeReason": "User interruption terminated runner; verified all 694 source hashes unchanged, retained 58 complete suite checkpoints and ran every remaining suite. Final inventory and checkpoint counts exact.",
+  "expandedBoundaryReproduction": {
+    "failed": 16,
+    "passed": 168,
+    "cases": 184,
+    "reason": "Multiline contact routes saved name before complete proposal/form validation; moved explicit acceptance validation ahead of partial contact routes"
+  },
+  "scope": [
+    "Explicit reference to proposed composed dish plus bounded contact form",
+    "Full-message validation before contact writes and existing cart/catalog/expiry checks before mutation",
+    "Labelled and unlabelled phone/address/payment; four actual coalesced bursts",
+    "Final confirmation required separately"
+  ],
+  "limits": [
+    "Only bounded explicit acceptance phrases; arbitrary mixed instructions not supported",
+    "Quoted form data rejected",
+    "Fixed delivery fee in new closures; no live geocoding or commercial conversion evidence",
+    "Rejection of proposal plus contact details remains pending"
+  ]
+}
