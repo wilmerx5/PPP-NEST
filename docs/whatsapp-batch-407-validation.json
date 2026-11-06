@@ -53,7 +53,7 @@
   },
   "runnersPassed": 92,
   "externalOrders": 0,
-  "deploymentVerified": false,
+  "deploymentVerified": true,
   "scope": [
     "Accept pending single/multi-product quote plus bounded contact form before partial contact handlers",
     "Validate entire form then delegate addition to existing price/stock/quantity/attribute logic",
