@@ -1,0 +1,73 @@
+{
+  "baseCommit": "f78afc3e271740d55a30bf235f50d49ee540edca",
+  "batches": [
+    406
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 865.74,
+      "sourceUnchanged": true,
+      "tests": 36990,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.37,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 696,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 477,
+  "tests": 37006,
+  "suites": 477,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 216,
+  "newSimulatedClosures": 72,
+  "baseline": {
+    "cases": 216,
+    "failed": 116,
+    "passed": 100,
+    "router": 405
+  },
+  "initialFocus": {
+    "failed": 12,
+    "passed": 940,
+    "reason": "Plain courtesy/explicit full rejections were misread as contact forms; restored complete-answer precedence before final focus"
+  },
+  "focus": {
+    "passed": 952,
+    "suites": 7
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "scope": [
+    "Brief no/no gracias/no comma gracias plus bounded contact form while composed-dish proposal is pending",
+    "Validate proposal reply and complete form before partial contact routes",
+    "Quoted or interrogative negatives with name/address retain prior fields",
+    "Plain complete rejections keep priority and final order confirmation remains separate"
+  ],
+  "limits": [
+    "Only this pending proposal and delimited brief negative with recognizable fields",
+    "Arbitrary mixed requests or other pending decisions are not exhaustively covered",
+    "New closures use fixed delivery fee; no live geocoding or commercial conversion evidence"
+  ]
+}

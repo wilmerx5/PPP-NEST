@@ -195,6 +195,10 @@ const COMPOSED_DISH_CONTACT_ACCEPTANCE = /^(?:s[ií],?\s+ese(?: plato)?|reemplaz
 
 const COMPOSED_DISH_CONTACT_REJECTION = /^(?:no,?\s+(?:d[eé]jalos|mejor)\s+separados|d[eé]jalos separados)\s*[,;:\n]\s*([\s\S]+)$/i;
 
+const COMPOSED_DISH_CONTACT_SHORT_REJECTION = /^no(?:,?\s+gracias)?\s*[,;:\n]\s*([\s\S]+)$/i;
+
+const COMPOSED_DISH_DECLINE = /^(?:no|no dejalos separados|no mejor separados|dejalos separados)$/;
+
 const GENERIC_ADDRESS_NOUN_RE = /calle|carrera|cra|cll|kra|avenida|av|autopista|diagonal|dg|transversal|tv|circular|v[ií]a|esquina|direcci[oó]n|misma|mism[oa]|casa|apartamento|apto|torre|bloque|interior|manzana|mz|porter[ií]a|conjunto|conj|barrio|urbanizaci[oó]n|urb|edificio|unidad|vereda|finca|hospital|cl[ií]nica|hotel|hostal|colegio|universidad|iglesia|parque|plaza|centro|portal|estaci[oó]n|tienda|local|oficina|bodega|droguer[ií]a|panader[ií]a|supermercado|entrada|parqueadero|cancha|salida|que|de|del/;
 
 const NEGATED_CART_CORRECTION = /^no[,\s]+(?:era\s+|es\s+)?(?!quiero\b)(.+?)(?:\s*[,;]\s*|\s+)(?:no[,\s]+|sino\s+|era\s+|es\s+)(?:(?:era|es)\s+)?(.+?)[.!]*$/i;
@@ -1224,12 +1228,11 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // An explicit dish decision plus contact form must be validated before
+    // A pending dish decision and any contact form must be validated before
     // multiline name/payment routes can save only part of the same message.
-    const pendingContactAcceptance = this.conversationService.getSession(conv);
-    if (pendingContactAcceptance.pendingComposedDishRecovery &&
-        (COMPOSED_DISH_CONTACT_ACCEPTANCE.test(text.trim()) || COMPOSED_DISH_CONTACT_REJECTION.test(text.trim())) && !this.isCancelIntent(text) &&
-        await this.tryRecoverComposedDish(conv, msg.waId, pendingContactAcceptance, text, cfg)) return;
+    const pendingContactDecision = this.conversationService.getSession(conv);
+    if (pendingContactDecision.pendingComposedDishRecovery && !this.isCancelIntent(text) &&
+        await this.tryRecoverComposedDish(conv, msg.waId, pendingContactDecision, text, cfg)) return;
 
     // Preserve an ambiguous house/name bubble until the customer identifies its role.
     if (['awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) && text.includes('\n')) {
@@ -18785,7 +18788,9 @@ export class WhatsappOrchestratorService {
     if (pending) {
       // An explicit decision about the proposal can accompany contact data.
       const explicitContactAcceptance = text.trim().match(COMPOSED_DISH_CONTACT_ACCEPTANCE);
-      const explicitContactRejection = text.trim().match(COMPOSED_DISH_CONTACT_REJECTION);
+      const standaloneAnswer = said.replace(/ (?:por favor|porfa|gracias)$/, '');
+      const explicitContactRejection = text.trim().match(COMPOSED_DISH_CONTACT_REJECTION) ||
+        (!COMPOSED_DISH_DECLINE.test(standaloneAnswer) ? text.trim().match(COMPOSED_DISH_CONTACT_SHORT_REJECTION) : null);
       const explicitContactReply = explicitContactAcceptance || explicitContactRejection;
       let applyContactDetails: ((next: WhatsappSessionData) => Promise<WhatsappSessionData>) | undefined;
       // Validate the complete form before mutating either contact or cart.
@@ -18846,7 +18851,7 @@ export class WhatsappOrchestratorService {
       const answer = explicitContactReply && applyContactDetails ? (explicitContactRejection ? 'no' : 'si') : said.replace(/ (?:por favor|porfa|gracias)$/, '');
       const direct = !/[¿?«»“”"']/.test(text);
       const accept = direct && /^(?:si(?: ese| esa)?|dale|de una|correcto|exacto|asi es|eso mismo)$/.test(answer);
-      const decline = direct && /^(?:no|no dejalos separados|no mejor separados|dejalos separados)$/.test(answer);
+      const decline = direct && COMPOSED_DISH_DECLINE.test(answer);
       if (!accept && !decline) {
         if (this.isConfirmKeyword(text) || isFinalConfirmAffirmation(text) || /^(?:si|no|asi|eso|correcto|exacto)\b/.test(said)) {
           await this.reply(conv,waId,'Primero aclaremos el cambio: responde sí para reunir los productos en el plato propuesto o no para conservarlos separados.');
