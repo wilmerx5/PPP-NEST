@@ -60,7 +60,7 @@
   "fixtureCorrection": "Single SKU initially assumed automatic addition; corrected to conservative selection, then exposed the empty agent response and fixed routing",
   "runnersPassed": 92,
   "externalOrders": 0,
-  "deploymentVerified": false,
+  "deploymentVerified": true,
   "scope": [
     "Short Para plus one-word family resolved against catalog category",
     "Single SKU category lists its option; exact menu name keeps direct purchase",
