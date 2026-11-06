@@ -54,7 +54,7 @@
   },
   "runnersPassed": 92,
   "externalOrders": 0,
-  "deploymentVerified": false,
+  "deploymentVerified": true,
   "scope": [
     "Decline a pending quote plus bounded valid contact form without adding or canceling existing cart",
     "Validate whole contact form before partial persistence; quoted/question/conditional/duplicate/incomplete forms preserve prior state",
