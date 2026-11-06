@@ -18764,6 +18764,43 @@ export class WhatsappOrchestratorService {
     const busy=session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
       session.pendingUnitDistribution || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]);
     if (pending) {
+      // Collect a bounded contact form atomically, without approving the dish change.
+      const contactForm = text.trim().replace(/^(?:s[ií]|claro|listo)\s*[,;:]\s*/i, '');
+      const clauses = contactForm.split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b)/i)
+        .map(value => value.trim()).filter(Boolean);
+      if (clauses.length >= 2 && clauses.some(value => /^(?:a nombre|mi celular|la direcci[oó]n|pago por)\b/i.test(value))) {
+        let name: string | undefined, phone: string | undefined, address: string | undefined, payment: string | undefined;
+        let valid = clauses.length <= 4 && !/[¿?«»“”"]/.test(text) &&
+          !/\b(?:si|solo si|siempre que|a menos que)\b/.test(this.normalizeForMatch(contactForm));
+        for (const clause of clauses) {
+          const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
+          const street = clause.replace(/^(?:(?:la|mi) )?direcci[oó]n(?: es)?\s*:?\s*/i, '');
+          const number = clause.replace(/^(?:mi )?(?:celular|tel[eé]fono|whatsapp)(?: es)?\s*:?\s*/i, '');
+          const pay = this.normalizeForMatch(clause.replace(/^pago (?:por|con|en)\s+/i, ''));
+          const method = getEnabledPaymentMethods(cfg.paymentMethods || []).find(item =>
+            [item.id, item.label, ...item.keywords].some(value => this.normalizeForMatch(value) === pay));
+          if (named && !name && isUsableWhatsappCustomerName(named[1]) && !this.looksLikeAddressRejectingPersonName(named[1])) name = named[1].trim();
+          else if (!address && this.isStrongExplicitAddress(street) && this.isPlausibleDeliveryAddress(street)) address = street;
+          else if (!phone && /^\+?[\d ()-]{7,24}$/.test(number) && this.looksLikePhoneNumber(number)) phone = this.normalizeContactPhone(number, conv.phoneE164) || undefined;
+          else if (!payment && method) payment = method.id;
+          else valid = false;
+        }
+        if (!valid) {
+          await this.reply(conv, waId, 'No cambié los datos ni el carrito. Envíame los datos de contacto sin condiciones ni instrucciones adicionales; el cambio de plato sigue pendiente.');
+          return true;
+        }
+        let next: WhatsappSessionData = {...session};
+        if (name) {
+          await this.conversationService.updateCustomerName(conv, name);
+          Object.assign(conv, await this.conversationService.reloadConversation(conv.id));
+        }
+        if (phone) next = {...next, contactPhone: phone, phoneConfirmed: true};
+        if (payment) next = {...next, paymentMethod: payment};
+        if (address) next = this.withDeliveryAddress({...next, address: undefined, addressConfirmed: false}, address);
+        await this.conversationService.saveSession(conv, next);
+        await this.reply(conv, waId, 'Anoté los datos de contacto. El carrito sigue igual. ¿Reúno los productos en el plato propuesto? Responde sí para cambiarlo o no para conservarlos separados.');
+        return true;
+      }
       // An acknowledgment followed by contact data is not approval of this edit.
       // Let the existing data routes validate it, keeping the proposal pending.
       const contactAck = text.match(/^s[ií]\s*[,;:]\s*(.+)$/i);

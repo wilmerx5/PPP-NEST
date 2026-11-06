@@ -1,0 +1,65 @@
+{
+  "baseCommit": "d627008d1794d8fdfa75657f6de1ba21a46d9ede",
+  "batches": [
+    402
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 6551.27,
+      "sourceUnchanged": true,
+      "tests": 36350,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 12.49,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 692,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 473,
+  "tests": 36366,
+  "suites": 473,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 108,
+  "newSimulatedClosures": 100,
+  "baseline": {
+    "cases": 24,
+    "failed": 24,
+    "router": 401
+  },
+  "focus": {
+    "priorPassed": 352,
+    "priorSuites": 4,
+    "finalNewPassed": 108,
+    "finalNewSuites": 1,
+    "unchangedOtherTests": 248
+  },
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "scope": "Bounded labelled contact form while composed-dish proposal is pending; four field orders, three separators, acknowledgement, four actual coalesced bursts; fixed delivery fees",
+  "limits": [
+    "Explicit acceptance plus contact data remains pending",
+    "New hamburger/price-continuation chat not fixed by this batch",
+    "No live geocoding or customer conversion evidence"
+  ]
+}
