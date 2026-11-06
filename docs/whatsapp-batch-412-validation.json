@@ -62,5 +62,10 @@
   "production": "409 unchanged",
   "kamppo": "398 unchanged",
   "runnersPassed": 92,
-  "stagingDeployment": "pending"
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "f76d6c80ea8bb09a1b8289d8266033dbc258e6b3",
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/42297805366",
+    "compiledControls": 102
+  }
 }
