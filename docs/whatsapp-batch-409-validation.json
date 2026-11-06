@@ -1,0 +1,78 @@
+{
+  "baseCommit": "bb2298891ba633286ea1885ad3ba769f3e7e4fe2",
+  "batches": [
+    409
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1155.19,
+      "sourceUnchanged": true,
+      "tests": 37486,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.72,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 699,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 480,
+  "tests": 37502,
+  "suites": 480,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 200,
+  "newSimulatedClosures": 28,
+  "baseline": {
+    "cases": 152,
+    "failed": 148,
+    "passed": 4,
+    "router": 408
+  },
+  "focus": {
+    "passed": 540,
+    "suites": 4
+  },
+  "additionalFindings": [
+    "Mixed choice/contact bursts were split before atomic form validation",
+    "Ordinary pending list purchases did not request approval after a listed price change"
+  ],
+  "fixtureCorrections": [
+    "Stock controls explicitly disable ignoreBusinessHours, which intentionally overrides product schedule availability",
+    "Required-option control uses included Bebida: Salsa has an intentional first-option default"
+  ],
+  "runnersPassed": 92,
+  "externalOrders": 0,
+  "deploymentVerified": false,
+  "scope": [
+    "Numbered pending catalog choice plus complete bounded contact form before partial contact handlers",
+    "Invalid/quoted/question/conditional/out-of-range/repeated/incomplete data preserve selection and contact atomically",
+    "Keep numeric selection/contact bursts together; valid or invalid five-message bursts",
+    "Refresh changed list price before purchase, with or without contact; removed/unavailable and required options retain valid contact without unauthorized purchase",
+    "Keep existing cart, pending quantity and separate final confirmation"
+  ],
+  "limits": [
+    "Initial unconsumed ordinary list; replacement/combo offer and competing selections keep existing routes",
+    "Numeric row or offered numeric code up to three digits, delimited contact fields; arbitrary prose/ordinal/name forms not newly covered",
+    "Existing cart and owned quantity controls prepared at session boundary; selection/contact decision and closing use full mocked router",
+    "Fixed delivery fee and mocked services/agent; no live geocoding or commercial conversion evidence"
+  ]
+}

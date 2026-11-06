@@ -751,6 +751,12 @@ export class WhatsappOrchestratorService {
     const corrects = /^(?:perdon|mejor|no|digo|corrijo|cambi\w*|espera|ay|ups|uy)\b/.test(restSaid);
     if (!said || /[¿?]/.test(first) || said.split(' ').length > 4) return null;
     const row = this.catalogService.extractListPickNumber(first);
+    // Keep a numbered choice and its contact form in one atomic turn. Splitting
+    // first would purchase before validating the trailing data or conditions.
+    const listContact = session.pendingMatch;
+    if (listContact && !listContact.selectionAdded && !listContact.replacement && !listContact.includesRequestedAccompaniment &&
+        !session.pendingAttribute && !session.pendingMultiOrder && /^\d{1,3}$/.test(first.trim()) &&
+        /^(?:a nombre(?: de)?|me llamo|mi nombre es|(?:mi )?(?:celular|tel[eé]fono|whatsapp)|(?:(?:la|mi) )?direcci[oó]n|pago (?:por|con|en)|calle|cll?|carrera|cra)\b/i.test(rest.trim())) return null;
     const names = (option: string) => ` ${restSaid} `.includes(` ${this.normalizeForMatch(option)} `);
     let answers = false;
     const attribute = session.pendingAttribute;
@@ -1235,7 +1241,7 @@ export class WhatsappOrchestratorService {
         await this.tryRecoverComposedDish(conv, msg.waId, pendingContactDecision, text, cfg)) return;
 
     const quoteContactSession = this.conversationService.getSession(conv);
-    if (quoteContactSession.pendingAddOffer && !this.isCancelIntent(text) &&
+    if ((quoteContactSession.pendingAddOffer || quoteContactSession.pendingMatch) && !this.isCancelIntent(text) &&
         await this.tryHandleQuoteContactDecision(conv, msg.waId, quoteContactSession, text, cfg)) return;
 
     // Preserve an ambiguous house/name bubble until the customer identifies its role.
@@ -10240,8 +10246,7 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    if ((pending.replacement || pending.includesRequestedAccompaniment || pending.unitAttributeGroups) &&
-      Number.isFinite(chosenLite.price) && Number.isFinite(chosen.price) && chosenLite.price !== chosen.price) {
+    if (Number.isFinite(chosenLite.price) && Number.isFinite(chosen.price) && chosenLite.price !== chosen.price) {
       // Re-quote without purchasing. Keep list indices, quantity and replacement ownership.
       const oldPrice = chosenLite.price;
       session = {...session, pendingMatch: {...pending, priceAcceptanceProductId: chosen.id,
@@ -29100,18 +29105,26 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
-  /** A quoted product and contact details are one decision, never a final order confirmation. */
+  /** A pending purchase decision and contact form are validated together, never a final order confirmation. */
   private async tryHandleQuoteContactDecision(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    const list = session.pendingMatch;
     if (!['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
-        !session.pendingAddOffer || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+        (!session.pendingAddOffer && !list) || (session.pendingAddOffer && list) || session.pendingAttribute || session.pendingMultiOrder ||
+        list && (list.selectionAdded || list.replacement || list.includesRequestedAccompaniment || !list.candidates?.length) ||
         session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
     // Whole courtesy replies belong to the existing route, before form parsing can backtrack.
     if (/^no(?:,?\s+gracias)?[.!]*$/i.test(text.trim())) return false;
     const rejection = text.trim().match(/^no(?:,?\s+gracias)?\s*[,;:\n]\s*([\s\S]+)$/i);
-    const match = rejection || text.trim().match(/^(?:s[ií]|dale)\s*[,;:\n]\s*([\s\S]+)$/i);
+    const listForm = list ? text.trim().match(/^([¿«"'“]?\s*\d{1,3}[?¿«»“”"']?)\s*[,;:\n]\s*([\s\S]+)$/) : null;
+    if (list && !listForm) return false;
+    const selection = listForm?.[1].trim();
+    const validSelection = !!selection && /^\d{1,3}$/.test(selection) &&
+      (Number(selection) >= 1 && Number(selection) <= (list?.candidates.length || 0) ||
+        !!list?.candidates.some(candidate => Number(candidate.code) === Number(selection)));
+    const match = listForm ? [listForm[0],listForm[2]] : rejection || text.trim().match(/^(?:s[ií]|dale)\s*[,;:\n]\s*([\s\S]+)$/i);
     const clauses = (match?.[1] || text).split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b)/i)
       .map(value => value.trim()).filter(Boolean);
     if (!match && !(clauses.length >= 2 && /^[¿«"'“]?\s*(?:s[ií]|no)\b/i.test(text.trim()))) return false;
@@ -29125,7 +29138,7 @@ export class WhatsappOrchestratorService {
     if (!contactSignal) return false;
 
     let name: string | undefined, phone: string | undefined, address: string | undefined, payment: string | undefined;
-    let valid = !!match && clauses.length <= 4 && !/[¿?«»“”"']/.test(text) &&
+    let valid = !!match && (!list || validSelection) && clauses.length <= 4 && !/[¿?«»“”"']/.test(text) &&
       !/\b(?:si|solo si|siempre que|a menos que)\b/.test(this.normalizeForMatch(match?.[1] || text));
     for (const clause of clauses) {
       const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
@@ -29142,7 +29155,9 @@ export class WhatsappOrchestratorService {
       else valid = false;
     }
     if (!valid) {
-      await this.reply(conv,waId,'No cambié el carrito ni los datos. Para aceptar o rechazar lo cotizado, envía sí o no con los datos de contacto sin condiciones ni instrucciones adicionales.');
+      await this.reply(conv,waId,list
+        ? 'No cambié el carrito ni los datos. Envía un número de la lista con los datos de contacto sin condiciones ni instrucciones adicionales.'
+        : 'No cambié el carrito ni los datos. Para aceptar o rechazar lo cotizado, envía sí o no con los datos de contacto sin condiciones ni instrucciones adicionales.');
       return true;
     }
     let next: WhatsappSessionData = {...session};
@@ -29154,7 +29169,10 @@ export class WhatsappOrchestratorService {
     if (payment) next = {...next,paymentMethod:payment};
     if (address) next = this.withDeliveryAddress({...next,address:undefined,addressConfirmed:false},address);
     await this.conversationService.saveSession(conv,next);
-    return this.tryHandlePendingAddOffer(conv,waId,next,rejection ? 'no' : 'sí',await this.catalogService.getMenuProducts(),cfg);
+    const products = await this.catalogService.getMenuProducts();
+    return list
+      ? this.tryResolvePendingMatchPick(conv,waId,next,selection!,products,cfg)
+      : this.tryHandlePendingAddOffer(conv,waId,next,rejection ? 'no' : 'sí',products,cfg);
   }
 
   private async tryHandlePendingAddOffer(
