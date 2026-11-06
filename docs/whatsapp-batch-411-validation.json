@@ -71,5 +71,10 @@
     "failed": 78,
     "note": "Pre-fix diagnostic only: feedback/contact, address conflicts, secondary option/address and incomplete legacy snapshots. All corrected; full final inventory above rerun on frozen final sources."
   },
-  "stagingDeployment": "pending"
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "657581ac82f3a291d829bfd2062e9816bc0b9d44",
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/42286759633",
+    "compiledControls": 102
+  }
 }
