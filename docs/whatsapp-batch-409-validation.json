@@ -61,7 +61,7 @@
   ],
   "runnersPassed": 92,
   "externalOrders": 0,
-  "deploymentVerified": false,
+  "deploymentVerified": true,
   "scope": [
     "Numbered pending catalog choice plus complete bounded contact form before partial contact handlers",
     "Invalid/quoted/question/conditional/out-of-range/repeated/incomplete data preserve selection and contact atomically",
