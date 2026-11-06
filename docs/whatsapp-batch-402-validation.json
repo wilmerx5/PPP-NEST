@@ -55,7 +55,7 @@
   },
   "runnersPassed": 92,
   "externalOrders": 0,
-  "deploymentVerified": false,
+  "deploymentVerified": true,
   "scope": "Bounded labelled contact form while composed-dish proposal is pending; four field orders, three separators, acknowledgement, four actual coalesced bursts; fixed delivery fees",
   "limits": [
     "Explicit acceptance plus contact data remains pending",
