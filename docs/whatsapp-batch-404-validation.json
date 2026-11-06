@@ -59,7 +59,7 @@
   },
   "runnersPassed": 92,
   "externalOrders": 0,
-  "deploymentVerified": false,
+  "deploymentVerified": true,
   "validationResumeReason": "User interruption terminated runner; verified all 694 source hashes unchanged, retained 58 complete suite checkpoints and ran every remaining suite. Final inventory and checkpoint counts exact.",
   "expandedBoundaryReproduction": {
     "failed": 16,
