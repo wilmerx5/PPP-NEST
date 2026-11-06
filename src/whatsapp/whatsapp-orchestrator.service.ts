@@ -3574,7 +3574,8 @@ export class WhatsappOrchestratorService {
         ? targets.map(product => `${product.name}: ${this.catalogService.formatMoney(product.price)} según la carta.`).join('\n') +
           '\n\nEl pedido sigue igual.\n' + this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))
         : '¿De cuál producto quieres saber el precio? El pedido sigue igual.' + (session.pendingPriceInquiry ? '\n' + session.pendingPriceInquiry.productIds.map((id, index) => `${index + 1}. ${menu.find(product => product.id === id)?.name || ''}`).join('\n') : '');
-      const reminder = targets.length ? this.formatInterruptedStepReminder(conv, session) : '';
+      const reminder = targets.length ? (this.formatInterruptedStepReminder(conv, session) ||
+        (conv.state === 'building_cart' ? this.formatContinueShoppingPrompt(session) : '')) : '';
       await this.reply(conv, msg.waId, reminder ? `${priceReply}\n\n${reminder}` : priceReply);
       return;
     }
@@ -9130,6 +9131,10 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
     kitchenNote?: string,
   ): Promise<boolean> {
+    // Short colloquial purchase: "para hamburguesa" names a family, not a SKU.
+    // Limit normalization to one word so destination or mixed requests stay intact.
+    const forFamily = text.trim().match(/^para\s+(\p{L}+)[.!]?$/iu);
+    if (forFamily) text = `Una ${forFamily[1]}`;
     if (this.catalogService.isGenericProductInquiry(text) ||
       this.catalogService.isCategoryBrowseQuestion(text) ||
       this.catalogService.isMenuExploreIntent(text, products) ||
@@ -9149,11 +9154,14 @@ export class WhatsappOrchestratorService {
     const prefixCandidates = this.catalogService.findCatalogPrefixCandidates(text, products);
     const categoryCandidates = products.filter(product =>
       this.normalizeForMatch(product.categoryName || '').replace(/s$/, '') === this.normalizeForMatch(query).replace(/s$/, ''));
-    const candidates = (family?.variants && family.variants.length >= 2 ? family.variants : null) || (categoryCandidates.length >= 2 ? categoryCandidates : null) || family?.variants || (prefixCandidates.length >= 2 ? prefixCandidates : null) || scored
+    // An exact dish name still uses direct purchase, even if it is its own category.
+    if (categoryCandidates.length === 1 &&
+        products.some(product => this.normalizeForMatch(product.name) === this.normalizeForMatch(query))) return false;
+    const candidates = (family?.variants && family.variants.length >= 2 ? family.variants : null) || (categoryCandidates.length ? categoryCandidates : null) || family?.variants || (prefixCandidates.length >= 2 ? prefixCandidates : null) || scored
       .filter(hit => hit.score >= 60 && hit.score >= (scored[0]?.score || 0) - 12)
       .map(hit => hit.p);
     const available = candidates.filter(p => p.availableNow !== false);
-    if (available.length < 2 && categoryCandidates.length < 2) return false;
+    if (available.length < 2 && categoryCandidates.length === 0) return false;
     if (!available.length) {
       await this.reply(conv, waId, 'Por ahora no hay opciones disponibles de esa categoría. Tu pedido sigue igual.');
       return true;
@@ -19320,7 +19328,8 @@ export class WhatsappOrchestratorService {
       : menu.find(p => pending.productIds.includes(p.id) && this.normalizeForMatch(p.name) === name);
     if (product) {
       await clear();
-      const reminder = this.formatInterruptedStepReminder(conv, session);
+      const reminder = this.formatInterruptedStepReminder(conv, session) ||
+        (conv.state === 'building_cart' ? this.formatContinueShoppingPrompt(session) : '');
       await this.reply(conv, waId, `${product.name}: ${this.catalogService.formatMoney(product.price)} según la carta. El pedido sigue igual.${reminder ? '\n\n' + reminder : ''}`);
       return true;
     }
@@ -22535,7 +22544,8 @@ export class WhatsappOrchestratorService {
     const timeReply = /\btiempo\b/i.test(text)
       ? `\n\n${cfg.localContext?.deliveryTimeNote?.trim() ? `Tiempo estimado: ${cfg.localContext.deliveryTimeNote.trim()}.` : 'El equipo debe confirmar el tiempo estimado de entrega.'}`
       : '';
-    const reminder = this.formatInterruptedStepReminder(conv, session);
+    const reminder = this.formatInterruptedStepReminder(conv, session) ||
+      (conv.state === 'building_cart' ? this.formatContinueShoppingPrompt(session) : '');
     await this.reply(
       conv,
       waId,
