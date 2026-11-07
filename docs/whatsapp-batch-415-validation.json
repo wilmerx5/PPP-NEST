@@ -61,5 +61,10 @@
   "kamppo": "398 unchanged",
   "nextPriority": "Contact messages with multiple competing pending selections.",
   "runnersPassed": 92,
-  "stagingDeployment": "pending"
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "8feab9bbbc4db32e6623292628b10dff348e8573",
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/42333956122",
+    "compiledControls": 56
+  }
 }
