@@ -1,10 +1,12 @@
-## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda424
+## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda425
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
-Estado registrado: staging ejecuta421 (`90256692`), producción409 y Kamppo398. Las tandas422–424 publican pruebas sin cambiar el motor. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
+Estado registrado: staging ejecuta425 (`0ffd7a2d`), producción409 y Kamppo398. Las tandas422–424 publican pruebas sin cambiar el motor;425 corrige distinción de fila/código. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
 
 Familias con correcciones y cobertura delimitada:
+
+- **Código explícito confundido con fila.** Si código#1 pertenece a la segunda fila, «1» elige fila1 y «#1» elige el SKU#1. Tanda425 corrige pérdida de marcador# y respuestas completas «el/la #num» en el contexto acotado;80 regresiones y44 controles compilados verificados. Evidencias [425](whatsapp-batch-425-validation.json) y [despliegue425](whatsapp-batch-425-staging-deployment.json). Código explícito y formulario de contacto juntos permanecen fuera de las nuevas pruebas.
 
 - **Consulta confundida con compra y elección prematura.** Pedir precio/detalles, repetir «hamburguesa» o comparar porciones no debe añadir la primera opción. Tandas415–416 para comparación abreviada;420–421 para coincidencias parciales ambiguas y prioridad del nombre exacto. Evidencia [421](whatsapp-batch-421-validation.json) y [despliegue421](whatsapp-batch-421-staging-deployment.json). Solo se acredita el alcance documentado de esas rutas.
 - **Respuesta aplicada a la pregunta equivocada.** Precio y sabor abiertos a la vez; «sí» o un número con contacto no debe elegir ni guardar parte del formulario. Tanda417 solicita una aclaración y admite recuperación explícita;418 prueba contradicciones/formularios incompletos. Evidencias [417](whatsapp-batch-417-validation.json) y [418](whatsapp-batch-418-validation.json).

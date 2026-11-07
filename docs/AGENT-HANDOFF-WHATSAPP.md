@@ -1,10 +1,10 @@
-## Tanda 425 — fila y código cruzados en la lista (validada, despliegue staging pendiente)
+## Tanda 425 — fila y código cruzados en la lista (staging desplegado y verificado)
 
 Se reproduce que «#1» se normalizaba a «1» en pendingTextListRow y elegía fila en vez del código explícito. El reconocedor de filas ya no consume marcadores#num; pasan al resolvedor existente de código. Mensajes completos «el/la #num» se normalizan conservando# antes de rutas de respuesta breve, solo en building_cart con lista y sin atributos/multi/conflicto de dirección/edición de carrito. Números sin prefijo y ordinales siguen siendo filas.
 
 80 regresiones nuevas con dos familias sintéticas, agente off/mock y cantidades anteriores1/2: filas1/2, ordinales, #1/#2, el#1/el#2 y código1/código2; códigos cruzados entre filas, preservación de nota/cantidad/cortesía y80 cierres DTO simulados. Baseline48nuevas+48previas:16 fallos nuevos y80 aprobadas; foco ampliado128 detectó8 fallos de el#num, corregidos; foco final128/2 aprobado. Global39.586/497 sin fallos ni omitidas,716 fuentes congeladas e inventario exacto, TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-425-validation.json.
 
-Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Staging421 sigue activo hasta verificar425; producción409 y Kamppo398 intactos. Formulario de contacto junto a código explícito queda fuera de estas nuevas pruebas. Pendientes otras decisiones competidoras, preparaciones de varias palabras, reconstrucción general de combos y política de sustituciones. Las simulaciones no acreditan preparación comercial.
+Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Staging425 desplegado/verificado en0ffd7a2d: imagen healthy, cero reinicios, API local/pública y DB correctas, configuración privada/modelos preservados. Workflow42395562534 y44 controles compilados directos aprobados (20 de filas/códigos y24 de selección ambigua; router completo cubierto localmente). Evidencia whatsapp-batch-425-staging-deployment.json. Producción409 y Kamppo398 intactos. Formulario de contacto junto a código explícito queda fuera de estas nuevas pruebas. Pendientes otras decisiones competidoras, preparaciones de varias palabras, reconstrucción general de combos y política de sustituciones. Las simulaciones no acreditan preparación comercial.
 
 ## Tanda 424 — elegir otra opción después de consultar precio (solo regresiones y recopilación)
 

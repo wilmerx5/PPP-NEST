@@ -64,5 +64,11 @@
   "limits": [
     "Explicit codes with contact form in same message not covered",
     "Live model/channel behavior not established by mocks"
-  ]
+  ],
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "0ffd7a2d89c3fe1189a1cee4ef625f1f6f584467",
+    "workflowRun": 42395562534,
+    "compiledControls": 44
+  }
 }
