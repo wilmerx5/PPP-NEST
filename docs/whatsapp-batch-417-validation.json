@@ -1,0 +1,68 @@
+{
+  "baseCommit": "ec4d6ece1ddfef6b2d3e4321c624cd95c6070b48",
+  "batches": [
+    417
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1550.86,
+      "sourceUnchanged": true,
+      "tests": 39264,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 15.12,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0,
+      "resumedAfterInterruption": true
+    },
+    "tsc-build": {
+      "exitCode": 0,
+      "resumedAfterInterruption": true
+    },
+    "node": {
+      "exitCode": 0,
+      "resumedAfterInterruption": true
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 708,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "tests": 39280,
+  "suites": 489,
+  "suiteCheckpoints": 489,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressionTests": 88,
+  "baseline": {
+    "tests": 72,
+    "failed": 48,
+    "passed": 24
+  },
+  "focused": {
+    "tests": 1250,
+    "suites": 4,
+    "failed": 0,
+    "note": "Before final restriction to multi-candidate price inquiries; final sources validated by complete inventory"
+  },
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelChanges": false,
+  "budgetChanges": false,
+  "scope": "Competing multi-candidate price inquiry and attribute contact forms, qualified recovery and coalesced bursts",
+  "limits": [
+    "Other competing decision families are not covered by this new route",
+    "Price selection and contact form together request separate price message",
+    "Mocked services do not establish commercial readiness"
+  ],
+  "validationResume": "All Jest phases completed; interruption before TypeScript completion. Frozen source hashes and exact inventory reverified; both TypeScript checks and script tests rerun successfully."
+}
