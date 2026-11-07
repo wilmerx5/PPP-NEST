@@ -1,3 +1,9 @@
+## Tanda 427 — contacto incompleto/contradictorio con código (solo regresiones)
+
+64 regresiones nuevas del router completo: nombres/teléfonos/direcciones/pagos contradictorios, calle incompleta y teléfono inválido, códigos#1/código2 con formulario, dos familias sintéticas y agente off/mock.48 recuperaciones mediante código y formulario válido cierran una única orden simulada con carrito anterior (cantidad2 y nota) conservado;16 ráfagas reales inválidas mantienen sesión completa y nombre sin cambios. Foco240/2 y TypeScript general aprobados. No apareció un fallo nuevo ni se modificó el motor. Evidencia whatsapp-batch-427-validation.json.
+
+Los717 hashes del global426 coinciden; solo se añade una suite. No se repite global al no cambiar reglas compartidas;39.762/498 es evidencia previa426. Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Staging sigue runtime426eef15445 sin redespliegue; producción409 y Kamppo398 intactos. Pendientes otras decisiones competidoras, preparaciones de varias palabras, reconstrucción general de combos y política de sustituciones. Las simulaciones no acreditan preparación comercial.
+
 ## Tanda 426 — código explícito con contacto en una decisión (staging desplegado y verificado)
 
 Antes «#1; A nombre…; dirección…; pago…» rechazaba la selección válida y bloqueaba continuidad. resolveContactListSelection ahora reconoce únicamente sintaxis explícita completa (#num, el/la#num, código num) que coincida con un código único de la lista ofrecida y devuelve su fila canónica. El parser existente sigue validando el formulario entero antes de guardar contacto o añadir producto. La misma resolución evita separar la elección de sus datos en una ráfaga. No hay excepción por ID/nombre/precio.
