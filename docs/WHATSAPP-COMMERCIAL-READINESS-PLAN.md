@@ -1,3 +1,9 @@
+## Tanda 418 — límites y recuperación de decisiones competidoras (solo regresiones)
+
+44 regresiones nuevas del router completo: nombres/teléfonos/pagos/direcciones duplicados, teléfono inválido, calle incompleta, condiciones e instrucciones ajenas; recuperación con formulario válido; ráfagas reales inválidas y consulta explícita de precio seguida de elección y cuatro cierres simulados únicos. Dos familias sintéticas, agente off/mock. No aparecieron nuevos fallos: foco132/2 aprobado y TypeScript general aprobado. Los708 hashes de fuentes previamente validadas coinciden; el único archivo de código añadido es la suite418. No se repitió el inventario completo porque no cambió ninguna regla compartida ni fuente de ejecución; el global417 sigue siendo evidencia previa39.280/489, no una nueva ejecución418. Evidencia whatsapp-batch-418-validation.json.
+
+Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Se publican pruebas y documentación en staging sin redesplegar: runtime417 ac318976 continúa activo. Producción409 y Kamppo398 intactos. Pendientes: otras familias de selecciones competidoras, preparaciones de varias palabras y política de sustituciones del local. Las simulaciones no acreditan por sí solas preparación comercial.
+
 ## Tanda 417 — precio y atributo con datos de contacto (staging desplegado y verificado)
 
 Se distingue una consulta de precio pendiente de la elección del atributo. Un número, sí o no con formulario solicita una sola aclaración y conserva carrito, selecciones y contacto. Una elección explícita con el nombre del atributo se valida junto con todos los datos antes de aplicarse; al completarse retira la consulta anterior para impedir que un sabor coincidente con el nombre de un producto del carrito se interprete como precio. Las ráfagas se mantienen unidas para validar el mensaje completo. Consulta explícita de precio y formulario juntos piden enviarla por separado; no se aplican datos parcialmente.
