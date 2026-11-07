@@ -1246,6 +1246,12 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleQuotedPortionInquiry(conv,msg.waId,text,cfg)) return;
 
     const quoteContactSession = this.conversationService.getSession(conv);
+    // A standalone explicit menu code retains its marker through short-answer routes.
+    if (conv.state === 'building_cart' && quoteContactSession.pendingMatch?.candidates?.length &&
+        !quoteContactSession.pendingAttribute && !quoteContactSession.pendingMultiOrder && !quoteContactSession.pendingAddressConflict &&
+        !CART_EDIT_SELECTION_KEYS.some(key => !!quoteContactSession[key]) && /^\s*(?:el|la)\s+#\s*\d{1,4}[.!]?\s*$/i.test(text)) {
+      text = text.replace(/^\s*(?:el|la)\s+/i,'');
+    }
     if (this.hasAttributePriceConflict(quoteContactSession) && !this.isCancelIntent(text)) {
       const pieces = text.split(/[,;\n]/).map(part => part.trim());
       if (/^(?:\d+|si|no|precio \d+)$/.test(this.normalizeForMatch(pieces[0])) &&
@@ -14466,7 +14472,7 @@ export class WhatsappOrchestratorService {
 
   /** A named row reference, not a product quantity or a question. */
   private pendingTextListRow(text: string, candidates: { name: string }[]): number | null {
-    if (!candidates.length || /[¿?]/.test(text)) return null;
+    if (!candidates.length || /[¿?]/.test(text) || /#\s*\d/.test(text)) return null;
     const said = this.normalizeForMatch(text)
       .replace(/(?:\s+(?:por favor|porfa|por fa|porfavor|pls|gracias))+$/, '');
     const ref = said.match(/^(?:(?:el|la|quiero|dame|deme|me das|mejor)\s+)*((?:[a-zñ]+\s+){0,3}?)(?:(?:numero|opcion|fila)\s+)?(\d{1,2})$/);

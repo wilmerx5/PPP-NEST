@@ -1,0 +1,68 @@
+{
+  "baseCommit": "e26e2ca870566a41c607eab689ce41641777828d",
+  "batches": [
+    425
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1455.58,
+      "sourceUnchanged": true,
+      "tests": 39570,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.83,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 716,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 497,
+  "tests": 39586,
+  "suites": 497,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 80,
+  "baseline": {
+    "totalFocusedTests": 96,
+    "failedNewTests": 16,
+    "passedNewTests": 32,
+    "passedExistingTests": 48
+  },
+  "intermediateFocus": {
+    "total": 128,
+    "failed": 8,
+    "passed": 120
+  },
+  "finalFocus": {
+    "tests": 128,
+    "suites": 2,
+    "failed": 0
+  },
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "Explicit menu-code marker is not consumed as a displayed row; standalone el/la #code normalized only in building_cart with pending list and no attribute/multi/address-conflict/cart-edit decision",
+  "limits": [
+    "Explicit codes with contact form in same message not covered",
+    "Live model/channel behavior not established by mocks"
+  ]
+}
