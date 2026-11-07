@@ -1,3 +1,11 @@
+## Tanda 426 — código explícito con contacto en una decisión (validada, despliegue staging pendiente)
+
+Antes «#1; A nombre…; dirección…; pago…» rechazaba la selección válida y bloqueaba continuidad. resolveContactListSelection ahora reconoce únicamente sintaxis explícita completa (#num, el/la#num, código num) que coincida con un código único de la lista ofrecida y devuelve su fila canónica. El parser existente sigue validando el formulario entero antes de guardar contacto o añadir producto. La misma resolución evita separar la elección de sus datos en una ráfaga. No hay excepción por ID/nombre/precio.
+
+176 regresiones nuevas:72 elecciones/formularios válidos con tres separadores y72 cierres DTO simulados;32 códigos desconocidos/decorados con recuperación;24 formularios condicionales;48 ráfagas reales válidas/inválidas. Dos familias sintéticas, agente off/mock, carrito anterior con cantidad2 y nota, códigos cruzados entre filas, nombre/teléfono/dirección/pago y cortesía sin duplicado. Baseline176:128 fallos/48 aprobadas. Foco588/3 aprobado. Global39.762/498 sin fallos ni omitidas,717 fuentes congeladas e inventario exacto, TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-426-validation.json.
+
+Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Staging425 sigue activo hasta verificar426; producción409 y Kamppo398 intactos. Códigos fuera de lista/duplicados no autorizan la compra desde este formulario; otras decisiones competidoras mantienen sus guardas. Pendientes preparaciones de varias palabras, reconstrucción general de combos y política de sustituciones. Las simulaciones no acreditan preparación comercial.
+
 ## Tanda 425 — fila y código cruzados en la lista (staging desplegado y verificado)
 
 Se reproduce que «#1» se normalizaba a «1» en pendingTextListRow y elegía fila en vez del código explícito. El reconocedor de filas ya no consume marcadores#num; pasan al resolvedor existente de código. Mensajes completos «el/la #num» se normalizan conservando# antes de rutas de respuesta breve, solo en building_cart con lista y sin atributos/multi/conflicto de dirección/edición de carrito. Números sin prefijo y ordinales siguen siendo filas.

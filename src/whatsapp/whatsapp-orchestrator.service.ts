@@ -29274,6 +29274,12 @@ export class WhatsappOrchestratorService {
 
   /** Return only an offered row/code, bounded ordinal or unique exact catalog name. */
   private resolveContactListSelection(text: string, pending: NonNullable<WhatsappSessionData['pendingMatch']>): string | null {
+    // Preserve explicit code ownership before normalization can turn #1 into row 1.
+    const code = text.trim().match(/^(?:(?:el|la)\s+)?(?:#\s*|c[oó]digo\s*#?\s*)(\d{1,4})$/i);
+    if (code) {
+      const rows = pending.candidates.flatMap((candidate,index) => Number(candidate.code) === Number(code[1]) ? [index] : []);
+      return rows.length === 1 ? String(rows[0]+1) : null;
+    }
     const said = this.normalizeForMatch(text);
     if (/^\d{1,3}$/.test(said)) {
       // Normalization must not turn a signed number or decorated code into approval.
