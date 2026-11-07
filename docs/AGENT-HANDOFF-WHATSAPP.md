@@ -1,3 +1,9 @@
+## Tanda 419 — cancelar decisiones competidoras y reiniciar (solo regresiones)
+
+16 regresiones nuevas del router completo: cuatro formas naturales de cancelar, dos familias sintéticas y agente off/mock. Después de abrir simultáneamente elección de atributo y consulta de precio, cancelar vacía el carrito y retira ambas decisiones; un pedido nuevo añade solo el producto y la variante nuevos. Sin órdenes externas ni inferencia pagada. Las16 pruebas y TypeScript general aprobaron; no se detectó un fallo nuevo ni fue necesario modificar el motor. Evidencia whatsapp-batch-419-validation.json.
+
+Hashes de las fuentes previamente validadas intactos; solo se añade una suite. No se repite el inventario completo al no cambiar reglas compartidas. Staging sigue ejecutando417 ac318976; producción409 y Kamppo398 intactos. Publicación de regresiones sin redespliegue. Siguen pendientes otras combinaciones de selecciones competidoras, preparaciones de varias palabras y política de sustituciones. Estas simulaciones no acreditan preparación comercial.
+
 ## Tanda 418 — límites y recuperación de decisiones competidoras (solo regresiones)
 
 44 regresiones nuevas del router completo: nombres/teléfonos/pagos/direcciones duplicados, teléfono inválido, calle incompleta, condiciones e instrucciones ajenas; recuperación con formulario válido; ráfagas reales inválidas y consulta explícita de precio seguida de elección y cuatro cierres simulados únicos. Dos familias sintéticas, agente off/mock. No aparecieron nuevos fallos: foco132/2 aprobado y TypeScript general aprobado. Los708 hashes de fuentes previamente validadas coinciden; el único archivo de código añadido es la suite418. No se repitió el inventario completo porque no cambió ninguna regla compartida ni fuente de ejecución; el global417 sigue siendo evidencia previa39.280/489, no una nueva ejecución418. Evidencia whatsapp-batch-418-validation.json.
