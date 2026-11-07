@@ -1,0 +1,63 @@
+{
+  "baseCommit": "9d993379fd666c5c4a371932a240b36b1a209c1f",
+  "batches": [
+    420
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 946.52,
+      "sourceUnchanged": true,
+      "tests": 39340,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 12.29,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 711,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 492,
+  "tests": 39356,
+  "suites": 492,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 16,
+  "baseline": {
+    "tests": 16,
+    "failed": 8,
+    "passed": 8
+  },
+  "focused": {
+    "tests": 348,
+    "suites": 2,
+    "failed": 0,
+    "note": "Final full inventory includes additional empty-cart assertion after repeating generic family"
+  },
+  "scriptTests": 92,
+  "modelChanges": false,
+  "budgetChanges": false,
+  "externalOrders": 0,
+  "scope": "Ambiguous substring fallback in pending product lists must not select first match",
+  "limits": [
+    "Earlier family-specific resolvers retain their existing rules",
+    "Mocked tests do not establish commercial readiness"
+  ]
+}

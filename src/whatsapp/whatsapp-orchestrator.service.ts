@@ -10276,11 +10276,15 @@ export class WhatsappOrchestratorService {
     if (!chosenLite) {
       const q = this.normalizeForMatch(this.catalogService.extractProductSearchQuery(text));
       if (q.length >= 3) {
-        chosenLite =
-          pending.candidates.find((c) => {
-            const name = this.normalizeForMatch(c.name);
-            return name.includes(q) || q.includes(name);
-          }) ?? null;
+        const matching = pending.candidates.filter((c) => {
+          const name = this.normalizeForMatch(c.name);
+          return name.includes(q) || q.includes(name);
+        });
+        if (matching.length > 1) {
+          await this.reply(conv,waId,'Hay varias opciones para ese producto. Dime el número o el nombre completo de la opción que prefieres. El pedido sigue igual.');
+          return true;
+        }
+        chosenLite = matching[0] ?? null;
       }
     }
 
