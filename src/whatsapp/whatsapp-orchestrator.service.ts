@@ -1250,12 +1250,14 @@ export class WhatsappOrchestratorService {
       // Contact is already validated; let the ordinary variant router consume only its option.
       if (typeof contactDecision === 'string') {
         text = contactDecision;
-        ownedAttributeAnswer = !!quoteContactSession.pendingAttribute && !/^los quiero /.test(contactDecision);
+        ownedAttributeAnswer = !!quoteContactSession.pendingAttribute && !/^(?:los quiero |\d+ con )/.test(contactDecision);
         const pending = quoteContactSession.pendingAttribute;
         const open = pending ? this.getContactAttributeQuestion(pending) : undefined;
         if (open && ownedAttributeAnswer) ownedAttributeChoice = {attributeName:open.attributeName,attributeValue:contactDecision};
       }
     }
+
+    if (await this.tryHandleBusinessVerificationFollowup(conv,msg.waId,text)) return;
 
     // Preserve an ambiguous house/name bubble until the customer identifies its role.
     if (['awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) && text.includes('\n')) {
@@ -19568,6 +19570,18 @@ export class WhatsappOrchestratorService {
     return '';
   }
 
+  /** A verification request refers to the unverified business change, not order confirmation. */
+  private async tryHandleBusinessVerificationFollowup(conv: WhatsappConversation, waId: string, text: string): Promise<boolean> {
+    if (conv.humanTakeover || ['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state)) return false;
+    const said = this.normalizeForMatch(text).replace(/(?: por favor| porfa)$/,'');
+    if (!/^(?:(?:me|lo) )?(?:puedes|podrias|pueden|podrian|podria) (?:confirmar|verificar|consultar|averiguar)(?:me|lo)?(?: (?:si (?:es posible|se puede|lo cambian)|con (?:cocina|el (?:local|restaurante))))?$/.test(said)) return false;
+    const previous = this.normalizeForMatch(await this.conversationService.getLastOutboundBody?.(conv.id) || '');
+    if (!/\b(?:no tengo confirmad[oa]|no puedo (?:confirmar|verificar)(?:lo)?|no esta confirmad[oa])\b/.test(previous) ||
+        !/\b(?:sustitucion|cambio|cambiar|acompanamiento|reemplazo)\b/.test(previous)) return false;
+    await this.reply(conv,waId,`Entiendo: quieres verificar si pueden hacer ese cambio. No puedo confirmarlo con cocina desde este chat. Para comprobarlo antes de pedir, llama al *${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*. Tu pedido sigue igual.`);
+    return true;
+  }
+
   private async tryHandleBasicCustomerAside(
     conv: WhatsappConversation,
     waId: string,
@@ -29157,7 +29171,7 @@ export class WhatsappOrchestratorService {
   /** Do not buy an option before validating the contact bubbles that follow it. */
   private isAttributeContactBurst(session: WhatsappSessionData, parts: string[]): boolean {
     const pending = session.pendingAttribute;
-    if (!pending || !pending.name || !pending.attributes?.length || parts.length < 2 || pending.distributionParts?.length ||
+    if (!pending || !pending.name || !pending.attributes?.length || parts.length < 2 ||
         session.pendingMatch || session.pendingAddOffer || session.pendingMultiOrder || session.pendingPriceInquiry ||
         session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
     if (!this.resolveContactAttributeSelection(parts[0], pending) && pending.attributes.some(attribute =>
@@ -29213,24 +29227,37 @@ export class WhatsappOrchestratorService {
     return named.length === 1 ? String(named[0].index+1) : null;
   }
 
-  /** A complete, literal partition of the one attribute currently being asked. */
+  /** Validate one counted stage or a complete partition of the currently asked attribute. */
   private resolveContactAttributeDistribution(text: string, pending: NonNullable<WhatsappSessionData['pendingAttribute']>): string | null {
-    if (pending.distributionParts?.length) return null;
-    const raw = text.trim().replace(/(?:\s+(?:por favor|porfa|gracias)[.!]*)+$/i, '').replace(/^(?:los|las)\s+quiero\s+/i, '')
-      .replace(/\s+y\s+(?:el|la)\s+otr[oa]\s+con\s+/i, ' y 1 con ');
-    const parts = raw.split(/(?:\s+y\s+|[,;]\s*)(?=(?:\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+)/i);
-    if (parts.length < 2 || parts.length > 6) return null;
-    const resolved = parts.map(part => {
+    const total = pending.quantity || this.catalogService.extractQuantityFromSegment(pending.sourceText || '') || 1;
+    const parse = (part: string) => {
       const match = part.match(/^(\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+(.+)$/i);
       if (!match || /[¿?«»“”"']/.test(part)) return null;
-      const value = this.resolveContactAttributeSelection(match[2], pending);
+      const value = this.resolveContactAttributeSelection(match[2],pending);
       const count = /^\d+$/.test(match[1]) ? Number(match[1]) : this.catalogService.extractQuantityFromSegment(match[1]+' platos');
       return value && count > 0 && count <= 30 ? {value,count} : null;
-    });
-    if (resolved.some(part => !part)) return null;
-    const total = pending.quantity || this.catalogService.extractQuantityFromSegment(pending.sourceText || '') || 1;
-    if (resolved.reduce((sum,part) => sum+part!.count,0) !== total) return null;
-    return 'los quiero '+resolved.map(part=>`${part!.count} con ${part!.value}`).join(' y ');
+    };
+    const stored = (pending.distributionParts || []).map(parse);
+    if (stored.some(part=>!part)) return null;
+    const assigned = stored.reduce((sum,part)=>sum+part!.count,0);
+    let raw = text.trim().replace(/(?:\s+(?:por favor|porfa|gracias)[.!]*)+$/i,'').replace(/^(?:los|las)\s+quiero\s+/i,'')
+      .replace(/\s+y\s+(?:el|la)\s+otr[oa]\s+con\s+/i,' y 1 con ');
+    const remainder = raw.match(/^(?:y\s+)?(el otro|la otra|(?:los|las) (?:otros|otras|restantes))\s+con\s+(.+)$/i);
+    if (remainder) {
+      if (!stored.length) return null;
+      raw = `${/^(?:el|la) /.test(remainder[1])?1:total-assigned} con ${remainder[2]}`;
+    } else if (stored.length && !/^\d+$/.test(raw)) {
+      const value = this.resolveContactAttributeSelection(raw,pending);
+      if (value) raw = `${total-assigned} con ${value}`;
+    }
+    const parts = raw.split(/(?:\s+y\s+|[,;]\s*)(?=(?:\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+)/i).map(parse);
+    if (!parts.length || parts.length > 6 || parts.some(part=>!part)) return null;
+    const sum = parts.reduce((n,part)=>n+part!.count,0);
+    const format = (part: NonNullable<ReturnType<typeof parse>>) => `${part.count} con ${part.value}`;
+    if (parts.length > 1) return sum===total ? 'los quiero '+parts.map(part=>format(part!)).join(' y ') : null;
+    if (sum+assigned > total || stored.length >= 6 || total < 2) return null;
+    if (sum+assigned === total) return stored.length ? 'los quiero '+[...stored,...parts].map(part=>format(part!)).join(' y ') : null;
+    return format(parts[0]!);
   }
 
   /** A pending purchase decision and contact form are validated together, never a final order confirmation. */
@@ -29242,7 +29269,7 @@ export class WhatsappOrchestratorService {
     if (!['building_cart','awaiting_attribute','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
         [session.pendingAddOffer,list,attribute].filter(Boolean).length !== 1 || session.pendingMultiOrder ||
         list && (list.selectionAdded || list.replacement || list.includesRequestedAccompaniment || !list.candidates?.length) ||
-        attribute && (!attribute.name || !attribute.attributes?.length || attribute.distributionParts?.length || session.pendingPriceInquiry || session.pendingAddressConflict) ||
+        attribute && (!attribute.name || !attribute.attributes?.length || session.pendingPriceInquiry || session.pendingAddressConflict) ||
         session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
     // Whole courtesy replies belong to the existing route, before form parsing can backtrack.
     if (/^no(?:,?\s+gracias)?[.!]*$/i.test(text.trim())) return false;
@@ -29258,7 +29285,7 @@ export class WhatsappOrchestratorService {
             this.normalizeForMatch(value) === this.normalizeForMatch(head)))) return false;
       // Contact-only interruptions retain their established collector and checkout resume.
       if (this.isOptionContactPrefix(text.split(/[;\n]/,1)[0])) return false;
-      if (!/[¿?«»“”"']/.test(text)) {
+      if (!attribute.distributionParts?.length && !/[¿?«»“”"']/.test(text)) {
         const plain = this.resolveContactAttributeSelection(text,attribute);
         if (plain != null) return plain;
       }
@@ -29271,7 +29298,7 @@ export class WhatsappOrchestratorService {
     if ((list || attribute) && !listForm) return false;
     const distribution = listForm && attribute ? this.resolveContactAttributeDistribution(listForm[1].trim(),attribute) : null;
     const selection = listForm && list ? this.resolveContactListSelection(listForm[1].trim(),list)
-      : listForm && attribute ? distribution || this.resolveContactAttributeSelection(listForm[1].trim(),attribute) : null;
+      : listForm && attribute ? distribution || (!attribute.distributionParts?.length ? this.resolveContactAttributeSelection(listForm[1].trim(),attribute) : null) : null;
     const validSelection = selection != null;
     const match = listForm ? [listForm[0],listForm[2]] : rejection || text.trim().match(/^(?:s[ií]|dale)\s*[,;:\n]\s*([\s\S]+)$/i);
     const clauses = (match?.[1] || text).split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b|\+?\d{10,12}\b|calle\b|cll?\b|carrera\b|cra\b)/i)
@@ -29332,8 +29359,9 @@ export class WhatsappOrchestratorService {
         product.attributes?.some(item=>this.normalizeForMatch(item.attributeName)===this.normalizeForMatch(chosen.attributeName) &&
           item.options.some(value=>this.normalizeForMatch(value)===this.normalizeForMatch(chosen.attributeValue))))};
       const repriced = Number(product.price)!==Number(attribute.price);
-      if (repriced || !this.resolveContactAttributeDistribution(distribution,live)) {
-        await this.conversationService.saveSession(conv,{...next,pendingAttribute:{...live,price:product.price}});
+      const liveDistribution = this.resolveContactAttributeDistribution(distribution,live);
+      if (repriced || !liveDistribution) {
+        await this.conversationService.saveSession(conv,{...next,pendingAttribute:{...live,price:product.price,distributionParts:liveDistribution ? live.distributionParts : undefined}});
         await this.reply(conv,waId,(repriced ? `El precio cambió a $${Number(product.price).toLocaleString('es-CO')}.` : 'Una opción ya no está entre las opciones disponibles.')+
           ' No apliqué el reparto; el carrito sigue igual. Indica de nuevo cómo quieres repartir las unidades.');
         return true;
