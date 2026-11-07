@@ -1,3 +1,9 @@
+## Tanda 423 — filas, ordinales y códigos con carrito anterior (solo regresiones)
+
+48 regresiones nuevas del router completo: filas1/2, ordinales «el primero»/«la segunda» y códigos31/42, dos familias sintéticas, agente off/mock y cantidades anteriores1/2 con nota. La aclaración genérica conserva el carrito; la elección con formulario añade el producto correcto; cortesía no duplica;48 cierres simulados comprueban cantidades y datos de contacto del DTO. Foco80/2 y TypeScript general aprobados. No apareció un fallo nuevo ni se cambió el motor. Evidencia whatsapp-batch-423-validation.json.
+
+Los712 hashes del global421 coinciden; solo se añade una suite. No se repite global porque no cambian reglas compartidas. Global42139.378/493 es evidencia anterior. Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Publicación en staging sin redespliegue: runtime42190256692, producción409 y Kamppo398 intactos. Estas nuevas pruebas no intercalan consulta de precio ni código coincidente con otro índice de fila. Pendientes: otras decisiones competidoras, preparaciones de varias palabras y política de sustituciones. Las simulaciones no acreditan preparación comercial.
+
 ## Tanda 422 — conservar carrito al aclarar una familia (solo regresiones)
 
 32 regresiones nuevas del router completo con carrito ya poblado: dos familias sintéticas, agente off/mock, cantidad anterior1/2 con nota, consulta de precio intercalada o selección directa y ambas opciones de la lista. Responder solo familia conserva carrito/cantidades/notas; elegir nombre completo con datos añade una unidad; cortesía no duplica y32 cierres simulados conservan todos los ítems y cantidades esperados. Foco54/2 y TypeScript general aprobados. No apareció un fallo nuevo ni se modificó el motor. Evidencia whatsapp-batch-422-validation.json.

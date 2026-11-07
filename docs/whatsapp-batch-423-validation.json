@@ -1,0 +1,33 @@
+{
+  "batch": 423,
+  "baseCommit": "12d43bf0bde73e4233d9725f9e6778b970acc625",
+  "changeType": "Tests only",
+  "newTests": 48,
+  "focusedTests": 80,
+  "focusedSuites": 2,
+  "failed": 0,
+  "typescriptExitCode": 0,
+  "previous712SourceHashesUnchanged": true,
+  "fullInventoryRerun": false,
+  "reason": "No shared rule or runtime source changed; only new regression suite",
+  "coverage": [
+    "Rows1/2, ordinals el primero/la segunda, menu codes31/42",
+    "Two synthetic families and agent off/mock",
+    "Previous quantities1/2 and note preserved through ambiguity",
+    "Contact form validated and courtesy does not duplicate",
+    "48 isolated mocked order closures assert selected product and DTO item counts/contact fields"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeDeploymentNeeded": false,
+  "stagingRuntime": "90256692cff9d0815ff9d7c6239703335f60e036",
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Price inquiries are not interleaved in these new selection-code tests",
+    "Code equal to another displayed row index is not tested here",
+    "Mocks do not establish commercial readiness"
+  ]
+}
