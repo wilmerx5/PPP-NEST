@@ -60,5 +60,11 @@
     "Only offered unique codes accepted; codes outside list do not purchase through this form",
     "Other competing decisions retain existing guards",
     "Mocks do not establish commercial readiness"
-  ]
+  ],
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "eef15445a46ad64bb1cac3bd87e86b5b7e6326f7",
+    "workflowRun": 42398847982,
+    "compiledControls": 92
+  }
 }
