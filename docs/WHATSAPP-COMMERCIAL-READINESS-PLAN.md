@@ -1,3 +1,9 @@
+## Tanda 422 — conservar carrito al aclarar una familia (solo regresiones)
+
+32 regresiones nuevas del router completo con carrito ya poblado: dos familias sintéticas, agente off/mock, cantidad anterior1/2 con nota, consulta de precio intercalada o selección directa y ambas opciones de la lista. Responder solo familia conserva carrito/cantidades/notas; elegir nombre completo con datos añade una unidad; cortesía no duplica y32 cierres simulados conservan todos los ítems y cantidades esperados. Foco54/2 y TypeScript general aprobados. No apareció un fallo nuevo ni se modificó el motor. Evidencia whatsapp-batch-422-validation.json.
+
+Los712 hashes previamente validados coinciden; solo se añade una suite. No se repite global al no cambiar reglas compartidas; global42139.378/493 es evidencia previa, no una ejecución422. Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Publicación de regresiones en staging sin redespliegue: runtime42190256692, producción409 y Kamppo398 intactos. Pendientes: otras decisiones competidoras, preparaciones de varias palabras y política de sustituciones. Esta tanda no prueba reemplazo/eliminación de ítems anteriores y las simulaciones no acreditan preparación comercial.
+
 ## Tanda 421 — nombre genérico en lista sin elección prematura (staging desplegado y verificado)
 
 El límite detectado en el smoke420 se reprodujo con router completo: responder solo la familia, con sesión natural o snapshot abreviado y con/sin consulta de precio previa, elegía la primera coincidencia parcial. Se corrige pickFromCandidateList: prioridad a nombre exacto único; una coincidencia parcial se acepta solo si es única; múltiples coincidencias o nombres exactos duplicados no seleccionan por orden. La guarda420 puede entonces solicitar la elección. No hay excepciones por nombre/ID/precio.

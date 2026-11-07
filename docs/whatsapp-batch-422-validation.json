@@ -1,0 +1,39 @@
+{
+  "batch": 422,
+  "baseCommit": "ab3bb3ad5ac1689aaa212f1dd26008f5db490e48",
+  "changeType": "Tests only; no runtime changes",
+  "newTests": 32,
+  "focusedTests": 54,
+  "focusedSuites": 2,
+  "failed": 0,
+  "typescriptExitCode": 0,
+  "previous712SourceHashesUnchanged": true,
+  "fullInventoryRerun": false,
+  "reason": "Only a new test file added; shared rules and all previously validated sources unchanged",
+  "previousFullValidation": {
+    "batch": 421,
+    "tests": 39378,
+    "suites": 493
+  },
+  "coverage": [
+    "Two synthetic catalog families with agent off/mock",
+    "Existing cart quantities one and two with note preserved",
+    "Price interruptions and bare-family ambiguity",
+    "Explicit named choice with contact data",
+    "Courtesy message does not duplicate items",
+    "32 mocked order closures preserve previous items and selected item counts"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelChanges": false,
+  "budgetChanges": false,
+  "runtimeDeploymentNeeded": false,
+  "stagingRuntime": "90256692cff9d0815ff9d7c6239703335f60e036",
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "No new runtime fix required in these cases",
+    "Mocked tests do not establish commercial readiness",
+    "Replacing or removing existing cart items is not exercised by these new tests"
+  ]
+}
