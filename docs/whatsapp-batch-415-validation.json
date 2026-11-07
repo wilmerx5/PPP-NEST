@@ -1,0 +1,65 @@
+{
+  "baseCommit": "9bd5f4dedcfd7de991bcd0a48c7262aecce52e3f",
+  "batches": [
+    415
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 953.07,
+      "sourceUnchanged": true,
+      "tests": 39084,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 12.86,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 706,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 487,
+  "tests": 39100,
+  "suites": 487,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 80,
+  "newSimulatedClosures": 0,
+  "baseline": {
+    "cases": 20,
+    "failed": 20,
+    "passed": 0,
+    "router": 414
+  },
+  "focus": {
+    "passed": 284,
+    "suites": 3
+  },
+  "limits": [
+    "Only short y-prefixed portion comparisons immediately following a single price quote, with matching last outbound quote context.",
+    "Two synthetic portioned families; full router for initial quote, comparison, approval and explicit purchase.",
+    "New cases assert no external order creation; no new order-closure simulations in this batch.",
+    "External ports mocked; no paid inference, Meta, live geocoding or real orders."
+  ],
+  "production": "409 unchanged",
+  "kamppo": "398 unchanged",
+  "nextPriority": "Contact messages with multiple competing pending selections.",
+  "runnersPassed": 92,
+  "stagingDeployment": "pending"
+}

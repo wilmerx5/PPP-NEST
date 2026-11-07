@@ -1243,6 +1243,8 @@ export class WhatsappOrchestratorService {
     if (pendingContactDecision.pendingComposedDishRecovery && !this.isCancelIntent(text) &&
         await this.tryRecoverComposedDish(conv, msg.waId, pendingContactDecision, text, cfg)) return;
 
+    if (await this.tryHandleQuotedPortionInquiry(conv,msg.waId,text,cfg)) return;
+
     const quoteContactSession = this.conversationService.getSession(conv);
     if ((quoteContactSession.pendingAddOffer || quoteContactSession.pendingMatch || quoteContactSession.pendingAttribute) && !this.isCancelIntent(text)) {
       const contactDecision = await this.tryHandleQuoteContactDecision(conv, msg.waId, quoteContactSession, text, cfg);
@@ -29006,6 +29008,42 @@ export class WhatsappOrchestratorService {
     const preface = `Listo, ${choice.name} queda con ${choice.option}. Deshice la última bebida añadida por separado.`;
     if (conv.state !== 'building_cart') await this.tryConfirmOrder(conv,waId,next,{preface});
     else await this.reply(conv,waId,`${preface}\n\n${this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`);
+    return true;
+  }
+
+  /** A short comparison after a quote changes the quoted portion, never the cart. */
+  private async tryHandleQuotedPortionInquiry(conv: WhatsappConversation, waId: string, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    const session = this.conversationService.getSession(conv), offer = session.pendingAddOffer;
+    if (conv.humanTakeover || !['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        !offer || (offer.productIds?.length || 0)>1 || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
+        CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]) || !this.catalogService.isPriceInquiryIntent(offer.sourceText || '')) return false;
+    const said = this.normalizeForMatch(text).replace(/(?: por favor| porfa)$/,'');
+    if (!/^y /.test(said) || /\b(?:quiero|dame|agrega|anade|ponme|pide|con|sin|para|dos|tres|cuatro)\b/.test(said)) return false;
+    const tail = said.slice(2).replace(/^(?:un|una|uno|el|la) /,'');
+    const identity = (name:string) => this.normalizeForMatch(name).replace(/^(?:1 [24]|1|medio|media|cuarto|cuarta|entero|entera)\s+/,'');
+    const base = identity(offer.name || '');
+    const words = tail.replace(/\b(?:medio|media|cuarto|cuarta|entero|entera)\b/g,'').trim().split(/\s+/).filter(Boolean);
+    const wanted = this.catalogService.detectPortionHint(tail) || (words.length ? 'entero' : null);
+    if (!wanted || words.length>base.split(' ').length+1 || (words.length && !words.some(word=>base.split(' ').includes(word)))) return false;
+    const previous = await this.conversationService.getLastOutboundBody?.(conv.id) || '';
+    if (!this.normalizeForMatch(previous).includes(this.normalizeForMatch(offer.name || '')) || !/💰|cotizaci[oó]n|\b(?:precio|vale|cuesta)\b/i.test(previous)) return false;
+    const products = await this.catalogService.getMenuProducts();
+    const sized = products.filter(product=>(this.catalogService.detectProductPortionSize(product.name) || (/^1\s+/.test(product.name)?'entero':null))===wanted);
+    const explicit = sized.filter(product=>identity(product.name)===words.join(' '));
+    const matches = explicit.length ? explicit : words.every(word=>base.split(' ').includes(word)) ? sized.filter(product=>identity(product.name)===base) : [];
+    if (matches.length!==1) {
+      await this.conversationService.saveSession(conv,{...session,pendingAddOffer:undefined});
+      await this.reply(conv,waId,'No tengo una presentación única para esa consulta. El pedido sigue igual. ¿Qué presentación quieres cotizar?');
+      return true;
+    }
+    const product = matches[0];
+    if (!cfg.ignoreBusinessHours && product.availableNow===false) {
+      await this.conversationService.saveSession(conv,{...session,pendingAddOffer:undefined});
+      await this.reply(conv,waId,`*${product.name}* no está disponible ahora. No agregué productos al pedido.`);
+      return true;
+    }
+    await this.savePendingAddOffer(conv,product,1,{sourceText:`Cuánto cuesta ${product.name}`});
+    await this.reply(conv,waId,this.catalogService.formatProductPriceReply(product));
     return true;
   }
 
