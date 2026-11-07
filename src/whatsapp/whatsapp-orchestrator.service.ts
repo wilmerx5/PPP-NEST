@@ -1250,10 +1250,10 @@ export class WhatsappOrchestratorService {
       // Contact is already validated; let the ordinary variant router consume only its option.
       if (typeof contactDecision === 'string') {
         text = contactDecision;
-        ownedAttributeAnswer = !!quoteContactSession.pendingAttribute;
+        ownedAttributeAnswer = !!quoteContactSession.pendingAttribute && !/^los quiero /.test(contactDecision);
         const pending = quoteContactSession.pendingAttribute;
         const open = pending ? this.getContactAttributeQuestion(pending) : undefined;
-        if (open) ownedAttributeChoice = {attributeName:open.attributeName,attributeValue:contactDecision};
+        if (open && ownedAttributeAnswer) ownedAttributeChoice = {attributeName:open.attributeName,attributeValue:contactDecision};
       }
     }
 
@@ -29213,6 +29213,26 @@ export class WhatsappOrchestratorService {
     return named.length === 1 ? String(named[0].index+1) : null;
   }
 
+  /** A complete, literal partition of the one attribute currently being asked. */
+  private resolveContactAttributeDistribution(text: string, pending: NonNullable<WhatsappSessionData['pendingAttribute']>): string | null {
+    if (pending.distributionParts?.length) return null;
+    const raw = text.trim().replace(/(?:\s+(?:por favor|porfa|gracias)[.!]*)+$/i, '').replace(/^(?:los|las)\s+quiero\s+/i, '')
+      .replace(/\s+y\s+(?:el|la)\s+otr[oa]\s+con\s+/i, ' y 1 con ');
+    const parts = raw.split(/(?:\s+y\s+|[,;]\s*)(?=(?:\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+)/i);
+    if (parts.length < 2 || parts.length > 6) return null;
+    const resolved = parts.map(part => {
+      const match = part.match(/^(\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+(.+)$/i);
+      if (!match || /[¿?«»“”"']/.test(part)) return null;
+      const value = this.resolveContactAttributeSelection(match[2], pending);
+      const count = /^\d+$/.test(match[1]) ? Number(match[1]) : this.catalogService.extractQuantityFromSegment(match[1]+' platos');
+      return value && count > 0 && count <= 30 ? {value,count} : null;
+    });
+    if (resolved.some(part => !part)) return null;
+    const total = pending.quantity || this.catalogService.extractQuantityFromSegment(pending.sourceText || '') || 1;
+    if (resolved.reduce((sum,part) => sum+part!.count,0) !== total) return null;
+    return 'los quiero '+resolved.map(part=>`${part!.count} con ${part!.value}`).join(' y ');
+  }
+
   /** A pending purchase decision and contact form are validated together, never a final order confirmation. */
   private async tryHandleQuoteContactDecision(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
@@ -29249,8 +29269,9 @@ export class WhatsappOrchestratorService {
     const attributeForm = attribute ? text.trim().match(/^([\s\S]+?)[,;:\n]\s*((?:(?:a nombre(?: de)?|me llamo|mi nombre es|(?:mi )?(?:celular|tel[eé]fono|whatsapp)|(?:(?:la|mi) )?direcci[oó]n|pago (?:por|con|en)|calle|cll?|carrera|cra)\b|\+?\d[\d ()-]{6,})[\s\S]*)$/i) : null;
     const listForm = attributeForm || (list || attribute ? text.trim().match(/^([^,;:\n]+)[,;:\n]\s*([\s\S]+)$/) : null);
     if ((list || attribute) && !listForm) return false;
+    const distribution = listForm && attribute ? this.resolveContactAttributeDistribution(listForm[1].trim(),attribute) : null;
     const selection = listForm && list ? this.resolveContactListSelection(listForm[1].trim(),list)
-      : listForm && attribute ? this.resolveContactAttributeSelection(listForm[1].trim(),attribute) : null;
+      : listForm && attribute ? distribution || this.resolveContactAttributeSelection(listForm[1].trim(),attribute) : null;
     const validSelection = selection != null;
     const match = listForm ? [listForm[0],listForm[2]] : rejection || text.trim().match(/^(?:s[ií]|dale)\s*[,;:\n]\s*([\s\S]+)$/i);
     const clauses = (match?.[1] || text).split(/\r?\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|mi celular\b|mi tel[eé]fono\b|(?:la |mi )?direcci[oó]n\b|pago\b|\+?\d{10,12}\b|calle\b|cll?\b|carrera\b|cra\b)/i)
@@ -29283,7 +29304,9 @@ export class WhatsappOrchestratorService {
       else valid = false;
     }
     if (!valid) {
-      await this.reply(conv,waId,list || attribute
+      await this.reply(conv,waId,attribute && /^(?:(?:los|las) quiero )?(?:un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+) con\b/.test(this.normalizeForMatch(listForm?.[1] || ''))
+        ? 'No cambié el carrito ni los datos. Indica la cantidad y opción de cada grupo para completar el reparto, con los datos de contacto sin condiciones ni instrucciones adicionales.'
+        : list || attribute
         ? 'No cambié el carrito ni los datos. Envía el número o el nombre exacto de la lista con los datos de contacto sin condiciones ni instrucciones adicionales.'
         : 'No cambié el carrito ni los datos. Para aceptar o rechazar lo cotizado, envía sí o no con los datos de contacto sin condiciones ni instrucciones adicionales.');
       return true;
@@ -29298,6 +29321,24 @@ export class WhatsappOrchestratorService {
     if (address) next = this.withDeliveryAddress({...next,address:undefined,addressConfirmed:false},address);
     if (attribute && next.pendingCheckoutResume) next = {...next,pendingCheckoutDetailsCaptured:true};
     await this.conversationService.saveSession(conv,next);
+    if (attribute && distribution) {
+      const products = await this.catalogService.getMenuProducts();
+      const product = products.find(item=>item.id===attribute.productId);
+      if (!product || (!cfg.ignoreBusinessHours && product.availableNow===false)) {
+        await this.reply(conv,waId,`*${attribute.name}* ${product?'no está disponible ahora':'ya no está en la carta'}. No apliqué el reparto; el carrito sigue igual.`);
+        return true;
+      }
+      const live = {...attribute,attributes:product.attributes || [],selected:(attribute.selected || []).filter(chosen=>
+        product.attributes?.some(item=>this.normalizeForMatch(item.attributeName)===this.normalizeForMatch(chosen.attributeName) &&
+          item.options.some(value=>this.normalizeForMatch(value)===this.normalizeForMatch(chosen.attributeValue))))};
+      const repriced = Number(product.price)!==Number(attribute.price);
+      if (repriced || !this.resolveContactAttributeDistribution(distribution,live)) {
+        await this.conversationService.saveSession(conv,{...next,pendingAttribute:{...live,price:product.price}});
+        await this.reply(conv,waId,(repriced ? `El precio cambió a $${Number(product.price).toLocaleString('es-CO')}.` : 'Una opción ya no está entre las opciones disponibles.')+
+          ' No apliqué el reparto; el carrito sigue igual. Indica de nuevo cómo quieres repartir las unidades.');
+        return true;
+      }
+    }
     if (attribute) return selection!;
     const products = await this.catalogService.getMenuProducts();
     return list
