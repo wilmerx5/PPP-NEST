@@ -1,3 +1,9 @@
+## Tanda 424 — elegir otra opción después de consultar precio (solo regresiones y recopilación)
+
+48 regresiones nuevas del router: consulta precio de la opción contraria a la compra, familia ambigua y elección por fila/ordinal/código con contacto, carrito anterior1/2 con nota y48 cierres DTO simulados. Dos familias sintéticas y agente off/mock. Foco96/2 y TypeScript general aprobados; no fallos nuevos ni cambio del motor. Se actualiza al comienzo de WHATSAPP-UNIFIED-REMEDIATION-PLAN.md el índice de familias de fallos, fuentes, correcciones acotadas, evidencia, pendientes y diferencias de despliegue; no se infieren frecuencias ni se cierran incidentes históricos no reproducidos.
+
+Los712 hashes del global421 coinciden; solo se añade suite y documentación. No se repite global porque no cambian reglas compartidas; global42139.378/493 es evidencia anterior. Evidencia whatsapp-batch-424-validation.json. Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Staging sigue runtime42190256692 sin redespliegue; producción409 y Kamppo398 intactos. Pendientes otras decisiones competidoras, código que coincida con otra fila, preparaciones de varias palabras, reconstrucción general de combos y política de sustituciones. Las simulaciones no acreditan preparación comercial.
+
 ## Tanda 423 — filas, ordinales y códigos con carrito anterior (solo regresiones)
 
 48 regresiones nuevas del router completo: filas1/2, ordinales «el primero»/«la segunda» y códigos31/42, dos familias sintéticas, agente off/mock y cantidades anteriores1/2 con nota. La aclaración genérica conserva el carrito; la elección con formulario añade el producto correcto; cortesía no duplica;48 cierres simulados comprueban cantidades y datos de contacto del DTO. Foco80/2 y TypeScript general aprobados. No apareció un fallo nuevo ni se cambió el motor. Evidencia whatsapp-batch-423-validation.json.

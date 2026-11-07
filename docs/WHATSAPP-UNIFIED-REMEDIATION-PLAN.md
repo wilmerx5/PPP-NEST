@@ -1,3 +1,27 @@
+## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda424
+
+Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
+
+Estado registrado: staging ejecuta421 (`90256692`), producción409 y Kamppo398. Las tandas422–424 publican pruebas sin cambiar el motor. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
+
+Familias con correcciones y cobertura delimitada:
+
+- **Consulta confundida con compra y elección prematura.** Pedir precio/detalles, repetir «hamburguesa» o comparar porciones no debe añadir la primera opción. Tandas415–416 para comparación abreviada;420–421 para coincidencias parciales ambiguas y prioridad del nombre exacto. Evidencia [421](whatsapp-batch-421-validation.json) y [despliegue421](whatsapp-batch-421-staging-deployment.json). Solo se acredita el alcance documentado de esas rutas.
+- **Respuesta aplicada a la pregunta equivocada.** Precio y sabor abiertos a la vez; «sí» o un número con contacto no debe elegir ni guardar parte del formulario. Tanda417 solicita una aclaración y admite recuperación explícita;418 prueba contradicciones/formularios incompletos. Evidencias [417](whatsapp-batch-417-validation.json) y [418](whatsapp-batch-418-validation.json).
+- **Duplicados, cantidades y notas durante la continuidad.** Cortesía, contacto o consultar otra opción no autorizan otra compra. Tandas422–424 verifican carritos anteriores, unidades, notas, selección por nombre/fila/ordinal/código y cierres simulados. Evidencias [422](whatsapp-batch-422-validation.json), [423](whatsapp-batch-423-validation.json) y [424](whatsapp-batch-424-validation.json). Las duplicaciones históricas de origen no reproducido no se cierran por estas matrices.
+- **Contacto mezclado con elección, sustitución o reparto.** Aplicación parcial de nombre/dirección/pago, pérdida de opciones o reparto incorrecto. Tandas409–414 cubren formularios con decisiones concretas, atributos, sustituciones y reparto completo/por etapas; no toda combinación arbitraria. Evidencias [411](whatsapp-batch-411-validation.json), [412](whatsapp-batch-412-validation.json), [413](whatsapp-batch-413-validation.json), [414](whatsapp-batch-414-validation.json).
+- **Producto compuesto interpretado como líneas separadas.** Casos como arroz con costillas y posterior «en combo». Tandas399–400 cubren aclarar/reunir productos mediante propuesta y respuesta; no se da por resuelta toda reconstrucción de varios combos. Evidencias [399](whatsapp-batch-399-validation.json) y [400](whatsapp-batch-400-validation.json).
+- **Cancelación de todo frente a una compra pendiente.** Tandas368/396/397 acotan cancelación individual/cola;419 verifica cancelar las dos decisiones competidoras y empezar limpio. Evidencia reciente [419](whatsapp-batch-419-validation.json); antecedentes en el historial inferior.
+
+Fuentes de los incidentes y patrones lingüísticos:
+
+- [Revisión de chats31/10](whatsapp-chats-3110-review.md) y [plan31/10](whatsapp-chats-3110-remediation-plan.md).
+- [Revisión01/11](whatsapp-chats-0111-review.md) y [plan01/11](whatsapp-chats-0111-remediation-plan.md).
+- [Corpus de regresiones04/11](whatsapp-chats-1104-regressions.json).
+- [Patrones regionales y límites de la investigación](whatsapp-regional-patterns-2810.md). Los ejemplos sintéticos no representan una muestra estadística de pedidos por región.
+
+Abiertos o con evidencia insuficiente: otras decisiones competidoras; preparaciones de varias palabras; política de sustitución de acompañamientos que debe confirmar el local; reconstrucción general de varios combos; compras históricas inesperadas cuyo origen requiere trazas/messageId/sesión. Las correcciones no acreditan ausencia de errores en el piloto. Las pruebas nuevas de esta tanda no llaman modelos ni Meta ni crean órdenes externas.
+
 ## Tanda397 — retirar por nombre otra compra de la cola (staging desplegado y verificado)
 
 Baseline8/8 fallos: «cancela el / no quiero el Combo…» nombrando una compra posterior dejaba ese producto en la cola. Ahora un nombre completo y único retira solo esa fila pendiente, conserva la opción activa y las demás compras. Si el producto también está en carrito, conserva ambos hasta recibir «cancela la compra pendiente de NOMBRE». Preguntas y mensajes entre comillas no retiran productos. Nombres repetidos conservan la cola y piden completar la selección actual para distinguir las compras.
