@@ -71,5 +71,10 @@
     "Price inquiry continuation such as medio broaster → y un pollo, retaining inquiry intent; observed in latest supplied chat but not changed in this batch."
   ],
   "runnersPassed": 92,
-  "stagingDeployment": "pending"
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "efc571b5bc584c987644c3615df9cf1fdfe4f90b",
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/42324260420",
+    "compiledControls": 126
+  }
 }
