@@ -64,5 +64,11 @@
     "Price selection and contact form together request separate price message",
     "Mocked services do not establish commercial readiness"
   ],
-  "validationResume": "All Jest phases completed; interruption before TypeScript completion. Frozen source hashes and exact inventory reverified; both TypeScript checks and script tests rerun successfully."
+  "validationResume": "All Jest phases completed; interruption before TypeScript completion. Frozen source hashes and exact inventory reverified; both TypeScript checks and script tests rerun successfully.",
+  "stagingDeployment": {
+    "runtimeCommit": "ac3189767a3ce06dc741f25030ed9351d7313b4b",
+    "verified": true,
+    "workflowRun": 42340408867,
+    "compiledControls": 36
+  }
 }
