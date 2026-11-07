@@ -8207,12 +8207,15 @@ export class WhatsappCatalogService {
     const q = normalizeText(text);
     if (!q || q.length < 2) return null;
 
-    for (const p of candidates) {
-      const name = normalizeText(p.name);
-      if (q === name || (name.length >= 5 && (q.includes(name) || name.includes(q)))) {
-        return p;
-      }
-    }
+    const exact = candidates.filter(product => normalizeText(product.name) === q);
+    if (exact.length === 1) return exact[0];
+    if (exact.length > 1) return null;
+    const partial = candidates.filter(product => {
+      const name = normalizeText(product.name);
+      return name.length >= 5 && (q.includes(name) || name.includes(q));
+    });
+    if (partial.length === 1) return partial[0];
+    if (partial.length > 1) return null;
 
     const portion = this.detectPortionHint(text);
     if (portion) {

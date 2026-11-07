@@ -1,3 +1,11 @@
+## Tanda 421 — nombre genérico en lista sin elección prematura (validada, despliegue staging pendiente)
+
+El límite detectado en el smoke420 se reprodujo con router completo: responder solo la familia, con sesión natural o snapshot abreviado y con/sin consulta de precio previa, elegía la primera coincidencia parcial. Se corrige pickFromCandidateList: prioridad a nombre exacto único; una coincidencia parcial se acepta solo si es única; múltiples coincidencias o nombres exactos duplicados no seleccionan por orden. La guarda420 puede entonces solicitar la elección. No hay excepciones por nombre/ID/precio.
+
+22 regresiones nuevas:16 recorridos del router con dos familias sintéticas, agente off/mock, snapshot natural/abreviado y consulta intercalada, recuperación con nombre completo/datos y16 cierres simulados; seis límites del catálogo para nombre exacto frente a variante más larga, parcial única y duplicados. Baseline16:16 fallos; foco364/3 aprobado antes de añadir los seis límites, todos incluidos en global final39.378/493 aprobado,712 fuentes congeladas e inventario exacto, TypeScript general/build y92 controles de scripts. Dos intentos globales recibieron143 y quedaron archivados como incompletos; la ejecución final independiente terminó íntegra. Evidencia whatsapp-batch-421-validation.json.
+
+Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Staging420 sigue activo hasta verificar421; producción409 y Kamppo398 intactos. Pendientes: otras decisiones competidoras, preparaciones de varias palabras y política de sustituciones. Otras heurísticas previas mantienen sus reglas; las simulaciones no acreditan preparación comercial.
+
 ## Tanda 420 — no elegir la primera coincidencia parcial (staging desplegado y verificado)
 
 Fallo reproducido: después de consultar precio/detalles de una opción y repetir una petición genérica, la resolución parcial de una lista elegía la primera coincidencia, pudiendo añadir la clásica cuando luego se elegía la especial. El fallback ahora requiere coincidencia única; si hay varias pide número/nombre completo y no añade productos. Sin excepciones por nombre, ID o precio.
