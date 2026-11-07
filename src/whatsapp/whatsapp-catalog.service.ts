@@ -815,6 +815,12 @@ export class WhatsappCatalogService {
    * “¿Qué tienes que sea sudado?” / “algo frito” / “tienes asado?” —
    * browse por estilo de preparación (no dump de categorías).
    */
+  /** Literal style vocabulary, independent of whether a phrase requests catalogue browsing. */
+  resolveCookingStyleToken(text: string): string | null {
+    const token = normalizeText(fixCommonOrderTypos(text || ''));
+    return COOKING_STYLE_TOKENS.has(token) ? token : null;
+  }
+
   extractCookingStyleBrowseIntent(text: string): string | null {
     const raw = (text || '').trim();
     // An inventory condition inside an explicit purchase belongs to order interpretation,

@@ -29023,14 +29023,19 @@ export class WhatsappOrchestratorService {
     const identity = (name:string) => this.normalizeForMatch(name).replace(/^(?:1 [24]|1|medio|media|cuarto|cuarta|entero|entera)\s+/,'');
     const base = identity(offer.name || '');
     const words = tail.replace(/\b(?:medio|media|cuarto|cuarta|entero|entera)\b/g,'').trim().split(/\s+/).filter(Boolean);
-    const wanted = this.catalogService.detectPortionHint(tail) || (words.length ? 'entero' : null);
-    if (!wanted || words.length>base.split(' ').length+1 || (words.length && !words.some(word=>base.split(' ').includes(word)))) return false;
+    const abbreviatedStyle = words.length===1 ? this.catalogService.resolveCookingStyleToken(words[0]) : null;
+    const previousPortion = this.catalogService.detectProductPortionSize(offer.name || '') || (/^1\s+/.test(offer.name || '')?'entero':null);
+    const wanted = this.catalogService.detectPortionHint(tail) || (abbreviatedStyle && !/^y (?:un|una|uno) /.test(said) ? previousPortion : words.length ? 'entero' : null);
+    if (!wanted || words.length>base.split(' ').length+1 || (!abbreviatedStyle && words.length && !words.some(word=>base.split(' ').includes(word)))) return false;
     const previous = await this.conversationService.getLastOutboundBody?.(conv.id) || '';
     if (!this.normalizeForMatch(previous).includes(this.normalizeForMatch(offer.name || '')) || !/💰|cotizaci[oó]n|\b(?:precio|vale|cuesta)\b/i.test(previous)) return false;
     const products = await this.catalogService.getMenuProducts();
     const sized = products.filter(product=>(this.catalogService.detectProductPortionSize(product.name) || (/^1\s+/.test(product.name)?'entero':null))===wanted);
     const explicit = sized.filter(product=>identity(product.name)===words.join(' '));
-    const matches = explicit.length ? explicit : words.every(word=>base.split(' ').includes(word)) ? sized.filter(product=>identity(product.name)===base) : [];
+    const familyCore = (name:string) => identity(name).split(' ').filter(word=>!this.catalogService.resolveCookingStyleToken(word) && !/^(?:a|la|el|al|en|de|del)$/.test(word)).join(' ');
+    const abbreviated = abbreviatedStyle && familyCore(offer.name || '') ? sized.filter(product=>familyCore(product.name)===familyCore(offer.name || '') &&
+      this.catalogService.resolveBareCookingStyleProduct('el '+abbreviatedStyle,[{...product,availableNow:true}])) : [];
+    const matches = abbreviatedStyle ? abbreviated : explicit.length ? explicit : words.every(word=>base.split(' ').includes(word)) ? sized.filter(product=>identity(product.name)===base) : [];
     if (matches.length!==1) {
       await this.conversationService.saveSession(conv,{...session,pendingAddOffer:undefined});
       await this.reply(conv,waId,'No tengo una presentación única para esa consulta. El pedido sigue igual. ¿Qué presentación quieres cotizar?');
