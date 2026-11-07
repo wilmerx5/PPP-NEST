@@ -1,0 +1,39 @@
+{
+  "batch": 430,
+  "baseCommit": "195be440ca022ab8cc3c0d5ea02719826160562b",
+  "changeType": "Tests only",
+  "newTests": 96,
+  "focusedTests": 192,
+  "focusedSuites": 2,
+  "failed": 0,
+  "typescriptExitCode": 0,
+  "previous717SourceHashesUnchanged": true,
+  "fullInventoryRerun": false,
+  "reason": "Only new regression suite; no shared rule or previously validated runtime source changed",
+  "previousFullValidation": {
+    "batch": 426,
+    "tests": 39762,
+    "suites": 498
+  },
+  "fixtureCorrection": "Initial fixture incorrectly assumed Salsa/Masa were mandatory choices; current policy defaults them. Initial96 new failures archived as invalid test assumption, not production defects. Final fixture uses Bebida included on a list-selected dish, which requires explicit choice. No default policy changed.",
+  "coverage": [
+    "Two synthetic families and agent off/mock",
+    "Initial product price/stock/removal changes, both initial candidates",
+    "Alternative with included drink chosen by code/row/ordinal/name",
+    "Cart unchanged while required drink is pending; choice by row or literal option",
+    "96 mocked closures retain previous cart quantity2/note, contact and only selected alternative; courtesy does not duplicate"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelChanges": false,
+  "budgetChanges": false,
+  "runtimeDeploymentNeeded": false,
+  "stagingRuntime": "eef15445a46ad64bb1cac3bd87e86b5b7e6326f7",
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Explicit-choice coverage is included drink, not arbitrary required-attribute schema",
+    "Default Salsa/Masa policy unchanged",
+    "Mocked tests do not establish commercial readiness"
+  ]
+}
