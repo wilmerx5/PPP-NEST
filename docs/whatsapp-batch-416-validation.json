@@ -67,5 +67,10 @@
   "kamppo": "398 unchanged",
   "nextPriority": "Contact data with competing pending purchase selections.",
   "runnersPassed": 92,
-  "stagingDeployment": "pending"
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "93b47f495465bd35650fdf1003f0c3face589711",
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/42335860925",
+    "compiledControls": 68
+  }
 }
