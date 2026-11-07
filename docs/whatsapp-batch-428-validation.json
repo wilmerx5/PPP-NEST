@@ -1,0 +1,38 @@
+{
+  "batch": 428,
+  "baseCommit": "dd1c0e7ea5d4bad7e8b8ab0a360bed9de64f3881",
+  "changeType": "Tests only",
+  "newTests": 32,
+  "focusedTests": 96,
+  "focusedSuites": 2,
+  "failed": 0,
+  "typescriptExitCode": 0,
+  "previous717SourceHashesUnchanged": true,
+  "fullInventoryRerun": false,
+  "reason": "Only new regression suite; no shared rule or previously validated runtime source modified",
+  "previousFullValidation": {
+    "batch": 426,
+    "tests": 39762,
+    "suites": 498
+  },
+  "coverage": [
+    "Two synthetic families with agent off/mock and cart quantity2/note preserved",
+    "Explicit code form rechecks changed price, stock and removed product before adding",
+    "Valid contact form can be saved while purchase awaits renewed selection or availability",
+    "24 unique mocked closures after explicit new price acceptance or restoring catalog availability",
+    "Duplicate offered codes and known catalog code outside offered list preserve full session and customer name"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeDeploymentNeeded": false,
+  "stagingRuntime": "eef15445a46ad64bb1cac3bd87e86b5b7e6326f7",
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Stock/removed recovery restores the selected product rather than selecting another product",
+    "No new runtime defect detected in these cases",
+    "Mocks do not establish commercial readiness"
+  ]
+}
