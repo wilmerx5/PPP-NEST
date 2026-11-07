@@ -58,6 +58,13 @@
   "scope": "Ambiguous substring fallback in pending product lists must not select first match",
   "limits": [
     "Earlier family-specific resolvers retain their existing rules",
-    "Mocked tests do not establish commercial readiness"
-  ]
+    "Mocked tests do not establish commercial readiness",
+    "Expanded compiled smoke with bare family and different synthetic snapshot reached earlier selection path; full-router reproduction pending"
+  ],
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "f947749ecf6abe6491fbb68eb206f7b6b43c8c23",
+    "workflowRun": 42388223118,
+    "compiledControls": 18
+  }
 }
