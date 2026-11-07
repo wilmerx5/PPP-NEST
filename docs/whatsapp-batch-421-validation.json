@@ -71,5 +71,11 @@
   "limits": [
     "Mocks do not establish commercial readiness",
     "Other ranking and family-specific heuristics retain their existing rules"
-  ]
+  ],
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "90256692cff9d0815ff9d7c6239703335f60e036",
+    "workflowRun": 42391931800,
+    "compiledControls": 24
+  }
 }

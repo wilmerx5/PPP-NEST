@@ -1,10 +1,10 @@
-## Tanda 421 — nombre genérico en lista sin elección prematura (validada, despliegue staging pendiente)
+## Tanda 421 — nombre genérico en lista sin elección prematura (staging desplegado y verificado)
 
 El límite detectado en el smoke420 se reprodujo con router completo: responder solo la familia, con sesión natural o snapshot abreviado y con/sin consulta de precio previa, elegía la primera coincidencia parcial. Se corrige pickFromCandidateList: prioridad a nombre exacto único; una coincidencia parcial se acepta solo si es única; múltiples coincidencias o nombres exactos duplicados no seleccionan por orden. La guarda420 puede entonces solicitar la elección. No hay excepciones por nombre/ID/precio.
 
 22 regresiones nuevas:16 recorridos del router con dos familias sintéticas, agente off/mock, snapshot natural/abreviado y consulta intercalada, recuperación con nombre completo/datos y16 cierres simulados; seis límites del catálogo para nombre exacto frente a variante más larga, parcial única y duplicados. Baseline16:16 fallos; foco364/3 aprobado antes de añadir los seis límites, todos incluidos en global final39.378/493 aprobado,712 fuentes congeladas e inventario exacto, TypeScript general/build y92 controles de scripts. Dos intentos globales recibieron143 y quedaron archivados como incompletos; la ejecución final independiente terminó íntegra. Evidencia whatsapp-batch-421-validation.json.
 
-Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Staging420 sigue activo hasta verificar421; producción409 y Kamppo398 intactos. Pendientes: otras decisiones competidoras, preparaciones de varias palabras y política de sustituciones. Otras heurísticas previas mantienen sus reglas; las simulaciones no acreditan preparación comercial.
+Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Staging421 desplegado/verificado en90256692: imagen healthy, cero reinicios, API local/pública y DB correctas, configuración privada/modelos preservados. Workflow42391931800 y24 controles compilados directos con puertos simulados aprobados, incluida la respuesta de solo familia que falló en la ampliación420. Evidencia whatsapp-batch-421-staging-deployment.json. Producción409 y Kamppo398 intactos. Pendientes: otras decisiones competidoras, preparaciones de varias palabras y política de sustituciones. Otras heurísticas previas mantienen sus reglas; las simulaciones no acreditan preparación comercial.
 
 ## Tanda 420 — no elegir la primera coincidencia parcial (staging desplegado y verificado)
 
