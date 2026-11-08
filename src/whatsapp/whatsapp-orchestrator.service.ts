@@ -1246,6 +1246,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleQuotedPortionInquiry(conv,msg.waId,text,cfg)) return;
 
     const quoteContactSession = this.conversationService.getSession(conv);
+    text = this.normalizeDeferredLocationOfferAcceptance(text, quoteContactSession, cfg) || text;
     // A standalone explicit menu code retains its marker through short-answer routes.
     if (conv.state === 'building_cart' && quoteContactSession.pendingMatch?.candidates?.length &&
         !quoteContactSession.pendingAttribute && !quoteContactSession.pendingMultiOrder && !quoteContactSession.pendingAddressConflict &&
@@ -29392,6 +29393,24 @@ export class WhatsappOrchestratorService {
   }
 
   /** A pending purchase decision and contact form are validated together, never a final order confirmation. */
+  /** Keep a promise to send an address out of the actual address field. */
+  private normalizeDeferredLocationOfferAcceptance(text: string, session: WhatsappSessionData, cfg: EffectiveWhatsappConfig): string | undefined {
+    if (!session.pendingAddOffer || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+      session.orderType !== 'delivery' || CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || /[¿?]/.test(text)) return undefined;
+    const clauses = text.split(/[.;\n]+/).map(value => value.trim()).filter(Boolean);
+    if (clauses.length < 3 || clauses.length > 4) return undefined;
+    let accepted = false, deferred = false, payment: string | undefined;
+    for (const clause of clauses) {
+      const said = this.normalizeForMatch(clause);
+      if (!accepted && /^(?:si|ese si|si ese|dale)$/.test(said)) accepted = true;
+      else if (!deferred && /^(?:ya|ahora) (?:te|le|les) (?:mando|envio|paso|comparto) (?:mi|la) (?:ubicacion|direccion)$/.test(said)) deferred = true;
+      else if (!payment && /^pago (?:por|con|en) /.test(said) && getEnabledPaymentMethods(cfg.paymentMethods || []).some(method =>
+        [method.label,...method.keywords].some(value => this.normalizeForMatch(value) === said.replace(/^pago (?:por|con|en) /, '')))) payment = clause;
+      else if (!/^(?:muchas gracias|gracias|bueno muchas gracias)$/.test(said)) return undefined;
+    }
+    return accepted && deferred && payment ? `sí; ${payment}` : undefined;
+  }
+
   private async tryHandleQuoteContactDecision(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, cfg: EffectiveWhatsappConfig,
