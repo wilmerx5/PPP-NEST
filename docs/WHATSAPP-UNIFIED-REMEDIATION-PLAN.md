@@ -1,8 +1,8 @@
-## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda446
+## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda447
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
-Estado registrado: staging ejecuta446 (`e46c377e`), producción446 (`97d36266`) y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
+Estado registrado: staging ejecuta447 (`3fc8c3d2`), producción446 (`97d36266`) y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
 
 Familias con correcciones y cobertura delimitada:
 
@@ -42,6 +42,8 @@ Tanda444 añade96 regresiones de dos consultas abreviadas de precio y recuperaci
 Tanda445 parte de nuevo chat real: cancelación«no me envíe nada» ignorada, recuperación del Combo Mixto a57.000 confirmada por usuario y ubicación propia confundida con FAQ del restaurante.40 regresiones nuevas, global41.794/517 y40 controles compilados con2 cierres simulados aprobados. Evidencias [445](whatsapp-batch-445-validation.json) y [despliegue445](whatsapp-batch-445-staging-deployment.json). Pendiente prioritaria la primera solicitud larga con precio aproximado, composición+ubicación futura+pago juntos y reparación de frustración; NO se cierra todo el incidente.
 
 Tanda446 reconoce el pedido acotado de un solo combo con dos preparaciones opuestas y ofrece el mixto único de su familia al precio de catálogo, con aceptación explícita.18 regresiones nuevas, global41.812/518 aprobado. Staging y producción446 verificados: integración Main226/6, TypeScript general/build,92 scripts y52 controles compilados/14 cierres simulados en cada entorno. Evidencias [446](whatsapp-batch-446-validation.json), [producción](whatsapp-batch-446-production-deployment.json) e [integración Main](whatsapp-batch-446-production-validation.json). Pendientes otras formulaciones largas y composición+ubicación+pago juntos; Kamppo398 sin cambio.
+
+Tanda447 corrige la aceptación explícita de oferta en domicilio con pago y promesa de enviar ubicación en3/4 cláusulas. No inventa dirección ni crea orden sin ella.20 regresiones, global41.832/519 y12 recorridos compilados hasta awaiting_address aprobados. Evidencias [447](whatsapp-batch-447-validation.json) y [staging447](whatsapp-batch-447-staging-deployment.json). Producción446 y Kamppo398 intactos; falta la composición larga con aceptación/pago del chat real.
 
 Fuentes de los incidentes y patrones lingüísticos:
 

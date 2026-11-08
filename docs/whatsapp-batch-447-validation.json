@@ -68,5 +68,9 @@
     "No original audio or real-model wording evaluated",
     "Long composition clause before acceptance remains outside pattern",
     "Direct normalizer guards do not claim full-router handling of every rejected input"
-  ]
+  ],
+  "stagingVerified": true,
+  "runtimeCommit": "3fc8c3d20783bde0cbe22590dd5bb3fb89b39efc",
+  "compiledJourneys": 12,
+  "compiledMockedClosures": 0
 }
