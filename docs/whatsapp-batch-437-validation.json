@@ -1,0 +1,37 @@
+{
+  "batch": 437,
+  "baseCommit": "de4ba25e5862eeeeaab70accb55ac81ee402bc5b",
+  "newTests": 96,
+  "focused": {
+    "tests": 192,
+    "suites": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScriptGeneral": {
+    "exitCode": 0
+  },
+  "mockedClosures": 96,
+  "runtimeChanged": false,
+  "previousGlobal": {
+    "batch": 435,
+    "tests": 40602,
+    "suites": 507,
+    "validatedSourceHashes": 726,
+    "allHashesStillMatch": true
+  },
+  "globalRepeated": false,
+  "scope": "Three synthetic menus; other explicitly named queued drink (extra or tea), direct/each price wording, quantities2/3, pickup/delivery, agent off/mock; first currency amount must match named product; pending attribute/queue/cart preserved; unique final order DTO with exact quantities/flavors/notes",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeCommit": "022ad252744fd907e30e82655bca7fc0aa670934",
+  "deploymentRepeated": false,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Explicit unique full names only; ambiguous pronouns or several drinks with same noun remain outside matrix",
+    "Model text/actions and external ports mocked; not commercial-readiness evidence"
+  ]
+}
