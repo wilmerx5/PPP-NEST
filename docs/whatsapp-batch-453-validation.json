@@ -63,7 +63,11 @@
     "Fixed-fee typed address; no external geocoding, distances or payment reconciliation tested",
     "Abbreviated restatement without cooking styles remains pending"
   ],
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
-  "kamppoChanged": false
+  "kamppoChanged": false,
+  "runtimeCommit": "45b83ae69ed5ddc73fa17e6a595b0525ec9a2406",
+  "compiledJourneys": 52,
+  "compiledDirectGuards": 24,
+  "compiledMockedClosures": 48
 }
