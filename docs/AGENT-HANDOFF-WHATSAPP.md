@@ -1,3 +1,9 @@
+## Tanda 443 — último teléfono válido antes del sabor (solo regresiones)
+
+192 regresiones nuevas del router: dos teléfonos válidos sucesivos en ambos órdenes, tres familias sintéticas, agente off/mock, recogida/domicilio, cantidades2/3, ambos órdenes de cotización y sabor por número/nombre. Cada teléfono se guarda sin cambiar carrito/atributo/cola ni crear orden;192 cierres DTO simulados únicos usan el último teléfono y conservan cantidades, sabores y notas de unidades anteriores/nuevas. Foco288/2 y TypeScript general aprobados. Sin fallo nuevo ni cambio del motor. Evidencia whatsapp-batch-443-validation.json.
+
+Texto del modelo neutral simulado no acredita redacción real; unidad previa sembrada tras construir la cola. No cubre teléfonos inválidos ni formularios contradictorios. Los729 hashes del global438 coinciden; solo se añade suite. No se repite global al no cambiar reglas compartidas:40.890/510 es evidencia previa438. Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Staging conserva runtime4385a5ddcd9 sin redespliegue; producción409 y Kamppo398 intactos. Siguen pendientes referencias ambiguas, decisiones competidoras, preparaciones de varias palabras, reconstrucción general de combos y política de sustituciones. Las simulaciones no acreditan preparación comercial.
+
 ## Tanda 442 — repetir cortesía/contacto antes del sabor (solo regresiones)
 
 192 regresiones nuevas del router: tres mensajes consecutivos con la misma cortesía o teléfono explícito, tres familias sintéticas, agente off/mock, recogida/domicilio, cantidades2/3, ambos órdenes de consulta de precios y sabor por número/nombre. Cada repetición conserva carrito, atributo y cola sin crear orden;192 cierres DTO simulados únicos conservan teléfono esperado, unidad anterior y nuevas con sus cantidades, sabores y notas. Foco288/2 y TypeScript general aprobados. Sin fallo nuevo ni cambio del motor. Evidencia whatsapp-batch-442-validation.json.
