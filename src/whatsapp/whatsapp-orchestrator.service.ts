@@ -1246,7 +1246,23 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleQuotedPortionInquiry(conv,msg.waId,text,cfg)) return;
 
     const quoteContactSession = this.conversationService.getSession(conv);
+    if (await this.tryRepairExplicitComboCorrection(conv, msg.waId, quoteContactSession, text)) return;
     if (await this.tryHandleStandaloneOrderConfusion(conv, msg.waId, quoteContactSession, text, cfg)) return;
+    // A complete name from an active purchase list precedes generic chicken/combo aliases.
+    const exactPurchaseList = quoteContactSession.pendingMatch;
+    if (!conv.humanTakeover && ['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) &&
+      exactPurchaseList?.intent === 'order' && !exactPurchaseList.selectionAdded && !exactPurchaseList.replacement &&
+      !exactPurchaseList.includesRequestedAccompaniment && !exactPurchaseList.alsoAdd?.length && !exactPurchaseList.priceAcceptanceProductId &&
+      !quoteContactSession.pendingAttribute && !quoteContactSession.pendingMultiOrder && !quoteContactSession.pendingAddOffer &&
+      !quoteContactSession.pendingPriceInquiry && !quoteContactSession.pendingAddressConflict && !quoteContactSession.pendingComposedDishRecovery &&
+      !CART_EDIT_SELECTION_KEYS.some(key => !!quoteContactSession[key]) &&
+      exactPurchaseList.candidates.filter(candidate => this.normalizeForMatch(candidate.name) === this.normalizeForMatch(text)).length === 1) {
+      if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) {
+        await this.reply(conv, msg.waId, cfg.closedMessage || 'Ahora estamos cerrados. Tu pedido sigue igual; podrás continuar cuando abramos.');
+        return;
+      }
+      if (await this.tryResolvePendingMatchPick(conv, msg.waId, quoteContactSession, text, await this.catalogService.getMenuProducts(), cfg)) return;
+    }
     if (await this.tryHandleRepeatedComposedAcceptance(conv, msg.waId, quoteContactSession, text, cfg)) return;
     text = this.normalizeDeferredLocationOfferAcceptance(text, quoteContactSession, cfg) || text;
     // A standalone explicit menu code retains its marker through short-answer routes.
@@ -10193,6 +10209,11 @@ export class WhatsappOrchestratorService {
     } else if (listOrCode === 'menu_code' && bareNum != null) {
       chosenLite =
         pending.candidates.find((c) => Number(c.code) === bareNum) ?? null;
+    }
+    // A full candidate name owns its SKU before family aliases (e.g. mixto vs broaster).
+    if (!chosenLite) {
+      const exact = pending.candidates.filter(candidate => this.normalizeForMatch(candidate.name) === this.normalizeForMatch(trimmed));
+      if (exact.length === 1) chosenLite = exact[0];
     }
     // "El combo 2 por fa": words every row shares, then a row number.
     if (!chosenLite) {
@@ -19623,6 +19644,45 @@ export class WhatsappOrchestratorService {
     if (!/\b(?:no tengo confirmad[oa]|no puedo (?:confirmar|verificar)(?:lo)?|no esta confirmad[oa])\b/.test(previous) ||
         !/\b(?:sustitucion|cambio|cambiar|acompanamiento|reemplazo)\b/.test(previous)) return false;
     await this.reply(conv,waId,`Entiendo: quieres verificar si pueden hacer ese cambio. No puedo confirmarlo con cocina desde este chat. Para comprobarlo antes de pedir, llama al *${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*. Tu pedido sigue igual.`);
+    return true;
+  }
+
+  /** An explicit combo correction replaces a mistaken single-family choice, never the cart. */
+  private async tryRepairExplicitComboCorrection(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+  ): Promise<boolean> {
+    const multi = session.pendingMultiOrder;
+    const first = multi?.ambiguous?.[0];
+    const pending: WhatsappSessionData['pendingMatch'] = session.pendingMatch || (first ? {query:first.segment,candidates:first.candidates} : undefined);
+    if (conv.humanTakeover || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+      !pending?.candidates?.length || pending.selectionAdded || pending.replacement || pending.alsoAdd?.length ||
+      pending.note || pending.unitAttributeGroups?.length || pending.correctedQuantity || pending.priceAcceptanceProductId ||
+      pending.includesRequestedAccompaniment || pending.offeredChoices || pending.offeredAlternatives?.length ||
+      (session.pendingQuantityHint?.quantity || pending.quantity || 1) !== 1 ||
+      session.pendingAttribute || session.pendingAddOffer || session.pendingPriceInquiry || session.pendingAddressConflict ||
+      session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const said = this.normalizeForMatch(text);
+    if (!/^(?:no es que usted no me entiende yo pedi un combo(?: un combo)?|no mire le estoy pidiendo un combo|no me entendiste era un combo)$/.test(said)) return false;
+    const family = this.normalizeForMatch(pending.query || '')
+      .replace(/^(?:quiero|quisiera|dame|me das|me regalas) /,'').replace(/^(?:un|1) /,'').replace(/^combo (?:de )?/,'');
+    if (!/^[a-z]{3,}$/.test(family) || !pending.candidates.every(product => this.normalizeForMatch(product.name || '').split(/\s+/).includes(family))) return false;
+    const withinFamily = (segment: string) => {
+      const value = this.normalizeForMatch(segment).replace(/^(?:un|1) /,'');
+      return [family,`combo de ${family}`,`combo ${family}`,'combo'].includes(value);
+    };
+    if (multi && (multi.confident?.length || multi.needsAttributes?.length ||
+      multi.ambiguous?.some(group => group.note || !withinFamily(group.segment)) ||
+      multi.unresolved?.some(segment => !withinFamily(segment)))) return false;
+    const products = await this.catalogService.getMenuProducts();
+    const combos = products.filter(product => product.availableNow !== false &&
+      this.normalizeForMatch(product.name).split(/\s+/).includes('combo') &&
+      this.normalizeForMatch(product.name).split(/\s+/).includes(family));
+    if (!combos.length) return false;
+    const next: WhatsappSessionData = {...session, pendingMultiOrder: undefined, productFocus: undefined,
+      pendingMatch: {query:`combo de ${family}`,candidates:combos,intent:'order',quantity:1}};
+    await this.conversationService.saveSession(conv, next);
+    await this.reply(conv, waId, 'Entiendo, estás corrigiendo la elección para pedir un combo. Tu carrito sigue igual.\n\n' +
+      this.catalogService.formatCategoryList(`Combos de ${family}`, combos));
     return true;
   }
 
