@@ -65,5 +65,9 @@
     "Only bounded wording and single-word family; arbitrary initial utterances not covered",
     "Combined composition/location/payment and frustration repair remain pending",
     "No paid inference or real audio evaluated"
-  ]
+  ],
+  "stagingVerified": true,
+  "runtimeCommit": "e46c377edcc251eae2d38c93b5ca19a14042bdc8",
+  "compiledControls": 52,
+  "compiledMockedClosures": 14
 }

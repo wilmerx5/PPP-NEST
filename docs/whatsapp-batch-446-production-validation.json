@@ -1,0 +1,43 @@
+{
+  "productionBase": "15161ef3e6afed29e464634c9c228e1f8f4cc74a",
+  "stagingSource": "e46c377edcc251eae2d38c93b5ca19a14042bdc8",
+  "phases": {
+    "focus": {
+      "exitCode": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "fullMergedInventoryRerun": false,
+  "sourceUnchanged": true,
+  "productionSourceFiles": 754,
+  "allWhatsappSourcesIdenticalToValidatedStaging": true,
+  "nonWhatsappSourcesPreservedFromProduction": true,
+  "priorSharedGlobal": {
+    "tests": 41812,
+    "suites": 518,
+    "evidence": "whatsapp-batch-446-validation.json"
+  },
+  "focus": {
+    "passed": 226,
+    "suites": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "scriptTests": 92,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "deploymentVerified": true,
+  "runtimeCommit": "97d36266a441f8a37e2a5d314b1a48406e7d575f",
+  "compiledControls": 52,
+  "compiledMockedClosures": 14
+}
