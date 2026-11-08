@@ -1,0 +1,38 @@
+{
+  "batch": 439,
+  "baseCommit": "c8e7c361a0f60287bb9c2c58aee33dbabbc3b7bb",
+  "newTests": 96,
+  "focused": {
+    "tests": 192,
+    "suites": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScriptGeneral": {
+    "exitCode": 0
+  },
+  "mockedClosures": 96,
+  "runtimeChanged": false,
+  "previousGlobal": {
+    "batch": 438,
+    "tests": 40890,
+    "suites": 510,
+    "validatedSourceHashes": 729,
+    "allHashesStillMatch": true
+  },
+  "globalRepeated": false,
+  "scope": "Three synthetic menus; paired named price inquiry when same product also has an existing cart line with different flavor/note; two/three pending primary units, pickup/delivery, agent off/mock and both mention orders; first two prices and pending state conserved; final DTO preserves old unit separately from new queued units",
+  "fixtureBoundary": "Existing conflicting-flavor cart line seeded directly after queue construction; this tests inquiry and subsequent completion, not how that initial cart was built",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeCommit": "5a5ddcd968809c73a82049792e3458d0943444e0",
+  "deploymentRepeated": false,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Explicit full names only; ambiguous pronouns and competing cart edits remain outside matrix",
+    "External services and model actions mocked; no commercial-readiness claim"
+  ]
+}

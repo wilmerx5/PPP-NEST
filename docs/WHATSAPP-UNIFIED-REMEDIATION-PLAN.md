@@ -1,4 +1,4 @@
-## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda438
+## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda439
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
@@ -26,6 +26,8 @@ Tanda436 añade96 regresiones de precio unitario durante cola de bebidas, sin ca
 Tanda437 añade96 regresiones de precio de otra bebida de la cola por nombre completo único, con primer importe correcto y96 cierres simulados; sin cambio de motor ni redespliegue. Evidencia [437](whatsapp-batch-437-validation.json). Pronombres ambiguos y sustantivos compartidos entre bebidas quedan pendientes.
 
 Tanda438 corrige cotización incompleta de dos productos nombrados explícitamente y unidos por«y»: resolvedor múltiple de catálogo antes del fallback individual.96 regresiones nuevas, global40.890/510 y32 recorridos compilados con cierres simulados aprobados. Evidencias [438](whatsapp-batch-438-validation.json) y [despliegue438](whatsapp-batch-438-staging-deployment.json). Los pronombres ambiguos siguen pendientes.
+
+Tanda439 añade96 regresiones de cotización conjunta con una unidad previa del mismo producto y otro sabor/nota,96 cierres simulados; sin cambio de motor ni redespliegue. El carrito previo se siembra en fixture; se acredita la consulta y continuidad posteriores. Evidencia [439](whatsapp-batch-439-validation.json).
 
 Fuentes de los incidentes y patrones lingüísticos:
 
