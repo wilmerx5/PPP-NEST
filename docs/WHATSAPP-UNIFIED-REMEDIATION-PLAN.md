@@ -1,8 +1,8 @@
-## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda437
+## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda438
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
-Estado registrado: staging ejecuta435 (`022ad252`), producción409 y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
+Estado registrado: staging ejecuta438 (`5a5ddcd9`), producción409 y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
 
 Familias con correcciones y cobertura delimitada:
 
@@ -24,6 +24,8 @@ Familias con correcciones y cobertura delimitada:
 Tanda436 añade96 regresiones de precio unitario durante cola de bebidas, sin cambiar el motor ni redesplegar: primer importe correcto, cantidades/atributos/notas conservados y96 cierres simulados. Evidencia [436](whatsapp-batch-436-validation.json). El runtime de staging sigue siendo435.
 
 Tanda437 añade96 regresiones de precio de otra bebida de la cola por nombre completo único, con primer importe correcto y96 cierres simulados; sin cambio de motor ni redespliegue. Evidencia [437](whatsapp-batch-437-validation.json). Pronombres ambiguos y sustantivos compartidos entre bebidas quedan pendientes.
+
+Tanda438 corrige cotización incompleta de dos productos nombrados explícitamente y unidos por«y»: resolvedor múltiple de catálogo antes del fallback individual.96 regresiones nuevas, global40.890/510 y32 recorridos compilados con cierres simulados aprobados. Evidencias [438](whatsapp-batch-438-validation.json) y [despliegue438](whatsapp-batch-438-staging-deployment.json). Los pronombres ambiguos siguen pendientes.
 
 Fuentes de los incidentes y patrones lingüísticos:
 

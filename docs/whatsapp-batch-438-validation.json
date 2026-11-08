@@ -59,5 +59,9 @@
   "limits": [
     "Only explicit multi-product references; ambiguous pronouns outside scope",
     "Model actions and external ports mocked; no commercial readiness claim"
-  ]
+  ],
+  "runtimeCommit": "5a5ddcd968809c73a82049792e3458d0943444e0",
+  "stagingVerified": true,
+  "compiledJourneys": 32,
+  "compiledMockedClosures": 32
 }
