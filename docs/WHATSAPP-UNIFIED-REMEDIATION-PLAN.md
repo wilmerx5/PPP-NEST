@@ -1,4 +1,4 @@
-## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda443
+## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda444
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
@@ -36,6 +36,8 @@ Tanda441 añade192 regresiones de cortesía/cambio explícito de teléfono antes
 Tanda442 añade192 regresiones de tres mensajes distintos con cortesía/teléfono repetidos antes del sabor:192 cierres simulados únicos, sin duplicar unidades ni perder atributos/notas. No prueba replay del mismo webhook. Sin cambio de motor ni redespliegue. Evidencia [442](whatsapp-batch-442-validation.json).
 
 Tanda443 añade192 regresiones de dos teléfonos válidos sucesivos antes del sabor:192 cierres simulados usan el último contacto sin cambiar cantidades, sabores ni notas. Sin cambio del motor ni redespliegue. Evidencia [443](whatsapp-batch-443-validation.json).
+
+Tanda444 añade96 regresiones de dos consultas abreviadas de precio y recuperación por nombre completo, con96 cierres simulados sin perder cola, cantidades, notas ni sabores. No acredita resolución general de pronombres. Sin cambio de motor ni redespliegue. Evidencia [444](whatsapp-batch-444-validation.json).
 
 Fuentes de los incidentes y patrones lingüísticos:
 
