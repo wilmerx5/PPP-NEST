@@ -1,0 +1,44 @@
+{
+  "batch": 441,
+  "baseCommit": "8c32a803bcd219ac4a42e9cb55508e54fcf72575",
+  "newTests": 192,
+  "focused": {
+    "tests": 288,
+    "suites": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScriptGeneral": {
+    "exitCode": 0
+  },
+  "mockedClosures": 192,
+  "runtimeChanged": false,
+  "previousGlobal": {
+    "batch": 438,
+    "tests": 40890,
+    "suites": 510,
+    "validatedSourceHashes": 729,
+    "allHashesStillMatch": true
+  },
+  "globalRepeated": false,
+  "scope": "Courtesy or explicit standalone phone update after paired price inquiry while same product has old flavor cart unit and pending new units; three synthetic menus, pickup/delivery, quantities2/3, both price mention orders, agent off/mock, flavor by number/name; exact queue preservation and unique final order with expected phone/notes/flavors/quantities",
+  "fixtureBoundary": "Existing primary drink cart unit seeded after queue construction; only price inquiry and subsequent flavor selection/checkout tested",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeCommit": "5a5ddcd968809c73a82049792e3458d0943444e0",
+  "deploymentRepeated": false,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Neutral mocked model text/actions do not assess real model phone acknowledgement or natural wording",
+    "Old unit seeded after queue construction; initial creation not tested",
+    "No claim for free-form competing instructions or commercial readiness"
+  ],
+  "fixtureCorrections": [
+    "Initial optional phone access fixed at compile time",
+    "Initial ack-specific assertion failed96 cases because neutral model text was mocked; not a runtime incident",
+    "Revised option-text assertion failed48 agent-on phone cases because runTurn stub is neutral; deterministic option text asserted only for agent-off/courtesy; all paths still assert persisted data and full checkout"
+  ]
+}
