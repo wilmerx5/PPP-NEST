@@ -1246,6 +1246,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleQuotedPortionInquiry(conv,msg.waId,text,cfg)) return;
 
     const quoteContactSession = this.conversationService.getSession(conv);
+    if (await this.tryRecoverRepeatedMixedOrder(conv, msg.waId, quoteContactSession, text, cfg)) return;
     if (await this.tryRepairExplicitComboCorrection(conv, msg.waId, quoteContactSession, text)) return;
     if (await this.tryHandleStandaloneOrderConfusion(conv, msg.waId, quoteContactSession, text, cfg)) return;
     // A complete name from an active purchase list precedes generic chicken/combo aliases.
@@ -19644,6 +19645,62 @@ export class WhatsappOrchestratorService {
     if (!/\b(?:no tengo confirmad[oa]|no puedo (?:confirmar|verificar)(?:lo)?|no esta confirmad[oa])\b/.test(previous) ||
         !/\b(?:sustitucion|cambio|cambiar|acompanamiento|reemplazo)\b/.test(previous)) return false;
     await this.reply(conv,waId,`Entiendo: quieres verificar si pueden hacer ese cambio. No puedo confirmarlo con cocina desde este chat. Para comprobarlo antes de pedir, llama al *${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*. Tu pedido sigue igual.`);
+    return true;
+  }
+
+  /** A bounded restatement recovers the missing mixed combo, not another copy of its registered side. */
+  private async tryRecoverRepeatedMixedOrder(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (conv.humanTakeover || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+      /[¿?]/.test(text) || session.pendingAttribute || session.pendingPriceInquiry || session.pendingAddressConflict ||
+      session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const said = this.normalizeForMatch(text);
+    const request = said.match(/^(?:(?:amigo|no mire) )?es un combo(?: es un combo)? de ([a-z]+) que viene (frito|broaster|broster) y (frito|broaster|broster)(?: que (?:vale|cuesta) (.+?))? y (?:una|1) (.+)$/);
+    if (!request || request[2].replace('broster','broaster') === request[3].replace('broster','broaster')) return false;
+    if (request[4]?.split(/\s+/).some(word => !/^(?:\d+|mil|pesos|me|dijeron|y|un|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos)$/.test(word))) return false;
+    const family = request[1], pending = session.pendingMatch, multi = session.pendingMultiOrder, offer = session.pendingAddOffer;
+    const familyClause = (value: string) => this.normalizeForMatch(value || '')
+      .replace(/^(?:quiero|quisiera|dame|me das|me regalas) /,'').replace(/^(?:un|1) /,'').replace(/^combo (?:de )?/,'');
+    if (pending && (pending.selectionAdded || pending.replacement || pending.note || pending.alsoAdd?.length ||
+      pending.unitAttributeGroups?.length || pending.correctedQuantity || pending.priceAcceptanceProductId ||
+      pending.includesRequestedAccompaniment || pending.offeredChoices || pending.offeredAlternatives?.length ||
+      (pending.quantity || 1) !== 1 || familyClause(pending.query) !== family ||
+      !pending.candidates?.length || !pending.candidates.every(product => this.normalizeForMatch(product.name || '').split(/\s+/).includes(family)))) return false;
+    if ((session.pendingQuantityHint?.quantity || 1) !== 1 || multi && (multi.confident?.length || multi.needsAttributes?.length ||
+      multi.ambiguous?.some(group => group.note || familyClause(group.segment) !== family) ||
+      multi.unresolved?.some(segment => familyClause(segment) !== family))) return false;
+    const products = await this.catalogService.getMenuProducts();
+    const canonical = (value: string) => this.normalizeForMatch(value).split(/\s+/)
+      .filter(word => !['de','del','el','la'].includes(word)).map(word => this.catalogService.singularToken(word)).join(' ');
+    const sideMatches = products.filter(product => product.availableNow !== false && canonical(product.name) === canonical(request[5]));
+    if (sideMatches.length !== 1) return false;
+    const side = sideMatches[0], sideLines = session.cart.filter(line => line.productId === side.id);
+    if (sideLines.length !== 1 || sideLines[0].quantity !== 1) return false;
+    const mixed = products.filter(product => product.availableNow !== false &&
+      ['combo','mixto',family].every(word => this.normalizeForMatch(product.name).split(/\s+/).includes(word)));
+    if (mixed.length !== 1 || mixed[0].id === side.id) return false;
+    const product = mixed[0], existing = session.cart.filter(line => line.productId === product.id);
+    if (offer && (pending || multi || offer.productId !== product.id || offer.quantity !== 1 || offer.price !== product.price || (offer.productIds?.length || 0) > 1)) return false;
+    if (session.cart.some(line => line.productId !== side.id && line.productId !== product.id && this.normalizeForMatch(line.name).split(/\s+/).includes(family))) return false;
+    if (!pending && !multi && !offer && !existing.length) return false;
+    if (existing.length && (existing.length !== 1 || existing[0].quantity !== 1 || existing[0].unitPrice !== product.price || pending || multi || offer)) return false;
+    if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) {
+      await this.reply(conv, waId, cfg.closedMessage || 'Ahora estamos cerrados. Tu pedido sigue igual; podrás continuar cuando abramos.');
+      return true;
+    }
+    if (existing.length) {
+      const reminder = this.formatInterruptedStepReminder(conv, session);
+      await this.reply(conv, waId, `Ya tengo *${product.name}* y *${side.name}* en tu pedido. No añadí más productos.\n\n` +
+        this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) + (reminder ? `\n\n${reminder}` : ''));
+      return true;
+    }
+    if (!offer) {
+      await this.conversationService.saveSession(conv, {...session, pendingMatch: undefined, pendingMultiOrder: undefined,
+        pendingAddOffer: {createdAt:Date.now(),productId:product.id,name:product.name,code:product.code,price:product.price,quantity:1,sourceText:product.name},
+        productFocus: {productId:product.id,name:product.name}}, 'building_cart');
+    }
+    await this.reply(conv, waId, `Conservo *${side.name}* que ya está en tu pedido. Para el combo mitad frito y mitad broaster tenemos *${product.name}*, a ${this.catalogService.formatMoney(product.price)} según la carta.\n\n¿Te agrego ese combo mixto?`);
     return true;
   }
 
