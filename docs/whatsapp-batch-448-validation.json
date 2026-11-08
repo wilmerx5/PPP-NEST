@@ -71,5 +71,10 @@
     "No order closure because real delivery address is still missing",
     "Other composition wording, frustration recovery and repeated long acceptance remain pending",
     "Guard assertions apply to normalizer, not full behavior for every rejected phrase"
-  ]
+  ],
+  "stagingVerified": true,
+  "runtimeCommit": "d6207a4300b86e2308e4ae8190cf68a2310658ee",
+  "compiledJourneys": 12,
+  "compiledLegacyGuard": 1,
+  "compiledMockedClosures": 0
 }
