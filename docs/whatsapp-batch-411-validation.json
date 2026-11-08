@@ -1,0 +1,80 @@
+{
+  "baseCommit": "f592b26d6cad798f3fb65034aa69c88fb36330d6",
+  "batches": [
+    411
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 909.99,
+      "sourceUnchanged": true,
+      "tests": 38220,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.66,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 701,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 482,
+  "tests": 38236,
+  "suites": 482,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 411,
+  "newRegressions": 402,
+  "newSimulatedClosures": 44,
+  "initialBaseline": {
+    "tests": 160,
+    "failed": 132,
+    "passed": 28
+  },
+  "compatibilityRecovery": {
+    "passed": 620,
+    "suites": 5
+  },
+  "feedbackAndConflictRecovery": {
+    "passed": 656,
+    "failed": 4,
+    "suites": 4,
+    "note": "Four remaining second-attribute/address cases subsequently repaired and included in 620/5 passing focus."
+  },
+  "limits": [
+    "External ports mocked; no real orders, Meta or paid inference.",
+    "Fixed delivery fee in new cases; no live geocoding.",
+    "402 new tests cover attribute/contact decisions; not proof of commercial readiness.",
+    "Shared-value, queued attributes, quantity and previous cart include session-boundary fixtures."
+  ],
+  "production": "409 unchanged",
+  "kamppo": "398 unchanged",
+  "runnersPassed": 92,
+  "priorFailedGlobal": {
+    "passed": 38142,
+    "failed": 78,
+    "note": "Pre-fix diagnostic only: feedback/contact, address conflicts, secondary option/address and incomplete legacy snapshots. All corrected; full final inventory above rerun on frozen final sources."
+  },
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "657581ac82f3a291d829bfd2062e9816bc0b9d44",
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/42286759633",
+    "compiledControls": 102
+  }
+}

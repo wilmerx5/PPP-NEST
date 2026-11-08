@@ -1,0 +1,68 @@
+{
+  "baseCommit": "ac764ded986839c62ad3941e7699f44009613b1a",
+  "batches": [
+    434
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1029.18,
+      "sourceUnchanged": true,
+      "tests": 40514,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 15.11,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 725,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 506,
+  "tests": 40530,
+  "suites": 506,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 96,
+  "baseline": {
+    "tests": 288,
+    "failed": 32,
+    "passed": 256,
+    "referenceTests": 192
+  },
+  "finalFocused": {
+    "tests": 330,
+    "suites": 3,
+    "failed": 0
+  },
+  "mockedClosures": 96,
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "Normalize already validated formatted phone before canonical contact update in mixed question/contact routing; pending drink regression matrix",
+  "limits": [
+    "External services and model actions mocked; no commercial-readiness claim",
+    "Other free-form competing decisions remain outside this matrix"
+  ],
+  "runtimeCommit": "5245a46735b872472c00fc3694ef89e7c45c1af2",
+  "stagingVerified": true,
+  "compiledJourneys": 36,
+  "compiledMockedClosures": 36
+}

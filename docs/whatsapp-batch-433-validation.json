@@ -1,0 +1,82 @@
+{
+  "baseCommit": "7991873d88fbf09a6e2f826ea756ef5ed29275ee",
+  "batches": [
+    433
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1009.31,
+      "sourceUnchanged": true,
+      "tests": 40418,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.3,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 724,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 505,
+  "tests": 40434,
+  "suites": 505,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 192,
+  "baseline": {
+    "tests": 192,
+    "failed": 192,
+    "passed": 0
+  },
+  "initialFocused": {
+    "tests": 312,
+    "suites": 3,
+    "failed": 0
+  },
+  "finalFocused": {
+    "tests": 354,
+    "suites": 4,
+    "failed": 0
+  },
+  "failedGlobalAttempt": {
+    "completedSuites": 6,
+    "passed": 426,
+    "failed": 6,
+    "status": "Stopped and archived; uncertain combo list inquiries regressed before scope restriction"
+  },
+  "scope": "Mixed delimited factual question plus labelled contact aliases celular/whatsapp while pendingAttribute and no pendingMatch/multi/cart edit; existing tel\u00e9fono route retained; canonical phone-update routing reused",
+  "mockedClosures": 192,
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "limits": [
+    "New aliases limited to one pending attribute with no competing list/multi/cart edit",
+    "Other free-form phone phrasing and arbitrary mixed instructions not covered",
+    "Mocks do not establish commercial readiness"
+  ],
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "1de0a131812f2c5345f7682ba992cd1e6dd5a2e4",
+    "workflowRun": 42432608972,
+    "compiledFullRouterJourneys": 12,
+    "compiledMockedClosures": 12
+  }
+}

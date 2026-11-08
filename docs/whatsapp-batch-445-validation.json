@@ -1,0 +1,80 @@
+{
+  "baseCommit": "b514051dbebfa14430514422253dc9fa951a3220",
+  "batches": [
+    445
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1025.73,
+      "sourceUnchanged": true,
+      "tests": 41778,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 13.02,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 736,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 517,
+  "tests": 41794,
+  "suites": 517,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 40,
+  "baseline": {
+    "tests": 26,
+    "failed": 26,
+    "passed": 0
+  },
+  "focused": {
+    "tests": 68,
+    "suites": 3,
+    "failed": 0,
+    "scope": "38 new before adding two registered-order controls plus30 prior tests"
+  },
+  "finalNewTests": {
+    "tests": 40,
+    "suites": 1,
+    "failed": 0
+  },
+  "mockedClosures": 2,
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "userConfirmedMixedComboPrice": 57000,
+  "priceSource": "User-confirmed fixture; runtime always reads catalog, no price hardcoded",
+  "scope": "Explicit no-send-anything withdrawal including supplied ASR wording; guard questions/conditions/nothing-more and registered orders; combo composition clarification priority before agent and persisted pending offer; customer own location announcement excluded from restaurant location FAQ",
+  "fixtureCorrections": [
+    "Registered-order test initially lacked reopenForNewOrder mock (2 cases); fixed harness only"
+  ],
+  "limits": [
+    "Text transcripts only, not original audio transcription evaluated",
+    "Initial long order with approximate quoted price not fully resolved",
+    "Combined spoken payment/location announcement and frustration repair remain pending",
+    "No real channel/model/commerce readiness claim"
+  ],
+  "runtimeCommit": "46ebf77438b8c7d06906fe2e1c358a78b3d073c0",
+  "stagingVerified": true,
+  "compiledControls": 40,
+  "compiledMockedClosures": 2
+}

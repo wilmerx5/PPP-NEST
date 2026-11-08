@@ -1,0 +1,40 @@
+{
+  "batch": 444,
+  "baseCommit": "61f5890efa21098c8cf1f989a967148295ee5831",
+  "newTests": 96,
+  "focused": {
+    "tests": 192,
+    "suites": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScriptGeneral": {
+    "exitCode": 0
+  },
+  "mockedClosures": 96,
+  "runtimeChanged": false,
+  "previousGlobal": {
+    "batch": 438,
+    "tests": 40890,
+    "suites": 510,
+    "validatedSourceHashes": 729,
+    "allHashesStillMatch": true
+  },
+  "globalRepeated": false,
+  "scope": "Short price references Y esa cu\u00e1nto vale/Cu\u00e1nto cuesta eso while existing same-product old flavor and pending multi queue coexist; explicit named drink price inquiry recovers without stale pendingPriceInquiry; three synthetic menus, pickup/delivery, agent off/mock, quantities2/3 and flavor number/name; unique final DTO with exact old/new flavors, notes, quantities and contact",
+  "fixtureBoundary": "Existing primary drink cart unit seeded after queue construction; only price inquiry and subsequent flavor selection/checkout tested",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeCommit": "5a5ddcd968809c73a82049792e3458d0943444e0",
+  "deploymentRepeated": false,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Only two short price phrasings followed by explicit full-name inquiry",
+    "No general claim for all ambiguous pronouns, multi-referent resolution or real model wording",
+    "Existing old-flavor line seeded after queue construction; external ports/model actions mocked",
+    "No commercial-readiness claim"
+  ]
+}

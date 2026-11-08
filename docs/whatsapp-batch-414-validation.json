@@ -1,0 +1,80 @@
+{
+  "baseCommit": "2890576ea4dbaf2c5a92f9b318879e6b730649aa",
+  "batches": [
+    414
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 879.3,
+      "sourceUnchanged": true,
+      "tests": 39004,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.21,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 705,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 486,
+  "tests": 39020,
+  "suites": 486,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 296,
+  "newSimulatedClosures": 36,
+  "stagedBaseline": {
+    "cases": 72,
+    "failed": 72,
+    "passed": 0,
+    "router": 413,
+    "note": "Corrected baseline rerun normalizes stored option casing; earlier baseline had an over-specific case assertion."
+  },
+  "businessVerificationBaseline": {
+    "cases": 60,
+    "failed": 60,
+    "passed": 0
+  },
+  "focus": {
+    "passed": 1186,
+    "suites": 5
+  },
+  "limits": [
+    "Pending configurable purchase/replacement and uncertain last outbound response prepared at session boundaries; responses, cart mutation and order closures use full router.",
+    "No business authorization or pricing rule for swapping side dishes has been inferred; in-chat kitchen consultation/handoff remains unavailable.",
+    "Only bounded verification followups about the immediately preceding uncertain change are intercepted; stale or unrelated history and final confirmation are excluded.",
+    "Single counted stages, remaining groups and complete distributions; multi-product competing choices remain outside this batch.",
+    "External ports mocked; fixed delivery fee; no live geocoding, paid inference, Meta or real orders."
+  ],
+  "production": "409 unchanged",
+  "kamppo": "398 unchanged",
+  "nextPriorities": [
+    "Multiple competing pending choices with contact data.",
+    "Price inquiry continuation such as medio broaster → y un pollo, retaining inquiry intent; observed in latest supplied chat but not changed in this batch."
+  ],
+  "runnersPassed": 92,
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "efc571b5bc584c987644c3615df9cf1fdfe4f90b",
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/42324260420",
+    "compiledControls": 126
+  }
+}

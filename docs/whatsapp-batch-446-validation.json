@@ -1,0 +1,73 @@
+{
+  "baseCommit": "bd7f255aa06b4261a14f04db4d5cc33a4a8dc235",
+  "batches": [
+    446
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1313.63,
+      "sourceUnchanged": true,
+      "tests": 41796,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 14.95,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 737,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 518,
+  "tests": 41812,
+  "suites": 518,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 18,
+  "baseline": {
+    "tests": 12,
+    "failed": 12,
+    "passed": 0,
+    "fixture": "Initial both catalogs57k; final synthetic Bowl varied to63k"
+  },
+  "focused": {
+    "tests": 66,
+    "suites": 3,
+    "failed": 0
+  },
+  "finalNew": {
+    "tests": 18,
+    "failed": 0
+  },
+  "mockedClosures": 12,
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "Bounded single-combo request with two opposing preparation styles, courtesy prefixes and numeric/spoken approximate price suffix; unique available same-family catalog mixed combo offered at catalog price, explicit acceptance required; reject extra dishes/multiple combos/questions/pending decisions/unavailable/duplicate candidates",
+  "limits": [
+    "Only bounded wording and single-word family; arbitrary initial utterances not covered",
+    "Combined composition/location/payment and frustration repair remain pending",
+    "No paid inference or real audio evaluated"
+  ],
+  "stagingVerified": true,
+  "runtimeCommit": "e46c377edcc251eae2d38c93b5ca19a14042bdc8",
+  "compiledControls": 52,
+  "compiledMockedClosures": 14
+}

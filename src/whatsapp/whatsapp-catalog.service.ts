@@ -815,6 +815,12 @@ export class WhatsappCatalogService {
    * “¿Qué tienes que sea sudado?” / “algo frito” / “tienes asado?” —
    * browse por estilo de preparación (no dump de categorías).
    */
+  /** Literal style vocabulary, independent of whether a phrase requests catalogue browsing. */
+  resolveCookingStyleToken(text: string): string | null {
+    const token = normalizeText(fixCommonOrderTypos(text || ''));
+    return COOKING_STYLE_TOKENS.has(token) ? token : null;
+  }
+
   extractCookingStyleBrowseIntent(text: string): string | null {
     const raw = (text || '').trim();
     // An inventory condition inside an explicit purchase belongs to order interpretation,
@@ -1110,6 +1116,8 @@ export class WhatsappCatalogService {
   isRestaurantLocationInquiry(text: string): boolean {
     const q = normalizeText(text);
     if (!q || q.length < 5) return false;
+    // A customer announcing their own pin/address is not asking for the restaurant.
+    if (/\b(?:te|le|les) (?:mando|envio|paso|comparto) (?:mi|la) (?:ubicacion|direccion)\b/.test(q)) return false;
     if (new RegExp(FOOD_ORDER_TOKEN, 'i').test(q) && /\b(quiero|dame|ponme|agrega)\b/.test(q)) {
       return false;
     }
@@ -8201,12 +8209,15 @@ export class WhatsappCatalogService {
     const q = normalizeText(text);
     if (!q || q.length < 2) return null;
 
-    for (const p of candidates) {
-      const name = normalizeText(p.name);
-      if (q === name || (name.length >= 5 && (q.includes(name) || name.includes(q)))) {
-        return p;
-      }
-    }
+    const exact = candidates.filter(product => normalizeText(product.name) === q);
+    if (exact.length === 1) return exact[0];
+    if (exact.length > 1) return null;
+    const partial = candidates.filter(product => {
+      const name = normalizeText(product.name);
+      return name.length >= 5 && (q.includes(name) || name.includes(q));
+    });
+    if (partial.length === 1) return partial[0];
+    if (partial.length > 1) return null;
 
     const portion = this.detectPortionHint(text);
     if (portion) {

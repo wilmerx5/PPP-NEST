@@ -1,3 +1,55 @@
+## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda445
+
+Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
+
+Estado registrado: staging ejecuta445 (`46ebf774`), producción409 y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
+
+Familias con correcciones y cobertura delimitada:
+
+- **Contacto coloquial omitido en una consulta mixta.** Con bebida pendiente, preguntar precio junto a «mi celular es…»/«mi WhatsApp es…» conservaba el teléfono viejo. Tanda433 admite los alias solo con atributo pendiente sin otra lista/multi/edición, reutilizando la ruta de teléfono.192 regresiones, global40.434/505 y12 recorridos del router compilado/cierres simulados; una regresión de consulta de combos detectada en el primer intento se corrigió acotando el contexto. Evidencias [433](whatsapp-batch-433-validation.json) y [despliegue433](whatsapp-batch-433-staging-deployment.json). No resuelve toda frase libre de contacto.
+
+- **Código explícito confundido con fila.** Si código#1 pertenece a la segunda fila, «1» elige fila1 y «#1» elige el SKU#1. Tanda425 corrige pérdida de marcador# y respuestas completas «el/la #num» en el contexto acotado;80 regresiones y44 controles compilados verificados. Evidencias [425](whatsapp-batch-425-validation.json) y [despliegue425](whatsapp-batch-425-staging-deployment.json). Tanda426 admite código explícito único de la lista junto con contacto, manteniendo validación conjunta y rechazo de condiciones/códigos inexistentes/decorados;176 regresiones,72 cierres simulados y92 controles compilados verificados. Evidencias [426](whatsapp-batch-426-validation.json) y [despliegue426](whatsapp-batch-426-staging-deployment.json). No autoriza códigos externos a esa lista ni otras decisiones competidoras.
+
+- **Consulta confundida con compra y elección prematura.** Pedir precio/detalles, repetir «hamburguesa» o comparar porciones no debe añadir la primera opción. Tandas415–416 para comparación abreviada;420–421 para coincidencias parciales ambiguas y prioridad del nombre exacto. Evidencia [421](whatsapp-batch-421-validation.json) y [despliegue421](whatsapp-batch-421-staging-deployment.json). Solo se acredita el alcance documentado de esas rutas.
+- **Respuesta aplicada a la pregunta equivocada.** Precio y sabor abiertos a la vez; «sí» o un número con contacto no debe elegir ni guardar parte del formulario. Tanda417 solicita una aclaración y admite recuperación explícita;418 prueba contradicciones/formularios incompletos. Evidencias [417](whatsapp-batch-417-validation.json) y [418](whatsapp-batch-418-validation.json).
+- **Duplicados, cantidades y notas durante la continuidad.** Cortesía, contacto o consultar otra opción no autorizan otra compra. Tandas422–424 verifican carritos anteriores, unidades, notas, selección por nombre/fila/ordinal/código y cierres simulados. Evidencias [422](whatsapp-batch-422-validation.json), [423](whatsapp-batch-423-validation.json) y [424](whatsapp-batch-424-validation.json). Las duplicaciones históricas de origen no reproducido no se cierran por estas matrices.
+- **Contacto mezclado con elección, sustitución o reparto.** Aplicación parcial de nombre/dirección/pago, pérdida de opciones o reparto incorrecto. Tandas409–414 cubren formularios con decisiones concretas, atributos, sustituciones y reparto completo/por etapas; no toda combinación arbitraria. Evidencias [411](whatsapp-batch-411-validation.json), [412](whatsapp-batch-412-validation.json), [413](whatsapp-batch-413-validation.json), [414](whatsapp-batch-414-validation.json).
+- **Producto compuesto interpretado como líneas separadas.** Casos como arroz con costillas y posterior «en combo». Tandas399–400 cubren aclarar/reunir productos mediante propuesta y respuesta; no se da por resuelta toda reconstrucción de varios combos. Evidencias [399](whatsapp-batch-399-validation.json) y [400](whatsapp-batch-400-validation.json).
+- **Cancelación de todo frente a una compra pendiente.** Tandas368/396/397 acotan cancelación individual/cola;419 verifica cancelar las dos decisiones competidoras y empezar limpio. Evidencia reciente [419](whatsapp-batch-419-validation.json); antecedentes en el historial inferior.
+
+- **Teléfono formateado perdido durante consulta con bebida pendiente.** Tanda434 reproduce paréntesis/guion y normaliza el número ya validado antes de la ruta de actualización.96 regresiones nuevas y36 recorridos compilados con cierres simulados; espacios y+57 incluidos. Evidencias [434](whatsapp-batch-434-validation.json) y [despliegue434](whatsapp-batch-434-staging-deployment.json). No acredita todas las mezclas libres de preguntas y contacto.
+
+- **Precio atribuido al producto equivocado.** Tanda435 impide tomar el único producto del carrito cuando la consulta nombra otro sujeto no identificado; conserva referencias implícitas, nombres completos de catálogo y precio por bebida pendiente.72 regresiones nuevas y72 recorridos compilados con cierres simulados. Evidencias [435](whatsapp-batch-435-validation.json) y [despliegue435](whatsapp-batch-435-staging-deployment.json). No acredita todas las paráfrasis libres.
+
+Tanda436 añade96 regresiones de precio unitario durante cola de bebidas, sin cambiar el motor ni redesplegar: primer importe correcto, cantidades/atributos/notas conservados y96 cierres simulados. Evidencia [436](whatsapp-batch-436-validation.json). El runtime de staging sigue siendo435.
+
+Tanda437 añade96 regresiones de precio de otra bebida de la cola por nombre completo único, con primer importe correcto y96 cierres simulados; sin cambio de motor ni redespliegue. Evidencia [437](whatsapp-batch-437-validation.json). Pronombres ambiguos y sustantivos compartidos entre bebidas quedan pendientes.
+
+Tanda438 corrige cotización incompleta de dos productos nombrados explícitamente y unidos por«y»: resolvedor múltiple de catálogo antes del fallback individual.96 regresiones nuevas, global40.890/510 y32 recorridos compilados con cierres simulados aprobados. Evidencias [438](whatsapp-batch-438-validation.json) y [despliegue438](whatsapp-batch-438-staging-deployment.json). Los pronombres ambiguos siguen pendientes.
+
+Tanda439 añade96 regresiones de cotización conjunta con una unidad previa del mismo producto y otro sabor/nota,96 cierres simulados; sin cambio de motor ni redespliegue. El carrito previo se siembra en fixture; se acredita la consulta y continuidad posteriores. Evidencia [439](whatsapp-batch-439-validation.json).
+
+Tanda440 añade96 regresiones de selección del sabor pendiente por número/nombre con unidad previa del mismo producto y otro sabor:96 cierres simulados conservan ambas preparaciones y notas; sin cambio de motor ni redespliegue. Estado previo sembrado en fixture. Evidencia [440](whatsapp-batch-440-validation.json).
+
+Tanda441 añade192 regresiones de cortesía/cambio explícito de teléfono antes del sabor pendiente:192 cierres simulados conservan contacto, unidades previas/nuevas, sabores y notas. Texto del modelo neutral simulado no acredita redacción real. Sin cambio de motor ni redespliegue. Evidencia [441](whatsapp-batch-441-validation.json).
+
+Tanda442 añade192 regresiones de tres mensajes distintos con cortesía/teléfono repetidos antes del sabor:192 cierres simulados únicos, sin duplicar unidades ni perder atributos/notas. No prueba replay del mismo webhook. Sin cambio de motor ni redespliegue. Evidencia [442](whatsapp-batch-442-validation.json).
+
+Tanda443 añade192 regresiones de dos teléfonos válidos sucesivos antes del sabor:192 cierres simulados usan el último contacto sin cambiar cantidades, sabores ni notas. Sin cambio del motor ni redespliegue. Evidencia [443](whatsapp-batch-443-validation.json).
+
+Tanda444 añade96 regresiones de dos consultas abreviadas de precio y recuperación por nombre completo, con96 cierres simulados sin perder cola, cantidades, notas ni sabores. No acredita resolución general de pronombres. Sin cambio de motor ni redespliegue. Evidencia [444](whatsapp-batch-444-validation.json).
+
+Tanda445 parte de nuevo chat real: cancelación«no me envíe nada» ignorada, recuperación del Combo Mixto a57.000 confirmada por usuario y ubicación propia confundida con FAQ del restaurante.40 regresiones nuevas, global41.794/517 y40 controles compilados con2 cierres simulados aprobados. Evidencias [445](whatsapp-batch-445-validation.json) y [despliegue445](whatsapp-batch-445-staging-deployment.json). Pendiente prioritaria la primera solicitud larga con precio aproximado, composición+ubicación futura+pago juntos y reparación de frustración; NO se cierra todo el incidente.
+
+Fuentes de los incidentes y patrones lingüísticos:
+
+- [Revisión de chats31/10](whatsapp-chats-3110-review.md) y [plan31/10](whatsapp-chats-3110-remediation-plan.md).
+- [Revisión01/11](whatsapp-chats-0111-review.md) y [plan01/11](whatsapp-chats-0111-remediation-plan.md).
+- [Corpus de regresiones04/11](whatsapp-chats-1104-regressions.json).
+- [Patrones regionales y límites de la investigación](whatsapp-regional-patterns-2810.md). Los ejemplos sintéticos no representan una muestra estadística de pedidos por región.
+
+Abiertos o con evidencia insuficiente: otras decisiones competidoras; preparaciones de varias palabras; política de sustitución de acompañamientos que debe confirmar el local; reconstrucción general de varios combos; compras históricas inesperadas cuyo origen requiere trazas/messageId/sesión. Las correcciones no acreditan ausencia de errores en el piloto. Las pruebas nuevas de esta tanda no llaman modelos ni Meta ni crean órdenes externas.
+
 ## Tanda397 — retirar por nombre otra compra de la cola (staging desplegado y verificado)
 
 Baseline8/8 fallos: «cancela el / no quiero el Combo…» nombrando una compra posterior dejaba ese producto en la cola. Ahora un nombre completo y único retira solo esa fila pendiente, conserva la opción activa y las demás compras. Si el producto también está en carrito, conserva ambos hasta recibir «cancela la compra pendiente de NOMBRE». Preguntas y mensajes entre comillas no retiran productos. Nombres repetidos conservan la cola y piden completar la selección actual para distinguir las compras.
@@ -191,13 +243,6 @@ PPP producción: `c1563528`, workflow41686492945; API local/pública ok, contene
 Kamppo: tandas322–378 migradas y desplegadas en `708a519f71ba`, workflow41689523342; imagen y health verificados, DB up. Global local:35172 pruebas/428 suites del motor,496 pruebas/70 suites API,92 pruebas de scripts y tipos/build aprobados. Seis recorridos host nuevos; UUIDs, recargos, separación por restaurante/canal y coexistencia preservados. CI adicional registrado en evidencia; no implica una conversación real nueva. Evidencias `whatsapp-batch-378-kamppo-validation.json` y `whatsapp-batch-378-kamppo-deployment.json`.
 
 Staging conserva runtime378 `82a2acf2`. Cero inferencia pagada/Meta/órdenes externas durante esta entrega; presupuesto267/256/11 intacto. Los estados anteriores de producción349/Kamppo321 son históricos. Próximo trabajo: retomar pruebas en staging sobre alcance por unidades en líneas repetidas y notas en varios productos.
-
-
-## Producción — tandas350–378 publicadas
-
-Producción PPP desplegada y verificada en `c1563528`: API local/pública ok, contenedor activo, cero reinicios, imagen confirmada y modelos/configuración privados preservados. Workflow41686492945; evidencia whatsapp-batch-378-production-deployment.json. Merge de Main con staging; conflictos solo documentales, conservando ambos registros. WhatsApp idéntico a staging378 validado (35268pruebas/446suites consolidadas); TypeScript general/build del merge aprobados. Se conservaron las funcionalidades previas exclusivas de Main.
-
-Migración Kamppo322–378 terminada y despliegue verificado en `708a519f71ba`; ver estado actual y evidencia al inicio de este documento.
 
 
 ## VIGENTE — tanda378: conservar la aclaración de nota entre líneas del mismo plato

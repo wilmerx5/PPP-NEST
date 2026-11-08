@@ -1,0 +1,42 @@
+{
+  "batch": 442,
+  "baseCommit": "756d24c5935ffc796c9ce06b1ed3222e24c7dfaf",
+  "newTests": 192,
+  "focused": {
+    "tests": 288,
+    "suites": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScriptGeneral": {
+    "exitCode": 0
+  },
+  "mockedClosures": 192,
+  "runtimeChanged": false,
+  "previousGlobal": {
+    "batch": 438,
+    "tests": 40890,
+    "suites": 510,
+    "validatedSourceHashes": 729,
+    "allHashesStillMatch": true
+  },
+  "globalRepeated": false,
+  "scope": "Three sequential distinct inbound messages repeating courtesy or same explicit phone update before pending flavor selection; three synthetic menus, pickup/delivery, quantities2/3, both price mention orders, agent off/mock, numeric/literal flavor; after each repetition cart/pending attribute/queue unchanged and no order; final unique DTO with expected phone and old/new quantities/flavors/notes",
+  "fixtureBoundary": "Existing primary drink cart unit seeded after queue construction; only price inquiry and subsequent flavor selection/checkout tested",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeCommit": "5a5ddcd968809c73a82049792e3458d0943444e0",
+  "deploymentRepeated": false,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Sequential distinct inbound messages, not replay of the same webhook ID",
+    "Neutral mocked model wording does not assess real model acknowledgement",
+    "Old unit seeded after queue construction; initial creation not tested",
+    "No commercial-readiness claim"
+  ],
+  "repetitionsPerJourney": 3,
+  "webhookReplayTested": false
+}

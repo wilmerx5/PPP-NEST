@@ -1,0 +1,21 @@
+{
+  "batch": 419,
+  "baseCommit": "2c8f7e396fbbd3a2e61857bf1df5ef08a9306555",
+  "changeType": "Tests only",
+  "newTests": 16,
+  "passed": 16,
+  "failed": 0,
+  "suites": 1,
+  "typescriptExitCode": 0,
+  "previousValidatedSourcesUnchanged": true,
+  "fullInventoryRerun": false,
+  "reason": "Only a new test file; no shared rule or runtime source modified",
+  "coverage": "Four natural cancellation forms, two synthetic catalog families, agent off/mock, cancellation of price and attribute decisions, empty cart, clean restart without old products or external orders",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelChanges": false,
+  "runtimeDeploymentNeeded": false,
+  "stagingRuntime": "ac3189767a3ce06dc741f25030ed9351d7313b4b",
+  "productionChanged": false,
+  "kamppoChanged": false
+}

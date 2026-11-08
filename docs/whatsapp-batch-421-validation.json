@@ -1,0 +1,81 @@
+{
+  "baseCommit": "13699c51ebe90447eab1b3c9653bce05ab52b33b",
+  "batches": [
+    421
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 911.35,
+      "sourceUnchanged": true,
+      "tests": 39362,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.76,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 712,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 493,
+  "tests": 39378,
+  "suites": 493,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 22,
+  "baseline": {
+    "tests": 16,
+    "failed": 16,
+    "passed": 0
+  },
+  "focused": {
+    "tests": 364,
+    "suites": 3,
+    "failed": 0,
+    "note": "Before six additional catalog boundary tests; complete inventory validates final22 new cases"
+  },
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "interruptedAttempts": [
+    {
+      "exitCode": 143,
+      "completedSuites": 97,
+      "passedTests": 20377
+    },
+    {
+      "exitCode": 143,
+      "completedSuites": 5,
+      "passedTests": 2860
+    }
+  ],
+  "finalRun": "Detached full runner, all sources unchanged, complete exact inventory",
+  "limits": [
+    "Mocks do not establish commercial readiness",
+    "Other ranking and family-specific heuristics retain their existing rules"
+  ],
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "90256692cff9d0815ff9d7c6239703335f60e036",
+    "workflowRun": 42391931800,
+    "compiledControls": 24
+  }
+}

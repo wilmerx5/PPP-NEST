@@ -1,0 +1,81 @@
+{
+  "baseCommit": "182e093f5674252d3d7f8d380629984d8f2c7cae",
+  "batches": [
+    413
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 964.83,
+      "sourceUnchanged": true,
+      "tests": 38708,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.49,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 703,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 484,
+  "tests": 38724,
+  "suites": 484,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 256,
+  "newSimulatedClosures": 40,
+  "initialBaseline": {
+    "cases": 152,
+    "failed": 120,
+    "passed": 32,
+    "router": 412
+  },
+  "zeroCountBaseline": {
+    "failed": 8,
+    "passed": 0,
+    "filteredOut": 240
+  },
+  "focus": {
+    "firstPassed": 786,
+    "firstSuites": 3,
+    "expandedPassed": 1162,
+    "expandedFailed": 8,
+    "expandedSuites": 5,
+    "courtesyAndQuantityFixPassed": 882,
+    "courtesyAndQuantityFixSuites": 3,
+    "finalNewCasesPassed": 256
+  },
+  "limits": [
+    "Complete counted distribution for the currently asked attribute only; no staged remainder with contact or competing pending purchases.",
+    "Pending purchase/replacement seeded at session boundary; answer/cart mutations and closures use full router.",
+    "External dependencies mocked; fixed delivery fee and no live geocoding, Meta, paid inference or external orders.",
+    "Passing regressions does not establish commercial readiness."
+  ],
+  "production": "409 unchanged",
+  "kamppo": "398 unchanged",
+  "runnersPassed": 92,
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "943b4bd9f0ab0d638fa03a49ab5232514665a9b9",
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/42318439056",
+    "compiledControls": 78
+  },
+  "interruptedEarlierGlobal": "Stopped before completion to correct invalid-distribution wording; not counted as successful coverage. Final run above includes every inventoried suite on unchanged sources."
+}

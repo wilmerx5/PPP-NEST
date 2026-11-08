@@ -1,0 +1,42 @@
+{
+  "batch": 443,
+  "baseCommit": "aefd0490465589a698c4267a5e22a58ad1ded79a",
+  "newTests": 192,
+  "focused": {
+    "tests": 288,
+    "suites": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScriptGeneral": {
+    "exitCode": 0
+  },
+  "mockedClosures": 192,
+  "runtimeChanged": false,
+  "previousGlobal": {
+    "batch": 438,
+    "tests": 40890,
+    "suites": 510,
+    "validatedSourceHashes": 729,
+    "allHashesStillMatch": true
+  },
+  "globalRepeated": false,
+  "scope": "Two distinct valid explicit phone updates, both value orders, before flavor selection; three synthetic menus, pickup/delivery, quantities2/3, both price mention orders, agent off/mock, flavor by number/name; each phone persists without cart/queue change and final unique DTO uses last phone while preserving old/new flavors/notes/quantities",
+  "fixtureBoundary": "Existing primary drink cart unit seeded after queue construction; only price inquiry and subsequent flavor selection/checkout tested",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeCommit": "5a5ddcd968809c73a82049792e3458d0943444e0",
+  "deploymentRepeated": false,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Sequential valid phone updates only; malformed or contradictory contact fields outside matrix",
+    "Neutral mocked model wording does not assess real model acknowledgement",
+    "Old unit seeded after queue construction; initial creation not tested",
+    "No commercial-readiness claim"
+  ],
+  "webhookReplayTested": false,
+  "phoneUpdatesPerJourney": 2
+}

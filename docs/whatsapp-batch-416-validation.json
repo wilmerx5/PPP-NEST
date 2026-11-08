@@ -1,0 +1,76 @@
+{
+  "baseCommit": "7014a8e7187a715d75961b3f1c30b2e76796ae0f",
+  "batches": [
+    416
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 916.08,
+      "sourceUnchanged": true,
+      "tests": 39176,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.29,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 707,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 488,
+  "tests": 39192,
+  "suites": 488,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newRegressions": 92,
+  "newSimulatedClosures": 0,
+  "baseline": {
+    "cases": 20,
+    "failed": 20,
+    "passed": 0,
+    "router": 415
+  },
+  "intermediateFocus": {
+    "passed": 90,
+    "failed": 10,
+    "note": "Browse-intent classifier did not recognize standalone frito; literal vocabulary resolver added without altering browse semantics."
+  },
+  "focus": {
+    "passed": 227,
+    "suites": 4
+  },
+  "limits": [
+    "Only immediate short y-prefixed comparisons after a single price quote, with matching last outbound quote context.",
+    "Style-only comparison keeps the quoted portion; un/una/uno without a portion asks for a whole item; explicit portion wins.",
+    "Single cooking-style tokens and separate portioned SKUs; multiword styles and preparation stored only as product attributes remain outside this batch.",
+    "Two synthetic families plus unrelated fried item; full router for initial quote/comparison/approval/cart preservation; external ports mocked.",
+    "No paid inference, Meta, live geocoding or real orders, and no new order-closure simulations."
+  ],
+  "production": "409 unchanged",
+  "kamppo": "398 unchanged",
+  "nextPriority": "Contact data with competing pending purchase selections.",
+  "runnersPassed": 92,
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "93b47f495465bd35650fdf1003f0c3face589711",
+    "workflowUrl": "https://github.com/wilmerx5/kamppo/actions/runs/42335860925",
+    "compiledControls": 68
+  }
+}

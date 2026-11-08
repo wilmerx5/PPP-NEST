@@ -1,0 +1,38 @@
+{
+  "batch": 440,
+  "baseCommit": "2269a9a8263ae50df73802c80344a172e919d205",
+  "newTests": 96,
+  "focused": {
+    "tests": 192,
+    "suites": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScriptGeneral": {
+    "exitCode": 0
+  },
+  "mockedClosures": 96,
+  "runtimeChanged": false,
+  "previousGlobal": {
+    "batch": 438,
+    "tests": 40890,
+    "suites": 510,
+    "validatedSourceHashes": 729,
+    "allHashesStillMatch": true
+  },
+  "globalRepeated": false,
+  "scope": "Three synthetic menus; existing primary drink unit with Naranja/old note, pending2/3 units of same product with first flavor selected by number or literal name after paired price inquiry; pickup/delivery, agent off/mock, both mention orders; exact final DTO quantities/flavors/notes preserved",
+  "fixtureBoundary": "Existing primary drink cart unit seeded after queue construction; only price inquiry and subsequent flavor selection/checkout tested",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeCommit": "5a5ddcd968809c73a82049792e3458d0943444e0",
+  "deploymentRepeated": false,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Explicit full names only; ambiguous pronouns and competing cart edits remain outside matrix",
+    "External services and model actions mocked; no commercial-readiness claim"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "batch": 418,
+  "baseCommit": "b92144d9e715a472ce70fc1e212bde4e1101eed6",
+  "changeType": "Tests only; runtime source unchanged",
+  "newTests": 44,
+  "focusedTests": 132,
+  "focusedSuites": 2,
+  "failed": 0,
+  "typescript": {
+    "exitCode": 0
+  },
+  "previous708SourceHashesUnchanged": true,
+  "fullInventoryRerun": false,
+  "fullInventoryReason": "No shared rule or runtime source changed; all previously validated source hashes unchanged and only one new test file added",
+  "previousFullValidation": {
+    "batch": 417,
+    "passed": 39280,
+    "suites": 489
+  },
+  "coverage": [
+    "Duplicate names, phones, payment methods and addresses remain atomic",
+    "Incomplete addresses and invalid phones preserve both pending decisions",
+    "Conditional and unrelated instructions do not partially save contact",
+    "Rejected forms recover with one explicit attribute answer",
+    "Invalid real coalesced bursts preserve cart and customer data",
+    "Explicit price interruption resumes attribute and four simulated order closures succeed once"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeDeploymentNeeded": false,
+  "activeStagingRuntime": "ac3189767a3ce06dc741f25030ed9351d7313b4b",
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Mocks do not prove commercial readiness",
+    "Other competing selection families remain pending",
+    "No new runtime fixes were needed for these 44 cases"
+  ]
+}
