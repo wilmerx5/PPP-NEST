@@ -29396,8 +29396,18 @@ export class WhatsappOrchestratorService {
   /** Keep a promise to send an address out of the actual address field. */
   private normalizeDeferredLocationOfferAcceptance(text: string, session: WhatsappSessionData, cfg: EffectiveWhatsappConfig): string | undefined {
     if (!session.pendingAddOffer || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
-      session.orderType !== 'delivery' || CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || /[¿?]/.test(text)) return undefined;
-    const clauses = text.split(/[.;\n]+/).map(value => value.trim()).filter(Boolean);
+      session.orderType !== 'delivery' || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return undefined;
+    let acceptanceText = text;
+    const offeredWords = this.normalizeForMatch(session.pendingAddOffer.name || '').split(/\s+/);
+    const composed = text.match(/^el combo es el que viene con medio(?: ([\p{L}]+))? (frito|broaster|broster) y medio(?: ([\p{L}]+))? (frito|broaster|broster)\s*,?\s*(?:¿s[ií]\?\s*)?ese s[ií](?:,\s*s[ií])?\.\s*([\s\S]+)$/iu);
+    // Only the explicit acceptance after a bounded composition tag owns the offer.
+    if (offeredWords.includes('mixto') && composed &&
+      composed[2].toLowerCase().replace('broster','broaster') !== composed[4].toLowerCase().replace('broster','broaster') &&
+      [composed[1],composed[3]].filter(Boolean).every(base => offeredWords.includes(this.normalizeForMatch(base)))) {
+      acceptanceText = `sí; ${composed[5]}`;
+    }
+    if (/[¿?]/.test(acceptanceText)) return undefined;
+    const clauses = acceptanceText.split(/[.;\n]+/).map(value => value.trim()).filter(Boolean);
     if (clauses.length < 3 || clauses.length > 4) return undefined;
     let accepted = false, deferred = false, payment: string | undefined;
     for (const clause of clauses) {

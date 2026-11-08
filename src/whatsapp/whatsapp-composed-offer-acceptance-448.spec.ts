@@ -1,0 +1,21 @@
+import {harness} from './whatsapp-accuracy.test-support';
+for(const base of ['Pollo','Bowl'])for(const agent of [false,true])for(const wording of ['period','semicolon','courtesy'])it(`accept composed mixed offer with payment ${base}/${agent}/${wording}`,async()=>{
+ const menu=[{id:44701,code:89,name:`Combo De ${base} Mixto`,price:base==='Pollo'?57000:63000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Colombiana','Manzana']}]},{id:44702,code:15,name:'Sopa De Verduras',price:12000,availableNow:true,attributes:[]}];
+ const h=harness(menu,agent);h.service.aiService.classifyMessage=jest.fn().mockResolvedValue(null);h.service.aiService.generateTurn=jest.fn().mockResolvedValue({reply:'¿Cuál prefieres?',actions:{}});h.service.ordersService.create=jest.fn().mockResolvedValue({id:447,dailyOrderNumber:447});Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,contactPhone:h.conv.phoneE164,phoneConfirmed:true,notesCollected:true});h.conv.sessionData.cart=[{productId:44702,code:15,name:menu[1].name,unitPrice:12000,quantity:1,attributes:[],note:'Bien caliente'}];const before=structuredClone(h.conv.sessionData.cart);
+ await h.sendQueued(`Quiero un combo de ${base} frito y ${base} broaster que vale 53 mil`);expect(h.conv.sessionData.pendingAddOffer?.productId).toBe(44701);
+ const first=wording==='semicolon'?'broaster':'frito',second=wording==='semicolon'?'frito':'broster';
+ const tag=wording==='courtesy'?'':', ¿sí?';
+ const message=`El combo es el que viene con medio ${base.toLowerCase()} ${first} y medio ${base.toLowerCase()} ${second}${tag} Ese sí, sí. Bueno, muchas gracias. Ya le mando la ubicación. Pago ${wording==='semicolon'?'por Nequi':'en efectivo'}.`;const replyStart=h.replies.length;await h.sendQueued(message);const reply=h.replies.slice(replyStart).join('\n');expect(reply).not.toMatch(/c[oó]mo pagas/i);expect((reply.match(/\?/g)||[]).length).toBeLessThanOrEqual(1);
+ expect(h.conv.sessionData.paymentMethod).toBe(wording==='semicolon'?'transfer':'cash');expect(h.conv.sessionData.address).toBeFalsy();expect(h.conv.sessionData.cart[0]).toEqual(before[0]);expect(h.conv.sessionData.pendingAddOffer).toBeFalsy();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ const expectedDrink=h.conv.sessionData.pendingAttribute?'Manzana':'Colombiana';if(h.conv.sessionData.pendingAttribute){expect(h.conv.sessionData.pendingAttribute.productId).toBe(44701);await h.sendQueued('Manzana');}
+ expect(h.conv.sessionData.cart).toHaveLength(2);expect(h.conv.sessionData.cart[0]).toEqual(before[0]);expect(h.conv.sessionData.cart[1].productId).toBe(44701);expect(h.conv.sessionData.cart[1].attributes).toEqual([{attributeName:'Bebida',attributeValue:expectedDrink}]);expect(h.conv.sessionData.paymentMethod).toBe(wording==='semicolon'?'transfer':'cash');
+ // Only the actual address can satisfy delivery, not the promise to send it.
+ await h.sendQueued('no más');expect(h.conv.state).toBe('awaiting_address');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+});
+for(const guard of ['same-style','other-family','no-acceptance','question-only','other-offer','tail-question'])it(`composition acceptance boundaries ${guard}`,async()=>{
+ const h=harness([],false);Object.assign(h.conv.sessionData,{orderType:'delivery',pendingAddOffer:{createdAt:Date.now(),productId:44801,name:guard==='other-offer'?'Combo De Pollo Frito':'Combo De Pollo Mixto',code:89,price:57000,quantity:1}});
+ const first=guard==='other-family'?'bowl':'pollo',second=guard==='same-style'?'frito':'broaster';
+ const preface=`El combo es el que viene con medio ${first} frito y medio ${first} ${second}, ¿sí?`;
+ const text=guard==='question-only'?`${preface} Ya le mando la ubicación. Pago en efectivo.`:guard==='no-acceptance'?`${preface} Tal vez. Ya le mando la ubicación. Pago en efectivo.`:`${preface} Ese sí, sí. Bueno, muchas gracias. Ya le mando la ubicación. Pago en efectivo.${guard==='tail-question'?' ¿Cuánto demora?':''}`;
+ const before=structuredClone(h.conv.sessionData);expect(h.service.normalizeDeferredLocationOfferAcceptance(text,h.conv.sessionData,h.cfg)).toBeUndefined();expect(h.conv.sessionData).toEqual(before);expect(h.replies).toEqual([]);
+});
