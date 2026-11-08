@@ -1,0 +1,103 @@
+{
+  "baseCommit": "374e57bb6decddaceb352ed181836e74f228095e",
+  "batches": [
+    435
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 892.78,
+      "sourceUnchanged": true,
+      "tests": 40586,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.24,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 726,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 507,
+  "tests": 40602,
+  "suites": 507,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 72,
+  "baseline": {
+    "tests": 64,
+    "failed": 32,
+    "passed": 32
+  },
+  "focusedChecks": [
+    {
+      "tests": 232,
+      "suites": 4
+    },
+    {
+      "tests": 885,
+      "suites": 2
+    },
+    {
+      "tests": 1410,
+      "suites": 3
+    },
+    {
+      "tests": 126,
+      "suites": 2
+    }
+  ],
+  "failedGlobalAttempts": [
+    {
+      "attempt": 1,
+      "suites": 10,
+      "passed": 5486,
+      "failed": 5,
+      "status": "Archived; not approved"
+    },
+    {
+      "attempt": 2,
+      "suites": 10,
+      "passed": 4661,
+      "failed": 12,
+      "status": "Archived; not approved"
+    },
+    {
+      "attempt": 3,
+      "suites": 505,
+      "passed": 40580,
+      "failed": 6,
+      "status": "Archived; not approved"
+    }
+  ],
+  "mockedClosures": 64,
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "Price inquiry cannot borrow single cart product price when remaining subject names an unmatched dish; explicit unique catalog names and contextual price language retained; per-drink pending reference uses existing pending price route",
+  "fixtureCorrections": [
+    "Initial assertion wrongly required an AI call although deterministic router answered; archived as invalid test assumption",
+    "Two added assertions expected unit reply for generic cart-total question; corrected to existing total16k behavior"
+  ],
+  "limits": [
+    "All model actions and external ports mocked; no claim of commercial readiness",
+    "Other free-form competing instructions and catalog reconstruction remain outside scope"
+  ]
+}

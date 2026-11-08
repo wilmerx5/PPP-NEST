@@ -3598,15 +3598,19 @@ export class WhatsappOrchestratorService {
       await this.tryHandleOpenOrderServiceQuestion(conv, msg.waId, session, originalText, cfg)) return;
     const priceComplaint = /\b(?:ese|este|tanto)\s+(?:poco\s+de\s+)?(?:plata|dinero)\b/i.test(originalText);
     const asksModificationPrice = /\b(?:cambiar|cambio|sustituir|reemplazar|extra|adicional)\b/i.test(originalText);
+    const pendingDrinkPriceReference = !!session.pendingAttribute && /\bcada (?:bebida|refresco|gaseosa|jugo)\b/.test(this.normalizeForMatch(originalText)) &&
+      (await this.catalogService.getMenuProducts()).some(product => product.id === session.pendingAttribute?.productId && this.catalogService.isLikelyDrinkProduct(product));
     const refersToPendingPrice = !!session.pendingAttribute && this.catalogService.isPriceInquiryIntent(originalText) &&
-      /\b(?:cada un[oa]|por unidad|si (?:mejor )?(?:solo )?(?:pido|pidiera|quiero|anado|agrego))\b/.test(this.normalizeForMatch(originalText)) &&
+      (/\b(?:cada un[oa]|por unidad|si (?:mejor )?(?:solo )?(?:pido|pidiera|quiero|anado|agrego))\b/.test(this.normalizeForMatch(originalText)) || pendingDrinkPriceReference) &&
       !this.catalogService.findProductEmbeddedInMessage(originalText, await this.catalogService.getMenuProducts());
     if (session.cart.length && !refersToPendingPrice && !asksModificationPrice && !this.looksLikeDeliveryFeeQuestion(originalText) &&
       (this.catalogService.isPriceInquiryIntent(originalText) || priceComplaint)) {
       const menu = await this.catalogService.getMenuProducts();
       const hypotheticalAdd = this.normalizeForMatch(originalText).match(/^si\s+(?:agrego|anado|pido|quiero)\s+(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco)\s+(.+?)\s+(?:mas\s+)?cuanto\s+(?:cuesta|vale|cuestan|valen)$/);
+      const fullyNamedPrices = menu.filter(product => this.catalogService.productFullyNamedIn(originalText, [product]));
       const named = this.catalogService.findProductEmbeddedInMessage(hypotheticalAdd?.[1] || originalText, menu) ||
-        this.catalogService.resolveSizedChickenProduct(originalText, menu);
+        this.catalogService.resolveSizedChickenProduct(originalText, menu) ||
+        (fullyNamedPrices.length === 1 ? fullyNamedPrices[0] : undefined);
       const catalogFamily = named ? [] : this.catalogService.findCatalogPrefixCandidates(originalText, menu);
       const sizes = named ? [] : this.catalogService.chickenStyleChoicesForSegment(originalText, menu) || [];
       const ids = new Set(session.cart.map(line => line.productId));
@@ -3618,7 +3622,11 @@ export class WhatsappOrchestratorService {
         /^(bebida|bebidas|refresco|refrescos)$/.test(word)
           ? this.catalogService.isLikelyDrinkProduct(product)
           : this.normalizeForMatch(product.name).split(/\s+/).some(nameWord => nameWord === word || nameWord+'s' === word || nameWord+'es' === word))) : [];
-      const targets = named ? [named] : catalogFamily.length ? catalogFamily : sizes.length ? sizes : familyTargets.length ? familyTargets : ids.size === 1 ? menu.filter(product => ids.has(product.id)) : [];
+      // A single cart line is not the subject of an explicitly different, unmatched dish.
+      const implicitPriceWords = priceWords.filter(word =>
+        !/^(?:quiero|quisiera|saber|me|dices|dice|indicas|indica|confirmas|confirma|puedes|podrias|antes|pagar|ese|esa|este|esta|eso|esto|plato|producto|pedido)$/.test(word));
+      const implicitCartPrice = priceComplaint || !implicitPriceWords.length;
+      const targets = named ? [named] : catalogFamily.length ? catalogFamily : sizes.length ? sizes : familyTargets.length ? familyTargets : ids.size === 1 && implicitCartPrice ? menu.filter(product => ids.has(product.id)) : [];
       if (session.pendingPriceInquiry) delete session.pendingPriceInquiry;
       const priceCandidates = menu.filter(product => ids.has(product.id));
       if (!targets.length && priceCandidates.length > 1 &&
@@ -4838,7 +4846,7 @@ export class WhatsappOrchestratorService {
           /^si (?:anado|agrego) (\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) mas cuanto (?:cuestan|cuesta|valen|vale|salen|sale)$/);
         const quotedQuantity = hypotheticalUnits?.[1] || hypotheticalIncrement?.[1];
         const requestedUnits = quotedQuantity ? this.catalogService.extractQuantityFromSegment(`${quotedQuantity} unidades`) : null;
-        const pendingUnitReference = /\b(?:cada un[oa]|por unidad)\b/.test(this.normalizeForMatch(text));
+        const pendingUnitReference = /\b(?:cada un[oa]|por unidad)\b/.test(this.normalizeForMatch(text)) || pendingDrinkPriceReference;
         const pendingProduct = !priced.length && session.pendingAttribute && (!priceLeftover || requestedUnits != null || pendingUnitReference)
           ? products.find((product) => product.id === session.pendingAttribute?.productId)
           : undefined;
