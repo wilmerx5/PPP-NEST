@@ -3611,6 +3611,8 @@ export class WhatsappOrchestratorService {
       const named = this.catalogService.findProductEmbeddedInMessage(hypotheticalAdd?.[1] || originalText, menu) ||
         this.catalogService.resolveSizedChickenProduct(originalText, menu) ||
         (fullyNamedPrices.length === 1 ? fullyNamedPrices[0] : undefined);
+      const pairedNamedPrices = fullyNamedPrices.length > 1 && /\by\b/i.test(originalText)
+        ? this.catalogService.resolvePriceInquiryProducts(originalText, menu) : [];
       const catalogFamily = named ? [] : this.catalogService.findCatalogPrefixCandidates(originalText, menu);
       const sizes = named ? [] : this.catalogService.chickenStyleChoicesForSegment(originalText, menu) || [];
       const ids = new Set(session.cart.map(line => line.productId));
@@ -3626,7 +3628,7 @@ export class WhatsappOrchestratorService {
       const implicitPriceWords = priceWords.filter(word =>
         !/^(?:quiero|quisiera|saber|me|dices|dice|indicas|indica|confirmas|confirma|puedes|podrias|antes|pagar|ese|esa|este|esta|eso|esto|plato|producto|pedido)$/.test(word));
       const implicitCartPrice = priceComplaint || !implicitPriceWords.length;
-      const targets = named ? [named] : catalogFamily.length ? catalogFamily : sizes.length ? sizes : familyTargets.length ? familyTargets : ids.size === 1 && implicitCartPrice ? menu.filter(product => ids.has(product.id)) : [];
+      const targets = pairedNamedPrices.length > 1 ? pairedNamedPrices : named ? [named] : catalogFamily.length ? catalogFamily : sizes.length ? sizes : familyTargets.length ? familyTargets : ids.size === 1 && implicitCartPrice ? menu.filter(product => ids.has(product.id)) : [];
       if (session.pendingPriceInquiry) delete session.pendingPriceInquiry;
       const priceCandidates = menu.filter(product => ids.has(product.id));
       if (!targets.length && priceCandidates.length > 1 &&

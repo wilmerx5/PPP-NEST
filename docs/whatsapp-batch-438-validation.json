@@ -1,0 +1,63 @@
+{
+  "baseCommit": "ea2af26aa9065a1c7001d6ebde58ff178199d4b4",
+  "batches": [
+    438
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 916.18,
+      "sourceUnchanged": true,
+      "tests": 40874,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.29,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 729,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 510,
+  "tests": 40890,
+  "suites": 510,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 96,
+  "baseline": {
+    "tests": 96,
+    "failed": 96,
+    "passed": 0
+  },
+  "focused": {
+    "tests": 264,
+    "suites": 3,
+    "failed": 0
+  },
+  "mockedClosures": 96,
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "Explicit multiple fully named catalog products joined by y in price inquiry reuse existing multi-product price resolver before single-target fallback; no cart or pending queue mutation",
+  "limits": [
+    "Only explicit multi-product references; ambiguous pronouns outside scope",
+    "Model actions and external ports mocked; no commercial readiness claim"
+  ]
+}
