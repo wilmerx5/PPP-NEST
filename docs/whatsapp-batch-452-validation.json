@@ -1,0 +1,63 @@
+{
+  "batches": [
+    452
+  ],
+  "baseCommit": "6d59f376f76925f1bd15958b199cf46908e60ac3",
+  "newTests": 144,
+  "baseline": {
+    "tests": 144,
+    "passed": 144,
+    "failed": 0
+  },
+  "focused": {
+    "tests": 282,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "phases": {
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0,
+      "tests": 92
+    }
+  },
+  "sourceFiles": 743,
+  "previousSourceFilesUnchanged": 742,
+  "sourceUnchangedDuringChecks": true,
+  "newSpecSha256": "503995fd3df7044d81d3474e5870a97927ff80e78c8fccdc570848b08ff64331",
+  "engineChanged": false,
+  "globalRerun": false,
+  "previousGlobal": {
+    "batch": 451,
+    "tests": 42008,
+    "suites": 523,
+    "evidence": "whatsapp-batch-451-validation.json",
+    "reason": "All742 prior source hashes match exactly; only one new regression file. Focused Jest, TypeScript general/build and92 scripts rerun; no new shared runtime rule"
+  },
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "mockedClosures": 144,
+  "compiledJourneys": 144,
+  "compiledMockedClosures": 144,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "stagingVerified": true,
+  "runtimeRedeployed": false,
+  "runtimeCommit": "36428b1dcb08ae0a22796ebf5a00493b38f612ab",
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "checkedAt": "2026-11-08T22:16:39.041349+00:00",
+  "scope": "Two families/prices, agent off/mock, list/queue repair, row/full name/code selection, numeric/named/combined drink and arepa answers, cash/transfer retained; one soup plus one mixed combo; fixed-fee typed address; explicit final confirmation creates one mocked DTO with correct attributes and note",
+  "limits": [
+    "Original audio and real model wording not evaluated",
+    "Fixed delivery fee2000; no road-distance or external geocoding accuracy claimed",
+    "Payment method retained; no real money or payment reconciliation tested",
+    "Three bounded repair phrases remain451 scope; longer multi-product complaint still pending"
+  ]
+}
