@@ -2221,6 +2221,9 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // An explicit combo composition clarification must precede model and loose product routing.
+    if (/\bcombo\b/i.test(originalText) && this.catalogService.isMixtoCompositionInquiry(originalText) &&
+      await this.tryHandleMixtoCompositionInquiry(conv, msg.waId, session, originalText, await this.catalogService.getMenuProducts(), cfg)) return;
     if (await this.tryRecoverComposedDish(conv, msg.waId, session, originalText, cfg)) return;
 
     // An explicitly named unavailable addition must not be swallowed by the pending option.
@@ -19002,6 +19005,8 @@ export class WhatsappOrchestratorService {
   private isCancelIntent(text: string): boolean {
     const t = text.trim().toLowerCase().replace(/^¡+/, '').replace(/[.!…]+$/, '').trim();
     if (/\bno\s+(quiero\s+)?(cancelar|anular)\b/i.test(t)) return false;
+    const withdrawal = this.normalizeForMatch(t);
+    if (!/[?¿]/.test(t) && /^(?:(?:por favor|mejor|entonces|ahora|ya) )*(?:no (?:me )?(?:envie|envien|envies|mande|manden|mandes|traiga|traigan|traigas) nada|ahora me envie nada)(?: porque .+| por favor| gracias(?: .*)?| muy amable)*$/.test(withdrawal)) return true;
     if (/^(cancelar|cancela|cancelo|anular|anula)$/i.test(t)) return true;
     if (/\b(cancelarl[oa]|va\s+(?:a\s+)?tocar\s+cancel)\b/i.test(t)) return true;
     // "Cancela, ya lo pedí por llamada": a bare cancel followed by its reason.
@@ -25254,6 +25259,7 @@ export class WhatsappOrchestratorService {
         `\n¿Te lo agrego? Escribe *sí*.`;
       session = this.rememberProductFocus(session, p, products);
       await this.savePendingAddOffer(conv, p, 1);
+      session.pendingAddOffer = this.conversationService.getSession(conv).pendingAddOffer;
     } else if (mixtoHits.length > 1) {
       reply +=
         `\n\n${this.catalogService.formatProductChoicePrompt('mixto', mixtoHits, {

@@ -1116,6 +1116,8 @@ export class WhatsappCatalogService {
   isRestaurantLocationInquiry(text: string): boolean {
     const q = normalizeText(text);
     if (!q || q.length < 5) return false;
+    // A customer announcing their own pin/address is not asking for the restaurant.
+    if (/\b(?:te|le|les) (?:mando|envio|paso|comparto) (?:mi|la) (?:ubicacion|direccion)\b/.test(q)) return false;
     if (new RegExp(FOOD_ORDER_TOKEN, 'i').test(q) && /\b(quiero|dame|ponme|agrega)\b/.test(q)) {
       return false;
     }
