@@ -2221,6 +2221,7 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    if (await this.tryClarifySingleMixedComboRequest(conv, msg.waId, session, originalText)) return;
     // An explicit combo composition clarification must precede model and loose product routing.
     if (/\bcombo\b/i.test(originalText) && this.catalogService.isMixtoCompositionInquiry(originalText) &&
       await this.tryHandleMixtoCompositionInquiry(conv, msg.waId, session, originalText, await this.catalogService.getMenuProducts(), cfg)) return;
@@ -25228,6 +25229,30 @@ export class WhatsappOrchestratorService {
     }
 
     return false;
+  }
+
+  /** A single combo with two cooking styles is a proposal, never two independent purchases. */
+  private async tryClarifySingleMixedComboRequest(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+  ): Promise<boolean> {
+    if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+      CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || /[¿?]/.test(text)) return false;
+    const said = this.normalizeForMatch(text).replace(/[.,!…]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const order = said.replace(/^(?:(?:bueno|mira|un favor|es que|necesito|quiero|me das|me regalas|dame|regalame|por favor) )+/, '');
+    const pair = order.match(/^(?:un|1) combo (?:de )?([\p{L}]+) (frito|broaster|broster) y (?:\1 )?(frito|broaster|broster)(.*)$/u);
+    if (!pair || pair[2].replace('broster','broaster') === pair[3].replace('broster','broaster')) return false;
+    // Only a bounded price/courtesy suffix; another dish or instruction keeps its normal router.
+    if (pair[4].trim().split(/\s+/).filter(Boolean).some(word =>
+      !/^(?:\$?\d+|que|vale|cuesta|de|por|favor|porfa|algo|asi|mas|o|menos|mil|pesos|y|un|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos)$/.test(word))) return false;
+    const products = await this.catalogService.getMenuProducts();
+    const mixed = products.filter(product => product.availableNow !== false &&
+      /\bcombo\b/.test(this.normalizeForMatch(product.name)) && /\bmixto\b/.test(this.normalizeForMatch(product.name)) &&
+      this.normalizeForMatch(product.name).split(/\s+/).includes(pair[1]));
+    if (mixed.length !== 1) return false;
+    const product = mixed[0];
+    await this.savePendingAddOffer(conv, product, 1, {sourceText: product.name});
+    await this.reply(conv, waId, `Para un solo combo mitad frito y mitad broaster tenemos *${product.name}*, a ${this.catalogService.formatMoney(product.price)} según la carta.\n\n¿Te agrego ese combo mixto?`);
+    return true;
   }
 
   private async tryHandleMixtoCompositionInquiry(
