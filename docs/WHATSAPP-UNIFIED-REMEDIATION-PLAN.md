@@ -1,8 +1,8 @@
-## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda433
+## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda434
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
-Estado registrado: staging ejecuta433 (`1de0a131`), producción409 y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
+Estado registrado: staging ejecuta434 (`5245a467`), producción409 y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
 
 Familias con correcciones y cobertura delimitada:
 
@@ -16,6 +16,8 @@ Familias con correcciones y cobertura delimitada:
 - **Contacto mezclado con elección, sustitución o reparto.** Aplicación parcial de nombre/dirección/pago, pérdida de opciones o reparto incorrecto. Tandas409–414 cubren formularios con decisiones concretas, atributos, sustituciones y reparto completo/por etapas; no toda combinación arbitraria. Evidencias [411](whatsapp-batch-411-validation.json), [412](whatsapp-batch-412-validation.json), [413](whatsapp-batch-413-validation.json), [414](whatsapp-batch-414-validation.json).
 - **Producto compuesto interpretado como líneas separadas.** Casos como arroz con costillas y posterior «en combo». Tandas399–400 cubren aclarar/reunir productos mediante propuesta y respuesta; no se da por resuelta toda reconstrucción de varios combos. Evidencias [399](whatsapp-batch-399-validation.json) y [400](whatsapp-batch-400-validation.json).
 - **Cancelación de todo frente a una compra pendiente.** Tandas368/396/397 acotan cancelación individual/cola;419 verifica cancelar las dos decisiones competidoras y empezar limpio. Evidencia reciente [419](whatsapp-batch-419-validation.json); antecedentes en el historial inferior.
+
+- **Teléfono formateado perdido durante consulta con bebida pendiente.** Tanda434 reproduce paréntesis/guion y normaliza el número ya validado antes de la ruta de actualización.96 regresiones nuevas y36 recorridos compilados con cierres simulados; espacios y+57 incluidos. Evidencias [434](whatsapp-batch-434-validation.json) y [despliegue434](whatsapp-batch-434-staging-deployment.json). No acredita todas las mezclas libres de preguntas y contacto.
 
 Fuentes de los incidentes y patrones lingüísticos:
 

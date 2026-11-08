@@ -60,5 +60,9 @@
   "limits": [
     "External services and model actions mocked; no commercial-readiness claim",
     "Other free-form competing decisions remain outside this matrix"
-  ]
+  ],
+  "runtimeCommit": "5245a46735b872472c00fc3694ef89e7c45c1af2",
+  "stagingVerified": true,
+  "compiledJourneys": 36,
+  "compiledMockedClosures": 36
 }
