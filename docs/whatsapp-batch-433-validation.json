@@ -71,5 +71,12 @@
     "New aliases limited to one pending attribute with no competing list/multi/cart edit",
     "Other free-form phone phrasing and arbitrary mixed instructions not covered",
     "Mocks do not establish commercial readiness"
-  ]
+  ],
+  "stagingDeployment": {
+    "verified": true,
+    "runtimeCommit": "1de0a131812f2c5345f7682ba992cd1e6dd5a2e4",
+    "workflowRun": 42432608972,
+    "compiledFullRouterJourneys": 12,
+    "compiledMockedClosures": 12
+  }
 }
