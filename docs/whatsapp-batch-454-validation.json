@@ -63,7 +63,9 @@
     "Original audio, real inference, external geocoding and payment reconciliation not evaluated",
     "Fixed-fee written address and mocked order ports"
   ],
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
-  "kamppoChanged": false
+  "kamppoChanged": false,
+  "runtimeCommit": "d1615e423caf781b231e6e4714da6ff264d51cdc",
+  "deploymentEvidence": "whatsapp-batch-454-staging-deployment.json"
 }
