@@ -1,10 +1,12 @@
-## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda448
+## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda449
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
-Estado registrado: staging ejecuta448 (`d6207a43`), producción446 (`97d36266`) y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
+Estado registrado: staging ejecuta449 (`158b46dc`), producción446 (`97d36266`) y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
 
 Familias con correcciones y cobertura delimitada:
+
+- **Aceptación larga repetida reabre oferta.** Tanda449 reconoce composición acotada de mixto ya presente, ubicación futura y mismo pago, sin decisiones competidoras. Conserva toda la sesión, no duplica y exige dirección real.20 regresiones nuevas, global41.870/521 y12 recorridos compilados verificados. Evidencias [449](whatsapp-batch-449-validation.json) y [despliegue449](whatsapp-batch-449-staging-deployment.json). No cubre nuevas compras, cambios de pago ni todas las formulaciones libres.
 
 - **Contacto coloquial omitido en una consulta mixta.** Con bebida pendiente, preguntar precio junto a «mi celular es…»/«mi WhatsApp es…» conservaba el teléfono viejo. Tanda433 admite los alias solo con atributo pendiente sin otra lista/multi/edición, reutilizando la ruta de teléfono.192 regresiones, global40.434/505 y12 recorridos del router compilado/cierres simulados; una regresión de consulta de combos detectada en el primer intento se corrigió acotando el contexto. Evidencias [433](whatsapp-batch-433-validation.json) y [despliegue433](whatsapp-batch-433-staging-deployment.json). No resuelve toda frase libre de contacto.
 

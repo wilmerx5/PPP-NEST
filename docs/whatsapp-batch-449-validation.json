@@ -62,7 +62,11 @@
     "Direct exclusion guards do not prove downstream resolution",
     "Other wording, changed payment and frustration repair remain pending"
   ],
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
-  "kamppoChanged": false
+  "kamppoChanged": false,
+  "runtimeCommit": "158b46dc3e3a5d53d7d7ec16e1396b04c0ad4149",
+  "compiledJourneys": 12,
+  "compiledLegacyGuard": 1,
+  "compiledMockedClosures": 0
 }

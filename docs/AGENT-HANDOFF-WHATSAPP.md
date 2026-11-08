@@ -1,8 +1,8 @@
-## Tanda 449 — repetición de aceptación larga sin reabrir oferta (validada; despliegue staging pendiente)
+## Tanda 449 — repetición de aceptación larga sin reabrir oferta (staging desplegado y verificado)
 
 Repetir la composición del mixto después de aceptarla reabría una oferta y alteraba el foco. Se reconoce únicamente el prefacio acotado de448 con aceptación explícita, ubicación futura y el mismo pago habilitado, con un solo renglón mixto existente y sin decisiones competidoras. Responde que ya está en el pedido, conserva toda la sesión y pide dirección real si falta; no guarda la promesa como dirección ni crea órdenes.20 regresiones nuevas:12 recorridos en dos familias/precios, agente off/mock y tres formulaciones, con dos repeticiones y otra en awaiting_address;8 guardas directas para oferta nueva, recogida, dos renglones mixtos, pago distinto, compra nueva, carrito vacío, completado y pregunta adicional. Baseline12:12 fallos. Foco58/3 aprobado. Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos.
 
-Global41.870/521 sin fallos ni omitidas,740 fuentes congeladas e inventario exacto. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-449-validation.json.
+Global41.870/521 sin fallos ni omitidas,740 fuentes congeladas e inventario exacto. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-449-validation.json. Staging449 desplegado/verificado en158b46dc: healthy, cero reinicios, API local/pública y DB correctas, configuración privada/modelos preservados. Workflow42521194395;12 recorridos compilados con repeticiones y guarda legacy aprobados, cero órdenes y todos los puertos externos simulados. Evidencia whatsapp-batch-449-staging-deployment.json.
 
 Alcance: las guardas directas acreditan que esta ruta no intercepta esos casos, no toda su resolución posterior. Solo transcripción, sin evaluar audio original. No se evalúa cierre sin dirección real. Pendientes reparación de frustración y formulaciones libres/mezclas con nuevos productos. Producción446 y Kamppo398 sin cambios.
 
