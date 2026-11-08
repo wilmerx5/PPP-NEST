@@ -1,3 +1,9 @@
+## Tanda 434 — formatos de teléfono con bebida pendiente (global aprobado; despliegue pendiente)
+
+Fallo reproducido: una consulta de precio junto a «mi celular es (300) 000-0003» conservaba el teléfono anterior mientras faltaba elegir bebida. Se normaliza el teléfono ya validado antes de derivarlo a la ruta canónica de contacto, sin ampliar las condiciones de aceptación.96 regresiones nuevas: dos familias sintéticas, agente off/mock, teléfono con espacios, prefijo+57 o paréntesis/guion, alias celular/WhatsApp, ambos órdenes pregunta/contacto y bebida por número/nombre;96 cierres DTO simulados conservan carrito anterior, nota, contacto y ausencia de duplicados. Baseline288 (96 nuevas+192 anteriores):32 fallos nuevos/256 aprobadas; foco final330/3 aprobado.
+
+Global40.530/506 sin fallos ni omitidas,725 fuentes congeladas e inventario exacto; TypeScript general/build y92 controles de scripts aprobados. Evidencia whatsapp-batch-434-validation.json. Sin inferencia pagada, Meta ni órdenes externas; modelos/presupuesto intactos. Pendiente publicar y verificar runtime434 en staging; producción409 y Kamppo398 intactos. Otras decisiones competidoras, preparaciones de varias palabras, reconstrucción general de combos y política de sustituciones siguen pendientes. Las simulaciones no acreditan preparación comercial.
+
 ## Tanda 433 — celular/WhatsApp con consulta durante opción pendiente (staging desplegado y verificado)
 
 Fallo reproducido: «mi celular es…»/«mi WhatsApp es…» junto a pregunta de precio conservaba el teléfono anterior mientras faltaba elegir bebida. El splitter de pregunta/contacto admite esos alias solo con pendingAttribute, sin pendingMatch/multi/edición de carrito; conserva la ruta existente de teléfono y deriva el cambio válido a su etiqueta canónica. No se cambian modelos ni reglas de compra.

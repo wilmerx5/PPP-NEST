@@ -1490,7 +1490,7 @@ export class WhatsappOrchestratorService {
             turn.independentInquiryAnswer = answer;
             await this.reply(conv, msg.waId, answer);
             // Keep labelled contact aliases on the same established phone-update route.
-            text = phone ? `mi teléfono es ${phone[1]}` : change;
+            text = phone ? `mi teléfono es ${this.normalizeContactPhone(phone[1], conv.phoneE164)}` : change;
           } else if (unresolved.length === 1 && (name || phone)) {
             // Preserve explicit contact independently, then let the existing router
             // clarify the one unanswered question. Do not turn it into a field value.
