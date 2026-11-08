@@ -1246,6 +1246,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleQuotedPortionInquiry(conv,msg.waId,text,cfg)) return;
 
     const quoteContactSession = this.conversationService.getSession(conv);
+    if (await this.tryHandleRepeatedComposedAcceptance(conv, msg.waId, quoteContactSession, text, cfg)) return;
     text = this.normalizeDeferredLocationOfferAcceptance(text, quoteContactSession, cfg) || text;
     // A standalone explicit menu code retains its marker through short-answer routes.
     if (conv.state === 'building_cart' && quoteContactSession.pendingMatch?.candidates?.length &&
@@ -29390,6 +29391,34 @@ export class WhatsappOrchestratorService {
     return this.hasAttributePriceConflict(session) && parts.length > 1 &&
       (/^(?:\d+|si|no|precio \d+)$/.test(this.normalizeForMatch(parts[0])) || this.hasNamedContactAttribute(parts[0],session)) &&
       this.isOptionContactPrefix(parts[1]);
+  }
+
+  /** Repeating the accepted composition is an acknowledgement, not another purchase offer. */
+  private async tryHandleRepeatedComposedAcceptance(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+      session.pendingAddOffer || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+      session.pendingPriceInquiry || session.pendingAddressConflict || session.pendingComposedDishRecovery ||
+      CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || !/^el combo es el que viene con medio /iu.test(text)) return false;
+    const mixed = session.cart.filter(line => this.normalizeForMatch(line.name).split(/\s+/).includes('mixto'));
+    if (mixed.length !== 1) return false;
+    const line = mixed[0];
+    const normalized = this.normalizeDeferredLocationOfferAcceptance(text, {...session, pendingAddOffer: {
+      createdAt: Date.now(), productId: line.productId, name: line.name, code: line.code,
+      price: line.unitPrice, quantity: line.quantity,
+    }}, cfg);
+    if (!normalized) return false;
+    const said = this.normalizeForMatch(normalized.split(';')[1]).replace(/^pago (?:por|con|en) /, '');
+    const payment = getEnabledPaymentMethods(cfg.paymentMethods || []).find(method =>
+      [method.label,...method.keywords].some(value => this.normalizeForMatch(value) === said));
+    if (!payment || payment.id !== session.paymentMethod) return false;
+    const reminder = !session.address
+      ? 'Envíame la ubicación de WhatsApp o la dirección con calle y número.'
+      : this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session);
+    await this.reply(conv, waId, `Ya tengo *${line.name}* en tu pedido. No añadí otro.\n\n${reminder}`);
+    return true;
   }
 
   /** A pending purchase decision and contact form are validated together, never a final order confirmation. */
