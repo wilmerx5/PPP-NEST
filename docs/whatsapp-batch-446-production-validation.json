@@ -36,5 +36,8 @@
   "scriptTests": 92,
   "modelsChanged": false,
   "budgetChanged": false,
-  "deploymentVerified": false
+  "deploymentVerified": true,
+  "runtimeCommit": "97d36266a441f8a37e2a5d314b1a48406e7d575f",
+  "compiledControls": 52,
+  "compiledMockedClosures": 14
 }
