@@ -1,8 +1,8 @@
-## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda434
+## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda435
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
-Estado registrado: staging ejecuta434 (`5245a467`), producción409 y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
+Estado registrado: staging ejecuta435 (`022ad252`), producción409 y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
 
 Familias con correcciones y cobertura delimitada:
 
@@ -18,6 +18,8 @@ Familias con correcciones y cobertura delimitada:
 - **Cancelación de todo frente a una compra pendiente.** Tandas368/396/397 acotan cancelación individual/cola;419 verifica cancelar las dos decisiones competidoras y empezar limpio. Evidencia reciente [419](whatsapp-batch-419-validation.json); antecedentes en el historial inferior.
 
 - **Teléfono formateado perdido durante consulta con bebida pendiente.** Tanda434 reproduce paréntesis/guion y normaliza el número ya validado antes de la ruta de actualización.96 regresiones nuevas y36 recorridos compilados con cierres simulados; espacios y+57 incluidos. Evidencias [434](whatsapp-batch-434-validation.json) y [despliegue434](whatsapp-batch-434-staging-deployment.json). No acredita todas las mezclas libres de preguntas y contacto.
+
+- **Precio atribuido al producto equivocado.** Tanda435 impide tomar el único producto del carrito cuando la consulta nombra otro sujeto no identificado; conserva referencias implícitas, nombres completos de catálogo y precio por bebida pendiente.72 regresiones nuevas y72 recorridos compilados con cierres simulados. Evidencias [435](whatsapp-batch-435-validation.json) y [despliegue435](whatsapp-batch-435-staging-deployment.json). No acredita todas las paráfrasis libres.
 
 Fuentes de los incidentes y patrones lingüísticos:
 

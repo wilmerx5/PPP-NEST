@@ -99,5 +99,9 @@
   "limits": [
     "All model actions and external ports mocked; no claim of commercial readiness",
     "Other free-form competing instructions and catalog reconstruction remain outside scope"
-  ]
+  ],
+  "runtimeCommit": "022ad252744fd907e30e82655bca7fc0aa670934",
+  "stagingVerified": true,
+  "compiledJourneys": 72,
+  "compiledMockedClosures": 72
 }
