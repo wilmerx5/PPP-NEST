@@ -75,7 +75,11 @@
     "36 mixed journeys stop at awaiting_address; final-confirm address seeded, no geocoding claimed",
     "Direct exclusion guards do not prove downstream resolution"
   ],
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
-  "kamppoChanged": false
+  "kamppoChanged": false,
+  "runtimeCommit": "08245e4a220a20829e8f6318b24262bbc2b2c08d",
+  "compiledJourneys": 50,
+  "compiledDirectGuards": 10,
+  "compiledMockedClosures": 0
 }

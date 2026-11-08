@@ -1,10 +1,12 @@
-## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda449
+## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda450
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
-Estado registrado: staging ejecuta449 (`158b46dc`), producción446 (`97d36266`) y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
+Estado registrado: staging ejecuta450 (`08245e4a`), producción446 (`97d36266`) y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
 
 Familias con correcciones y cobertura delimitada:
+
+- **Queja independiente repite la pregunta equivocada.** Tanda450 reconoce6 formulaciones acotadas de confusión, muestra el carrito y pide una sola aclaración sin modificar sesión ni empujar confirmar.60 regresiones nuevas, global41.930/522 y60 controles compilados verificados. Se actualizan36 expectativas históricas de reiterar el formulario; los108 casos de esa suite mantienen continuidad y cierre simulado. Evidencias [450](whatsapp-batch-450-validation.json) y [despliegue450](whatsapp-batch-450-staging-deployment.json). Pendiente la queja con corrección explícita«yo pedí un combo»; las decisiones no se borran sin una corrección concreta.
 
 - **Aceptación larga repetida reabre oferta.** Tanda449 reconoce composición acotada de mixto ya presente, ubicación futura y mismo pago, sin decisiones competidoras. Conserva toda la sesión, no duplica y exige dirección real.20 regresiones nuevas, global41.870/521 y12 recorridos compilados verificados. Evidencias [449](whatsapp-batch-449-validation.json) y [despliegue449](whatsapp-batch-449-staging-deployment.json). No cubre nuevas compras, cambios de pago ni todas las formulaciones libres.
 
