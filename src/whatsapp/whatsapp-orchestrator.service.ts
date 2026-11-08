@@ -1459,7 +1459,10 @@ export class WhatsappOrchestratorService {
       if (current.cart.length && pair && (questions.length === 1 || multipleAfter || multipleBefore)) {
         const change = pair.change.replace(/[.;]$/, '').trim();
         const name = change.match(/^(?:a nombre(?: de)?|mi nombre es|me llamo)\s+([\p{L} .'-]+)$/iu);
-        const phone = change.match(/^mi tel[eé]fono es\s+([+\d ()-]+)$/i);
+        const phone = change.match(/^mi tel[eé]fono es\s+([+\d ()-]+)$/i) ||
+          (current.pendingAttribute && !current.pendingMatch && !current.pendingMultiOrder &&
+            !CART_EDIT_SELECTION_KEYS.some(key => !!current[key])
+            ? change.match(/^mi (?:celular|whatsapp) es\s+([+\d ()-]+)$/i) : null);
         const address = /^(?:cambia la direcci[oó]n a|la direcci[oó]n es)\s+(?:calle|carrera|cra|cll?|diagonal|dg|transversal|avenida)\b.*\d/i.test(change) &&
           !/\b(?:si|pero|adem[aá]s|agrega|quita|confirma)\b|[?¿;\n]/i.test(change);
         if ((name && isUsableWhatsappCustomerName(name[1])) || (phone && this.looksLikePhoneNumber(phone[1])) || address) {
@@ -1486,7 +1489,8 @@ export class WhatsappOrchestratorService {
             const answer = answers.join('\n\n');
             turn.independentInquiryAnswer = answer;
             await this.reply(conv, msg.waId, answer);
-            text = change;
+            // Keep labelled contact aliases on the same established phone-update route.
+            text = phone ? `mi teléfono es ${phone[1]}` : change;
           } else if (unresolved.length === 1 && (name || phone)) {
             // Preserve explicit contact independently, then let the existing router
             // clarify the one unanswered question. Do not turn it into a field value.
