@@ -72,5 +72,9 @@
     "Initial long order with approximate quoted price not fully resolved",
     "Combined spoken payment/location announcement and frustration repair remain pending",
     "No real channel/model/commerce readiness claim"
-  ]
+  ],
+  "runtimeCommit": "46ebf77438b8c7d06906fe2e1c358a78b3d073c0",
+  "stagingVerified": true,
+  "compiledControls": 40,
+  "compiledMockedClosures": 2
 }
