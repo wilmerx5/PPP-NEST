@@ -75,7 +75,11 @@
     "Original audio and real model wording not evaluated",
     "Direct exclusion guards do not prove downstream resolution"
   ],
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
-  "kamppoChanged": false
+  "kamppoChanged": false,
+  "runtimeCommit": "36428b1dcb08ae0a22796ebf5a00493b38f612ab",
+  "compiledJourneys": 62,
+  "compiledDirectGuards": 16,
+  "compiledMockedClosures": 0
 }
