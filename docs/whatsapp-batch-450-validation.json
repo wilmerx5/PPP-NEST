@@ -1,0 +1,81 @@
+{
+  "baseCommit": "01e5f12db32dd7edf5bf2f0bc743a02239860d33",
+  "batches": [
+    450
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 999.25,
+      "sourceUnchanged": true,
+      "tests": 41914,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.25,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 741,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 522,
+  "tests": 41930,
+  "suites": 522,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 60,
+  "baseline": {
+    "tests": 36,
+    "failed": 36,
+    "passed": 0
+  },
+  "initialFocused": {
+    "tests": 334,
+    "suites": 4,
+    "failed": 0
+  },
+  "finalFocused": {
+    "tests": 442,
+    "suites": 5,
+    "failed": 0
+  },
+  "failedGlobalAttempt": {
+    "phase": "nonTimer",
+    "passed": 41878,
+    "failed": 36,
+    "archived": true,
+    "reason": "Historical assertions demanded repeating checkout/attribute prompts after standalone confusion; replaced only understanding expectations with recap, single repair question and entire session preservation; all continuity and mocked closure assertions retained"
+  },
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "newMockedClosures": 0,
+  "legacyCommentsMockedClosures": 108,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "50 full-router checks:36 confusion and mixed-combo recovery journeys,12 final-confirm objections and2 empty-cart cases;10 direct exclusion guards",
+  "limits": [
+    "Only standalone confusion; explicit complaint plus combo correction remains pending",
+    "Original audio not evaluated",
+    "36 mixed journeys stop at awaiting_address; final-confirm address seeded, no geocoding claimed",
+    "Direct exclusion guards do not prove downstream resolution"
+  ],
+  "stagingVerified": false,
+  "productionChanged": false,
+  "kamppoChanged": false
+}

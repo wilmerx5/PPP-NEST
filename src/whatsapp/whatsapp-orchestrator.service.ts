@@ -1246,6 +1246,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleQuotedPortionInquiry(conv,msg.waId,text,cfg)) return;
 
     const quoteContactSession = this.conversationService.getSession(conv);
+    if (await this.tryHandleStandaloneOrderConfusion(conv, msg.waId, quoteContactSession, text, cfg)) return;
     if (await this.tryHandleRepeatedComposedAcceptance(conv, msg.waId, quoteContactSession, text, cfg)) return;
     text = this.normalizeDeferredLocationOfferAcceptance(text, quoteContactSession, cfg) || text;
     // A standalone explicit menu code retains its marker through short-answer routes.
@@ -19622,6 +19623,22 @@ export class WhatsappOrchestratorService {
     if (!/\b(?:no tengo confirmad[oa]|no puedo (?:confirmar|verificar)(?:lo)?|no esta confirmad[oa])\b/.test(previous) ||
         !/\b(?:sustitucion|cambio|cambiar|acompanamiento|reemplazo)\b/.test(previous)) return false;
     await this.reply(conv,waId,`Entiendo: quieres verificar si pueden hacer ese cambio. No puedo confirmarlo con cocina desde este chat. Para comprobarlo antes de pedir, llama al *${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*. Tu pedido sigue igual.`);
+    return true;
+  }
+
+  /** Standalone confusion asks for repair; it must not answer or repeat an unrelated choice. */
+  private async tryHandleStandaloneOrderConfusion(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (conv.humanTakeover || !['building_cart','awaiting_attribute','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const said = this.normalizeForMatch(text).replace(/^(?:oye|veci|vecino) /, '');
+    // Anchor the complete message: a supplied correction, contact or question still owns its normal route.
+    if (!/^(?:no entiendo(?: ahi)?(?: no entiendo(?: ahi)?)?|no me (?:entiende|entiendes|entendiste|has entendido|estas entendiendo)|no es que usted no me entiende|(?:eso )?no (?:fue|es) lo que (?:te )?pedi)$/.test(said)) return false;
+    const registered = session.cart.length
+      ? `Esto es lo que tengo registrado:\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}`
+      : 'Todavía no tengo productos agregados al pedido.';
+    await this.reply(conv, waId, `Disculpa la confusión. No cambié productos ni cantidades.\n\n${registered}\n\n¿Qué parte del pedido quedó mal y cómo la quieres corregir?`);
     return true;
   }
 
