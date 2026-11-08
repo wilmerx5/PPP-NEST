@@ -1,4 +1,4 @@
-## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda435
+## Consulta rápida de fallos recurrentes — revisión 07/11/2026, tanda436
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
@@ -20,6 +20,8 @@ Familias con correcciones y cobertura delimitada:
 - **Teléfono formateado perdido durante consulta con bebida pendiente.** Tanda434 reproduce paréntesis/guion y normaliza el número ya validado antes de la ruta de actualización.96 regresiones nuevas y36 recorridos compilados con cierres simulados; espacios y+57 incluidos. Evidencias [434](whatsapp-batch-434-validation.json) y [despliegue434](whatsapp-batch-434-staging-deployment.json). No acredita todas las mezclas libres de preguntas y contacto.
 
 - **Precio atribuido al producto equivocado.** Tanda435 impide tomar el único producto del carrito cuando la consulta nombra otro sujeto no identificado; conserva referencias implícitas, nombres completos de catálogo y precio por bebida pendiente.72 regresiones nuevas y72 recorridos compilados con cierres simulados. Evidencias [435](whatsapp-batch-435-validation.json) y [despliegue435](whatsapp-batch-435-staging-deployment.json). No acredita todas las paráfrasis libres.
+
+Tanda436 añade96 regresiones de precio unitario durante cola de bebidas, sin cambiar el motor ni redesplegar: primer importe correcto, cantidades/atributos/notas conservados y96 cierres simulados. Evidencia [436](whatsapp-batch-436-validation.json). El runtime de staging sigue siendo435.
 
 Fuentes de los incidentes y patrones lingüísticos:
 

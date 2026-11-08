@@ -1,0 +1,38 @@
+{
+  "batch": 436,
+  "baseCommit": "07b10562f83cc4f55808868b3679860304dfee97",
+  "newTests": 96,
+  "focused": {
+    "tests": 222,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScriptGeneral": {
+    "exitCode": 0
+  },
+  "mockedClosures": 96,
+  "runtimeChanged": false,
+  "previousGlobal": {
+    "batch": 435,
+    "tests": 40602,
+    "suites": 507,
+    "validatedSourceHashes": 726,
+    "allHashesStillMatch": true
+  },
+  "globalRepeated": false,
+  "scope": "Three synthetic menu families; two/three pending drinks; pickup/delivery; agent off/mock; generic, full-name, drink-noun and per-unit price inquiries; first quoted currency must be pending drink unit price; queue, quantity, note, flavor and final repeated-item DTO conserved",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeCommit": "022ad252744fd907e30e82655bca7fc0aa670934",
+  "deploymentRepeated": false,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "No new runtime defect found in this matrix",
+    "Model wording and actions mocked; no real-channel or commercial-readiness claim",
+    "No coverage claim for ambiguous multiple pending drink references or unrelated product nouns"
+  ]
+}
