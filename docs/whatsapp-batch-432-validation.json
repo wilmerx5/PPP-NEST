@@ -1,0 +1,39 @@
+{
+  "batch": 432,
+  "baseCommit": "20d2fc8bf3956f779197cb2167e80f498e189878",
+  "changeType": "Tests only",
+  "newTests": 96,
+  "focusedTests": 192,
+  "focusedSuites": 2,
+  "failed": 0,
+  "typescriptExitCode": 0,
+  "previous717SourceHashesUnchanged": true,
+  "fullInventoryRerun": false,
+  "reason": "No shared rule or previously validated runtime source changed; only new regression suite",
+  "previousFullValidation": {
+    "batch": 426,
+    "tests": 39762,
+    "suites": 498
+  },
+  "fixtureCorrection": "Initial assertion inspected only final outbound message rather than all replies of the turn; price answer can precede pending-drink reminder. Final tests assert combined turn replies and state; initial assertion failures are not production defects.",
+  "coverage": [
+    "Two synthetic families and agent off/mock",
+    "Both initial products and price/stock/removal catalog changes before switching alternative",
+    "Price question and labelled mi tel\u00e9fono es change in same message, question-first or contact-first",
+    "Entire outbound turn contains correct price; phone updates while drink/cart stay pending",
+    "Drink completes by row/literal value;96 unique mocked closures retain cart quantity2/note, product, name/address and new phone; courtesy does not duplicate"
+  ],
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "runtimeDeploymentNeeded": false,
+  "stagingRuntime": "eef15445a46ad64bb1cac3bd87e86b5b7e6326f7",
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Explicit punctuation and labelled mi tel\u00e9fono es are exercised; other free-form combined contact not covered",
+    "Model side-question reply remains neutral mocked text without actions",
+    "Mocks do not establish commercial readiness"
+  ]
+}
