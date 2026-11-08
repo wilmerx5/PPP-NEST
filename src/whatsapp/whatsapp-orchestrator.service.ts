@@ -19656,8 +19656,10 @@ export class WhatsappOrchestratorService {
       /[¿?]/.test(text) || session.pendingAttribute || session.pendingPriceInquiry || session.pendingAddressConflict ||
       session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
     const said = this.normalizeForMatch(text);
-    const request = said.match(/^(?:(?:amigo|no mire) )?es un combo(?: es un combo)? de ([a-z]+) que viene (frito|broaster|broster) y (frito|broaster|broster)(?: que (?:vale|cuesta) (.+?))? y (?:una|1) (.+)$/);
-    if (!request || request[2].replace('broster','broaster') === request[3].replace('broster','broaster')) return false;
+    let request = said.match(/^(?:(?:amigo|no mire) )?es un combo(?: es un combo)? de ([a-z]+) que viene (frito|broaster|broster) y (frito|broaster|broster)(?: que (?:vale|cuesta) (.+?))? y (?:una|1) (.+)$/);
+    const abbreviated = said.match(/^(?:el |un )?combo de ([a-z]+) que (?:vale|cuesta) (.+?) y (?:una|1) (.+)$/);
+    if (!request && abbreviated) request = ['',abbreviated[1],'','',abbreviated[2],abbreviated[3]] as RegExpMatchArray;
+    if (!request || !abbreviated && request[2].replace('broster','broaster') === request[3].replace('broster','broaster')) return false;
     if (request[4]?.split(/\s+/).some(word => !/^(?:\d+|mil|pesos|me|dijeron|y|un|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos)$/.test(word))) return false;
     const family = request[1], pending = session.pendingMatch, multi = session.pendingMultiOrder, offer = session.pendingAddOffer;
     const familyClause = (value: string) => this.normalizeForMatch(value || '')
@@ -19677,8 +19679,27 @@ export class WhatsappOrchestratorService {
     if (sideMatches.length !== 1) return false;
     const side = sideMatches[0], sideLines = session.cart.filter(line => line.productId === side.id);
     if (sideLines.length !== 1 || sideLines[0].quantity !== 1) return false;
-    const mixed = products.filter(product => product.availableNow !== false &&
-      ['combo','mixto',family].every(word => this.normalizeForMatch(product.name).split(/\s+/).includes(word)));
+    const familyCombos = products.filter(product => product.availableNow !== false &&
+      ['combo',family].every(word => this.normalizeForMatch(product.name).split(/\s+/).includes(word)));
+    // A remembered amount identifies neither the variant nor its current price.
+    // Only an explicit offer or a single already selected combo can resolve an abbreviated restatement.
+    const selectedCombos = familyCombos.filter(product => session.cart.some(line => line.productId === product.id));
+    if (abbreviated && !offer && !selectedCombos.length) {
+      if ((!pending && !multi) || !familyCombos.length || session.cart.some(line => line.productId !== side.id &&
+        this.normalizeForMatch(line.name).split(/\s+/).includes(family))) return false;
+      if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) {
+        await this.reply(conv, waId, cfg.closedMessage || 'Ahora estamos cerrados. Tu pedido sigue igual; podrás continuar cuando abramos.');
+        return true;
+      }
+      await this.conversationService.saveSession(conv, {...session,pendingMultiOrder:undefined,productFocus:undefined,
+        pendingMatch:{query:`combo de ${family}`,candidates:familyCombos,intent:'order',quantity:1}});
+      await this.reply(conv, waId, `Conservo *${side.name}* que ya está en tu pedido. Para elegir el combo, estas son las opciones y sus precios actuales:\n\n` +
+        this.catalogService.formatCategoryList(`Combos de ${family}`,familyCombos));
+      return true;
+    }
+    const mixed = abbreviated
+      ? familyCombos.filter(product => offer ? product.id === offer.productId : selectedCombos.length === 1 && product.id === selectedCombos[0].id)
+      : familyCombos.filter(product => this.normalizeForMatch(product.name).split(/\s+/).includes('mixto'));
     if (mixed.length !== 1 || mixed[0].id === side.id) return false;
     const product = mixed[0], existing = session.cart.filter(line => line.productId === product.id);
     if (offer && (pending || multi || offer.productId !== product.id || offer.quantity !== 1 || offer.price !== product.price || (offer.productIds?.length || 0) > 1)) return false;
@@ -19700,7 +19721,8 @@ export class WhatsappOrchestratorService {
         pendingAddOffer: {createdAt:Date.now(),productId:product.id,name:product.name,code:product.code,price:product.price,quantity:1,sourceText:product.name},
         productFocus: {productId:product.id,name:product.name}}, 'building_cart');
     }
-    await this.reply(conv, waId, `Conservo *${side.name}* que ya está en tu pedido. Para el combo mitad frito y mitad broaster tenemos *${product.name}*, a ${this.catalogService.formatMoney(product.price)} según la carta.\n\n¿Te agrego ese combo mixto?`);
+    const description = abbreviated ? 'El combo que habíamos seleccionado es' : 'Para el combo mitad frito y mitad broaster tenemos';
+    await this.reply(conv, waId, `Conservo *${side.name}* que ya está en tu pedido. ${description} *${product.name}*, a ${this.catalogService.formatMoney(product.price)} según la carta.\n\n¿Te agrego ese combo${abbreviated ? '' : ' mixto'}?`);
     return true;
   }
 

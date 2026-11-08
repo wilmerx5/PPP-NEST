@@ -1,10 +1,12 @@
-## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda453
+## Consulta rápida de fallos recurrentes — revisión 08/11/2026, tanda454
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
 Estado registrado: staging ejecuta453 (`45b83ae6`), producción446 (`97d36266`) y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
 
 Familias con correcciones y cobertura delimitada:
+
+- **Repetición abreviada de combo+sopa con precio recordado.** Tanda454 conserva una oferta/selección explícita de la familia o muestra sus combos disponibles si falta elegir. No decide la variante por53.000 ni duplica la sopa registrada; conserva nota/pago y exige elección.50 regresiones nuevas (34 del router y16 guardas),24 cierres DTO simulados; global42.278/526, TypeScript y92 scripts aprobados. Despliegue staging pendiente. Evidencia [454](whatsapp-batch-454-validation.json). Solo patrón anclado, familia de una palabra y un plato ya registrado una vez; sin cantidades/notas/productos nuevos ni decisiones competidoras.
 
 - **Repetición de mixto+sopa con precio recordado equivocado.** Tanda453 reconoce3 formas acotadas con preparaciones opuestas, sopa única ya registrada y contexto pendiente de esa familia. Propone el mixto único al precio vigente; no compra por53.000 ni duplica la sopa. Repetir antes/después de aceptar y esperando dirección conserva sesión; oferta/foco se guardan juntos.76 regresiones, global42.228/525 y76 controles compilados con48 cierres simulados. Evidencias [453](whatsapp-batch-453-validation.json) y [despliegue453](whatsapp-batch-453-staging-deployment.json). No cubre la forma abreviada sin preparaciones ni cantidades/notas/otros pendientes.
 
