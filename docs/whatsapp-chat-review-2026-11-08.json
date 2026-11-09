@@ -90,7 +90,10 @@
       "orderReferences": [
         "182"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "corrected_for_documented_scope_global_validated_pending_staging",
+      "correctionBatch": 458,
+      "validation": "whatsapp-batch-458-validation.json",
+      "scope": "Two canonical named products after solo sería/solamente es/únicamente son, no competing decisions; missing product added once, existing flavor retained. Central confirmation blocks pendingAttribute. Does not automatically repair old duplicate pending states."
     },
     {
       "id": "N08-04",
@@ -501,7 +504,21 @@
     "deployments": false,
     "externalOrders": 0,
     "customerMessagesSent": 0,
-    "paidInferenceRequests": 0
+    "paidInferenceRequests": 0,
+    "scope": "Original document review only; subsequent implementation is tracked in followUpBatches and individual findings"
   },
-  "rawPIIInRepository": false
+  "rawPIIInRepository": false,
+  "followUpBatches": [
+    {
+      "batch": 457,
+      "validation": "whatsapp-batch-457-validation.json",
+      "deployment": "whatsapp-batch-457-staging-deployment.json",
+      "stagingVerified": true
+    },
+    {
+      "batch": 458,
+      "validation": "whatsapp-batch-458-validation.json",
+      "stagingVerified": false
+    }
+  ]
 }
