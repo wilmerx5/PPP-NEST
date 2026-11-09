@@ -2317,7 +2317,8 @@ export class WhatsappOrchestratorService {
         return;
       }
     }
-    const addressConflict = canonicalStreetAddress(originalText) ? deliveryUnitConflict(originalText) : null;
+    const addressConflict = (canonicalStreetAddress(originalText) || this.looksLikeUnitOrTowerDetailOnly(originalText))
+      ? deliveryUnitConflict(originalText) : null;
     if (addressConflict && session.cart.length && !['completed','closed','human_takeover'].includes(conv.state)) {
       session.pendingAddressConflict = { source: originalText, ...addressConflict };
       await this.conversationService.saveSession(conv, session);
@@ -23408,6 +23409,7 @@ export class WhatsappOrchestratorService {
   looksLikeUnitOrTowerDetailOnly(text: string): boolean {
     let t = (text || '').trim();
     if (!t || t.length < 2 || t.length > 60) return false;
+    if (/[¿?]/.test(t) || /\b(?:confirmar|confirmo|confirma|cancelar|cancela|reiniciar|borrar)\b/i.test(t)) return false;
     if (looksLikeClearCartMessage(t) || looksLikeNonAddressCommand(t)) return false;
     if (this.looksLikeFoodNotAddress(t)) return false;
     if (isDeliveryEtaInquiry(t)) return false;
@@ -23433,6 +23435,10 @@ export class WhatsappOrchestratorService {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
+
+    // Multiple labelled access components are one internal reference, never a street.
+    const accessComponent = '(?:entrada|piso|oficina|torre|bloque|casa|local|apto|int)\\.?\\s+(?:[a-z]\\d{0,3}|\\d{1,4}[a-z]?)';
+    if (new RegExp(`^${accessComponent}(?:\\s*[,;]?\\s+${accessComponent}){1,3}$`).test(n)) return true;
 
     // Tower/block identifiers can be letters or alphanumeric, not only numbers.
     // Anchor the entire fragment so a new street or an order is never swallowed.
@@ -23499,6 +23505,7 @@ export class WhatsappOrchestratorService {
   private normalizeUnitDetailText(text: string): string {
     return (text || '')
       .replace(/^(?:(?:el|la|mi)\s+)?(apartamento|apto|interior|torre|bloque|casa|piso|local|oficina|entrada)\s+es\s+(?=[a-z]?\d|[a-z]$)/i, '$1 ')
+      .replace(/\b(entrada|piso|oficina)\.?\s*([a-z]\d{0,3}|\d{1,4}[a-z]?)(?=$|[\s,;])/gi, '$1 $2')
       .replace(/\bt[\s\-]*(\d{1,2})\b/gi, 'Torre $1')
       .replace(/\btorre[\s\-]*(\d{1,2})\b/gi, 'Torre $1')
       .replace(/\bbloque[\s\-]*(\d{1,2})\b/gi, 'Bloque $1')

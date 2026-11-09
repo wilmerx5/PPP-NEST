@@ -122,7 +122,10 @@
       "orderReferences": [
         "38"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "corrected_for_documented_scope_global_validated_pending_staging",
+      "correctionBatch": 459,
+      "validation": "whatsapp-batch-459-validation.json",
+      "scope": "Compact original already protected in458; spaced/labelled composed entrance, floor and office details now merge with confirmed base without routing/fee changes. Unit-before-street waits for base; conflicting unit-only apartment asks which offered value. No registered-order updates."
     },
     {
       "id": "N08-06",
@@ -521,6 +524,11 @@
       "validation": "whatsapp-batch-458-validation.json",
       "stagingVerified": true,
       "deployment": "whatsapp-batch-458-staging-deployment.json"
+    },
+    {
+      "batch": 459,
+      "validation": "whatsapp-batch-459-validation.json",
+      "stagingVerified": false
     }
   ]
 }

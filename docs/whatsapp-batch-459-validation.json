@@ -1,0 +1,97 @@
+{
+  "baseCommit": "10dafbb3aac1c24cd0875dfee8934ed633561134",
+  "batches": [
+    459
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1345.76,
+      "sourceUnchanged": true,
+      "tests": 42595,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 15.11,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 750,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 531,
+  "tests": 42611,
+  "suites": 531,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 68,
+  "fullRouterCases": 56,
+  "directGuards": 12,
+  "mockedClosures": 56,
+  "baseline": {
+    "tests": 48,
+    "passed": 8,
+    "failed": 40,
+    "scope": "Compact Entrada43 apartamento486 was already protected; spaced entrance, letter entrance, floor/apartment, office/interior and comma variants called routing again"
+  },
+  "focused": [
+    {
+      "tests": 67,
+      "suites": 3,
+      "failed": 0
+    },
+    {
+      "tests": 83,
+      "suites": 3,
+      "failed": 1,
+      "scope": "Mixed office/unit plus confirmar was wrongly classified as unit-only by legacy fallback"
+    },
+    {
+      "tests": 83,
+      "suites": 3,
+      "failed": 0
+    },
+    {
+      "tests": 87,
+      "suites": 3,
+      "failed": 0
+    },
+    {
+      "tests": 4,
+      "suites": 1,
+      "failed": 0,
+      "filtered": true,
+      "skipped": 64,
+      "scope": "Additional explicit approval while a unit conflict is pending"
+    }
+  ],
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "stagingVerified": false,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Two to four labelled access components, bounded numeric/alphanumeric identifiers; not arbitrary delivery references",
+    "48 confirmed-address journeys preserve existing routing/fee;4 unit-before-street journeys wait for the base;4 conflict journeys use a seeded confirmed address",
+    "Routing returns synthetic quotes only; no live map, physical coverage or delivery performance validated",
+    "Questions and commands are excluded from unit-only recognition;12 direct guards do not prove subsequent router behavior",
+    "Other 08/11 incident families remain pending; registered orders are not changed"
+  ]
+}
