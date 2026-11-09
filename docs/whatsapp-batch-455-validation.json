@@ -74,9 +74,12 @@
     "Three anchored phrases and no competing decisions; availability is catalog status, not physical inventory or delivery commitment",
     "Direct exclusion guards prove no interception only",
     "Original audio, real inference, external geocoding and payment reconciliation not evaluated",
-    "Written address and fixed-fee delivery with all external ports mocked"
+    "Written address and fixed-fee delivery with all external ports mocked",
+    "Coverage flag seeded; actual coverage calculation not evaluated"
   ],
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
-  "kamppoChanged": false
+  "kamppoChanged": false,
+  "runtimeCommit": "6140f59f127ee492601066143e166cf829a690c0",
+  "deploymentEvidence": "whatsapp-batch-455-staging-deployment.json"
 }
