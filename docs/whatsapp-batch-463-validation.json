@@ -1,0 +1,73 @@
+{
+  "baseCommit": "a7293dcb0d2fb390ec7a21a6c1ad9bc64fbb6c21",
+  "batches": [
+    463
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1455.31,
+      "sourceUnchanged": true,
+      "tests": 43281,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 12.42,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 755,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 535,
+  "tests": 43297,
+  "suites": 535,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "focused": {
+    "tests": 22,
+    "suites": 1,
+    "failed": 0
+  },
+  "syntheticQA": {
+    "executions": 22,
+    "failed": 0,
+    "catalog": [
+      {
+        "id": 70001,
+        "code": 70001,
+        "name": "Bowl De Garbanzos",
+        "price": 19000
+      }
+    ],
+    "method": "Derived copy of the public spec with the synthetic catalog, food name replaced, and plain food request used for the return turn; real router and mocked external ports",
+    "simulatedClosures": 4,
+    "paidRequests": 0,
+    "initialHarnessErrors": "Private Jest root under .git was not inventoried; second configuration needed src/* module mapping; fixed without runtime edits",
+    "knownIndependentFailure": "Original prefixed return caused 4 failures. A separate no-campaign diagnostic also ignores Quiero pedir un Bowl De Garbanzos while Un Bowl De Garbanzos adds it. Prefix issue remains pending; not claimed fixed.",
+    "derivedSpecSha256": "815b63e262b05513c6cf9f01b70a1028ecee6c321d46b55b399fbf9fa1b6a79b"
+  },
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "nodeScriptTests": 92,
+  "deployed": false,
+  "sourceSnapshotSha256": "b7fd64fe398cb1428c6aab961b45947a0f189d37a85b26fbd6f7d354e8eaea02",
+  "scope": "Unrelated mobile-sales outreach and related followups; not a universal bot detector",
+  "modelsChanged": false,
+  "budgetChanged": false
+}

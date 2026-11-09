@@ -1,3 +1,4 @@
+import { isForeignSalesPitch, isForeignSalesFollowup } from './whatsapp-foreign-sales';
 import { canonicalCompoundDishRequest } from './whatsapp-compound-dish-request';
 import { parseMultiAttributeDistribution } from './whatsapp-multi-attribute-distribution';
 import { parseCombinedOptions } from './whatsapp-combined-options';
@@ -1072,6 +1073,31 @@ export class WhatsappOrchestratorService {
     {
       const fresh = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, fresh);
+    }
+    // Cut unrelated sales loops before catalog matching, models, or checkout mutations.
+    if (!conv.humanTakeover && ['text', 'other', 'sticker'].includes(msg.messageType)) {
+      const current = this.conversationService.getSession(conv);
+      const inbound = msg.text || '';
+      const explicitReturn = /^(?:hola[,.!\s]+)?(?:(?:quiero|quisiera)\s+(?:pedir|hacer\s+un\s+pedido)|(?:para\s+)?hacer\s+un\s+pedido|continuar\s+(?:con\s+)?mi\s+pedido)\b/i.test(inbound.trim().replace(/^[¡!\s]+/,'')) ||
+        /^(?:men[uú]|carta)[.!\s]*$/i.test(inbound.trim());
+      if (explicitReturn && current.foreignSales) {
+        await this.conversationService.saveSession(conv, {...current,foreignSales:undefined});
+      } else {
+        const pitch = isForeignSalesPitch(inbound);
+        const now = Date.now();
+        const active = current.foreignSales && now-current.foreignSales.lastSeenAt >= 0 && now-current.foreignSales.lastSeenAt < 60*60_000;
+        if (pitch || active && (isForeignSalesFollowup(inbound) || msg.messageType !== 'text')) {
+          const noticeAt = current.foreignSales?.noticeAt;
+          const notify = noticeAt === undefined || now-noticeAt >= 24*60*60_000;
+          if (pitch) await this.conversationService.saveSession(conv,{...current,foreignSales:{lastSeenAt:now,noticeAt:notify?now:noticeAt!}});
+          if (notify) await this.reply(conv,msg.waId,`Este canal atiende pedidos de ${cfg.brandName || 'este restaurante'}. No recibimos ofertas comerciales por aquí.`);
+          return;
+        }
+        // A normal customer turn resumes routing, including its subsequent short replies.
+        if (current.foreignSales && msg.messageType === 'text' && !isForeignSalesFollowup(inbound)) {
+          await this.conversationService.saveSession(conv, {...current,foreignSales:undefined});
+        }
+      }
     }
     {
       const current = this.conversationService.getSession(conv);

@@ -56,6 +56,7 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  foreignSales?: { lastSeenAt: number; noticeAt: number };
   /** One reversible drink addition, valid only while the cart signature matches. */
   lastDrinkAddition?: { productId: number; beforeCart: WhatsappCartItem[]; cartSignature: string };
 
