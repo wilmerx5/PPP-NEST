@@ -1,0 +1,48 @@
+{
+  "environment": "staging",
+  "head": "f3f04d2b298152e050e413f721bbbecf38938f4f",
+  "image": "sha256:d02275a3b8ea41b14d207ff3f703eec290f00509f2bf91b4acb253781ceb4d70",
+  "running": true,
+  "health": "healthy",
+  "restarts": 0,
+  "models": {
+    "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+    "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+    "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+    "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+    "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+  },
+  "localHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "cacheSize": 0,
+    "memory": {
+      "heapUsed": 55.52,
+      "heapTotal": 60.68,
+      "rss": 123.04
+    },
+    "timestamp": "2026-11-09T16:55:12.717Z"
+  },
+  "publicHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "cacheSize": 0,
+    "memory": {
+      "heapUsed": 55.64,
+      "heapTotal": 60.68,
+      "rss": 123.29
+    },
+    "timestamp": "2026-11-09T16:55:12.913Z"
+  },
+  "checkedAt": "2026-11-09T16:55:19.601293+00:00",
+  "deployed": false,
+  "runtimeChanged": false,
+  "compiledJourneys": 384,
+  "compiledMockedClosures": 384,
+  "compiledResult": "384 compiled embedded-digit journeys passed:384 full-router journeys and384 mocked closures; all external ports mocked",
+  "compiledScope": "Actual unchanged staging460 dist;384 purchase/checkout journeys, all external ports mocked. Pickup, known contact, three simple catalog families without required attributes; no paid model or real order persistence.",
+  "productionChanged": false,
+  "kamppoChanged": false
+}

@@ -1,0 +1,49 @@
+{
+  "batch": 461,
+  "baseCommit": "6dca6466fb537e1d9dd54c9ffd32b52aa24bce5a",
+  "kind": "test-only regression expansion; historical issue not reproduced on current engine",
+  "newTests": 384,
+  "newSuites": 1,
+  "fullRouterJourneys": 384,
+  "mockedClosures": 384,
+  "baseline": {
+    "tests": 32,
+    "failed": 0,
+    "passed": 32
+  },
+  "relatedTests": 135,
+  "relatedSuites": 5,
+  "relatedFailures": 0,
+  "tsc": {
+    "exitCode": 0
+  },
+  "tscBuild": {
+    "exitCode": 0
+  },
+  "engineChanged": false,
+  "all751PriorSourcesUnchanged": true,
+  "newSpecSha256": "c858963df358557b218cb7b7a54234f9017265c6af082395be609cb911d96b70",
+  "globalReused": {
+    "evidence": "whatsapp-batch-460-validation.json",
+    "tests": 42675,
+    "suites": 532,
+    "notRerun": true,
+    "reason": "Only one spec added; all751 prior source files match the frozen passing global, no runtime/config changes"
+  },
+  "stagingVerified": true,
+  "runtimeCommit": "f3f04d2b298152e050e413f721bbbecf38938f4f",
+  "stagingVerification": "whatsapp-batch-461-staging-verification.json",
+  "paidRequests": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Three catalog families;four suffix/replaced-final-character typos, not arbitrary leetspeak normalization",
+    "Quantities1/2/3/5 across empty cart, other dish, awaiting payment and final confirmation",
+    "Agent off/mock; does not validate a live model response or prompt behavior",
+    "Pickup with known contact; external services and order creation mocked",
+    "Historical bocadill9 issue did not reproduce; no new engine fix or deployment claimed"
+  ]
+}

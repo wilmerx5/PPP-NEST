@@ -1,3 +1,15 @@
+## Tanda 461 —384 regresiones de dígitos dentro de palabras (solo pruebas; staging460 verificado)
+
+N08-06 no se reproduce en el motor actual: el baseline32/1 conserva1 al pedir«un» y2 al pedir«2» con bocadill9/bocadill0/bocadillo9/bocadill3 y sus equivalentes sintéticos. No se atribuye una corrección nueva ni se cambia la interpretación del catálogo por un fallo histórico que esta versión no presenta.
+
+Se añaden384 recorridos del router:3 familias (plátano con queso y bocadillo, bowl con tofu y verduras, sandwich con jamón y queso),4 errores de sufijo/último carácter, cantidades1/2/3/5, agente off/mock y4 etapas (carrito vacío, otro plato presente, esperando pago y confirmación final). Todos empiezan por compras reales del router; en las tres etapas con otro plato se conserva su cantidad y nota«sin cebolla». Se comprueba respuesta con el producto correcto, sin falso rechazo, sin pendiente de opción/match ni orden anticipada; cada recorrido termina con un DTO simulado que contiene exactamente las cantidades solicitadas.384 cierres simulados,0 órdenes externas.
+
+384/1 nuevas y135/5 relacionadas de cantidades, paquetes, opciones numéricas y nombres compuestos aprobadas sin omitidas; TypeScript general/build aprobados. Las751 fuentes previas coinciden exactamente con el congelado de460; solo se añade un spec. Se reutiliza explícitamente el global42.675/532 de460: no se repite ni se afirma un nuevo global combinado. Motor, configuración, modelos y presupuesto intactos. Evidencia whatsapp-batch-461-validation.json.
+
+Staging sigue ejecutando460/f3f04d2b, misma imagen: healthy, cero reinicios, API local/pública y DB correctas, cinco modelos preservados.384 recorridos y384 cierres simulados aprobados contra el dist de ese contenedor; sin nuevo despliegue. Evidencia whatsapp-batch-461-staging-verification.json.
+
+Límites: tres familias con productos simples sin atributos obligatorios, recogida y contacto conocido. Cuatro formas de error concretas; no toda sustitución letra/dígito ni todos los formatos numéricos. Agente off/mock, sin evaluación pagada del modelo, audio ni persistencia real. N08-06 queda como fallo histórico no reproducido en la versión actual con regresiones, no como reparación recién desplegada. Siguiente prioridad N08-07: negaciones«sin yuca/sin ensalada» y conservación de notas. Producción446 y Kamppo398 sin cambios.
+
 ## Tanda 460 — «el combo con Coca-Cola» cambia la bebida sin volver a comprar (staging desplegado y verificado)
 
 N08-02 reproducido parcialmente en staging459: de32 recorridos iniciales,18 pasan y14 fallan.12 fallos añaden otro combo al recibir«El combo con Coca-Cola por fa» después de combo+sopa, en dos catálogos y agente off/mock; las burbujas juntas ya funcionaban.2 fallos del catálogo sintético rechazan compra+calle juntas como producto inexistente. El medio pollo seguido de dirección no se duplica en la versión actual bajo estas condiciones: queda como regresión, no se atribuye una corrección nueva a ese síntoma. La frase coloquial original«Me regalas porfa medio pollo a la Broaster» se usa en los recorridos finales.

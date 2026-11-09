@@ -142,7 +142,11 @@
       "orderReferences": [
         "60"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "historical_issue_not_reproduced_current_staging_regression_verified",
+      "regressionBatch": 461,
+      "validation": "whatsapp-batch-461-validation.json",
+      "stagingVerification": "whatsapp-batch-461-staging-verification.json",
+      "scope": "384 router journeys preserve requested1/2/3/5 despite four word suffix typos in three families; empty cart, other dish, payment and final. No engine change; live model not tested."
     },
     {
       "id": "N08-07",
@@ -541,6 +545,13 @@
       "validation": "whatsapp-batch-460-validation.json",
       "stagingVerified": true,
       "deploymentEvidence": "whatsapp-batch-460-staging-deployment.json"
+    },
+    {
+      "batch": 461,
+      "validation": "whatsapp-batch-461-validation.json",
+      "stagingVerified": true,
+      "engineChanged": false,
+      "stagingVerification": "whatsapp-batch-461-staging-verification.json"
     }
   ]
 }
