@@ -122,10 +122,11 @@
       "orderReferences": [
         "38"
       ],
-      "status": "corrected_for_documented_scope_global_validated_pending_staging",
+      "status": "corrected_for_documented_scope_staging_verified",
       "correctionBatch": 459,
       "validation": "whatsapp-batch-459-validation.json",
-      "scope": "Compact original already protected in458; spaced/labelled composed entrance, floor and office details now merge with confirmed base without routing/fee changes. Unit-before-street waits for base; conflicting unit-only apartment asks which offered value. No registered-order updates."
+      "scope": "Compact original already protected in458; spaced/labelled composed entrance, floor and office details now merge with confirmed base without routing/fee changes. Unit-before-street waits for base; conflicting unit-only apartment asks which offered value. No registered-order updates.",
+      "deploymentEvidence": "whatsapp-batch-459-staging-deployment.json"
     },
     {
       "id": "N08-06",
@@ -528,7 +529,8 @@
     {
       "batch": 459,
       "validation": "whatsapp-batch-459-validation.json",
-      "stagingVerified": false
+      "stagingVerified": true,
+      "deploymentEvidence": "whatsapp-batch-459-staging-deployment.json"
     }
   ]
 }

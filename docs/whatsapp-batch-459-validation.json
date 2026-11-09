@@ -84,7 +84,7 @@
   "externalOrders": 0,
   "modelsChanged": false,
   "budgetChanged": false,
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
   "kamppoChanged": false,
   "limits": [
@@ -93,5 +93,7 @@
     "Routing returns synthetic quotes only; no live map, physical coverage or delivery performance validated",
     "Questions and commands are excluded from unit-only recognition;12 direct guards do not prove subsequent router behavior",
     "Other 08/11 incident families remain pending; registered orders are not changed"
-  ]
+  ],
+  "runtimeCommit": "0fbc4736b584d6d99ab6a9e7ef6866f5944a31a9",
+  "deploymentEvidence": "whatsapp-batch-459-staging-deployment.json"
 }
