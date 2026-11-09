@@ -66,12 +66,14 @@
   "externalOrders": 0,
   "modelsChanged": false,
   "budgetChanged": false,
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
   "kamppoChanged": false,
   "limits": [
     "Phone/payment: two bubbles in awaiting_payment, pickup fixture and preexisting contact; real coalescer, no external geocoding",
     "Question journeys: two catalog families, mocked agent or disabled; no real inference/audio",
     "Other 08/11 incident families remain pending"
-  ]
+  ],
+  "runtimeCommit": "fb032ff5ad39dfa5764ced5b19b3fe728691812e",
+  "deploymentEvidence": "whatsapp-batch-457-staging-deployment.json"
 }

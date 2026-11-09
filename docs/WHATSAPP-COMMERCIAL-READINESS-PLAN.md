@@ -1,4 +1,4 @@
-## Tanda 457 — consultas coloquiales sin compra y límites teléfono/pago (validación aprobada; staging pendiente)
+## Tanda 457 — consultas coloquiales sin compra y límites teléfono/pago (staging desplegado y verificado)
 
 Se reproducen dos fallos críticos de la revisión del08/11. «Q trae/lleva/incluye/contiene el combo» se normaliza como consulta antes de las rutas de compra; responde sobre el combo ya elegido sin añadir otra preparación. «Le/les/te queda sopa…?» consulta disponibilidad sin comprar; la posterior solicitud de una unidad produce una sola unidad. La normalización no reescribe compras ni mensajes de disponibilidad mezclados con compra, pago, dirección o condiciones.
 
@@ -7,6 +7,8 @@ Con dos burbujas mientras se espera pago, un teléfono completo y una opción nu
 51 controles nuevos:40 recorridos del router con40 cierres DTO simulados y11 guardas directas. Dos familias de catálogo, agente off/mock; seis formulaciones de consulta, tres de disponibilidad y cuatro recorridos teléfono/pago. Baseline de consultas:28 fallos/8 aprobadas; baseline posterior de teléfono:4 fallos/36 aprobadas. Foco ampliado228/5 aprobado. No llamadas pagadas, Meta ni órdenes externas; modelos y presupuesto preservados.
 
 Global42,487/529 aprobado sin fallos ni omitidas,748 fuentes congeladas e inventario exacto; TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-457-validation.json.
+
+Staging457 ejecuta fb032ff5: healthy, cero reinicios, API local/pública y DB correctas, configuración privada y cinco modelos preservados. Workflow42559174694;51 controles compilados aprobados (40 router,11 guardas),40 cierres DTO simulados. En compilado el agrupador usa tiempos reales. Primer intento detenido por falta de toBeNull en el adaptador privado; se completa el adaptador y se repiten los51 con éxito, sin cambios del motor. Evidencia whatsapp-batch-457-staging-deployment.json.
 
 Límites: teléfono/pago acreditado con dos burbujas en awaiting_payment, recogida y perfil/contacto preexistentes; no valida geocodificación ni todos los estados ni ráfagas de tres o más burbujas. Guardas directas no acreditan el comportamiento posterior del router. No se ha evaluado inferencia real ni audio. Otros incidentes de la revisión siguen pendientes, en particular N08-02/03 duplicados y sabores, N08-05 complemento de dirección y N08-06 cantidad por dígito incrustado. Producción446 y Kamppo398 sin cambios.
 

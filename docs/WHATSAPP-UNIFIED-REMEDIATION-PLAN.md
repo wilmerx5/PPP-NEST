@@ -6,7 +6,7 @@ Estado registrado: staging ejecuta456 (`c97fc336`), producción446 (`97d36266`) 
 
 Familias con correcciones y cobertura delimitada:
 
-- **Consultas coloquiales y teléfono/pago agrupados.** Tanda457 corrige «Q trae el combo»/«le queda sopa» sin compras implícitas y separa dos burbujas teléfono/opción de pago válida.51 casos nuevos,40 cierres DTO simulados; global42.487/529, TypeScript y92 scripts aprobados. Staging pendiente. Evidencia [457](whatsapp-batch-457-validation.json). Otros fallos del08/11 siguen pendientes.
+- **Consultas coloquiales y teléfono/pago agrupados.** Tanda457 corrige «Q trae el combo»/«le queda sopa» sin compras implícitas y separa dos burbujas teléfono/opción de pago válida.51 casos nuevos,40 cierres DTO simulados; global42.487/529, TypeScript y92 scripts aprobados. Staging fb032ff5 healthy,51 comprobaciones compiladas y40 cierres simulados aprobados. Evidencia [457](whatsapp-batch-457-validation.json). Otros fallos del08/11 siguen pendientes.
 
 - **Combo primero y después«y una sopa» perdía la oferta.** Tanda456 reproduce desde carrito vacío y conserva la oferta individual vigente al añadir explícitamente un nuevo plato independiente sin atributos; no la acepta ni la renueva. Excepción al guard de oferta obsoleta solo con firmas exactas de oferta/carrito del turno.78 casos nuevos,48 cierres DTO simulados; global42.436/528, TypeScript y92 scripts aprobados. Staging c97fc336 verificado:78 controles compilados y48 cierres simulados. Evidencias [456](whatsapp-batch-456-validation.json) y [despliegue456](whatsapp-batch-456-staging-deployment.json). Excluye notas/opciones/cantidades nuevas, bebidas, otros pendientes y productos ya presentes.
 
