@@ -107,7 +107,7 @@
   "externalOrders": 0,
   "modelsChanged": false,
   "budgetChanged": false,
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
   "kamppoChanged": false,
   "limits": [
@@ -117,5 +117,7 @@
     "Persistence ID-claim and reopening are mocked contracts, not multi-worker/database proof",
     "Jest exercises actual coalescer timers; compiled QA flushes coalescer explicitly",
     "No automatic cleanup of already duplicated production carts; no paid model, audio or real provider traffic"
-  ]
+  ],
+  "runtimeCommit": "f3f04d2b298152e050e413f721bbbecf38938f4f",
+  "deploymentEvidence": "whatsapp-batch-460-staging-deployment.json"
 }

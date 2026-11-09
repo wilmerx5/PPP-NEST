@@ -78,10 +78,11 @@
         "61",
         "86"
       ],
-      "status": "corrected_for_documented_scope_global_validated_pending_staging",
+      "status": "corrected_for_documented_scope_staging_verified",
       "correctionBatch": 460,
       "validation": "whatsapp-batch-460-validation.json",
-      "scope": "Combo+soup then el combo con beverage now changes one included drink without adding another combo. Half-chicken/address did not duplicate on current version and is locked as regression; ID claims and persistence mocked. Existing duplicated carts are not repaired automatically."
+      "scope": "Combo+soup then el combo con beverage now changes one included drink without adding another combo. Half-chicken/address did not duplicate on current version and is locked as regression; ID claims and persistence mocked. Existing duplicated carts are not repaired automatically.",
+      "deploymentEvidence": "whatsapp-batch-460-staging-deployment.json"
     },
     {
       "id": "N08-03",
@@ -538,7 +539,8 @@
     {
       "batch": 460,
       "validation": "whatsapp-batch-460-validation.json",
-      "stagingVerified": false
+      "stagingVerified": true,
+      "deploymentEvidence": "whatsapp-batch-460-staging-deployment.json"
     }
   ]
 }
