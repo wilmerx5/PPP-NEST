@@ -1,0 +1,499 @@
+{
+  "reviewDate": "2026-11-08",
+  "timezone": "America/Bogota",
+  "kind": "development_incident_triage",
+  "sourceCommit": "3381ff501f642f1c84990dd03bc5babada6d5cdd",
+  "sources": {
+    "zip": {
+      "name": "08-11 chats.zip",
+      "sha256": "f259d385cfc305e9b9789b65ae0e6a7f0caeb1764c63f3c5b281956928f9fa0e",
+      "representations": [
+        "chat.txt",
+        "chat.md"
+      ],
+      "duplicateRepresentationsNotIndependentChats": true,
+      "messageCount": 446,
+      "customerMessages": 225,
+      "botMessages": 221,
+      "rangeLocal": [
+        "2026-11-08 12:33:11",
+        "2026-11-08 19:44:38"
+      ],
+      "recordedConfirmations": 30,
+      "meaning": "30 distinct order confirmations visible in the export; not a conversion rate, number of customers, proof of fulfillment or correctness"
+    },
+    "pastedInChat": {
+      "count": 6,
+      "references": [
+        "182",
+        "130",
+        "113",
+        "107",
+        "1420-unfinished",
+        "90"
+      ]
+    },
+    "pastedFile": {
+      "name": "Pasted text.txt",
+      "sha256": "e1176bb4dc20d3ccc9480dd4cb0ad6d489497be9d16a494f6f220ffe849695f9",
+      "episodes": [
+        {
+          "date": "2026-09-19",
+          "order": "77",
+          "scope": "historical only; Necesito as name and método4 are not today findings"
+        },
+        {
+          "date": "2026-11-08",
+          "order": "89",
+          "scope": "today; saved-address reuse failure, recovered with pin"
+        }
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "N08-01",
+      "priority": "P0",
+      "title": "Consulta descriptiva o disponibilidad modifica el carrito",
+      "source": "pasted-1420;zip:421-428",
+      "evidence": "«Q trae el combo» añade otro combo; «Le queda sopa de menudencia?» añade una sopa antes de aceptar comprarla.",
+      "expectedRegression": "Consulta no modifica carrito/cantidades/opciones; posterior petición de una unidad produce exactamente una unidad.",
+      "orderReferences": [
+        "190"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-02",
+      "priority": "P0",
+      "title": "Mensajes próximos repiten compras ya aplicadas",
+      "source": "zip:126-135,198-223",
+      "evidence": "Un medio pollo pasa a dos al recibir la dirección. Combo+mondongo se añaden de nuevo al completar Coca-Cola y la nota se aplica también a la sopa.",
+      "expectedRegression": "Coalescer real con mensajes separados y orden de llegada variable: aplicar compra una sola vez y bebida solo al combo.",
+      "orderReferences": [
+        "61",
+        "86"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-03",
+      "priority": "P0",
+      "title": "Recapitulación crea nueva bebida pendiente y duplica producto",
+      "source": "pasted-182",
+      "evidence": "Coca-Cola Original ya elegida; «Solo sería el pollo y la Coca-Cola» vuelve a pedir Sabor. El resumen invita a confirmar con esa opción abierta; responder1 duplica la botella.",
+      "expectedRegression": "Recapitulación conserva Coca-Cola Original, añade solo el pollo faltante o pide aclaración; nunca anunciar confirmación mientras haya decisiones abiertas.",
+      "orderReferences": [
+        "182"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-04",
+      "priority": "P0",
+      "title": "Número de pago contamina el teléfono",
+      "source": "zip:392-402",
+      "evidence": "El teléfono recibido empieza por300; el resumen posterior al mensaje1 muestra un número que empieza por008 y termina en1. La orden conserva ese número incorrecto.",
+      "expectedRegression": "Mantener límites entre mensajes: teléfono de10 dígitos y respuesta de pago1 son campos distintos; DTO conserva exactamente el teléfono normalizado.",
+      "orderReferences": [
+        "187"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-05",
+      "priority": "P0",
+      "title": "Complemento de dirección reemplaza la calle y cambia tarifa",
+      "source": "zip:85-96",
+      "evidence": "«Entrada43 apartamento486» reemplaza la dirección base; la referencia cambia de barrio, la ruta pasa~1km a~9.2km y domicilio2.000 a10.000.",
+      "expectedRegression": "Anexar entrada/apartamento a la calle existente; no geocodificar un complemento solo ni cambiar ruta/tarifa por él.",
+      "orderReferences": [
+        "38"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-06",
+      "priority": "P0",
+      "title": "Dígito dentro de palabra se convierte en cantidad",
+      "source": "zip:114-125",
+      "evidence": "«Un plátano con queso y bocadill9» añade nueve plátanos pese al determinante«un».",
+      "expectedRegression": "Dígitos incrustados en palabras no son cantidades; conservar1 o aclarar. Variar bocadill9/bocadill0 y cantidades explícitas válidas.",
+      "orderReferences": [
+        "60"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-07",
+      "priority": "P0",
+      "title": "Negación se interpreta como producto para vender",
+      "source": "zip:226-237",
+      "evidence": "«Sin yuca» se trata como producto no encontrado y se ofrece agregar Yuca Frita; se pierde la exclusión en el resultado final.",
+      "expectedRegression": "Vincular sin ensalada/sin yuca a la sobrebarriga; no ofrecer el ingrediente rechazado ni perder notas al añadir otros productos.",
+      "orderReferences": [
+        "92"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-08",
+      "priority": "P1",
+      "title": "Conversión a combo reemplaza el medio en vez del entero",
+      "source": "zip:1-28",
+      "evidence": "Carrito con un entero y un medio: «el pollo lo quiero en combo» deja entero+combo, en vez de combo+medio. La petición original de arepas fritas tampoco se conserva.",
+      "expectedRegression": "Desambiguar objetivo cuando sea necesario; conservar el otro plato y las opciones explícitas al convertir.",
+      "orderReferences": [
+        "20"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-09",
+      "priority": "P0",
+      "title": "Preparación asignada al producto equivocado",
+      "source": "zip:29-40",
+      "evidence": "«Arroz chino con medio pollo frito y medio pollo broaster aparte» registra Broaster tanto en el arroz como en el medio adicional.",
+      "expectedRegression": "Mantener Frito en el producto compuesto y Broaster en el plato aparte; DTO y resumen deben coincidir.",
+      "orderReferences": [
+        "24"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-10",
+      "priority": "P1",
+      "title": "Se pierde contexto del arroz al pedir después su combo",
+      "source": "zip:136-149",
+      "evidence": "Tras consultar arroz chino, «el combo con medio pollor frito» se convierte en Combo de Pollo Frito; termina registrado el producto equivocado.",
+      "expectedRegression": "Resolver elipsis usando el producto consultado; tolerar pollor sin convertirlo en una nota que oculte el error de SKU.",
+      "orderReferences": [
+        "62"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-11",
+      "priority": "P1",
+      "title": "Corrección posterior a confirmar abre una compra nueva sin aclararlo",
+      "source": "zip:146-169",
+      "evidence": "«Era un combo de arroz chino...» recibe Listo y abre borrador; no consta corrección de la orden previa y ese producto aparece en la compra siguiente hasta que se quita.",
+      "expectedRegression": "Distinguir corrección de orden registrada de nuevo pedido. No afirmar cambio aplicado sin persistirlo; conservar contexto y facilitar revisión por el local.",
+      "orderReferences": [
+        "62",
+        "66"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-12",
+      "priority": "P1",
+      "title": "Precio o intención se guarda como nombre y no se corrige con nombre explícito",
+      "source": "pasted-130;pasted-file-historical-77",
+      "evidence": "Hoy«De47» queda como nombre incluso después de«a nombre de [nombre explícito]». El caso«Necesito» del archivo es histórico de septiembre.",
+      "expectedRegression": "Precio/cantidad/negación/intención no son nombres. Un nombre explícito debe corregir el dato previo en sesión, resumen y DTO.",
+      "orderReferences": [
+        "130"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-13",
+      "priority": "P1",
+      "title": "Dirección incluye cortesía y nombre del destinatario",
+      "source": "pasted-182;pasted-113",
+      "evidence": "La dirección guarda«Si porfa» y el nombre; otro flujo extrae el nombre correctamente pero también lo deja en la dirección.",
+      "expectedRegression": "Separar calle/número, unidad, referencia, nombre y teléfono; no limpiar nombres legítimos de lugares por coincidencia ciega.",
+      "orderReferences": [
+        "182",
+        "113"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-14",
+      "priority": "P1",
+      "title": "Se permite confirmar sin punto de entrega suficientemente precisado",
+      "source": "pasted-107",
+      "evidence": "Solo el nombre del conjunto y una referencia genérica al mapa bastan para cerrar; bloque/apto llegan después.",
+      "expectedRegression": "Para conjuntos, pedir portería o unidad cuando falte; no aceptar un centro de barrio como ubicación precisa. No exigir calle si el conjunto ya está inequívocamente localizado.",
+      "orderReferences": [
+        "107"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-15",
+      "priority": "P1",
+      "title": "Listas competidoras bloquean la corrección y la tratan como dirección",
+      "source": "pasted-1420",
+      "evidence": "Tras añadir un combo por error, «es solo un combo» abre otra lista;1 produce«varias listas pendientes» y el nombre del plato se captura como dirección.",
+      "expectedRegression": "Una corrección debe tener un único selector activo; la respuesta identifica el producto y retoma checkout sin modificar dirección. No eliminar líneas distintas por suposición.",
+      "orderReferences": [],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-16",
+      "priority": "P1",
+      "title": "Cotización de plato más bebida rechaza la combinación completa",
+      "source": "pasted-182",
+      "evidence": "«Qué cuesta1 pollo broaster y una Coca-Cola1.5» solo cotiza el pollo y afirma que la combinación no se ofrece.",
+      "expectedRegression": "Separar productos y reconocer marca/tamaño1.5/1,5/1.5L; cotizar ambos al precio vigente, sin añadir antes de aceptar.",
+      "orderReferences": [
+        "182"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-17",
+      "priority": "P1",
+      "title": "Dirección del nuevo pedido se pierde cuando viene con producto",
+      "source": "zip:65-80",
+      "evidence": "Tras confirmar otro pedido, una calle nueva y medio pollo en el mismo mensaje añaden el producto, pero luego se ofrece la dirección anterior.",
+      "expectedRegression": "Nuevo pedido con dirección explícita sustituye la sugerencia anterior; no reutilizar domicilio sin revisar ese mensaje.",
+      "orderReferences": [
+        "37"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-18",
+      "priority": "P1",
+      "title": "Dirección incompleta obtiene una cotización de fuera de cobertura",
+      "source": "zip:150-161",
+      "evidence": "Una carrera incompleta se cotiza a~14km; al añadir el número faltante pasa a~1.1km.",
+      "expectedRegression": "Validar completitud antes de geocodificar/cotizar; pedir el número faltante en vez de rechazar cobertura prematuramente.",
+      "orderReferences": [
+        "66"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-19",
+      "priority": "P1",
+      "title": "Reutilización de dirección guardada no es estable",
+      "source": "pasted-file-current-89",
+      "evidence": "«Sí a esta misma» vuelve a geocodificar la dirección serializada con referencia de mapa; falla y exige pin de nuevo.",
+      "expectedRegression": "Conservar dirección estructurada y coordenadas verificadas; recalcular ruta si procede sin interpretar texto decorativo como nueva dirección. Reconfirmar si la evidencia es insuficiente.",
+      "orderReferences": [
+        "89"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-20",
+      "priority": "P2",
+      "title": "Dirección válida rechazada repetidamente sin recuperación breve",
+      "source": "zip:180-195",
+      "evidence": "Se rechazan varias reformulaciones y solo funciona la explicación larga del conjunto. Rechazar resultados de otra calle es correcto; el bucle es la fricción.",
+      "expectedRegression": "Preservar calle/unidad/referencia, pedir pin una vez y aceptar una corrección inequívoca; nunca relajar validación para tomar otro destino.",
+      "orderReferences": [
+        "79"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-21",
+      "priority": "P1",
+      "title": "Aclaración de unidad después de registrar no llega a resolución operativa",
+      "source": "pasted-107",
+      "evidence": "Bloque/apto llegan después de confirmar; el bot avisa honestamente que no actualizó la orden, pero solo deriva a llamada.",
+      "expectedRegression": "Identificar la orden y distinguir completar unidad de cambiar destino; solicitud de revisión al equipo con estado explícito si existe canal autorizado. Nunca afirmar actualización o aviso no realizados.",
+      "orderReferences": [
+        "107"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-22",
+      "priority": "P2",
+      "title": "Cierre coloquial o con errata vuelve a Algo más",
+      "source": "zip:52-54,373-383,427-432",
+      "evidence": "«Eso eria» y«No sumerce» reiteran la compra;«confir,ar» vuelve a Algo más antes de reconocer confirmar.",
+      "expectedRegression": "Conservar el estado de checkout; interpretar solo cierres inequívocos y pedir una aclaración breve ante duda, sin añadir ni reiniciar pedido.",
+      "orderReferences": [
+        "33",
+        "174",
+        "190"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-23",
+      "priority": "P2",
+      "title": "Notas de cocina contienen residuos y repeticiones",
+      "source": "zip:45-64,150-169,357-366,386-402",
+      "evidence": "Notas como«en vez de papa francesa se»,«con costilla s de» y«sin francesa» se concatenan con la instrucción útil.",
+      "expectedRegression": "Guardar notas completas, sin fragmentos de compra/dirección repetidos; conservar la parte operativa y no borrar preferencias.",
+      "orderReferences": [
+        "33",
+        "66",
+        "172",
+        "187"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-24",
+      "priority": "P2",
+      "title": "Respuestas informativas eligen un referente que no está seleccionado",
+      "source": "zip:268-283",
+      "evidence": "Al preguntar acompañamientos después de entero frito+medio broaster, responde por medio frito, que no es una de esas líneas.",
+      "expectedRegression": "Usar foco válido o pedir cuál de los platos; nunca inventar un tercero para contestar.",
+      "orderReferences": [
+        "114"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-25",
+      "priority": "P2",
+      "title": "Despedida con sticker genera error innecesario",
+      "source": "pasted-90",
+      "evidence": "Después de una compra confirmada y agradecimiento, un sticker recibe No entendí y una invitación a llamar.",
+      "expectedRegression": "Ignorar o reconocer el cierre social sin reabrir pedido ni pedir aclaración. No confundir stickers con fotos/comprobantes.",
+      "orderReferences": [
+        "90"
+      ],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N08-26",
+      "priority": "P2",
+      "title": "Saludo o solicitud de domicilio deriva a una intención distinta",
+      "source": "zip:224-225;pasted-182",
+      "evidence": "Una solicitud inicial de domicilio recibe una respuesta de demora de un pedido ya hecho; hay respuestas redundantes entre saludo y modalidad.",
+      "expectedRegression": "Saludar una vez y abrir pedido, sin dar seguimiento a una orden anterior si no se pregunta por ella.",
+      "orderReferences": [],
+      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    }
+  ],
+  "priorities": [
+    {
+      "stage": 1,
+      "ids": [
+        "N08-01",
+        "N08-02",
+        "N08-03",
+        "N08-04",
+        "N08-05"
+      ],
+      "goal": "Stop unrequested additions, duplicate transitions and corruption across bubble boundaries; exercise actual coalescer and checkout invariants."
+    },
+    {
+      "stage": 2,
+      "ids": [
+        "N08-06",
+        "N08-07",
+        "N08-08",
+        "N08-09",
+        "N08-10",
+        "N08-15",
+        "N08-16"
+      ],
+      "goal": "Quantity evidence, negation scope, compound-product context and precise cart-line replacement."
+    },
+    {
+      "stage": 3,
+      "ids": [
+        "N08-12",
+        "N08-13",
+        "N08-14",
+        "N08-17",
+        "N08-18",
+        "N08-19",
+        "N08-20",
+        "N08-21"
+      ],
+      "goal": "Identity/address separation, completeness and safe continuity before and after order registration."
+    },
+    {
+      "stage": 4,
+      "ids": [
+        "N08-11",
+        "N08-22",
+        "N08-23",
+        "N08-24",
+        "N08-25",
+        "N08-26"
+      ],
+      "goal": "Post-confirmation corrections, checkout language, useful notes and social closure."
+    }
+  ],
+  "positiveControls": [
+    {
+      "source": "pasted-90",
+      "observation": "Correct compound rice+chicken combo, included Coca-Cola, quantity, delivery and final total; unnecessary sticker fallback is separate."
+    },
+    {
+      "source": "pasted-113",
+      "observation": "Combo+included Coca-Cola interpreted correctly, one product and correct arithmetic; name duplicated in address remains a defect."
+    },
+    {
+      "source": "pasted-130",
+      "observation": "Included drink changed to Manzana without adding a standalone drink; receipt explicitly not considered verified payment."
+    },
+    {
+      "source": "zip:170-175,284-289",
+      "observation": "Structured multiline purchase/address/payment messages captured and registered."
+    },
+    {
+      "source": "zip:108-109,288-289",
+      "observation": "Yes/SI can confirm in proper final-confirmation context."
+    },
+    {
+      "source": "zip:433-446",
+      "observation": "Half chicken selection and no-arepas/more-potatoes request retained through final order."
+    },
+    {
+      "source": "zip:70-74,180-189",
+      "observation": "Rejecting a map result on a different street is a useful guard; improve recovery rather than accept mismatched locations."
+    }
+  ],
+  "unverified": [
+    {
+      "topic": "root causes",
+      "detail": "Burst replay/coalescing and competing state ownership are hypotheses based on transitions, not traced code causes yet."
+    },
+    {
+      "topic": "model change",
+      "detail": "No comparison attributes these incidents to a model change; must replay deterministic and model-mocked routes before inference testing."
+    },
+    {
+      "topic": "lost sales",
+      "detail": "Some fragments end before registration; no proof of abandonment, fulfillment or actual financial loss without backend follow-up."
+    },
+    {
+      "topic": "media",
+      "detail": "Omitted audio/images and recognition fidelity were not evaluated from original media."
+    },
+    {
+      "topic": "unclear note",
+      "source": "zip:330-331",
+      "detail": "sin46 became sin ensalada; cannot justify from text alone, inspect original/catalog context before labeling an ASR or rule failure."
+    },
+    {
+      "topic": "payment timing",
+      "source": "pasted-182",
+      "detail": "Nequi al recibir is recorded as transfer; merchant policy unknown. Preserve timing or clarify if unsupported; do not assume payment was verified."
+    },
+    {
+      "topic": "payment configuration",
+      "detail": "November menus show Mercado Pago although pilot scope is cash/transfer; verify actual config before changing. Método4 is historical September."
+    },
+    {
+      "topic": "current staging status",
+      "detail": "Each finding is pending replay on runtime456; old traces do not prove the bug persists there. Prior batches are not evidence that these exact cases are solved."
+    }
+  ],
+  "execution": {
+    "newExecutableRegressions": 0,
+    "testsRun": 0,
+    "runtimeChanges": false,
+    "deployments": false,
+    "externalOrders": 0,
+    "customerMessagesSent": 0,
+    "paidInferenceRequests": 0
+  },
+  "rawPIIInRepository": false
+}
