@@ -78,7 +78,10 @@
         "61",
         "86"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "corrected_for_documented_scope_global_validated_pending_staging",
+      "correctionBatch": 460,
+      "validation": "whatsapp-batch-460-validation.json",
+      "scope": "Combo+soup then el combo con beverage now changes one included drink without adding another combo. Half-chicken/address did not duplicate on current version and is locked as regression; ID claims and persistence mocked. Existing duplicated carts are not repaired automatically."
     },
     {
       "id": "N08-03",
@@ -531,6 +534,11 @@
       "validation": "whatsapp-batch-459-validation.json",
       "stagingVerified": true,
       "deploymentEvidence": "whatsapp-batch-459-staging-deployment.json"
+    },
+    {
+      "batch": 460,
+      "validation": "whatsapp-batch-460-validation.json",
+      "stagingVerified": false
     }
   ]
 }

@@ -7572,7 +7572,7 @@ export class WhatsappOrchestratorService {
     // Varios platos en un mensaje ("sopa de mondongo, cuarto de pollo y costillas")
     if (!session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
       const dishQuery = (
-        this.catalogService.extractProductSearchQuery(originalText || text) ||
+        this.catalogService.extractProductSearchQuery(compound.address && originalText.includes('\n') && !/[¿?]/.test(originalText) ? compound.productText : originalText || text) ||
         text
       )
         .replace(/^(?:y|tambien|también)\s+/i, '')
@@ -22325,9 +22325,11 @@ export class WhatsappOrchestratorService {
 
   private async tryHandleIncludedDrinkFollowup(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
     if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm','awaiting_mp_payment'].includes(conv.state)) return false;
-    const said = normalizeCorrection(text).replace(/ (?:por f|por fa|porfa|por favor|gracias)$/, '');
+    const drinkKey = (value: string) => normalizeCorrection(value.replace(/[-‐‑]/g, ' '));
+    const said = drinkKey(text).replace(/ (?:por f|por fa|porfa|por favor|gracias)$/, '');
+    const comboFollowup = said.match(/^(?:y )?el combo con ([a-zñ]+(?: [a-zñ]+){0,3})$/);
     const labelledFollowup = said.match(/^(?:y )?(?:la )?(?:bebida|gaseosa|refresco) ([a-zñ]+(?: [a-zñ]+){0,3})$/);
-    const match = said.match(/^(?:y )?de tomar ([a-zñ]+(?: [a-zñ]+){0,3})$/) || labelledFollowup;
+    const match = said.match(/^(?:y )?de tomar ([a-zñ]+(?: [a-zñ]+){0,3})$/) || labelledFollowup || comboFollowup;
     if (!match || /\b(?:otra?|mas|extra|adicional|aparte|dos|tres|una?)\b/.test(match[1])) return false;
     // Polite requests retain the existing owner clarification and continuation.
     if (/^(?:(?:me|nos) |(?:puedes|pueden|podrias|podrian|quiero|dame|enviame|mandame)\b)/.test(match[1])) return false;
@@ -22335,11 +22337,11 @@ export class WhatsappOrchestratorService {
     // A short label may be an exact catalog value (e.g. "agua de panela").
     // Otherwise clauses naming a dish or describing a change keep their existing route.
     if (labelledFollowup && /\b(?:que|sea|en|con|por|de|del|para|al)\b/.test(labelledFollowup[1]) &&
-      !products.some(product=>(product.attributes || []).some(attr=>/^(?:bebida|gaseosa|refresco)s?$/i.test(attr.attributeName) && attr.options.some(value=>normalizeCorrection(value)===labelledFollowup[1])))) return false;
+      !products.some(product=>(product.attributes || []).some(attr=>/^(?:bebida|gaseosa|refresco)s?$/i.test(attr.attributeName) && attr.options.some(value=>drinkKey(value)===labelledFollowup[1])))) return false;
     const owners = session.cart.flatMap((line,index)=>{
       const product=products.find(p=>p.id===line.productId);
       const attributes=(product?.attributes || []).filter(attr=>/^(?:bebida|gaseosa|refresco)s?$/i.test(attr.attributeName));
-      return attributes.length?[{line,index,attributes}]:[];
+      return attributes.length && (!comboFollowup || /\bcombo\b/.test(normalizeCorrection(product?.name || '')))?[{line,index,attributes}]:[];
     });
     if (!owners.length) return false;
     if (/[¿?]/.test(text)) {
@@ -22349,17 +22351,17 @@ export class WhatsappOrchestratorService {
     if (session.pendingSubsetKitchenNote || session.mpPreferenceId) return clarify();
     // Existing option selections own their continuation; never replace them with a new prompt.
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
-    if (labelledFollowup && (owners.length!==1 || owners[0].line.quantity!==1)) return clarify();
+    if ((labelledFollowup || comboFollowup) && (owners.length!==1 || owners[0].line.quantity!==1)) return clarify();
     if (new Set(owners.map(row=>row.line.productId)).size!==1) {
       const labelled=match[1].replace(/^(?:(?:la|el) )?(?:bebida|gaseosa|refresco) /, '');
-      const values=owners.flatMap(row=>row.attributes.flatMap(attr=>attr.options)).filter(value=>[match[1],labelled].includes(normalizeCorrection(value)));
-      if (new Set(values.map(value=>normalizeCorrection(value))).size!==1) return clarify();
+      const values=owners.flatMap(row=>row.attributes.flatMap(attr=>attr.options)).filter(value=>[match[1],labelled].includes(drinkKey(value)));
+      if (new Set(values.map(value=>drinkKey(value))).size!==1) return clarify();
       return await this.tryHandleCartAttributeOptionChange(conv,waId,session,`cambia la bebida por ${values[0]}`,products) || clarify();
     }
     const edits=owners.map(row=>{
-      const exact=row.attributes.flatMap(attr=>attr.options.filter(value=>normalizeCorrection(value)===match[1]).map(value=>({attr,value})));
+      const exact=row.attributes.flatMap(attr=>attr.options.filter(value=>drinkKey(value)===match[1]).map(value=>({attr,value})));
       const labelled=match[1].replace(/^(?:(?:la|el) )?(?:bebida|gaseosa|refresco) /, '');
-      const selected=exact.length?exact:row.attributes.flatMap(attr=>attr.options.filter(value=>normalizeCorrection(value)===labelled).map(value=>({attr,value})));
+      const selected=exact.length?exact:row.attributes.flatMap(attr=>attr.options.filter(value=>drinkKey(value)===labelled).map(value=>({attr,value})));
       const choices=selected.map(({attr,value})=>({productId:row.line.productId,cartLineIndex:row.index,attributeName:attr.attributeName,attributeValue:value}));
       return choices.length===1?choices[0]:null;
     });
