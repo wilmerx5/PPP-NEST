@@ -1,4 +1,4 @@
-## Tanda 458 — recapitulación con bebida ya elegida y confirmación bloqueada por sabor pendiente (validación aprobada; staging pendiente)
+## Tanda 458 — recapitulación con bebida ya elegida y confirmación bloqueada por sabor pendiente (staging desplegado y verificado)
 
 N08-03 reproducido: con Coca-Cola Original registrada,«Solo sería el pollo broaster y la Coca-Cola1.5L» conserva la botella pero vuelve a crear una pregunta de Sabor; ocurre tanto con pollo faltante como ya presente, y en dos familias de catálogo. Baseline8:8 fallos. La primera aserción del fixture usaba option en vez de attributeValue; corregida antes del baseline válido. Otra ampliación no compilaba por falta de code en una línea sembrada; corregida antes de congelar fuentes.
 
@@ -11,6 +11,8 @@ La ruta central de checkout muestra la pregunta de atributos si existe pendingAt
 56 controles nuevos:44 router,4 comprobaciones centrales seguidas por cierre del router y8 guardas directas;40 cierres DTO simulados. Dos familias, agente off/mock; pollo presente/ausente, tres prefijos, repetición idéntica, producto sin atributos, recapitulación en confirmación final, frase original con«a la broaster»/«Coca-Cola», adición explícita de otra botella, cambios/preguntas excluidos, cantidades u otros platos, agotado y local cerrado. Foco ampliado204/4 y final260/3 aprobados. Sin inferencia pagada, Meta ni órdenes externas; modelos y presupuesto preservados.
 
 Global42.543/530 aprobado sin fallos ni omitidas,749 fuentes congeladas e inventario exacto; TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-458-validation.json.
+
+Staging458 ejecuta83ff5e00: healthy, cero reinicios, API local/pública y DB correctas; configuración privada y cinco modelos preservados. Workflow42565660036.62 controles compilados aprobados:56 nuevos y6 rechazos allCancel heredados de tres familias,50 router/4 central/8 guardas,46 cierres DTO simulados. Los nuevos recorridos usan recogida; los6 heredados, dirección escrita y tarifa fija con contacto capturado. Todos los puertos externos simulados; sin geocodificación/inferencia/persistencia externas. Evidencia whatsapp-batch-458-staging-deployment.json.
 
 Límites: exactamente dos nombres canónicos distintos con esos prefijos, sin decisiones competidoras. Los recorridos con producto faltante parten de building_cart; en confirmación final se prueban dos productos ya registrados. Recogida con contacto conocido, sin audio, geocodificación ni conciliación bancaria real. Las guardas directas solo acreditan no interceptar; no prueban el comportamiento posterior del router. No sanea automáticamente pendientes duplicados de conversaciones anteriores. N08-02 repetición entre burbujas y N08-05 complementos de dirección siguen pendientes. Producción446 y Kamppo398 sin cambios.
 

@@ -74,7 +74,7 @@
   "externalOrders": 0,
   "modelsChanged": false,
   "budgetChanged": false,
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
   "kamppoChanged": false,
   "limits": [
@@ -83,5 +83,7 @@
     "Pickup with known fixture contact; no real inference, audio, geocoding or payment reconciliation",
     "Does not automatically remove duplicate pending attributes in conversations created before this correction",
     "Direct guards only prove no interception; other 08/11 incident families remain pending"
-  ]
+  ],
+  "runtimeCommit": "83ff5e002eff5d7b73c4663628290f1acd785705",
+  "deploymentEvidence": "whatsapp-batch-458-staging-deployment.json"
 }

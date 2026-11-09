@@ -90,10 +90,11 @@
       "orderReferences": [
         "182"
       ],
-      "status": "corrected_for_documented_scope_global_validated_pending_staging",
+      "status": "corrected_for_documented_scope_staging_verified",
       "correctionBatch": 458,
       "validation": "whatsapp-batch-458-validation.json",
-      "scope": "Two canonical named products after solo sería/solamente es/únicamente son, no competing decisions; missing product added once, existing flavor retained. Central confirmation blocks pendingAttribute. Does not automatically repair old duplicate pending states."
+      "scope": "Two canonical named products after solo sería/solamente es/únicamente son, no competing decisions; missing product added once, existing flavor retained. Central confirmation blocks pendingAttribute. Does not automatically repair old duplicate pending states.",
+      "deploymentEvidence": "whatsapp-batch-458-staging-deployment.json"
     },
     {
       "id": "N08-04",
@@ -518,7 +519,8 @@
     {
       "batch": 458,
       "validation": "whatsapp-batch-458-validation.json",
-      "stagingVerified": false
+      "stagingVerified": true,
+      "deployment": "whatsapp-batch-458-staging-deployment.json"
     }
   ]
 }
