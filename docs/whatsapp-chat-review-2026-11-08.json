@@ -174,9 +174,10 @@
       "orderReferences": [
         "20"
       ],
-      "status": "reproduced_candidate_router_not_corrected",
+      "status": "corrected_candidate_router_scoped_not_deployed",
       "candidateBaseline": "whatsapp-n08-08-combo-target-baseline-465.json",
-      "candidateScope": "Derived router diagnostic off/mock; no correction or deployment; same candidate as batch464"
+      "candidateScope": "228 router regressions: whole/half target clarified; other line and options preserved. Derived replay, not initial combined misspelled purchase",
+      "validation": "whatsapp-batch-465-validation.json"
     },
     {
       "id": "N08-09",
@@ -564,6 +565,12 @@
       "validation": "whatsapp-batch-462-validation.json",
       "stagingVerified": true,
       "deploymentEvidence": "whatsapp-batch-462-staging-deployment.json"
+    },
+    {
+      "batch": 465,
+      "validation": "whatsapp-batch-465-validation.json",
+      "stagingVerified": false,
+      "deployed": false
     }
   ]
 }

@@ -1,0 +1,41 @@
+{
+  "reviewDate": "2026-11-09",
+  "timezone": "America/Bogota",
+  "kind": "sanitized-user-chat-review",
+  "rawPIIInRepository": false,
+  "findings": [
+    {
+      "id": "N09-01",
+      "priority": "P1",
+      "orderReferences": [
+        "38"
+      ],
+      "title": "Consulta del destino después de confirmar responde con ubicación del local",
+      "positive": "Medio pollo, acompañamiento, cierre, pago y registro de la orden completados",
+      "failure": "Referencia de mapa distinta del texto escrito; pregunta de dirección y aclaración transcrita reciben el local. Tras ?? aparece queja genérica y oferta de nuevo pedido.",
+      "criticality": "Riesgo de coordinación de entrega; no consta entrega equivocada ni venta sin registrar",
+      "secondary": "Respuesta de acompañamiento redundante; etiqueta del geocodificador extensa; consulta de demora podría conservar una estimación sin afirmar envío a cocina",
+      "status": "corrected_candidate_router_scoped_not_deployed",
+      "batch": 466,
+      "baseline": {
+        "validCases": 60,
+        "failed": 60,
+        "initialInvalidAttempt": "Missing order-history lookup mock; corrected and replayed before runtime edit"
+      },
+      "focused": {
+        "cases": 96,
+        "failed": 0
+      },
+      "scope": "Only completed/closed delivery sessions with a stored address; deterministic follow-up, no order mutation or staff notification",
+      "limits": [
+        "Seeded persisted sessions and transcript as text, not transcription QA",
+        "Does not verify physical delivery or geocoding",
+        "Does not replace the initial summary formatter",
+        "No persisted order snapshot lookup; labels come from retained chat session"
+      ],
+      "validation": "whatsapp-batch-466-validation.json"
+    }
+  ],
+  "nextPriority": "N08-09: preparation assigned to the wrong compound dish",
+  "deployed": false
+}

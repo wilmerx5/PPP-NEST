@@ -224,6 +224,8 @@ export type WhatsappSessionData = {
     note: string;
   };
   pendingCartReplacement?: {
+    /** Cart-line selection for an existing dish conversion, not a new purchase. */
+    variantRequest?: string;
     cartSignature: string;
     options: Array<{ cartIndex: number; label: string }>;
     addQuery: string;

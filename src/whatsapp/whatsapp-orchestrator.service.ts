@@ -2038,6 +2038,9 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // A question about the confirmed delivery destination is not a new order or the shop location.
+    if (await this.tryHandlePostOrderDestinationReference(conv,msg.waId,originalText,cfg)) return;
+
     // Tras idle de “asesor”: nadie contestó
     if (isUnansweredHumanComplaint(originalText)) {
       await this.reply(
@@ -9210,6 +9213,43 @@ export class WhatsappOrchestratorService {
   }
 
   /** Respuesta a "dónde queda el restaurante / cómo llego". */
+  private async tryHandlePostOrderDestinationReference(
+    conv: WhatsappConversation, waId: string, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!['completed','closed'].includes(conv.state)) return false;
+    const session = this.conversationService.getSession(conv);
+    if (session.orderType !== 'delivery' || !session.address?.trim()) return false;
+    const q = this.normalizeForMatch(text);
+    const explicitRestaurant = /\b(?:direccion|ubicacion|mapa|pin)\s+(?:del?|de la)\s+(?:local|restaurante|negocio|sede)\b/.test(q) &&
+      !/\b(?:mi pedido|mi domicilio|te envie|te mande|no es|no corresponde)\b/.test(q);
+    if (explicitRestaurant && this.catalogService.isRestaurantLocationInquiry(text)) {
+      await this.reply(conv,waId,this.formatRestaurantLocationReply(cfg));
+      return true;
+    }
+    const concern = /[¿?]/.test(text) || /\b(?:no es|no era|no corresponde|esta mal|equivocad[ao]|esa es|esta es|cual|a donde|donde va)\b/.test(q);
+    const newPurchase = /^(?:quiero|quisiera|dame|regalame|agrega|me das|me regalas)\b/.test(q) &&
+      !/^(?:quiero|quisiera) (?:saber|consultar|confirmar|verificar|revisar|corregir|cambiar) (?:la |mi |esa |esta )?(?:direccion|ubicacion|destino|punto)\b/.test(q);
+    const destinationReference = !explicitRestaurant && concern && !newPurchase && (
+      /\b(?:direccion|ubicacion|punto|pin|mapa|destino)\b/.test(q) &&
+        /\b(?:esa|ese|esta|este|mi|te envie|te mande|te comparti|domicilio|pedido)\b/.test(q) ||
+      /\b(?:a donde|donde)\b.*\b(?:va a llegar|llega|llegara|van a enviar|van a llevar)\b.*\b(?:pedido|domicilio)\b/.test(q)
+    );
+    const prefix = 'Destino anotado en este chat para el domicilio:';
+    const repeatedClarification = (/^\?{1,4}$/.test(text.trim()) || /^(?:no entiendo|como asi)$/.test(q)) &&
+      (await this.conversationService.getLastOutboundBody(conv.id))?.startsWith(prefix);
+    if (!destinationReference && !repeatedClarification) return false;
+    const label = customerLocationLabel(session.address);
+    const parts = label.split(' — ');
+    const destination = /^Referencia de mapa:/i.test(parts[0]) && parts.length > 1
+      ? `Dirección escrita: ${parts.slice(1).join(' — ')}\n${parts[0]}` : label;
+    const pin = validDeliveryCoordinates(session.deliveryLat,session.deliveryLng)
+      ? `\nPunto compartido: https://maps.google.com/?q=${session.deliveryLat},${session.deliveryLng}` : '';
+    await this.reply(conv,waId,`${prefix}\n${destination}${pin}\n\n` +
+      'La referencia del mapa puede mostrar una calle cercana al punto compartido. No he cambiado la dirección de la orden registrada. ' +
+      'Si ese destino no corresponde, el restaurante debe verificarlo antes de la entrega. ' + this.humanPhoneHint());
+    return true;
+  }
+
   private formatRestaurantLocationReply(cfg: EffectiveWhatsappConfig): string {
     const ctx = cfg.localContext;
     const brand = cfg.brandName || ctx?.restaurantName || 'el local';
@@ -13250,6 +13290,28 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** Bounded references to an existing dish; new combo purchases stay on their own route. */
+  private comboTargetReference(text: string): string | null {
+    if (/[¿?;]/.test(text)) return null;
+    const q = normalizeCorrection(text).replace(/^(?:mejor|entonces)\s+/, '');
+    if (/^(?:si|cuando|no|puedo|podria|podrias)\b/.test(q)) return null;
+    const reference = q.match(/^(?:(?:el|la)\s+)?(.+?)\s+(?:lo|la)\s+(?:quiero|quisiera|prefiero)\s+(?:en|con)\s+combo\b/)?.[1] ||
+      q.match(/^(?:(?:el|la)\s+)?(.+?)\s+(?:damelo|damela|ponlo|ponla)\s+en\s+combo\b/)?.[1] ||
+      q.match(/^(?:quiero|quisiera)\s+(?:el|la)\s+(.+?)\s+en\s+combo\b/)?.[1] ||
+      q.match(/^(?:pasa|cambia)(?:me)?\s+(?:(?:el|la)\s+)?(.+?)\s+(?:a|en)\s+combo\b/)?.[1] ||
+      q.match(/^(?:el|la)\s+(.+?)\s+en\s+combo\b/)?.[1];
+    if (reference) return reference;
+    return /^(?:(?:lo|la)\s+(?:quiero|quisiera|prefiero)\s+|(?:damelo|damela|ponlo|ponla)\s+)?(?:en\s+)?combo(?:\s+con\s+.+)?$/.test(q) ? '' : null;
+  }
+
+  private comboTargetMatchesLine(line: WhatsappCartItem, reference: string): boolean {
+    const portions = (value: string) => normalizeCorrection(value)
+      .replace(/\b(?:entero|entera)\b/g, '1').replace(/\b(?:medio|media)\b/g, '1/2')
+      .replace(/\b(?:cuarto|cuarta)\b/g, '1/4');
+    const query = portions(reference).replace(/^(?:el|la)\s+que\s+(?:tiene|viene|va)(?:\s+con)?\s+/, '');
+    return correctionMatchesLine({...line, name: portions(line.name)}, query);
+  }
+
   private async tryHandleVariantPreferenceChange(
     conv: WhatsappConversation,
     waId: string,
@@ -13274,10 +13336,47 @@ export class WhatsappOrchestratorService {
         await this.reply(conv,waId,`No pude aplicar el cambio solo a ${scope.quantity} de ${line.quantity} unidades de ${line.name}. El pedido sigue igual. Puedes mantenerlo así o pedirme el cambio para las ${line.quantity} unidades.`);return true;
       }
     }
+    let targetLine: WhatsappCartItem | undefined;
+    const reference = this.comboTargetReference(text);
+    if (this.catalogService.extractVariantPreferenceHint(text) === 'combo' && reference !== null && session.cart.length &&
+        !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder && !session.pendingAddOffer &&
+        !CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) {
+      const candidates = session.cart.flatMap((line, cartIndex) => {
+        const item = products.find(candidate => candidate.id === line.productId);
+        return item && !this.catalogService.isLikelyDrinkProduct(item) && !this.catalogService.isLikelySideOnlyProduct(item) &&
+          (!reference || this.comboTargetMatchesLine(line, reference))
+          ? [{cartIndex, label:this.formatCartLineLabel(line) + (line.note ? ` · ${line.note}` : '')}] : [];
+      });
+      // A bare pronoun can target the sole convertible dish beside an extra side.
+      // Explicit references still retain all matching lines for clarification.
+      const convertible = !reference ? candidates.filter(option => {
+        const item = products.find(candidate=>candidate.id === session.cart[option.cartIndex].productId)!;
+        return this.catalogService.findProductVariantFamily(item.name,products,[item])?.variants
+          .some(variant=>this.catalogService.productImpliesCombo(variant));
+      }) : [];
+      const options = convertible.length ? convertible : candidates;
+      if (session.mpPreferenceId) {
+        await this.reply(conv,waId,'Ya hay un enlace de pago. El restaurante debe revisar ese pago antes de cambiar el pedido. El carrito sigue igual.');
+        return true;
+      }
+      if (!options.length) {
+        await this.reply(conv,waId,'No identifiqué ese plato en el carrito. Dime su nombre completo para cambiarlo a combo. El pedido sigue igual.');
+        return true;
+      }
+      if (options.length > 1) {
+        const next = {...session, pendingPriceInquiry:undefined, pendingCompositionAsk:undefined, pendingCategoryBrowse:undefined,
+          pendingCartReplacement:{cartSignature:JSON.stringify(session.cart), options, addQuery:text, variantRequest:text}};
+        await this.conversationService.saveSession(conv,next);
+        await this.reply(conv,waId,'Hay varias líneas. ¿Cuál línea quieres pasar a combo?\n\n' + options.map((option,index)=>`${index+1}. ${option.label}`).join('\n') +
+          '\n\nEscribe el número o identifica el plato. El pedido sigue igual.');
+        return true;
+      }
+      targetLine = session.cart[options[0].cartIndex];
+    }
     const namedTarget=text.match(/^(?:el\s+|la\s+)?(.+?)\s+(?:d[aá]melo|d[aá]mela|ponlo|ponla)\s+en\s+combo\b/i)?.[1];
     const cartProducts=products.filter(product=>session.cart.some(line=>line.productId===product.id) && !this.catalogService.isLikelyDrinkProduct(product));
     const explicitProduct=namedTarget ? this.catalogService.resolveSpokenDish(namedTarget,cartProducts) : null;
-    const product = explicitProduct || this.resolveDiscussedProduct(session, text, products);
+    const product = (targetLine && products.find(item => item.id === targetLine.productId)) || explicitProduct || this.resolveDiscussedProduct(session, text, products);
     if (!product) return false;
 
     return this.tryApplyVariantPreferenceToProduct(
@@ -13288,7 +13387,7 @@ export class WhatsappOrchestratorService {
       products,
       cfg,
       product,
-      { fromPendingAttribute: false },
+      { fromPendingAttribute: false, targetLine },
     );
   }
 
@@ -13602,7 +13701,7 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
     cfg: EffectiveWhatsappConfig,
     product: MenuProduct,
-    opts: { fromPendingAttribute: boolean; focusedComboId?: number },
+    opts: { fromPendingAttribute: boolean; focusedComboId?: number; targetLine?: WhatsappCartItem },
   ): Promise<boolean> {
     const hint = this.catalogService.extractVariantPreferenceHint(text);
     const cartContext = session.cart.length > 0 || opts.fromPendingAttribute;
@@ -13667,8 +13766,12 @@ export class WhatsappOrchestratorService {
     ]);
 
     if (family && family.variants.length >= 2) {
+      // A selected cart portion identifies the source line, not the destination SKU.
+      const destinationFamily = opts.targetLine && hint === 'combo'
+        ? {...family, variants:family.variants.filter(item=>this.catalogService.productImpliesCombo(item))}
+        : family;
       let picked =
-        this.catalogService.pickVariantFromFamilyText(text, family) ||
+        this.catalogService.pickVariantFromFamilyText(text, destinationFamily) ||
         (hint === 'combo' && this.catalogService.productImpliesCombo(product) ? product : null) ||
         (hint === 'combo'
           ? family.variants.find((p) => /\bcombo\b/.test(p.name.toLowerCase())) || null
@@ -13730,12 +13833,20 @@ export class WhatsappOrchestratorService {
             return true;
           }
         }
-        if (!picked) return false;
+        if (!picked) {
+          if (opts.targetLine) {
+            await this.reply(conv,waId,`No veo un combo disponible para *${product.name}*. El pedido sigue igual.`);
+            return true;
+          }
+          return false;
+        }
       }
 
       const familyIds = new Set(family.variants.map(variant => variant.id));
       const exactLines = session.cart.filter(line => line.productId === product.id);
-      const originals = exactLines.length ? exactLines : session.cart.filter(line => familyIds.has(line.productId));
+      const originals = opts.targetLine
+        ? session.cart.filter(line => JSON.stringify(line) === JSON.stringify(opts.targetLine))
+        : exactLines.length ? exactLines : session.cart.filter(line => familyIds.has(line.productId));
       if (cartContext && originals.length > 1) {
         await this.reply(conv, waId, 'Hay varias líneas de ese plato. Dime cuál quieres cambiar y sus opciones; el carrito sigue igual.');
         return true;
@@ -13743,9 +13854,12 @@ export class WhatsappOrchestratorService {
       const replacement = session.pendingAttribute?.replacement || (originals.length === 1
         ? {originalLine: structuredClone(originals[0])} : undefined);
       const quantity = replacement?.originalLine.quantity || this.resolveAddQuantity(session, picked, {sourceText:text});
-      const kept = (replacement?.originalLine.attributes || []).filter(selected => picked.attributes?.some(attr =>
+      const explicitStep = opts.targetLine ? this.catalogService.resolveAttributesFromMessage(picked,text,[]) : null;
+      const explicitChoices = explicitStep && (explicitStep.status === 'complete' || explicitStep.status === 'partial') ? explicitStep.attributes : [];
+      const kept = [...(replacement?.originalLine.attributes || []).filter(selected =>
+        !explicitChoices.some(choice=>this.normalizeForMatch(choice.attributeName) === this.normalizeForMatch(selected.attributeName)) && picked.attributes?.some(attr =>
         this.normalizeForMatch(attr.attributeName) === this.normalizeForMatch(selected.attributeName) &&
-        attr.options.some(option => this.normalizeForMatch(option) === this.normalizeForMatch(selected.attributeValue))));
+        attr.options.some(option => this.normalizeForMatch(option) === this.normalizeForMatch(selected.attributeValue)))), ...explicitChoices];
       session = {
         ...this.rememberProductFocus(session, picked, products),
         pendingMatch: undefined,
@@ -13864,6 +13978,11 @@ export class WhatsappOrchestratorService {
         `${cartContext ? 'Listo, lo cambié 👍\n\n' : ''}` +
           this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), picked.name, {extraLine:this.retainedComboDrinkNotice(session,replacement?.originalLine,picked,text,products)}),
       );
+      return true;
+    }
+
+    if (opts.targetLine) {
+      await this.reply(conv,waId,`Sobre *${product.name}*, no veo una variante combo aparte en el menú. El pedido sigue igual.`);
       return true;
     }
 
@@ -17389,6 +17508,49 @@ export class WhatsappOrchestratorService {
       await this.conversationService.saveSession(conv, next);
       await this.reply(conv, waId, 'Cancelé ese cambio. El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, next));
       return true;
+    }
+    if (pending?.variantRequest && !/[¿?]/.test(text)) {
+      if (/^(?:no|mejor no)[.!]*$/i.test(text.trim())) {
+        await this.conversationService.saveSession(conv,{...session,pendingCartReplacement:undefined});
+        await this.reply(conv,waId,'Cancelé el cambio a combo. El pedido sigue igual.');
+        return true;
+      }
+      if (session.mpPreferenceId) {
+        await this.reply(conv,waId,'Ya hay un enlace de pago. El restaurante debe revisar ese pago antes de cambiar el pedido. El carrito sigue igual.');
+        return true;
+      }
+      if (pending.cartSignature !== JSON.stringify(session.cart)) {
+        await this.conversationService.saveSession(conv,{...session,pendingCartReplacement:undefined});
+        await this.reply(conv,waId,'El carrito cambió. Dime otra vez qué plato pasamos a combo. No apliqué el cambio pendiente.');
+        return true;
+      }
+      const freshReference = this.comboTargetReference(text);
+      const reference = freshReference === null ? text : freshReference;
+      const number = this.catalogService.extractListPickNumber(reference);
+      const ordinal = /^(?:el|la)\s+(?:primero|primera|segundo|segunda|tercero|tercera|cuarto|cuarta)$/.test(normalizeCorrection(reference))
+        ? this.uniqueClarificationLine(session,pending.options,reference) : null;
+      const matches = number !== null ? pending.options.filter((_,index)=>index === number-1) :
+        ordinal && ordinal !== 'ambiguous' ? pending.options.filter(option=>option.cartIndex === ordinal.index) :
+        pending.options.filter(option=>this.comboTargetMatchesLine(session.cart[option.cartIndex],reference));
+      if (matches.length !== 1) {
+        if (freshReference !== null && matches.length > 1) {
+          await this.conversationService.saveSession(conv,{...session,pendingCartReplacement:{...pending,variantRequest:text,addQuery:text}});
+        }
+        await this.reply(conv,waId,'Falta identificar una sola línea para pasar a combo:\n' +
+          pending.options.map((option,index)=>`${index+1}. ${option.label}`).join('\n') + '\nElige el número o el plato. El pedido sigue igual.');
+        return true;
+      }
+      const original = session.cart[matches[0].cartIndex];
+      const product = products.find(item=>item.id === original.productId);
+      if (!product) {
+        await this.conversationService.saveSession(conv,{...session,pendingCartReplacement:undefined});
+        await this.reply(conv,waId,'Ese plato ya no aparece en la carta. No cambié el pedido.');
+        return true;
+      }
+      const next = {...session,pendingCartReplacement:undefined};
+      await this.conversationService.saveSession(conv,next);
+      return this.tryApplyVariantPreferenceToProduct(conv,waId,next,freshReference === null ? pending.variantRequest : text,
+        products,cfg,product,{fromPendingAttribute:false,targetLine:original});
     }
     const parsed = !/[¿?]/.test(text) ? parseCartItemReplacement(text, true) : null;
     const pick = /^\d{1,2}$/.test(text.trim()) ? Number(text.trim()) : null;
