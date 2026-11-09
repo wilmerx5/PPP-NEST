@@ -1246,6 +1246,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleQuotedPortionInquiry(conv,msg.waId,text,cfg)) return;
 
     const quoteContactSession = this.conversationService.getSession(conv);
+    if (await this.tryAnswerPendingAvailabilityDemand(conv, msg.waId, quoteContactSession, text, cfg)) return;
     if (await this.tryRecoverRepeatedMixedOrder(conv, msg.waId, quoteContactSession, text, cfg)) return;
     if (await this.tryRepairExplicitComboCorrection(conv, msg.waId, quoteContactSession, text)) return;
     if (await this.tryHandleStandaloneOrderConfusion(conv, msg.waId, quoteContactSession, text, cfg)) return;
@@ -19645,6 +19646,72 @@ export class WhatsappOrchestratorService {
     if (!/\b(?:no tengo confirmad[oa]|no puedo (?:confirmar|verificar)(?:lo)?|no esta confirmad[oa])\b/.test(previous) ||
         !/\b(?:sustitucion|cambio|cambiar|acompanamiento|reemplazo)\b/.test(previous)) return false;
     await this.reply(conv,waId,`Entiendo: quieres verificar si pueden hacer ese cambio. No puedo confirmarlo con cocina desde este chat. Para comprobarlo antes de pedir, llama al *${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*. Tu pedido sigue igual.`);
+    return true;
+  }
+
+  /** Asking us to verify availability is not consent to add or submit an order. */
+  private async tryAnswerPendingAvailabilityDemand(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (conv.humanTakeover || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+      session.pendingAttribute || session.pendingMultiOrder || session.pendingPriceInquiry || session.pendingAddressConflict ||
+      session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const availability = '(?:si )?hay o no hay';
+    const delivery = '(?:si )?me (?:lo|la|los|las) (?:puede|pueden) enviar o no(?: me (?:lo|la|los|las) (?:puede|pueden) enviar)?';
+    const verification = '(?:confirmeme|me confirma|me confirman)(?: porfa| por favor)?';
+    if (!new RegExp(`^(?:${availability}(?: ${delivery})?|${delivery})(?: ${verification})?$`).test(this.normalizeForMatch(text))) return false;
+    const offer = session.pendingAddOffer, list = session.pendingMatch;
+    if (offer && (list || (offer.productIds?.length || 0) > 1) || list && (list.intent !== 'order' || list.selectionAdded || !list.candidates?.length)) return false;
+    const ids = offer ? [offer.productId] : list ? list.candidates.map(product => product.id) : session.cart.map(line => line.productId);
+    if (!ids.length) return false;
+    if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) {
+      await this.reply(conv,waId,cfg.closedMessage || 'Ahora estamos cerrados. No confirmé el pedido; tu carrito sigue igual.');
+      return true;
+    }
+    const products = await this.catalogService.getMenuProducts();
+    const available = products.filter(product => ids.includes(product.id) && product.availableNow !== false);
+    const unavailable = [...new Set(ids)].filter(id => !available.some(product => product.id === id));
+    const deliveryNotice = session.orderType === 'delivery'
+      ? session.deliveryOutOfCoverage
+        ? ' La dirección indicada está fuera de cobertura; no confirmé el envío.'
+        : !session.address || session.deliveryFeeCalculated == null
+          ? ' Para verificar el domicilio necesito una dirección completa; todavía no confirmé el envío.' : ''
+      : new RegExp(delivery).test(this.normalizeForMatch(text))
+        ? ' Tu pedido sigue para recoger; para solicitar domicilio hay que elegir esa modalidad y verificar una dirección completa.' : '';
+    if (offer) {
+      const product = available.find(item => item.id === offer.productId);
+      if (!product) {
+        await this.reply(conv,waId,`*${offer.name || 'El plato de la cotización'}* no figura disponible ahora en la carta. No lo añadí ni confirmé el pedido. Tu carrito sigue igual; puedes elegir otro plato.`);
+        return true;
+      }
+      const status = `*${product.name}* figura disponible en la carta, a ${this.catalogService.formatMoney(product.price)} por unidad.`;
+      if (Number(product.price) !== Number(offer.price)) {
+        await this.reply(conv,waId,`${status} El precio cambió y hay que revisar la cotización antes de agregarlo. No añadí ni confirmé nada.${deliveryNotice}\n\nEscribe el nombre del plato para cotizarlo de nuevo.`);
+        return true;
+      }
+      await this.reply(conv,waId,`${status} Esa oferta aún no está añadida al pedido.${deliveryNotice}\n\n¿Te agrego ese plato?`);
+      return true;
+    }
+    if (list) {
+      if (!available.length) {
+        await this.reply(conv,waId,'Ninguna de esas opciones figura disponible ahora en la carta. Tu carrito sigue igual; dime otro plato que quieras consultar.');
+        return true;
+      }
+      await this.reply(conv,waId,`Estas opciones figuran disponibles en la carta; todavía falta elegir cuál quieres. Tu carrito sigue igual.${deliveryNotice}` +
+        (unavailable.length ? ' Algunas opciones anteriores ya no figuran disponibles.' : '') + '\n\n' +
+        this.catalogService.formatCategoryList('Opciones pendientes',available));
+      return true;
+    }
+    if (unavailable.length) {
+      const names = session.cart.filter(line => unavailable.includes(line.productId)).map(line => `*${line.name}*`);
+      await this.reply(conv,waId,`${names.join(', ')} no figura disponible ahora en la carta. No confirmé el pedido ni cambié tu carrito. Dime qué plato quieres revisar.`);
+      return true;
+    }
+    const reminder = session.orderType === 'delivery' && session.deliveryOutOfCoverage
+      ? 'Para continuar, indica otra dirección o elige recoger en el local.'
+      : this.formatInterruptedStepReminder(conv,session);
+    await this.reply(conv,waId,`Los platos de tu carrito figuran disponibles en la carta. No confirmé el pedido.${deliveryNotice}\n\n` +
+      this.formatCartOnly(session,this.deliveryFeeFor(session,cfg)) + '\n\n' + (reminder || 'Cuando termines de elegir, escribe «no más» para seguir con los datos del pedido.'));
     return true;
   }
 
