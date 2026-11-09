@@ -1,0 +1,103 @@
+{
+  "baseCommit": "e499fd1e2c43dc2d0eb462fbe53bb845c295070a",
+  "batches": [
+    467
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1275.89,
+      "sourceUnchanged": true,
+      "tests": 43917,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.83,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 759,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 539,
+  "tests": 43933,
+  "suites": 539,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 168,
+  "nodeScriptTests": 92,
+  "focused": {
+    "tests": 3125,
+    "suites": 26,
+    "failed": 0,
+    "newTests": 168,
+    "simulatedClosures": 168
+  },
+  "baseline": {
+    "passed": 2,
+    "failed": 6,
+    "total": 8,
+    "scope": "Rice compound and separate half, plain/combo, order reversed, agent off/mock"
+  },
+  "caseBreakdown": {
+    "articleOrderAndBeverageVariants": 24,
+    "priorCartAndCheckoutAcrossThreeCatalogs": 144
+  },
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "sourceSnapshotSha256": "5106f9af9b76ad43984e5da581575caffdf900a98a8da515ceb8531187c0b72d",
+  "incompleteGlobalAttempts": [
+    {
+      "complete": false,
+      "reason": "Stopped after literal diagnostic exposed missing article and reversed uncounted clause; no successful global result claimed"
+    }
+  ],
+  "intermediateResults": {
+    "firstExpanded": {
+      "passed": 24,
+      "failed": 128,
+      "total": 152,
+      "fixtureClosureFailures": 16,
+      "productSelectionOrPaymentFailures": 112
+    },
+    "initialCorrectedExpanded": {
+      "passed": 152,
+      "failed": 0
+    },
+    "literalFocus": {
+      "passed": 29,
+      "failed": 4,
+      "intentionallySkippedByFilter": 135
+    },
+    "finalLiteralFocus": {
+      "passed": 24,
+      "failed": 0,
+      "intentionallySkippedByFilter": 144
+    }
+  },
+  "limits": [
+    "Complete catalog names and cooking labels recognized by existing grammar",
+    "Not every typo, ellipsis, measurement, unit subset or language",
+    "Checkout matrix uses an explicit purchase introduction; bare names during payment not exhaustively covered",
+    "Pickup, known contact and mocked external ports; no live inference, audio, maps or DB concurrency QA",
+    "No registered orders or real customer carts changed"
+  ]
+}

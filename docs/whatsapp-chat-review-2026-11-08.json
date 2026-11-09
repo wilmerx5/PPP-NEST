@@ -189,7 +189,9 @@
       "orderReferences": [
         "24"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "corrected_candidate_router_scoped_not_deployed",
+      "validation": "whatsapp-batch-467-validation.json",
+      "candidateScope": "168 regressions: distinct preparation ownership, fully named compound retained, reversed clauses, article/no article, combo/default drink, agent off/mock, prior cart/payment/final review; 168 simulated closures"
     },
     {
       "id": "N08-10",
@@ -569,6 +571,12 @@
     {
       "batch": 465,
       "validation": "whatsapp-batch-465-validation.json",
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 467,
+      "validation": "whatsapp-batch-467-validation.json",
       "stagingVerified": false,
       "deployed": false
     }

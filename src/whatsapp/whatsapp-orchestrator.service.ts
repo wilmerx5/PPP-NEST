@@ -4135,7 +4135,9 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (businessOpenForBot && (conv.state === 'awaiting_payment' || explicitCodeAddition) && /^quiero\b/i.test(originalText) &&
+    if (businessOpenForBot && (conv.state === 'awaiting_payment' || explicitCodeAddition) &&
+        /^(?:quiero|quisiera|dame|me das|me regalas|un[oa]?|dos|tres|\d+|medio|media|cuarto|cuarta)\b/i.test(originalText) && !/[¿?]/.test(originalText) &&
+        !this.catalogService.isProductDescriptionInquiry(originalText) &&
         !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
         !this.catalogService.isPriceInquiryIntent(originalText) && !this.catalogService.isAvailabilityInquiry(originalText)) {
       const multiAddition = explicitCodeAddition || this.catalogService.resolveMultiProductOrder(originalText, products);
