@@ -1,3 +1,4 @@
+import { isCompoundExclusionNote } from './whatsapp-partial-note';
 import { omitSubstitutionChoice } from './whatsapp-substitution-choice';
 import {splitIntensityPreference} from './whatsapp-kitchen-description';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
@@ -9290,7 +9291,15 @@ export class WhatsappCatalogService {
     });
     const addVerbOnly = /^(?:y\s+)?(?:agrega(?:le|me|r)?|agregue(?:le|me)?|pon(?:le|me|ga|gale|game)?|suma(?:le|me)?|anade(?:le|me)?|incluye(?:le|me)?|mete(?:le|me)?|echa(?:le|me)?)(?:\s+(?:tambien|ademas|porfa|por favor))*$/;
     const kept = raw.filter((part) => !addVerbOnly.test(normalizeText(part)));
-    const parts = kept.length ? kept : raw;
+    const parts: string[] = [];
+    for (const part of kept.length ? kept : raw) {
+      const previous = parts[parts.length - 1];
+      const exclusions = previous?.match(/\bsin\s+.+$/i)?.[0];
+      // A second exclusion belongs to the same named dish, not a rejected SKU to sell.
+      if (products?.length && exclusions && isCompoundExclusionNote(`${exclusions} y ${part}`) &&
+          this.resolveSpokenDish(previous.slice(0, previous.search(/\bsin\b/i)), products)) parts[parts.length - 1] += ` y ${part}`;
+      else parts.push(part);
+    }
     if (!products?.length || parts.length < 2) return parts;
     // "dos cola y pola": the "y" belongs to the catalog name "Cola Y Pola".
     const conjoined = products

@@ -158,7 +158,10 @@
       "orderReferences": [
         "92"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "corrected_for_documented_scope_global_validated_pending_staging",
+      "correctionBatch": 462,
+      "validation": "whatsapp-batch-462-validation.json",
+      "scope": "Simple or bounded repeated exclusions stay on the named dish in a multi-product request;no rejected-side offer and notes retained after adding another dish or repeating one exclusion. Pickup,mocked external services;old carts not repaired."
     },
     {
       "id": "N08-08",
@@ -552,6 +555,11 @@
       "stagingVerified": true,
       "engineChanged": false,
       "stagingVerification": "whatsapp-batch-461-staging-verification.json"
+    },
+    {
+      "batch": 462,
+      "validation": "whatsapp-batch-462-validation.json",
+      "stagingVerified": false
     }
   ]
 }

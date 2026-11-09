@@ -30519,7 +30519,11 @@ export class WhatsappOrchestratorService {
         };
         continue;
       }
-      const noteSource = lineSource;
+      const segmentExclusions = item.segment.match(/\bsin\s+.+$/i)?.[0];
+      const segmentPreference = splitKitchenPreference(item.segment);
+      const ownsExclusion = segmentExclusions && (isCompoundExclusionNote(segmentExclusions) ||
+        segmentPreference && /^sin\b/i.test(segmentPreference.note));
+      const noteSource = ownsExclusion ? item.segment : lineSource;
       // Resolve notes against the chosen product: its own ingredients are not kitchen instructions.
       const lineNote =
         item.note ||

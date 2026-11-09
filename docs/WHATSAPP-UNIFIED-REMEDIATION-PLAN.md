@@ -1,10 +1,12 @@
-## Consulta rápida de fallos recurrentes — revisión 09/11/2026, tanda461
+## Consulta rápida de fallos recurrentes — revisión 09/11/2026, tanda462
 
 Este plan reúne las familias de incidentes y sus seguimientos. Para estado operativo prevalece la sección vigente de [WHATSAPP-COMMERCIAL-READINESS-PLAN.md](WHATSAPP-COMMERCIAL-READINESS-PLAN.md); el historial inferior conserva evidencia de versiones anteriores. No se midieron frecuencias por familia: «recurrente» describe patrones observados y reproducidos, no un ranking estadístico. Variantes sintéticas de una prueba no equivalen a clientes o incidentes distintos.
 
-Estado registrado: staging ejecuta460 (`f3f04d2b`), producción446 (`97d36266`) y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
+Estado registrado: staging ejecuta460 (`f3f04d2b`);462 validada y pendiente de desplegar, producción446 (`97d36266`) y Kamppo398. Las tandas427–432 publican pruebas sin cambiar el motor;433 corrige alias celular/WhatsApp en consulta con opción pendiente;434 normaliza formatos válidos de teléfono (espacios,+57,paréntesis/guion) antes de guardar el contacto. Una corrección reciente de staging no se da por desplegada en producción o migrada a Kamppo. El bot no incorpora estas correcciones automáticamente al recibir chats: se reproducen, se corrige código/reglas y se añaden regresiones antes de desplegar.
 
 Familias con correcciones y cobertura delimitada:
+
+- **«Sin yuca» tratado como producto para vender y exclusiones perdidas.** Tanda462 reúne exclusiones acotadas con su plato y lee su nota del segmento propio al comprar varios productos; no ofrece el ingrediente rechazado.216 recorridos,216 cierres simulados,237 pruebas de foco; global43.275/534, TypeScript y92 scripts aprobados. Staging pendiente. Evidencia [462](whatsapp-batch-462-validation.json). No repara pedidos antiguos ni acredita cocina/modelo real.
 
 - **Dígito dentro de una palabra tomado por cantidad.** Tanda461 no reproduce el fallo histórico en staging460:384 recorridos nuevos y135 relacionados aprobados, cantidades1/2/3/5 en cuatro etapas, tres catálogos y agente off/mock.384 cierres simulados también pasan sobre el dist de staging, sin cambiar motor ni desplegar. TypeScript aprobado; se reutiliza global460 con751 fuentes idénticas. Evidencia [461](whatsapp-batch-461-validation.json). No acredita modelo vivo ni todas las faltas de escritura.
 

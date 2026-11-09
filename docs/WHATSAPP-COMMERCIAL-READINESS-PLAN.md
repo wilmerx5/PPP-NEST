@@ -1,3 +1,15 @@
+## Tanda 462 — «sin yuca» permanece como exclusión del plato (validación aprobada; staging pendiente)
+
+N08-07 reproducido:8/8 recorridos iniciales añaden sobrebarriga/bowl, papa francesa y Ginger, pero pierden las exclusiones. La inspección del router reproduce además el texto«Por ahora no manejamos:sin yuca» y la oferta de agregar Porción De Yuca Frita. No es una compra de yuca: el cliente había pedido excluirla. Se conservan baseline y foco fallidos antes de corregir.
+
+El separador reúne un segundo/tercer«sin…» con el segmento anterior solo si la gramática existente de exclusiones acepta la nota completa y el prefijo identifica un plato de catálogo. No cambia compras adicionales, condiciones o frases fuera de esa gramática. En el añadido múltiple, las exclusiones válidas se leen del segmento del plato; no de un texto propietario más amplio que todavía pudiera incluir«y me regalas una porción…». Las notas simples usan la gramática existente de preparación. La primera ampliación solo protegía notas compuestas; el foco de«sin yuca» sola encontró2 fallos y se extendió antes del cierre.
+
+216 recorridos nuevos:3 familias (sobrebarriga con elección de preparación del fixture PPP y2 catálogos sintéticos),6 formulaciones (sin ensalada, sin yuca, dos exclusiones con y/ni u orden inverso y tres exclusiones), agente off/mock, carrito vacío/esperando pago/confirmación final y repetición parcial sí/no. Cada recorrido compra también papa francesa y Ginger, añade luego una crema y conserva únicamente en el plato las exclusiones completas. En pago/final conserva un arroz previo con nota«bien empacado». Se verifican cantidades exactas, carrito sin yuca añadida, ausencia de oferta alternativa, pendientes de oferta vacíos y DTO final correcto.216 cierres simulados;0 órdenes externas.
+
+Foco inicial29/3 con8 fallos;29/3 y144/1 aprobados; foco simple2 fallos (214 omitidos intencionalmente solo por filtro); completo237/3 aprobado. Global43.275/534 sin fallos ni omitidas,753 fuentes congeladas e inventario exacto; TypeScript general/build y92 scripts aprobados. Incluye las384 regresiones de461. Evidencia whatsapp-batch-462-validation.json. Modelos, presupuesto y configuración sin cambios; sin inferencia pagada ni Meta.
+
+Límites: unión de dos/tres exclusiones dentro de la gramática existente, no todo texto libre ni cantidades de subconjuntos ambiguos. Recogida con contacto conocido, servicios externos/órdenes simulados; no se acredita modelo vivo, mapas ni cocina real. No modifica órdenes registradas ni repara carritos antiguos automáticamente. Próxima prioridad N08-08: convertir entero/medio a combo sin sustituir la línea equivocada ni perder opciones. Producción446 y Kamppo398 sin cambios.
+
 ## Tanda 461 —384 regresiones de dígitos dentro de palabras (solo pruebas; staging460 verificado)
 
 N08-06 no se reproduce en el motor actual: el baseline32/1 conserva1 al pedir«un» y2 al pedir«2» con bocadill9/bocadill0/bocadillo9/bocadill3 y sus equivalentes sintéticos. No se atribuye una corrección nueva ni se cambia la interpretación del catálogo por un fallo histórico que esta versión no presenta.
