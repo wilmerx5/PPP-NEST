@@ -174,7 +174,9 @@
       "orderReferences": [
         "20"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "reproduced_candidate_router_not_corrected",
+      "candidateBaseline": "whatsapp-n08-08-combo-target-baseline-465.json",
+      "candidateScope": "Derived router diagnostic off/mock; no correction or deployment; same candidate as batch464"
     },
     {
       "id": "N08-09",

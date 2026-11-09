@@ -1,0 +1,74 @@
+{
+  "baseCommit": "d449d11d3c1f8a633899f04390df39bc7dd0a819",
+  "batches": [
+    464
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1333.95,
+      "sourceUnchanged": true,
+      "tests": 43425,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.34,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 756,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 536,
+  "tests": 43441,
+  "suites": 536,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "focused": {
+    "tests": 186,
+    "suites": 3,
+    "failed": 0,
+    "newTests": 144,
+    "simulatedClosures": 102
+  },
+  "baseline": {
+    "passed": 4,
+    "failed": 8,
+    "total": 12,
+    "scope": "Two order introductions, three catalog families, agent off/mock"
+  },
+  "newCaseBreakdown": {
+    "purchasesAcrossFourStages": 96,
+    "returnAfterForeignSales": 6,
+    "nonMutatingQuestionsConditionsNegations": 30,
+    "unspecifiedStarts": 8,
+    "unavailableProducts": 4
+  },
+  "scope": "Full normalized catalog names of at least three characters bypass only the vague-order prompt; normal intent, availability, attributes, quantity and checkout validation remain",
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "nodeScriptTests": 92,
+  "deployed": false,
+  "sourceSnapshotSha256": "a5e84b477c92c989a8dc8e47d5627ffad949d938f8d3c4e669134cee84a04f81",
+  "fixtureCorrections": [
+    "First implementation used a nonexistent type alias; changed to the existing MenuProduct alias before executable focus passed",
+    "First expanded test expected quantity on DTO items; actual DTO expands units. Corrected assertion; no runtime change for those 102 assertion failures"
+  ]
+}

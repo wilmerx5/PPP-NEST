@@ -1,0 +1,205 @@
+{
+  "preparedOn": "2026-11-09",
+  "incident": "N08-08",
+  "status": "reproduced_on_candidate_not_corrected",
+  "source": "Derived diagnostic from the 08/11 incident; not a literal transcript replay",
+  "sameCandidateAsBatch": 464,
+  "sourceSnapshotSha256": "a5e84b477c92c989a8dc8e47d5627ffad949d938f8d3c4e669134cee84a04f81",
+  "validDiagnosticExecutions": 2,
+  "functionalAcceptancePassed": false,
+  "expected": "Choose a uniquely identified target, or clarify without mutation. Preserve the other dish and the selected sides.",
+  "actual": "Whole #4 plus half #5 becomes whole #4 plus combo #98. Half is replaced, with Blancas; whole keeps Fritas.",
+  "limits": [
+    "Agent off/mock; no live model evaluation",
+    "Initial purchases use explicit whole quantity and half name to establish both lines through router",
+    "Natural first probe did not form the whole line with mock agent; not accepted for both-mode evidence",
+    "Code-only probe lacked the mocked order lookup and was not accepted",
+    "No correction or deployment in this diagnostic; no external orders or Meta"
+  ],
+  "runs": [
+    {
+      "agent": false,
+      "turns": [
+        {
+          "text": "Quiero 1 Pollo Broaster con arepas fritas",
+          "reply": "Listo ✅ *1 Pollo Broaster*\n_Arepas: Fritas_\n\n¿*Algo más*?",
+          "cart": [
+            {
+              "productId": 4,
+              "name": "1 Pollo Broaster",
+              "code": 4,
+              "unitPrice": 43000,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Arepas",
+                  "attributeValue": "Fritas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "text": "Medio Pollo Broaster con arepas blancas",
+          "reply": "Listo ✅ *1/2 Pollo Broaster*\n_Arepas: Blancas_\n\n¿*Algo más*?",
+          "cart": [
+            {
+              "productId": 4,
+              "name": "1 Pollo Broaster",
+              "code": 4,
+              "unitPrice": 43000,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Arepas",
+                  "attributeValue": "Fritas"
+                }
+              ]
+            },
+            {
+              "productId": 5,
+              "name": "1/2 Pollo Broaster",
+              "code": 5,
+              "unitPrice": 25000,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Arepas",
+                  "attributeValue": "Blancas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "text": "el pollo lo quiero en combo con gaseosa colombiana",
+          "reply": "Listo, lo cambié 👍\n\nListo ✅ *Combo De Pollo Broaster*\n_Arepas: Blancas · Bebida: Colombiana_\n\n¿*Algo más*?",
+          "cart": [
+            {
+              "productId": 4,
+              "name": "1 Pollo Broaster",
+              "code": 4,
+              "unitPrice": 43000,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Arepas",
+                  "attributeValue": "Fritas"
+                }
+              ]
+            },
+            {
+              "productId": 98,
+              "name": "Combo De Pollo Broaster",
+              "code": 98,
+              "unitPrice": 50000,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Arepas",
+                  "attributeValue": "Blancas"
+                },
+                {
+                  "attributeName": "Bebida",
+                  "attributeValue": "Colombiana"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "agent": true,
+      "turns": [
+        {
+          "text": "Quiero 1 Pollo Broaster con arepas fritas",
+          "reply": "Listo ✅ *1 Pollo Broaster*\n_Arepas: Fritas_\n\n¿*Algo más*?",
+          "cart": [
+            {
+              "productId": 4,
+              "name": "1 Pollo Broaster",
+              "code": 4,
+              "unitPrice": 43000,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Arepas",
+                  "attributeValue": "Fritas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "text": "Medio Pollo Broaster con arepas blancas",
+          "reply": "Listo ✅ *1/2 Pollo Broaster*\n_Arepas: Blancas_\n\n¿*Algo más*?",
+          "cart": [
+            {
+              "productId": 4,
+              "name": "1 Pollo Broaster",
+              "code": 4,
+              "unitPrice": 43000,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Arepas",
+                  "attributeValue": "Fritas"
+                }
+              ]
+            },
+            {
+              "productId": 5,
+              "name": "1/2 Pollo Broaster",
+              "code": 5,
+              "unitPrice": 25000,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Arepas",
+                  "attributeValue": "Blancas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "text": "el pollo lo quiero en combo con gaseosa colombiana",
+          "reply": "Listo, lo cambié 👍\n\nListo ✅ *Combo De Pollo Broaster*\n_Arepas: Blancas · Bebida: Colombiana_\n\n¿*Algo más*?",
+          "cart": [
+            {
+              "productId": 4,
+              "name": "1 Pollo Broaster",
+              "code": 4,
+              "unitPrice": 43000,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Arepas",
+                  "attributeValue": "Fritas"
+                }
+              ]
+            },
+            {
+              "productId": 98,
+              "name": "Combo De Pollo Broaster",
+              "code": 98,
+              "unitPrice": 50000,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Arepas",
+                  "attributeValue": "Blancas"
+                },
+                {
+                  "attributeName": "Bebida",
+                  "attributeValue": "Colombiana"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -4441,7 +4441,7 @@ export class WhatsappOrchestratorService {
     );
     if (!session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       unavailableOrder &&
-      !/[?¿]/.test(originalText) && !this.isVagueOrderIntent(originalText) &&
+      !/[?¿]/.test(originalText) && !this.isVagueOrderIntent(originalText, products) &&
       !this.catalogService.isMenuExploreIntent(originalText, products) &&
       !this.catalogService.looksLikeClearlyMultiDishOrder(originalText) && !this.looksLikeAddress(originalText)) {
       const query = this.catalogService.extractProductSearchQuery(unavailableOrder[1]);
@@ -4518,7 +4518,7 @@ export class WhatsappOrchestratorService {
     // inbound bubbles were already persisted before this turn was processed.
     const orderStartWithoutGreeting = this.stripLeadingGreeting(text);
     if (!session.cart.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
-        this.isVagueOrderIntent(text) && (isFirstInbound || orderStartWithoutGreeting !== text)) {
+        this.isVagueOrderIntent(text, products) && (isFirstInbound || orderStartWithoutGreeting !== text)) {
       await this.replyFirstContactWelcome(conv, msg.waId, cfg, inboundText);
       return;
     }
@@ -5587,7 +5587,7 @@ export class WhatsappOrchestratorService {
 
     // Tras pedido completado: saludo / “quiero pedir” → no pasar por IA (evita rearmar carrito del historial)
     if (reopenedFreshOrder) {
-      if (isGreeting || this.isVagueOrderIntent(text) || text.length < 2) {
+      if (isGreeting || this.isVagueOrderIntent(text, products) || text.length < 2) {
         await this.reply(
           conv,
           msg.waId,
@@ -6208,7 +6208,7 @@ export class WhatsappOrchestratorService {
 
     // An unspecified order needs one concrete question, including with the agent.
     // Keep existing carts and pending choices on their established paths.
-    if (this.isVagueOrderIntent(text) && (!cfg.agentV1Enabled ||
+    if (this.isVagueOrderIntent(text, products) && (!cfg.agentV1Enabled ||
         (!session.cart.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder))) {
       // isVagueOrderIntent ya excluye frases con comida; no usar searchByName
       // (matcheaba basura y caía en “Entendí varios… _pedido_”).
@@ -6722,7 +6722,7 @@ export class WhatsappOrchestratorService {
         return;
       }
       if (
-        this.isVagueOrderIntent(text) ||
+        this.isVagueOrderIntent(text, products) ||
         (session.cart.length === 0 &&
           (isDeliverySetupWithoutFood(text) || isDeliverySetupWithoutFood(originalText)))
       ) {
@@ -19409,7 +19409,7 @@ export class WhatsappOrchestratorService {
    * Quiere pedir pero aún no dijo qué producto.
    * Ej: "hola quiero hacer un pedido", "me gustaría ordenar".
    */
-  private isVagueOrderIntent(text: string): boolean {
+  private isVagueOrderIntent(text: string, products: MenuProduct[] = []): boolean {
     const t = text
       .trim()
       .toLowerCase()
@@ -19431,6 +19431,15 @@ export class WhatsappOrchestratorService {
       /\bhola\b.{0,40}\b(pedido|pedir|ordenar)\b/i.test(t);
 
     if (!wantsOrder) return false;
+    // A complete menu name makes the request concrete, including dishes outside
+    // the legacy food vocabulary. This only bypasses the vague-order prompt;
+    // the normal router still validates intent, availability, options and quantity.
+    const said = ` ${this.normalizeForMatch(text)} `;
+    if (products.some(product => {
+      const name = this.normalizeForMatch(product.name);
+      return name.length >= 3 && !/^(?:pedido|orden|domicilio|menu|carta)$/.test(name) &&
+        said.includes(` ${name} `);
+    })) return false;
     if (isNamedMenuDishOrderPhrase(text)) return false;
 
     // Si nombra algo típico del menú en la misma frase, no cortar el flujo
