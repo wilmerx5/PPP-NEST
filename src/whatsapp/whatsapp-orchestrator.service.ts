@@ -209,6 +209,7 @@ type InboundTurnContext = {
   conv?: WhatsappConversation;
   initialCart?: string;
   initialAddOffer?: string;
+  retainedAddOfferAfterAddition?: {offer: string; cart: string};
   initialCartEditSelections?: Record<string, string | undefined>;
   initialPendingMatch?: NonNullable<WhatsappSessionData['droppedPick']>;
   purchasePriceQuestion?: boolean;
@@ -610,7 +611,9 @@ export class WhatsappOrchestratorService {
       if (!turn.conv) return;
       const conv = turn.conv;
       let session = this.conversationService.getSession(conv);
-      if (session.pendingAddOffer && turn.initialAddOffer === JSON.stringify(session.pendingAddOffer) && turn.initialCart !== JSON.stringify(session.cart)) {
+      if (session.pendingAddOffer && turn.initialAddOffer === JSON.stringify(session.pendingAddOffer) && turn.initialCart !== JSON.stringify(session.cart) &&
+          !(turn.retainedAddOfferAfterAddition?.offer === JSON.stringify(session.pendingAddOffer) &&
+            turn.retainedAddOfferAfterAddition.cart === JSON.stringify(session.cart))) {
         const obsolete = this.formatInterruptedStepReminder(conv, {...session,pendingAttribute:undefined,pendingMatch:undefined,pendingMultiOrder:undefined});
         session = {...session,pendingAddOffer:undefined};
         await this.conversationService.saveSession(conv,session);
@@ -1246,6 +1249,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleQuotedPortionInquiry(conv,msg.waId,text,cfg)) return;
 
     const quoteContactSession = this.conversationService.getSession(conv);
+    if (await this.tryAddIndependentDishKeepingOffer(conv, msg.waId, quoteContactSession, text, cfg, turn)) return;
     if (await this.tryAnswerPendingAvailabilityDemand(conv, msg.waId, quoteContactSession, text, cfg)) return;
     if (await this.tryRecoverRepeatedMixedOrder(conv, msg.waId, quoteContactSession, text, cfg)) return;
     if (await this.tryRepairExplicitComboCorrection(conv, msg.waId, quoteContactSession, text)) return;
@@ -19646,6 +19650,42 @@ export class WhatsappOrchestratorService {
     if (!/\b(?:no tengo confirmad[oa]|no puedo (?:confirmar|verificar)(?:lo)?|no esta confirmad[oa])\b/.test(previous) ||
         !/\b(?:sustitucion|cambio|cambiar|acompanamiento|reemplazo)\b/.test(previous)) return false;
     await this.reply(conv,waId,`Entiendo: quieres verificar si pueden hacer ese cambio. No puedo confirmarlo con cocina desde este chat. Para comprobarlo antes de pedir, llama al *${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*. Tu pedido sigue igual.`);
+    return true;
+  }
+
+  /** An explicit independent addition does not answer or abandon the previous offer. */
+  private async tryAddIndependentDishKeepingOffer(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+    cfg: EffectiveWhatsappConfig, turn: InboundTurnContext,
+  ): Promise<boolean> {
+    const offer = session.pendingAddOffer;
+    if (conv.humanTakeover || conv.state !== 'building_cart' || !offer || offer.quantity !== 1 ||
+      (offer.productIds?.length || 0) > 1 || (offer.quotedProducts?.length || 0) > 1 ||
+      session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingPriceInquiry ||
+      session.pendingAddressConflict || session.pendingComposedDishRecovery || CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) ||
+      /[¿?]/.test(text)) return false;
+    const match = this.normalizeForMatch(text).match(/^(?:y|y tambien|tambien) (?:una|un|1) (.+)$/);
+    if (!match) return false;
+    const products = await this.catalogService.getMenuProducts();
+    const offered = products.find(product => product.id === offer.productId && product.availableNow !== false);
+    if (!offered || Number(offered.price) !== Number(offer.price)) return false;
+    const canonical = (value: string) => this.normalizeForMatch(value).split(/\s+/)
+      .filter(word => !['de','del','el','la'].includes(word)).map(word => this.catalogService.singularToken(word)).join(' ');
+    const matches = products.filter(product => product.availableNow !== false && canonical(product.name) === canonical(match[1]));
+    if (matches.length !== 1) return false;
+    const product = matches[0];
+    if (product.id === offered.id || product.hasAttributes || product.attributes?.length || this.catalogService.isLikelyDrinkProduct(product) ||
+      session.cart.some(line => line.productId === product.id || line.productId === offered.id)) return false;
+    if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) {
+      await this.reply(conv,waId,cfg.closedMessage || 'Ahora estamos cerrados. Tu carrito y la oferta pendiente siguen iguales.');
+      return true;
+    }
+    const added = this.tryAddProductToCart(session,product,1,cfg,undefined,[]);
+    if (added.blocked || added.missingAttributes) return false;
+    await this.conversationService.saveSession(conv,added.session);
+    // The normal stale-offer guard still applies unless both validated snapshots survive this exact turn.
+    turn.retainedAddOfferAfterAddition = {offer:JSON.stringify(offer),cart:JSON.stringify(added.session.cart)};
+    await this.reply(conv,waId,`Listo ✅ *${product.name}*.\n\n*${offered.name}* sigue pendiente, a ${this.catalogService.formatMoney(offered.price)}; todavía no lo añadí.\n\n¿Te agrego ese plato también?`);
     return true;
   }
 
