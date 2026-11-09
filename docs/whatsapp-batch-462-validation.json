@@ -82,7 +82,7 @@
   "externalOrders": 0,
   "modelsChanged": false,
   "budgetChanged": false,
-  "stagingVerified": false,
+  "stagingVerified": true,
   "productionChanged": false,
   "kamppoChanged": false,
   "limits": [
@@ -91,5 +91,7 @@
     "Three catalog families,6 exclusion formulations,agent off/mock,three stages andpartial repetition",
     "All journeys use pickup and known contact;external model/Meta/order persistence mocked",
     "No automatic repair of old carts or registered orders;live inference and delivery maps not exercised"
-  ]
+  ],
+  "runtimeCommit": "e911a066e613147ad961793b39a1a222326adde1",
+  "deploymentEvidence": "whatsapp-batch-462-staging-deployment.json"
 }

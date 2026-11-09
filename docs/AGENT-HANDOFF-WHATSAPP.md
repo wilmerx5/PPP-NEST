@@ -1,4 +1,4 @@
-## Tanda 462 — «sin yuca» permanece como exclusión del plato (validación aprobada; staging pendiente)
+## Tanda 462 — «sin yuca» permanece como exclusión del plato (staging desplegado y verificado)
 
 N08-07 reproducido:8/8 recorridos iniciales añaden sobrebarriga/bowl, papa francesa y Ginger, pero pierden las exclusiones. La inspección del router reproduce además el texto«Por ahora no manejamos:sin yuca» y la oferta de agregar Porción De Yuca Frita. No es una compra de yuca: el cliente había pedido excluirla. Se conservan baseline y foco fallidos antes de corregir.
 
@@ -7,6 +7,8 @@ El separador reúne un segundo/tercer«sin…» con el segmento anterior solo si
 216 recorridos nuevos:3 familias (sobrebarriga con elección de preparación del fixture PPP y2 catálogos sintéticos),6 formulaciones (sin ensalada, sin yuca, dos exclusiones con y/ni u orden inverso y tres exclusiones), agente off/mock, carrito vacío/esperando pago/confirmación final y repetición parcial sí/no. Cada recorrido compra también papa francesa y Ginger, añade luego una crema y conserva únicamente en el plato las exclusiones completas. En pago/final conserva un arroz previo con nota«bien empacado». Se verifican cantidades exactas, carrito sin yuca añadida, ausencia de oferta alternativa, pendientes de oferta vacíos y DTO final correcto.216 cierres simulados;0 órdenes externas.
 
 Foco inicial29/3 con8 fallos;29/3 y144/1 aprobados; foco simple2 fallos (214 omitidos intencionalmente solo por filtro); completo237/3 aprobado. Global43.275/534 sin fallos ni omitidas,753 fuentes congeladas e inventario exacto; TypeScript general/build y92 scripts aprobados. Incluye las384 regresiones de461. Evidencia whatsapp-batch-462-validation.json. Modelos, presupuesto y configuración sin cambios; sin inferencia pagada ni Meta.
+
+Staging462 ejecuta e911a066: healthy, cero reinicios, API local/pública y DB correctas; configuración privada y cinco modelos preservados. Workflow42665614328.216 recorridos compilados y216 cierres DTO simulados aprobados, con una comprobación adicional de exclusiones visibles en la respuesta inicial. Un catálogo fixture PPP y dos familias sintéticas; recogida, contacto conocido y todos los puertos externos simulados. Evidencia whatsapp-batch-462-staging-deployment.json.
 
 Límites: unión de dos/tres exclusiones dentro de la gramática existente, no todo texto libre ni cantidades de subconjuntos ambiguos. Recogida con contacto conocido, servicios externos/órdenes simulados; no se acredita modelo vivo, mapas ni cocina real. No modifica órdenes registradas ni repara carritos antiguos automáticamente. Próxima prioridad N08-08: convertir entero/medio a combo sin sustituir la línea equivocada ni perder opciones. Producción446 y Kamppo398 sin cambios.
 

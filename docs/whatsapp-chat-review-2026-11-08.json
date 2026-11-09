@@ -158,10 +158,11 @@
       "orderReferences": [
         "92"
       ],
-      "status": "corrected_for_documented_scope_global_validated_pending_staging",
+      "status": "corrected_for_documented_scope_staging_verified",
       "correctionBatch": 462,
       "validation": "whatsapp-batch-462-validation.json",
-      "scope": "Simple or bounded repeated exclusions stay on the named dish in a multi-product request;no rejected-side offer and notes retained after adding another dish or repeating one exclusion. Pickup,mocked external services;old carts not repaired."
+      "scope": "Simple or bounded repeated exclusions stay on the named dish in a multi-product request;no rejected-side offer and notes retained after adding another dish or repeating one exclusion. Pickup,mocked external services;old carts not repaired.",
+      "deploymentEvidence": "whatsapp-batch-462-staging-deployment.json"
     },
     {
       "id": "N08-08",
@@ -559,7 +560,8 @@
     {
       "batch": 462,
       "validation": "whatsapp-batch-462-validation.json",
-      "stagingVerified": false
+      "stagingVerified": true,
+      "deploymentEvidence": "whatsapp-batch-462-staging-deployment.json"
     }
   ]
 }
