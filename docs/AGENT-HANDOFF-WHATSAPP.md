@@ -1,3 +1,15 @@
+## Tanda 457 — consultas coloquiales sin compra y límites teléfono/pago (validación aprobada; staging pendiente)
+
+Se reproducen dos fallos críticos de la revisión del08/11. «Q trae/lleva/incluye/contiene el combo» se normaliza como consulta antes de las rutas de compra; responde sobre el combo ya elegido sin añadir otra preparación. «Le/les/te queda sopa…?» consulta disponibilidad sin comprar; la posterior solicitud de una unidad produce una sola unidad. La normalización no reescribe compras ni mensajes de disponibilidad mezclados con compra, pago, dirección o condiciones.
+
+Con dos burbujas mientras se espera pago, un teléfono completo y una opción numérica válida se procesan conservando sus límites y orden. No se concatenan como un teléfono más largo. Se comprueban ambos órdenes mediante handleIncoming y el agrupador real, carrito sin duplicados y teléfono normalizado exacto en el DTO final. La selección usa los métodos habilitados del comercio; no fija una cantidad de métodos en producción.
+
+51 controles nuevos:40 recorridos del router con40 cierres DTO simulados y11 guardas directas. Dos familias de catálogo, agente off/mock; seis formulaciones de consulta, tres de disponibilidad y cuatro recorridos teléfono/pago. Baseline de consultas:28 fallos/8 aprobadas; baseline posterior de teléfono:4 fallos/36 aprobadas. Foco ampliado228/5 aprobado. No llamadas pagadas, Meta ni órdenes externas; modelos y presupuesto preservados.
+
+Global42,487/529 aprobado sin fallos ni omitidas,748 fuentes congeladas e inventario exacto; TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-457-validation.json.
+
+Límites: teléfono/pago acreditado con dos burbujas en awaiting_payment, recogida y perfil/contacto preexistentes; no valida geocodificación ni todos los estados ni ráfagas de tres o más burbujas. Guardas directas no acreditan el comportamiento posterior del router. No se ha evaluado inferencia real ni audio. Otros incidentes de la revisión siguen pendientes, en particular N08-02/03 duplicados y sabores, N08-05 complemento de dirección y N08-06 cantidad por dígito incrustado. Producción446 y Kamppo398 sin cambios.
+
 ## Revisión de chats 08/11 — prioridad actualizada; motor sin cambios
 
 ZIP08-11 chats.zip:446 mensajes (225 cliente/221 bot),30 confirmaciones visibles entre12:33 y19:44;chat.txt ychat.md son dos representaciones de la misma exportación. Se añaden6 fragmentos pegados y un archivo con episodios de19/09 y08/11, separados. El nombre«Necesito» y«método4» pertenecen a septiembre; no se cuentan como fallos nuevos de hoy.30 confirmaciones no equivalen a30 pedidos correctos ni acreditan entrega/conversión. Informe sanitizado:whatsapp-chat-review-2026-11-08.json,26 familias observadas con evidencia, gravedad y regresión esperada; datos originales permanecen privados.

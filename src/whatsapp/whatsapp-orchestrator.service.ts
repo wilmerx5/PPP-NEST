@@ -725,6 +725,7 @@ export class WhatsappOrchestratorService {
   private splitBurstAtPendingAnswer(
     conv: WhatsappConversation,
     parts: string[],
+    cfg?: EffectiveWhatsappConfig,
   ): { first: string; rest?: BurstContinuation } | null {
     if (['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state || '')) return null;
     const session = this.conversationService.getSession(conv);
@@ -734,6 +735,20 @@ export class WhatsappOrchestratorService {
         isUsableWhatsappCustomerName(parts[0]) && !this.looksLikeAddressRejectingPersonName(parts[0]) &&
         this.isMerchantPaymentDetailsQuestion(parts[1])) {
       return {first: parts[0], rest: {text: parts[1]}};
+    }
+    // A contact number and a payment-list answer are separate bubbles, never
+    // one longer telephone number. Only split a complete phone and a valid row.
+    if (conv.state === 'awaiting_payment' && cfg && parts.length === 2 &&
+        !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+        !CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) {
+      const methods = getEnabledPaymentMethods(cfg.paymentMethods);
+      const phone = (part: string) => /^[+\d\s().-]+$/.test(part.trim()) &&
+        part.replace(/\D/g, '').length >= 10 && !!this.normalizeContactPhone(part, conv.phoneE164);
+      const payment = (part: string) => /^\d+$/.test(part.trim()) &&
+        Number(part.trim()) >= 1 && Number(part.trim()) <= methods.length;
+      if ((phone(parts[0]) && payment(parts[1])) || (payment(parts[0]) && phone(parts[1]))) {
+        return {first: parts[0], rest: {text: parts[1]}};
+      }
     }
     const approves = (part: string) => !/[¿?]/.test(part) && (this.isConfirmKeyword(part) || isFinalConfirmAffirmation(part));
     const doubt = session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
@@ -1010,7 +1025,7 @@ export class WhatsappOrchestratorService {
       }
       if (logged) msg = { ...msg, text: freshTexts.join('\n') };
       const split = logged && freshTexts.length > 1
-        ? this.splitBurstAtPendingAnswer(conv, freshTexts) || this.splitPendingOptionFromAddress(conv, freshTexts)
+        ? this.splitBurstAtPendingAnswer(conv, freshTexts, cfg) || this.splitPendingOptionFromAddress(conv, freshTexts)
         : null;
       if (split) {
         msg = { ...msg, text: split.first };
@@ -1029,7 +1044,7 @@ export class WhatsappOrchestratorService {
       if (logged && msg.messageId) newlyClaimedIds.push(msg.messageId);
       const lines = (msg.text || '').split('\n').map(line => line.trim()).filter(Boolean);
       const split = logged && lines.length > 1 ?
-        (conv.state === 'awaiting_name' ? this.splitBurstAtPendingAnswer(conv, lines) : null) || this.splitPendingOptionFromAddress(conv, lines) : null;
+        (conv.state === 'awaiting_name' ? this.splitBurstAtPendingAnswer(conv, lines, cfg) : null) || this.splitPendingOptionFromAddress(conv, lines) : null;
       if (split) {
         msg = { ...msg, text: split.first };
         turn.burstContinuation = split.rest;
@@ -1239,6 +1254,8 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, '¿Qué se te antoja? Escribe el *plato* o el *código*.');
       return;
     }
+
+    text = this.normalizeColloquialCatalogQuestion(text) || text;
 
     // A pending dish decision and any contact form must be validated before
     // multiline name/payment routes can save only part of the same message.
@@ -19651,6 +19668,16 @@ export class WhatsappOrchestratorService {
         !/\b(?:sustitucion|cambio|cambiar|acompanamiento|reemplazo)\b/.test(previous)) return false;
     await this.reply(conv,waId,`Entiendo: quieres verificar si pueden hacer ese cambio. No puedo confirmarlo con cocina desde este chat. Para comprobarlo antes de pedir, llama al *${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*. Tu pedido sigue igual.`);
     return true;
+  }
+
+  /** Normalize only unambiguous question prefixes before purchase and checkout routing. */
+  private normalizeColloquialCatalogQuestion(text: string): string | undefined {
+    if (/^\s*¿?\s*(?:y\s+)?q\s+(?:trae|lleva|incluye|contiene|precio)\b/iu.test(text)) {
+      return text.replace(/\bq(?=\s+(?:trae|lleva|incluye|contiene|precio)\b)/iu,'qué');
+    }
+    const stock = text.trim().match(/^¿?\s*(?:le|les|te)\s+quedan?\s+(.+?)\s*\??$/iu);
+    if (!stock || /[;\n]|\b(?:pero|agrega|agregame|quiero|dame|envia|enviame|envieme|pago|direccion|siempre|solo si)\b/iu.test(this.normalizeForMatch(stock[1]))) return undefined;
+    return `¿Hay ${stock[1]}?`;
   }
 
   /** An explicit independent addition does not answer or abandon the previous offer. */

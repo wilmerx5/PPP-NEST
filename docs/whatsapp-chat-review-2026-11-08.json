@@ -61,7 +61,10 @@
       "orderReferences": [
         "190"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "reproduced_and_corrected_global_validated_pending_staging",
+      "correctionBatch": 457,
+      "scope": "Consultas Q trae/lleva/incluye/contiene/precio y le/les/te queda; carrito y cierre simulado en dos familias.",
+      "validation": "whatsapp-batch-457-validation.json"
     },
     {
       "id": "N08-02",
@@ -98,7 +101,10 @@
       "orderReferences": [
         "187"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "reproduced_and_corrected_global_validated_pending_staging",
+      "correctionBatch": 457,
+      "scope": "Dos burbujas en awaiting_payment: teléfono completo y opción de pago válida, ambos órdenes, agrupador real; DTO conserva teléfono. Otros estados y más de dos burbujas pendientes.",
+      "validation": "whatsapp-batch-457-validation.json"
     },
     {
       "id": "N08-05",
