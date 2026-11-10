@@ -351,7 +351,11 @@ export class WhatsappDeliveryRoutingService {
       return !!route && !!number && streetKey(`${route.long_name || route.short_name || ''} # ${number.long_name || number.short_name || ''}`) === numberedStreet;
     }
     const raw = normalize(splitDeliveryAddressParts(query).base).replace(/^a\s+/,'').replace(/^condomino\b/, 'condominio').split(',')[0];
-    if (!/\b(?:plazuelas?|condominio|conjunto|residencial|urbanizacion|hotel|almacen|edificio|villa)\b/.test(raw)) return true;
+    // A neighborhood centroid is not a verified delivery destination, even when its name matches.
+    const types: string[] = Array.isArray(result.types) ? result.types : [];
+    if (types.some(type => /^(?:political|neighborhood|sublocality(?:_level_\d+)?|locality|administrative_area_level_\d+)$/.test(type)) &&
+        !types.some(type => ['premise','subpremise','street_address','establishment','point_of_interest'].includes(type))) return false;
+    // Bare complex/place names need the same evidence as explicitly labelled destinations.
     const ignored = new Set(['plazuela','plazuelas','condominio','conjunto','residencial','urbanizacion','hotel','almacen','edificio','de','del','la','el','las','los','para','en']);
     const tokens = (raw.match(/[a-z0-9]+/g) || []).filter(token => !ignored.has(token));
     if (!tokens.length) return false;

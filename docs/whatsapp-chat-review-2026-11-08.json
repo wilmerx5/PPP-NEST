@@ -263,7 +263,10 @@
       "orderReferences": [
         "107"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "partially_fixed_bare_place_map_precision_validated_not_deployed",
+      "validation": "whatsapp-batch-473-validation.json",
+      "scope": "Map validation for non-numbered destinations, including bare names without conjunto/edificio prefix. Requires name tokens to match and rejects purely administrative/neighborhood results even when named alike. Existing explicit numbered-street and coordinate paths remain separate. Complete router journeys use the actual delivery-routing service with fetch and Directions mocked, three catalogs, two agent modes, three places, four ambiguous map results and street/unit or pin/unit recovery.",
+      "remaining": "Clarifying portería or unit when a complex is precisely located remains pending; not all delivery-point cases solved. No live map replay or historical cleanup."
     },
     {
       "id": "N08-15",
@@ -623,6 +626,14 @@
       "batch": 472,
       "finding": "N08-13",
       "validation": "whatsapp-batch-472-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 473,
+      "finding": "N08-14",
+      "validation": "whatsapp-batch-473-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
       "deployed": false
