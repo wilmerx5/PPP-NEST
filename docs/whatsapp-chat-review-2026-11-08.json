@@ -65,7 +65,8 @@
       "correctionBatch": 457,
       "scope": "Consultas Q trae/lleva/incluye/contiene/precio y le/les/te queda; carrito y cierre simulado en dos familias.",
       "validation": "whatsapp-batch-457-validation.json",
-      "deploymentEvidence": "whatsapp-batch-457-staging-deployment.json"
+      "deploymentEvidence": "whatsapp-batch-457-staging-deployment.json",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-02",
@@ -82,7 +83,8 @@
       "correctionBatch": 460,
       "validation": "whatsapp-batch-460-validation.json",
       "scope": "Combo+soup then el combo con beverage now changes one included drink without adding another combo. Half-chicken/address did not duplicate on current version and is locked as regression; ID claims and persistence mocked. Existing duplicated carts are not repaired automatically.",
-      "deploymentEvidence": "whatsapp-batch-460-staging-deployment.json"
+      "deploymentEvidence": "whatsapp-batch-460-staging-deployment.json",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-03",
@@ -98,7 +100,8 @@
       "correctionBatch": 458,
       "validation": "whatsapp-batch-458-validation.json",
       "scope": "Two canonical named products after solo sería/solamente es/únicamente son, no competing decisions; missing product added once, existing flavor retained. Central confirmation blocks pendingAttribute. Does not automatically repair old duplicate pending states.",
-      "deploymentEvidence": "whatsapp-batch-458-staging-deployment.json"
+      "deploymentEvidence": "whatsapp-batch-458-staging-deployment.json",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-04",
@@ -114,7 +117,8 @@
       "correctionBatch": 457,
       "scope": "Dos burbujas en awaiting_payment: teléfono completo y opción de pago válida, ambos órdenes, agrupador real; DTO conserva teléfono. Otros estados y más de dos burbujas pendientes.",
       "validation": "whatsapp-batch-457-validation.json",
-      "deploymentEvidence": "whatsapp-batch-457-staging-deployment.json"
+      "deploymentEvidence": "whatsapp-batch-457-staging-deployment.json",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-05",
@@ -130,7 +134,8 @@
       "correctionBatch": 459,
       "validation": "whatsapp-batch-459-validation.json",
       "scope": "Compact original already protected in458; spaced/labelled composed entrance, floor and office details now merge with confirmed base without routing/fee changes. Unit-before-street waits for base; conflicting unit-only apartment asks which offered value. No registered-order updates.",
-      "deploymentEvidence": "whatsapp-batch-459-staging-deployment.json"
+      "deploymentEvidence": "whatsapp-batch-459-staging-deployment.json",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-06",
@@ -146,7 +151,8 @@
       "regressionBatch": 461,
       "validation": "whatsapp-batch-461-validation.json",
       "stagingVerification": "whatsapp-batch-461-staging-verification.json",
-      "scope": "384 router journeys preserve requested1/2/3/5 despite four word suffix typos in three families; empty cart, other dish, payment and final. No engine change; live model not tested."
+      "scope": "384 router journeys preserve requested1/2/3/5 despite four word suffix typos in three families; empty cart, other dish, payment and final. No engine change; live model not tested.",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-07",
@@ -162,7 +168,8 @@
       "correctionBatch": 462,
       "validation": "whatsapp-batch-462-validation.json",
       "scope": "Simple or bounded repeated exclusions stay on the named dish in a multi-product request;no rejected-side offer and notes retained after adding another dish or repeating one exclusion. Pickup,mocked external services;old carts not repaired.",
-      "deploymentEvidence": "whatsapp-batch-462-staging-deployment.json"
+      "deploymentEvidence": "whatsapp-batch-462-staging-deployment.json",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-08",
@@ -174,10 +181,11 @@
       "orderReferences": [
         "20"
       ],
-      "status": "corrected_candidate_router_scoped_not_deployed",
+      "status": "corrected_candidate_router_scoped_deployed_production479",
       "candidateBaseline": "whatsapp-n08-08-combo-target-baseline-465.json",
       "candidateScope": "228 router regressions: whole/half target clarified; other line and options preserved. Derived replay, not initial combined misspelled purchase",
-      "validation": "whatsapp-batch-465-validation.json"
+      "validation": "whatsapp-batch-465-validation.json",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-09",
@@ -189,9 +197,10 @@
       "orderReferences": [
         "24"
       ],
-      "status": "corrected_candidate_router_scoped_not_deployed",
+      "status": "corrected_candidate_router_scoped_deployed_production479",
       "validation": "whatsapp-batch-467-validation.json",
-      "candidateScope": "168 regressions: distinct preparation ownership, fully named compound retained, reversed clauses, article/no article, combo/default drink, agent off/mock, prior cart/payment/final review; 168 simulated closures"
+      "candidateScope": "168 regressions: distinct preparation ownership, fully named compound retained, reversed clauses, article/no article, combo/default drink, agent off/mock, prior cart/payment/final review; 168 simulated closures",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-10",
@@ -206,7 +215,8 @@
       "status": "historical_issue_not_reproduced_candidate_router_regressions_added",
       "regressionBatch": 468,
       "validation": "whatsapp-batch-468-validation.json",
-      "scope": "80 derived router journeys: three catalog families, three inquiry types, pollo/pollor, two preparations, off/mock, empty cart. All close with correct SKU. No engine change or deployment; not full original transcript replay."
+      "scope": "80 derived router journeys: three catalog families, three inquiry types, pollo/pollor, two preparations, off/mock, empty cart. All close with correct SKU. No engine change or deployment; not full original transcript replay.",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-11",
@@ -219,9 +229,10 @@
         "62",
         "66"
       ],
-      "status": "reproduced_and_fixed_candidate_router_validated_not_deployed",
+      "status": "reproduced_and_fixed_candidate_router_validated_deployed_production479",
       "validation": "whatsapp-batch-469-validation.json",
-      "scope": "Confirmed order created through router with external ports mocked; retrospective correction preserves registered-order session and state. Three catalog families, agent off/mock, completed and closed (closed is assigned after simulated registration). Eight correction forms per family/mode/state followed by por favor; explicit new purchases still reopen. Four initial rice cases plus matrix."
+      "scope": "Confirmed order created through router with external ports mocked; retrospective correction preserves registered-order session and state. Three catalog families, agent off/mock, completed and closed (closed is assigned after simulated registration). Eight correction forms per family/mode/state followed by por favor; explicit new purchases still reopen. Four initial rice cases plus matrix.",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-12",
@@ -233,9 +244,10 @@
       "orderReferences": [
         "130"
       ],
-      "status": "reproduced_and_fixed_candidate_router_validated_not_deployed",
+      "status": "reproduced_and_fixed_candidate_router_validated_deployed_production479",
       "validation": "whatsapp-batch-470-validation.json",
-      "scope": "Three catalog families (PPP rice combo, synthetic bowl and salad combos), agent off/mock, delivery with mocked routing, unknown/saved recipient, six numeric price fragments, included-drink correction, labelled recipient preceding/following street, building cart/final confirmation. Cart, name, reply, address and final simulated DTO checked. Saved invalid/other name is assigned defensively after a router prelude in48 cases. Historical Necesito only validated at name-validation level."
+      "scope": "Three catalog families (PPP rice combo, synthetic bowl and salad combos), agent off/mock, delivery with mocked routing, unknown/saved recipient, six numeric price fragments, included-drink correction, labelled recipient preceding/following street, building cart/final confirmation. Cart, name, reply, address and final simulated DTO checked. Saved invalid/other name is assigned defensively after a router prelude in48 cases. Historical Necesito only validated at name-validation level.",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-13",
@@ -248,10 +260,11 @@
         "182",
         "113"
       ],
-      "status": "partially_fixed_known_and_unknown_recipient_candidate_validated_not_deployed",
+      "status": "partially_fixed_known_and_unknown_recipient_candidate_validated_deployed_production479",
       "validation": "whatsapp-batch-472-validation.json",
       "scope": "Active cart, single-line explicit street plus one valid Colombian phone and plausible unknown unlabelled recipient/reference. Ask role, retain street and phone, block premature confirmation, resolve short role answers, preserve payment/cancellation. Known-recipient path shares phone-field label stripping. Three catalogs, agent off/mock, multiple checkout stages and final mocked DTOs.",
-      "remaining": "Other contact/address formats, multiple or missing phones, multiline messages and genuine pending purchase choices remain outside this bounded clarification. Not a universal contact parser."
+      "remaining": "Other contact/address formats, multiple or missing phones, multiline messages and genuine pending purchase choices remain outside this bounded clarification. Not a universal contact parser.",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-14",
@@ -263,11 +276,12 @@
       "orderReferences": [
         "107"
       ],
-      "status": "partially_fixed_mapped_name_delivery_point_validated_not_deployed",
+      "status": "partially_fixed_mapped_name_delivery_point_validated_deployed_production479",
       "validation": "whatsapp-batch-476-validation.json",
       "scope": "Verified mapped name without complete numbered street or exact shared pin and without apartment/house/local/office/access instruction needs a delivery point. Keeps map fee/coordinates; porteria/recepcion and unit details resolve before payment/final review. Existing complete streets, units, exact pin and pickup bypass bounded guard. No historic-order edits or live map diagnostics.",
       "remaining": "Full numbered-street complexes without internal delivery point and unverified/no-coordinate destinations remain outside this bounded guard. Rich contact/purchase envelopes and competing lists require complete router journeys. Candidate search remains bounded; no historical address/order repair.",
-      "mappingValidation": "whatsapp-batch-474-validation.json"
+      "mappingValidation": "whatsapp-batch-474-validation.json",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-15",
@@ -277,12 +291,13 @@
       "evidence": "Tras añadir un combo por error, «es solo un combo» abre otra lista;1 produce«varias listas pendientes» y el nombre del plato se captura como dirección.",
       "expectedRegression": "Una corrección debe tener un único selector activo; la respuesta identifica el producto y retoma checkout sin modificar dirección. No eliminar líneas distintas por suposición.",
       "orderReferences": [],
-      "status": "partially_covered_price_quantity_journey_and_honest_noop_validated_not_deployed",
+      "status": "partially_covered_price_quantity_journey_and_honest_noop_validated_deployed_production479",
       "validation": "whatsapp-batch-477-validation.json",
       "scope": "N08-15 historical competing-price/quantity list sequence now has one owner before this change. Current no-op quantity reply misleadingly says corrected; new reply states unchanged, other rows retained and asks for explicit removal instruction. No new deletion or ownership algorithm. Router journeys select a line and then explicitly remove another before closing.",
       "remaining": "Other competing selector combinations and historical erroneous addition still need complete router reproduction. Automatic keep-only deletion is not implemented. Explicit named quantity from batch477 setup now has bounded coverage in478; implicit/conditional variants remain outside that scope.",
       "explicitQuantityValidation": "whatsapp-batch-478-validation.json",
-      "optionPriceValidation": "whatsapp-batch-479-validation.json"
+      "optionPriceValidation": "whatsapp-batch-479-validation.json",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-16",
@@ -426,10 +441,11 @@
       "title": "Cambiar la cantidad por nombre suma unidades en lugar de fijar el total",
       "source": "derived-router-reproduction-from-batch477-setup",
       "evidence": "Two router regressions on d51f368e: cambia la cantidad de Bowl Andino a2 leaves3 instead2. Explicit question form also added2 before protection.",
-      "status": "bounded_explicit_named_quantity_validated_not_deployed",
+      "status": "bounded_explicit_named_quantity_validated_deployed_production479",
       "validation": "whatsapp-batch-478-validation.json",
       "scope": "Bounded cambia/cambiame/modifica/modificame/ajusta/ajustame la cantidad de/del/de la PRODUCTO a/en N [unidades] plus existing courtesy stripping. Shared parser returns absolute quantity; existing router resolves cart target, limits, pending lists and final review. Explicit question marks with named-quantity verb preserved as inquiry, no mutation.",
-      "remaining": "Implicit/conditional/negated forms and arbitrary compound edits are not exhaustively covered. No production observation or historical repair."
+      "remaining": "Implicit/conditional/negated forms and arbitrary compound edits are not exhaustively covered. No production observation or historical repair.",
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     }
   ],
   "priorities": [
@@ -566,78 +582,102 @@
       "batch": 457,
       "validation": "whatsapp-batch-457-validation.json",
       "deployment": "whatsapp-batch-457-staging-deployment.json",
-      "stagingVerified": true
+      "stagingVerified": true,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 458,
       "validation": "whatsapp-batch-458-validation.json",
       "stagingVerified": true,
-      "deployment": "whatsapp-batch-458-staging-deployment.json"
+      "deployment": "whatsapp-batch-458-staging-deployment.json",
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 459,
       "validation": "whatsapp-batch-459-validation.json",
       "stagingVerified": true,
-      "deploymentEvidence": "whatsapp-batch-459-staging-deployment.json"
+      "deploymentEvidence": "whatsapp-batch-459-staging-deployment.json",
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 460,
       "validation": "whatsapp-batch-460-validation.json",
       "stagingVerified": true,
-      "deploymentEvidence": "whatsapp-batch-460-staging-deployment.json"
+      "deploymentEvidence": "whatsapp-batch-460-staging-deployment.json",
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 461,
       "validation": "whatsapp-batch-461-validation.json",
       "stagingVerified": true,
       "engineChanged": false,
-      "stagingVerification": "whatsapp-batch-461-staging-verification.json"
+      "stagingVerification": "whatsapp-batch-461-staging-verification.json",
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 462,
       "validation": "whatsapp-batch-462-validation.json",
       "stagingVerified": true,
-      "deploymentEvidence": "whatsapp-batch-462-staging-deployment.json"
+      "deploymentEvidence": "whatsapp-batch-462-staging-deployment.json",
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 465,
       "validation": "whatsapp-batch-465-validation.json",
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 467,
       "validation": "whatsapp-batch-467-validation.json",
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 468,
       "validation": "whatsapp-batch-468-validation.json",
       "stagingVerified": false,
       "engineChanged": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 469,
       "validation": "whatsapp-batch-469-validation.json",
       "stagingVerified": false,
       "engineChanged": true,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 470,
       "validation": "whatsapp-batch-470-validation.json",
       "stagingVerified": false,
       "engineChanged": true,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 471,
       "validation": "whatsapp-batch-471-validation.json",
       "stagingVerified": false,
       "engineChanged": true,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 472,
@@ -645,7 +685,9 @@
       "validation": "whatsapp-batch-472-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 473,
@@ -653,7 +695,9 @@
       "validation": "whatsapp-batch-473-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 474,
@@ -665,7 +709,9 @@
       "validation": "whatsapp-batch-474-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 475,
@@ -673,7 +719,9 @@
       "validation": "whatsapp-batch-475-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 476,
@@ -681,7 +729,9 @@
       "validation": "whatsapp-batch-476-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 477,
@@ -689,7 +739,9 @@
       "validation": "whatsapp-batch-477-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 478,
@@ -698,7 +750,9 @@
       "validation": "whatsapp-batch-478-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "batch": 479,
@@ -706,7 +760,9 @@
       "validation": "whatsapp-batch-479-validation.json",
       "engineChanged": false,
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "deployedInProduction479": true,
+      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
     }
   ],
   "subsequentLocationReports": [

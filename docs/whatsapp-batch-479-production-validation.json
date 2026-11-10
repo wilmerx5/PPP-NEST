@@ -1,0 +1,66 @@
+{
+  "baseCommit": "862b985b8d2ad5f8fa52fb93240c6fac16d403e7",
+  "batches": [
+    479
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1468.77,
+      "sourceUnchanged": true,
+      "tests": 47864,
+      "failed": 0,
+      "skipped": 11
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 13.07,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 789,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 558,
+  "tests": 47880,
+  "suites": 558,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 479,
+  "productionCandidate": "862b985b8d2ad5f8fa52fb93240c6fac16d403e7",
+  "productionBase": "451a5bc5",
+  "stagingSource": "1eae2889",
+  "nodeScriptTests": 92,
+  "skippedTests": 11,
+  "skippedSuites": {
+    "bold-online-db.spec.ts": 7,
+    "bold-db.spec.ts": 4
+  },
+  "skippedScope": "Explicit opt-in isolated MariaDB tests; no production database used.",
+  "sourceSnapshotSha256": "965c0d9233d21b78bd5791ac9691713c90db4861e091c2ff73d370c3ce310a5b",
+  "whatsappSourcesEqualStaging": true,
+  "productionOnlyCodePreserved": true,
+  "externalOrders": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "paidInferenceRequests": 0,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "deploymentVerified": true,
+  "deploymentEvidence": "whatsapp-batch-479-production-deployment.json",
+  "compiledControls": 744,
+  "compiledMockedClosures": 734
+}

@@ -31,6 +31,9 @@
   "modelsChanged": false,
   "configurationChanged": false,
   "budgetChanged": false,
-  "deployed": false,
-  "productionMergeValidationPending": true
+  "deployed": true,
+  "productionMergeValidationPending": false,
+  "productionMergeValidation": "whatsapp-batch-479-production-validation.json",
+  "productionVerified": true,
+  "deploymentEvidence": "whatsapp-batch-479-production-deployment.json"
 }
