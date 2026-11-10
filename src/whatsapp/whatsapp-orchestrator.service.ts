@@ -18947,7 +18947,10 @@ export class WhatsappOrchestratorService {
       : pendingState === 'awaiting_payment' ? buildPaymentOptionsPrompt(cfg.paymentMethods, cfg.paymentInstructions)
       : pendingState === 'awaiting_final_confirm' ? 'Revisa las cantidades y el total actualizado. Si está bien, escribe confirmar.'
       : this.formatContinueShoppingPrompt(next);
-    await this.reply(conv, waId, `Listo, corregí la cantidad ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${followUp}`);
+    const quantityChanged = session.cart[index].quantity !== quantity;
+    const quantityReply = quantityChanged ? 'Listo, corregí la cantidad ✅' :
+      `Esa línea ya tiene ${quantity}. No cambié las cantidades.${session.cart.length > 1 ? ' Las demás líneas se conservan; para dejar solo un plato, dime cuál quitamos.' : ''}`;
+    await this.reply(conv, waId, `${quantityReply}\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${followUp}`);
     return true;
   }
 

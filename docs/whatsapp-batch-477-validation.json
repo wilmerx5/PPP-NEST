@@ -1,0 +1,89 @@
+{
+  "baseCommit": "8b8a11a8a0b666139286440ad8e81efd7d0ca7c6",
+  "batches": [
+    477
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1261.03,
+      "sourceUnchanged": true,
+      "tests": 47107,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 6.43,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 770,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 550,
+  "tests": 47123,
+  "suites": 550,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 477,
+  "engineChanged": true,
+  "finding": "N08-15",
+  "findingPartiallyCovered": true,
+  "newTests": 218,
+  "simulatedClosures": 218,
+  "caseBreakdown": {
+    "initial": 2,
+    "matrix": 216
+  },
+  "related": {
+    "tests": 502,
+    "suites": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  "nodeScriptTests": 92,
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "configurationChanged": false,
+  "deployed": false,
+  "sourceSnapshotSha256": "fde81631af461491660ea0945a16b68cd2774c585f0204420c0daf1410f056f3",
+  "scope": "N08-15 historical competing-price/quantity list sequence now has one owner before this change. Current no-op quantity reply misleadingly says corrected; new reply states unchanged, other rows retained and asks for explicit removal instruction. No new deletion or ownership algorithm. Router journeys select a line and then explicitly remove another before closing.",
+  "iterations": [
+    "Initial two off/mock probes before runtime edit show current historical list conflict absent, but no-op selected quantity says corrected and leaves both rows. Probe uses console snapshots, not failed assertions.",
+    "Two new focused journeys pass after honest no-op wording.",
+    "First expanded matrix:110 passed/108 failed before tested transition because setup phrase cambia la cantidad de PRODUCTO a2 did not update quantities. Retained report; moved intended setup to initial two-unit purchase rather than claiming that separate phrase fixed.",
+    "Final related502/5 pass;218 new full router closures."
+  ],
+  "matrix": "3 synthetic families x2 agent off/mock x3 restrictive phrases x3 row choices (number/name/ordinal) x2 stages (building/final review) x2 initial quantities. Each resolves price interruption, preserves unchanged cart/address, explicitly removes other row and asserts DTO.",
+  "baseline": {
+    "kind": "Two router probes with state/reply snapshots, not failing regression assertions",
+    "historicalConflictReproduced": false,
+    "observed": "Price inquiry is cleared by restrictive quantity correction on current staging. Selecting an already matching quantity says corrected even though both lines remain unchanged."
+  },
+  "limits": [
+    "Sanitized synthetic catalog router journeys; inference and order persistence mocked. No live WhatsApp, Google or external orders.",
+    "Only quantity/price interruption with existing cart lines, then explicit removal of the other line. No new selector ownership or deletion algorithm.",
+    "No automatic keep-only interpretation of es solo un combo. Other products are retained until an explicit removal instruction.",
+    "Other category, attribute, purchase and location selector combinations require separate full-router journeys. Historical wrong addition is not replayed here.",
+    "The first expanded fixture used cambia la cantidad de PRODUCTO a2, which failed to update initial quantities in108 setup cases. This separate phrase remains pending; matrix now purchases the intended quantities through router before testing the target transition.",
+    "No historical order cleanup, deployment or Kamppo migration."
+  ]
+}

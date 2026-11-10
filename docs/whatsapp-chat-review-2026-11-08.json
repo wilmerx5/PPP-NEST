@@ -277,7 +277,10 @@
       "evidence": "Tras añadir un combo por error, «es solo un combo» abre otra lista;1 produce«varias listas pendientes» y el nombre del plato se captura como dirección.",
       "expectedRegression": "Una corrección debe tener un único selector activo; la respuesta identifica el producto y retoma checkout sin modificar dirección. No eliminar líneas distintas por suposición.",
       "orderReferences": [],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "partially_covered_price_quantity_journey_and_honest_noop_validated_not_deployed",
+      "validation": "whatsapp-batch-477-validation.json",
+      "scope": "N08-15 historical competing-price/quantity list sequence now has one owner before this change. Current no-op quantity reply misleadingly says corrected; new reply states unchanged, other rows retained and asks for explicit removal instruction. No new deletion or ownership algorithm. Router journeys select a line and then explicitly remove another before closing.",
+      "remaining": "Other competing selector combinations and the historical erroneous addition still need complete router reproduction. No automatic keep-only deletion; explicit removal remains required. Separately reproduce cambia la cantidad de PRODUCTO a2, observed during matrix setup."
     },
     {
       "id": "N08-16",
@@ -663,6 +666,14 @@
       "batch": 476,
       "finding": "N08-14",
       "validation": "whatsapp-batch-476-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 477,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-477-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
       "deployed": false
