@@ -1,3 +1,15 @@
+## Tanda 478 — cantidad total explícita por nombre (rama de staging validada; sin desplegar)
+
+Sobre d51f368e se reproducen2 fallos por router off/mock: «cambia la cantidad de Bowl Andino a2» deja3 unidades en vez de2. El parser admite ahora cambia/cámbiame/modifica/modifícame/ajusta/ajústame la cantidad de/del/de la PRODUCTO a/en N, con unidades opcionales y cortesía existente. Devuelve una cantidad absoluta y delega selección, límites y revisión al flujo existente; no añade una línea. Sin nombres, IDs ni precios especiales en runtime.
+
+Primera ampliación:814 aprobadas/2 fallos; la variante con signos de pregunta todavía sumaba unidades al caer fuera del parser. El helper de corrección intercepta esas preguntas explícitas y conserva el carrito, invitando a indicar el cambio si se desea aplicarlo. Relacionadas951/5 aprobadas; después se añaden12 recorridos de familia ambigua, aprobados con442 casos filtrados. No se cuenta951+12 como una única ejecución963.
+
+454 pruebas nuevas:2 reproducciones iniciales,432 recorridos (3 catálogos, off/mock,8 formas, cantidades1/2/3 y etapas carrito/consulta de precio/revisión final),8 controles de pregunta/límites0/31/producto ausente y12 recorridos ambiguos (2 familias,2 modos, número/nombre/ordinal).444 cierres DTO simulados; los10 controles iniciales/bloqueados no cierran. Se verifican otra línea y dirección intactas, respuesta, retiro de pendiente de precio/cantidad, ausencia de creación prematura y una sola orden con cantidades correctas. Un nombre que identifica dos líneas pide elegir antes de cambiar.
+
+Global47.577/551 sin fallos ni omitidas, inventario exacto y771 fuentes congeladas. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-478-validation.json.0 inferencias pagadas, Google, Meta u órdenes externas; configuración, modelos y presupuesto intactos.
+
+N10-QTY-01 cubierto de forma acotada; no toda pregunta implícita/condicional/negada, edición compuesta ni distribución de unidades. No se interpreta0 como eliminación. N08-15 sigue parcial para combinaciones de listas de atributos/categorías/ubicaciones y la adición errónea histórica; próximo ampliar esos recorridos, preservando la exigencia de retirada explícita. N08-14 conserva los límites476. No cambios en órdenes históricas. Rama publicada no equivale a despliegue: últimos runtimes verificados staging462, producción446 yKamppo398, no inspeccionados ni actualizados aquí.
+
 ## Tanda 477 — consulta de precio y corrección sin cambios (rama de staging validada; sin desplegar)
 
 Sobre8b8a11a8, dos probes por router off/mock muestran que el bloqueo histórico de listas precio/cantidad ya no aparece en la secuencia acotada: la corrección retira pendingPriceInquiry. Sí se observa una respuesta engañosa: al elegir una línea que ya tiene la cantidad solicitada dice «corregí», conservando los dos productos. El único cambio de runtime es el mensaje de esa operación sin cambios: informa la cantidad existente y, si hay otras líneas, aclara que se conservan y pide indicar cuál quitar. No cambia el algoritmo de propiedad de listas ni elimina platos por interpretar «solo uno».

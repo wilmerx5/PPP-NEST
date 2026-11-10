@@ -18765,6 +18765,11 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (session.pendingCartQuantity?.distribution) return false;
+    // A question about the explicit named-quantity syntax must not fall through as an addition.
+    if (/[¿?]/.test(text) && /^(?:cambia(?:me)?|modifica(?:me)?|ajusta(?:me)?)\s+la\s+cantidad\b/.test(normalizeCorrection(text))) {
+      await this.reply(conv, waId, 'El pedido sigue igual. Para aplicar el cambio, dime el producto y la cantidad total: «cambia la cantidad de [producto] a [cantidad]».');
+      return true;
+    }
     let correction = parseCartQuantityCorrection(text);
     const shortText = this.normalizeForMatch(text).replace(/\s+(?:por favor|porfa|gracias)$/, '');
     const shortAmount = '(\\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';

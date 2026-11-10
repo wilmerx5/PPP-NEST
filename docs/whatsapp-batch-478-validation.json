@@ -1,0 +1,101 @@
+{
+  "baseCommit": "d51f368e9920e01b28e4a347d925ed6083eaccad",
+  "batches": [
+    478
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1259.03,
+      "sourceUnchanged": true,
+      "tests": 47561,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 13.18,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 771,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 551,
+  "tests": 47577,
+  "suites": 551,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 478,
+  "engineChanged": true,
+  "finding": "N10-QTY-01",
+  "relatedFinding": "N08-15",
+  "findingPartiallyCovered": true,
+  "baseline": {
+    "passed": 0,
+    "failed": 2,
+    "observed": "Named quantity a2 adds2 to existing1, ending3."
+  },
+  "initialFocus": {
+    "passed": 2,
+    "failed": 0
+  },
+  "iterations": [
+    "Initial0pass2fail through router, qty3 instead2.",
+    "Bounded named-quantity regex added, focus2pass.",
+    "First related814pass2fail: question form mutates to3 while parser rejects questions; guarded explicit named-quantity questions in cart correction helper.",
+    "Related951/5 pass, then12 ambiguous-family full journeys pass with442 filtered cases. Related951 is not final963 single run."
+  ],
+  "newTests": 454,
+  "simulatedClosures": 444,
+  "caseBreakdown": {
+    "baselineJourneys": 2,
+    "absoluteQuantityMatrix": 432,
+    "questionInvalidMissingTargetControls": 8,
+    "ambiguousFamilyJourneys": 12
+  },
+  "related": {
+    "tests": 951,
+    "suites": 5,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "Before adding12 ambiguity journeys; not a final963 single invocation."
+  },
+  "additionalAmbiguousFocus": {
+    "tests": 12,
+    "failed": 0,
+    "filteredSkips": 442
+  },
+  "nodeScriptTests": 92,
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "configurationChanged": false,
+  "deployed": false,
+  "sourceSnapshotSha256": "e21903fff9ee1a932f342d2c98cc0365f3a42426c1d1caf3d0b16445f4dd97b7",
+  "scope": "Bounded cambia/cambiame/modifica/modificame/ajusta/ajustame la cantidad de/del/de la PRODUCTO a/en N [unidades] plus existing courtesy stripping. Shared parser returns absolute quantity; existing router resolves cart target, limits, pending lists and final review. Explicit question marks with named-quantity verb preserved as inquiry, no mutation.",
+  "limits": [
+    "Sanitized synthetic catalogs with actual text router, mocked inference and order persistence; no live WhatsApp/Google/external orders.",
+    "432 matrix closures cover3 catalogs,2 agent off/mock modes,8 syntax forms,3 target quantities and3 stages.12 ambiguity closures cover2 families,2 modes and3 second-row choices. Initial2 reproductions and8 blocked controls do not close.",
+    "Question protection covers explicit question marks with the bounded named-quantity verb syntax; not every implicit, conditional, negated or regional question form.",
+    "Absolute quantity support does not implement decrement/removal for zero, arbitrary compound edits, unit distributions or automatic keep-only deletion. Existing guards keep0/31 and unordered target unchanged in the tested paths.",
+    "No replay of historical erroneous addition or exhaustive mixed selector ownership; N08-15 remains partial.",
+    "No persisted historical order cleanup, deployment or Kamppo migration."
+  ]
+}

@@ -280,7 +280,8 @@
       "status": "partially_covered_price_quantity_journey_and_honest_noop_validated_not_deployed",
       "validation": "whatsapp-batch-477-validation.json",
       "scope": "N08-15 historical competing-price/quantity list sequence now has one owner before this change. Current no-op quantity reply misleadingly says corrected; new reply states unchanged, other rows retained and asks for explicit removal instruction. No new deletion or ownership algorithm. Router journeys select a line and then explicitly remove another before closing.",
-      "remaining": "Other competing selector combinations and the historical erroneous addition still need complete router reproduction. No automatic keep-only deletion; explicit removal remains required. Separately reproduce cambia la cantidad de PRODUCTO a2, observed during matrix setup."
+      "remaining": "Other competing selector combinations and historical erroneous addition still need complete router reproduction. Automatic keep-only deletion is not implemented. Explicit named quantity from batch477 setup now has bounded coverage in478; implicit/conditional variants remain outside that scope.",
+      "explicitQuantityValidation": "whatsapp-batch-478-validation.json"
     },
     {
       "id": "N08-16",
@@ -417,6 +418,17 @@
       "expectedRegression": "Saludar una vez y abrir pedido, sin dar seguimiento a una orden anterior si no se pregunta por ella.",
       "orderReferences": [],
       "status": "observed_in_transcript_not_reproduced_on_current_staging"
+    },
+    {
+      "id": "N10-QTY-01",
+      "priority": "P1",
+      "title": "Cambiar la cantidad por nombre suma unidades en lugar de fijar el total",
+      "source": "derived-router-reproduction-from-batch477-setup",
+      "evidence": "Two router regressions on d51f368e: cambia la cantidad de Bowl Andino a2 leaves3 instead2. Explicit question form also added2 before protection.",
+      "status": "bounded_explicit_named_quantity_validated_not_deployed",
+      "validation": "whatsapp-batch-478-validation.json",
+      "scope": "Bounded cambia/cambiame/modifica/modificame/ajusta/ajustame la cantidad de/del/de la PRODUCTO a/en N [unidades] plus existing courtesy stripping. Shared parser returns absolute quantity; existing router resolves cart target, limits, pending lists and final review. Explicit question marks with named-quantity verb preserved as inquiry, no mutation.",
+      "remaining": "Implicit/conditional/negated forms and arbitrary compound edits are not exhaustively covered. No production observation or historical repair."
     }
   ],
   "priorities": [
@@ -674,6 +686,15 @@
       "batch": 477,
       "finding": "N08-15",
       "validation": "whatsapp-batch-477-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 478,
+      "finding": "N10-QTY-01",
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-478-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
       "deployed": false
