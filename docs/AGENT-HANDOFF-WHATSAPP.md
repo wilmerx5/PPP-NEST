@@ -1,3 +1,11 @@
+## Tanda 484 — sabor, cantidad y dirección (rama staging)
+
+24 recorridos nuevos por router con Jugo Natural/Batido Frutal/Refresco Natural, agente off/mock, Mango/Lulo y dirección antes/después de corregir cantidad. La consulta de precio interrumpe una elección de sabor real; después se selecciona, se añade sopa, se reduce bebida de2 a1 y se cierra a domicilio. Se verifica sabor/cantidad, sopa intacta, apartamento, revisión de42000 y una única creación DTO con sabor y dirección. Todos los servicios externos son simulados.
+
+Relacionadas350/3 aprobadas,0 fallos/omitidas; TypeScript general aprobado. No se cambia runtime ni se repite global;481 es evidencia previa. Primera exploración24 fallos por asumir pendiente para bebida incluida, que tiene valor predeterminado. Segunda16 aprobadas/8 fallos: Helado Artesanal no exige sabor explícito. Se acota esta tanda a bebidas; NO se considera corregido el sabor fuera de bebidas. Evidencia whatsapp-batch-484-validation.json.
+
+Próximo prioritario: reproducir y revisar la elección obligatoria de sabores fuera de bebidas con catálogos genéricos, respetando opciones predeterminadas configuradas; luego retomar otros selectores mixtos N08-15. N08-14/N08-15 siguen parciales.0 inferencia pagada, Google, Meta u órdenes reales; configuración/modelos/presupuesto intactos. Solo publicación de rama staging; últimas verificaciones PPPprod479, servidor staging462 y Kamppo481, sin desplegar ni migrar esta tanda.
+
 ## Tanda 483 — recuperación tras consulta y corrección de cantidad (rama staging)
 
 36 recorridos nuevos por router: compra de dos unidades en dos líneas, consulta de precio, «es solo un…», selección por número/nombre/ordinal, reducción efectiva a una unidad, retirada explícita de la otra línea, consulta de contenido/precio y cierre por recogida/efectivo. Tres familias sintéticas, agente off/mock y conservación alternativa de primera/segunda línea. Se comprueban carrito, pendientes, respuestas y una sola creación DTO. No se siembran pendientes; las dos líneas iniciales se compran deliberadamente y no representan una reproducción de la adición histórica errónea.

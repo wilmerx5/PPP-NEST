@@ -804,6 +804,15 @@
       "engineChanged": false,
       "stagingVerified": false,
       "deployed": false
+    },
+    {
+      "batch": 484,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-484-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false,
+      "remaining": "Non-beverage flavor selection: Helado Artesanal defaults instead of asking; not fixed in this beverage-only batch."
     }
   ],
   "subsequentLocationReports": [

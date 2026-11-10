@@ -1,0 +1,36 @@
+{
+  "batch": 484,
+  "baseCommit": "3c4db97ef643cb6062fde292acd5459c4cebfe3f",
+  "engineChanged": false,
+  "finding": "N08-15",
+  "findingPartiallyCovered": true,
+  "newTests": 24,
+  "simulatedClosures": 24,
+  "related": {
+    "tests": 350,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit",
+    "exitCode": 0
+  },
+  "testSha256": "e3f2ef966ad7efa7cdea9cb5d21aae648be74243dd7a46c95ff70187a0348a4f",
+  "scope": "Three beverage catalogs, off/mock agent, two flavors, quantity correction before/after full delivery address. Price interruption while flavor pending; real-router selection, quantity2 to1; other soup preserved; review total42000 and one DTO containing flavor/address.",
+  "iterations": [
+    "Initial24 failures: invalid fixture assumption that included Bebida must remain pending; router defaults Mango.",
+    "Changed to flavor options:16 passed,8 failed because Helado Artesanal does not require explicit flavor under current catalog policy.",
+    "Bound final scope to beverages, replacing Helado with Refresco Natural. Non-beverage flavor choice remains a separate unresolved follow-up."
+  ],
+  "limits": [
+    "Mocks only: no live model, maps, Meta or real orders.",
+    "No runtime change, no new global execution; batch481 is prior global evidence.",
+    "No claim that non-beverage flavors, all variant combinations or historic errors are fixed."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false
+}
