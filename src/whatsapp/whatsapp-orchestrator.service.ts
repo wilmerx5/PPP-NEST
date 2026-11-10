@@ -24059,13 +24059,34 @@ export class WhatsappOrchestratorService {
     const candidates = session.pendingDeliveryCandidates;
     if (!candidates?.length || !session.cart.length || conv.humanTakeover || ['completed','closed'].includes(conv.state)) return false;
     const said = this.normalizeForMatch(text).replace(/[.!]+$/, '').trim();
-    const selected = said.match(/^(?:(?:la|el|opcion)\s+)?(\d{1,2})$/);
+    const choice = said.replace(/\s+(?:porfa|por favor|gracias)$/, '');
+    const selected = choice.match(/^(?:(?:la|el|opcion)\s+)?(\d{1,2})$/);
+    const ordinal = choice.match(/^(?:(?:la|el)(?:\s+(?:opcion|direccion|lugar))?\s+|(?:opcion|direccion|lugar)\s+)?(primer[oa]?|segund[oa]|tercer[oa]?|uno|una|dos|tres)(?:\s+(?:opcion|direccion|lugar))?$/);
     const exact = candidates.findIndex(place => this.normalizeForMatch(place.address) === said);
-    if (selected || exact >= 0) {
-      if (selected && (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingAddOffer || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))) {
+    let index = selected ? Number(selected[1])-1 : ordinal
+      ? /^(?:primer|un)/.test(ordinal[1]) ? 0 : /^(?:segund|dos)/.test(ordinal[1]) ? 1 : 2 : exact;
+    const reference = choice.match(/^(?:la|el)(?:\s+(?:direccion|lugar))?\s+(?:de|en)\s+(?:la\s+)?(.+)$/);
+    if (reference) {
+      const ref = reference[1].replace(/^(calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv)(?=\d)/, '$1 ');
+      const bounded = ref.split(' ').every(token=>/^(?:calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv|bis|sur|norte|este|\d{1,3}[a-z]?|[a-z])$/.test(token));
+      const full = bounded ? canonicalStreetAddress(ref) : null;
+      const roadAliases: Record<string,string> = {cl:'calle',cll:'calle',cra:'carrera',kr:'carrera',dg:'diagonal',tv:'transversal'};
+      const short = bounded && !full && /^(?:calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv)\s+\d{1,3}[a-z]?(?:\s+(?:sur|norte|este))?$/.test(ref)
+        ? ref.replace(/^(cll?|cra|kr|dg|tv)\b/,road=>roadAliases[road]) : undefined;
+      const matches = candidates.map((place,i)=>({i,street:canonicalStreetAddress(place.address)}))
+        .filter(place=>place.street && (full ? place.street===full : short && this.normalizeForMatch(place.street.split(' # ')[0])===short));
+      if (matches.length !== 1) {await this.reply(conv,waId,this.formatNearbyDeliveryPlaces(session));return true;}
+      index = matches[0].i;
+    }
+    const alternatives = /^(?:(?:la|el)\s+)?(?:primer[oa]?|segund[oa]|tercer[oa]?)\s+(?:o|y)\s+(?:(?:la|el)\s+)?(?:primer[oa]?|segund[oa]|tercer[oa]?)$/.test(choice);
+    if (alternatives || (/[¿?]/.test(text) && (selected || ordinal || reference || exact >= 0))) {
+      await this.reply(conv,waId,this.formatNearbyDeliveryPlaces(session));return true;
+    }
+    if (selected || ordinal || reference || exact >= 0) {
+      if ((selected || ordinal) && (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingAddOffer || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))) {
         await this.reply(conv,waId,'Para evitar confundir las listas, escribe la dirección completa del lugar que elegiste. El pedido sigue igual.');return true;
       }
-      const candidate = candidates[selected ? Number(selected[1])-1 : exact];
+      const candidate = candidates[index];
       if (!candidate) {await this.reply(conv,waId,this.formatNearbyDeliveryPlaces(session));return true;}
       const access = splitDeliveryAddressParts(session.address || '').details;
       const selectedAddress = access && !candidate.address.toLowerCase().includes(access.toLowerCase())

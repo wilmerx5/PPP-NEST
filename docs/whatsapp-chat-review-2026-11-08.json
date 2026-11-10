@@ -649,6 +649,14 @@
       "engineChanged": true,
       "stagingVerified": false,
       "deployed": false
+    },
+    {
+      "batch": 475,
+      "finding": "N10-LOC-02",
+      "validation": "whatsapp-batch-475-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false
     }
   ],
   "subsequentLocationReports": [
@@ -667,8 +675,11 @@
       "title": "Varias ubicaciones cercanas para Plazuelas de San Esteban",
       "source": "User-provided landmark report; bounded live Google diagnostic.",
       "status": "explicit_covered_possible_choices_validated_not_deployed",
-      "validation": "whatsapp-batch-474-validation.json",
-      "result": "Google returns two partial rooftop POIs. Offer possible destinations only after coverage routing and require explicit choice; do not silently select the first."
+      "validation": "whatsapp-batch-475-validation.json",
+      "result": "Google returns two partial rooftop POIs. Offer possible destinations only after coverage routing and require explicit choice; do not silently select the first.",
+      "mappingValidation": "whatsapp-batch-474-validation.json",
+      "naturalChoiceScope": "Active nearby-place list only. Bounded first/second/third ordinals, uno/dos/tres, option/place/address labels and courtesy suffixes. Explicit road references match a full canonical street or a uniquely identifying road/number; no invented street numbers or fuzzy guessing. Questioning replies, alternative ordinals, absent positions and nonunique streets preserve the list. Ordinals use the existing competing-purchase-selector guard. Selection then follows batch474 fresh quote, access preservation and final review.",
+      "remaining": "Bounded natural selection only; mandatory unit/access clarification, all competing selectors and longer copied descriptions remain pending."
     }
   ]
 }
