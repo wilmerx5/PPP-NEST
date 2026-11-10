@@ -788,6 +788,22 @@
         "deploymentVerified": true,
         "sourcePPPCommit": "258a2c71ce36acf1c3fc17cd6b12b16d0fd6760a"
       }
+    },
+    {
+      "batch": 482,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-482-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 483,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-483-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false
     }
   ],
   "subsequentLocationReports": [

@@ -1,0 +1,32 @@
+{
+  "batch": 483,
+  "baseCommit": "a841a71e272cb13d8a8ec8944108761844593a7e",
+  "engineChanged": false,
+  "finding": "N08-15",
+  "findingPartiallyCovered": true,
+  "newTests": 36,
+  "simulatedClosures": 36,
+  "related": {
+    "tests": 278,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit",
+    "exitCode": 0
+  },
+  "testSha256": "c7d7353daf4e4994f4af380afd97dd9f7776a15da10e81bbf832e57bf109763e",
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "scope": "Three synthetic families, agent off/mock, number/name/ordinal selection and either retained line. Router purchases two units of both lines; price inquiry; restrictive quantity correction to one; explicit removal of other line; contents and price inquiries; pickup cash checkout and one mocked DTO.",
+  "limits": [
+    "Baseline already passes; test-only change.",
+    "Initial two lines intentionally purchased via router, not recreation of historic accidental addition.",
+    "No live model, provider calls, persisted orders or repair of historic orders.",
+    "Global runtime evidence remains batch481; no new global execution."
+  ]
+}

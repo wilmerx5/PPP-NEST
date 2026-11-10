@@ -1,3 +1,11 @@
+## Tanda 483 — recuperación tras consulta y corrección de cantidad (rama staging)
+
+36 recorridos nuevos por router: compra de dos unidades en dos líneas, consulta de precio, «es solo un…», selección por número/nombre/ordinal, reducción efectiva a una unidad, retirada explícita de la otra línea, consulta de contenido/precio y cierre por recogida/efectivo. Tres familias sintéticas, agente off/mock y conservación alternativa de primera/segunda línea. Se comprueban carrito, pendientes, respuestas y una sola creación DTO. No se siembran pendientes; las dos líneas iniciales se compran deliberadamente y no representan una reproducción de la adición histórica errónea.
+
+Los36 casos ya pasan sobre a841a71e; no cambio de runtime. Relacionadas278/3 aprobadas,0 fallos/omitidas; TypeScript general aprobado. Evidencia whatsapp-batch-483-validation.json. Global481 sigue siendo evidencia previa del runtime, no una ejecución nueva.0 inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos.
+
+N08-15 sigue parcial para otros selectores, reparto y formularios mixtos; N08-14 conserva sus límites de ubicación. Próximo: recuperación con variantes/atributos pendientes y dirección durante correcciones. Publicación solo en rama staging; últimas verificaciones de despliegue PPP479, servidor staging462 y Kamppo481. No migración nueva ni reparación histórica.
+
 ## Tanda 482 — consultas de contenido y precio sin añadir productos (staging)
 
 24 recorridos nuevos por router derivados del chat N08-15: compra de una línea, «Q trae / Que trae / Qué incluye / Cómo viene» por familia y «Y q precio», seguidos de recogida, efectivo y confirmación. Tres catálogos sintéticos (Combo/Wrap/Bowl), agente off/mock. Se comprueban descripción, precio, carrito intacto y una sola creación DTO por recorrido. Los24 ya pasan sobre d08e9110; no se modifica runtime ni se atribuye una corrección nueva.
