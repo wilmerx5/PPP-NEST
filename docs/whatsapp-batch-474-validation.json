@@ -1,0 +1,348 @@
+{
+  "baseCommit": "c128eda6ea46487f56f55f5e5231a7e2aa59ea28",
+  "batches": [
+    474
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1368.18,
+      "sourceUnchanged": true,
+      "tests": 45951,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.12,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 767,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 547,
+  "tests": 45967,
+  "suites": 547,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 474,
+  "engineChanged": true,
+  "findings": [
+    "N08-14",
+    "N10-LOC-01",
+    "N10-LOC-02"
+  ],
+  "findingPartiallyCovered": true,
+  "newTests": 778,
+  "simulatedClosures": 750,
+  "nodeScriptTests": 92,
+  "related": {
+    "tests": 1070,
+    "suites": 9,
+    "failed": 0,
+    "skipped": 0
+  },
+  "caseBreakdown": {
+    "compactInitial": 4,
+    "correctedStreetAbbreviation": 2,
+    "compactMatrix": 288,
+    "numericBoundaryControls": 4,
+    "placeInitial": 4,
+    "placeMatrix": 432,
+    "placeExits": 16,
+    "observedPartialProviderCoverageJourneys": 18,
+    "partialPrecisionServiceControls": 10
+  },
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "paidInferenceRequests": 0,
+  "paidRequestsScope": "Inference only; read-only Google diagnostics are counted separately below.",
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "configurationChanged": false,
+  "deployed": false,
+  "sourceSnapshotSha256": "6d56ceda5d9e70e6bd1b8f2628414581680dafc38da762cb1283322b75374b2f",
+  "iterations": [
+    {
+      "report": "baseline",
+      "passed": 0,
+      "failed": 4,
+      "skippedByFilter": 0,
+      "reason": "Compact letter/door form not recognized by canonical street parser."
+    },
+    {
+      "report": "focus",
+      "passed": 4,
+      "failed": 0,
+      "skippedByFilter": 0,
+      "reason": "Insert boundary after a letter only; never split an all-numeric run."
+    },
+    {
+      "report": "abbreviation-baseline",
+      "passed": 0,
+      "failed": 2,
+      "skippedByFilter": 4,
+      "reason": "Synthetic provider only matches equivalent compact road spelling; no late abbreviation query existed."
+    },
+    {
+      "report": "abbreviation-focus",
+      "passed": 55,
+      "failed": 0,
+      "skippedByFilter": 0,
+      "reason": "Two bounded late equivalent-address queries added; previous request ceilings updated from10 to12."
+    },
+    {
+      "report": "expanded",
+      "passed": 298,
+      "failed": 0,
+      "skippedByFilter": 0,
+      "reason": "Compact matrix and numeric-boundary controls."
+    },
+    {
+      "report": "place-baseline",
+      "passed": 0,
+      "failed": 4,
+      "skippedByFilter": 0,
+      "reason": "First matching place selected silently instead of asking among two covered destinations."
+    },
+    {
+      "report": "place-focus",
+      "passed": 4,
+      "failed": 0,
+      "skippedByFilter": 0,
+      "reason": "Explicit nearby-place selection introduced."
+    },
+    {
+      "report": "place-expanded",
+      "passed": 220,
+      "failed": 0,
+      "skippedByFilter": 0,
+      "reason": "Exact matching place matrix and coverage filter."
+    },
+    {
+      "report": "related",
+      "passed": 826,
+      "failed": 0,
+      "skippedByFilter": 0,
+      "reason": "Nine related suites before access-detail expansion."
+    },
+    {
+      "report": "place-unit-baseline",
+      "passed": 0,
+      "failed": 1,
+      "skippedByFilter": 451,
+      "reason": "New selection initially lost apartment402; preserve access details of the current unresolved destination."
+    },
+    {
+      "report": "final-related",
+      "passed": 1042,
+      "failed": 0,
+      "skippedByFilter": 0,
+      "reason": "Expanded exact-place journeys with/without tower/apartment."
+    },
+    {
+      "report": "partial-provider-baseline",
+      "passed": 0,
+      "failed": 6,
+      "skippedByFilter": 452,
+      "reason": "Six derived journeys reproduce rejection of actual observed partial rooftop POI responses."
+    },
+    {
+      "report": "provider-related",
+      "passed": 1048,
+      "failed": 0,
+      "skippedByFilter": 0,
+      "reason": "Tentative partial candidates require explicit selection; numbered streets stay strict."
+    },
+    {
+      "report": "provider-final-related",
+      "passed": 1070,
+      "failed": 0,
+      "skippedByFilter": 0,
+      "reason": "Adds both/one/none covered partial destinations and ten defensive service controls."
+    }
+  ],
+  "incompleteGlobalAttempts": [
+    {
+      "approved": false,
+      "suites": 233,
+      "passed": 31893,
+      "failed": 0,
+      "reason": "Stopped and archived before source edits after live Google diagnostics revealed both Plazuelas candidates were partial rooftop POIs. Not included in approved global totals."
+    }
+  ],
+  "liveGoogleDiagnostics": {
+    "date": "2026-11-10",
+    "geocodingRequests": 4,
+    "directionsRequests": 2,
+    "scope": "Read-only calls using the staging container environment; no key exported or logged, no inference/Meta/orders. Route origin was the published restaurant address, not an audit of current configured origin/coverage. API billing not measured.",
+    "geocoding": {
+      "available": true,
+      "requests": 4,
+      "reports": [
+        {
+          "query": "Calle 10B #81F-20, Bogotá, Colombia",
+          "http": 200,
+          "status": "OK",
+          "results": [
+            {
+              "address": "Cl. 10B #81f - 20, Kennedy, Bogotá, Colombia",
+              "partial": false,
+              "types": [
+                "premise",
+                "street_address"
+              ],
+              "location": {
+                "lat": 4.6493614,
+                "lng": -74.1445435
+              },
+              "locationType": "ROOFTOP"
+            }
+          ]
+        },
+        {
+          "query": "Cl. 10B #81F-20, Bogotá, Colombia",
+          "http": 200,
+          "status": "OK",
+          "results": [
+            {
+              "address": "Cl. 10B #81f - 20, Kennedy, Bogotá, Colombia",
+              "partial": false,
+              "types": [
+                "premise",
+                "street_address"
+              ],
+              "location": {
+                "lat": 4.6493614,
+                "lng": -74.1445435
+              },
+              "locationType": "ROOFTOP"
+            }
+          ]
+        },
+        {
+          "query": "Plazuelas de San Esteban, Kennedy, Bogotá, Colombia",
+          "http": 200,
+          "status": "OK",
+          "results": [
+            {
+              "address": "Plazuelas de San Esteban, Tv. 78b #6d40 #6d- a, Bogotá, Colombia",
+              "partial": true,
+              "types": [
+                "establishment",
+                "park",
+                "point_of_interest"
+              ],
+              "location": {
+                "lat": 4.6334187,
+                "lng": -74.1444932
+              },
+              "locationType": "ROOFTOP"
+            },
+            {
+              "address": "Cra. 78a #6b-28, Bogotá, Colombia",
+              "partial": true,
+              "types": [
+                "establishment",
+                "point_of_interest"
+              ],
+              "location": {
+                "lat": 4.6323686,
+                "lng": -74.145203
+              },
+              "locationType": "ROOFTOP"
+            }
+          ]
+        },
+        {
+          "query": "Plazuelas de San Esteban, Bogotá, Colombia",
+          "http": 200,
+          "status": "OK",
+          "results": [
+            {
+              "address": "Plazuelas de San Esteban, Tv. 78b #6d40 #6d- a, Bogotá, Colombia",
+              "partial": true,
+              "types": [
+                "establishment",
+                "park",
+                "point_of_interest"
+              ],
+              "location": {
+                "lat": 4.6334187,
+                "lng": -74.1444932
+              },
+              "locationType": "ROOFTOP"
+            },
+            {
+              "address": "Cra. 78a #6b-28, Bogotá, Colombia",
+              "partial": true,
+              "types": [
+                "establishment",
+                "point_of_interest"
+              ],
+              "location": {
+                "lat": 4.6323686,
+                "lng": -74.145203
+              },
+              "locationType": "ROOFTOP"
+            }
+          ]
+        }
+      ]
+    },
+    "directions": {
+      "available": true,
+      "requests": 2,
+      "origin": "Diagonal 6B #78B-20, Bogotá, Colombia",
+      "reports": [
+        {
+          "destination": "4.6334187,-74.1444932",
+          "status": "OK",
+          "distanceMeters": 1952,
+          "durationSeconds": 304,
+          "start": "Dg. 6b #78b-20, Bogotá, Colombia",
+          "end": "Plazuelas de San Esteban, Tv. 78b #6d40 #6d- a, Bogotá, Colombia"
+        },
+        {
+          "destination": "4.6323686,-74.145203",
+          "status": "OK",
+          "distanceMeters": 528,
+          "durationSeconds": 154,
+          "start": "Dg. 6b #78b-20, Bogotá, Colombia",
+          "end": "Cra. 78a #6b-28, Bogotá, Colombia"
+        }
+      ]
+    }
+  },
+  "scope": "Compact numbered streets with a letter marking the cross-street/door boundary, plus two bounded late Google-style abbreviation queries preserving street identity. For named places, collect matching distinct coordinates and precise local partial rooftop POI candidates, route at most5 and offer at most3 within coverage. Partial options labelled possible; explicit numeric or full-address choice required, with fresh route validation and final order review. Preserve current access details, cart and quantities; clear choices on fresh street, pin, pickup or cancellation.",
+  "limits": [
+    "No live end-to-end WhatsApp test; 4 Geocoding + 2 Directions read-only Google diagnostics only, not orders/inference.",
+    "Calle10B now geocodes precisely; cannot attribute historical failure solely to current normalization or API state.",
+    "Provider only returns limited candidates; at most5 routed and3 offered; no all-Google-Maps search guarantee.",
+    "Tentative partial rooftop POIs offered for explicit choice only; exact numbered streets and administrative centroids remain strict.",
+    "Unit missing on otherwise precisely located complex remains pending N08-14; ordinal aliases and all competing-selection journeys not comprehensively covered.",
+    "No proof that the historical Calle10B failure had the same cause as the compact-format bug or synthetic abbreviation-only fallback; current provider returns the corrected street precisely.",
+    "Partial POI candidates are possible responses to the query, not certified exact name matches; the customer must select explicitly. Unverified routes are not offered.",
+    "Tests derive sanitized flows, not a full historical replay with live profiles/persistence; ordinary routing failures outside the new selection path retain existing behavior.",
+    "Stored positive geocode cache retains existing lifetime; does not guarantee discovery of every Maps search result.",
+    "Ordinal replies and every competing product-list combination are not exhaustively covered; existing numeric-collision guard requires full address when another selector is active."
+  ],
+  "externalDocumentation": [
+    "https://developers.google.com/maps/documentation/geocoding/guides-v3/requests-geocoding",
+    "https://bogota.gov.co/sites/default/files/inline-files/empresas-autorizadas-23052020-1030_compressed-1.pdf"
+  ]
+}

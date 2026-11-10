@@ -34,7 +34,7 @@ for (const [address, canonical] of destinations) {
       const route = jest.spyOn(service as any, 'directionsDistance').mockResolvedValue({distanceKm: 0.6, durationMinutes: 4});
       const params = {customerAddress: address, restaurant: {lat: 4.63, lng: -74.15}, tiers: [{maxKm: 8.5, fee: 2000}], maxKm: 8.5, fallbackFee: 2000};
       const quote = await service.quoteDeliveryFee(params);
-      expect(queries.length).toBeLessThanOrEqual(10);
+      expect(queries.length).toBeLessThanOrEqual(12);
       expect(new Set(queries).size).toBe(queries.length);
       if (mode === 'first' || mode === 'plain') {
         expect(quote).toMatchObject({ok: true, fee: 2000, geocodedAddress: canonical + ', Bogotá, Colombia'});

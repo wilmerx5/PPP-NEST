@@ -56,6 +56,8 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  /** Nearby matching map destinations; an explicit choice is required before checkout. */
+  pendingDeliveryCandidates?: Array<{address:string;lat:number;lng:number;distanceKm:number;fee:number;tentative?:boolean}>;
   foreignSales?: { lastSeenAt: number; noticeAt: number };
   /** One reversible drink addition, valid only while the cart signature matches. */
   lastDrinkAddition?: { productId: number; beforeCart: WhatsappCartItem[]; cartSignature: string };

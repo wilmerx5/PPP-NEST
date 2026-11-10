@@ -47,7 +47,10 @@ export function splitAddressReference(source: string): { address: string; refere
 /** "calle 38 sur 72 j 15" → "Calle 38 Sur # 72J-15"; null when the text has no full numbered street. */
 export function canonicalStreetAddress(source: string): string | null {
   const text = (source || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[–—−_]/g, '-').replace(/\bn[°º]\s*/g, '# ');
+    .replace(/[–—−_]/g, '-').replace(/\bn[°º]\s*/g, '# ')
+    // A letter ends the cross street unambiguously: #80G17 means #80G-17.
+    // Do not split all-numeric runs, which have no reliable boundary.
+    .replace(/(#\s*\d{1,3}\s*[a-z])(\d{1,3})(?=$|[\s,;])/g, '$1-$2');
   const roadNames: Array<[RegExp, string]> = [
     [/^(?:avenida\s+carrera|av\.?\s*(?:carrera|cra)|ak)$/, 'Avenida Carrera'], [/^(?:avenida\s+calle|av\.?\s*(?:calle|cl)|ac)$/, 'Avenida Calle'],
     [/^(?:calle|cll?)$/, 'Calle'], [/^(?:carrera|cra?|kra?|kr)$/, 'Carrera'], [/^(?:diagonal|diag|dg)$/, 'Diagonal'],

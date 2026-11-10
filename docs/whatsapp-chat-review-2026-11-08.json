@@ -263,10 +263,10 @@
       "orderReferences": [
         "107"
       ],
-      "status": "partially_fixed_bare_place_map_precision_validated_not_deployed",
-      "validation": "whatsapp-batch-473-validation.json",
-      "scope": "Map validation for non-numbered destinations, including bare names without conjunto/edificio prefix. Requires name tokens to match and rejects purely administrative/neighborhood results even when named alike. Existing explicit numbered-street and coordinate paths remain separate. Complete router journeys use the actual delivery-routing service with fetch and Directions mocked, three catalogs, two agent modes, three places, four ambiguous map results and street/unit or pin/unit recovery.",
-      "remaining": "Clarifying portería or unit when a complex is precisely located remains pending; not all delivery-point cases solved. No live map replay or historical cleanup."
+      "status": "partially_fixed_map_precision_and_explicit_nearby_choices_validated_not_deployed",
+      "validation": "whatsapp-batch-474-validation.json",
+      "scope": "Compact numbered streets with a letter marking the cross-street/door boundary, plus two bounded late Google-style abbreviation queries preserving street identity. For named places, collect matching distinct coordinates and precise local partial rooftop POI candidates, route at most5 and offer at most3 within coverage. Partial options labelled possible; explicit numeric or full-address choice required, with fresh route validation and final order review. Preserve current access details, cart and quantities; clear choices on fresh street, pin, pickup or cancellation.",
+      "remaining": "Mandatory access/unit clarification for an otherwise precisely located complex remains pending. Candidate search is bounded; not all provider names, ordinal replies or competing selectors are covered. No historical address/order repair."
     },
     {
       "id": "N08-15",
@@ -637,6 +637,38 @@
       "engineChanged": true,
       "stagingVerified": false,
       "deployed": false
+    },
+    {
+      "batch": 474,
+      "findings": [
+        "N08-14",
+        "N10-LOC-01",
+        "N10-LOC-02"
+      ],
+      "validation": "whatsapp-batch-474-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false
+    }
+  ],
+  "subsequentLocationReports": [
+    {
+      "id": "N10-LOC-01",
+      "reportedDate": "2026-11-10",
+      "title": "Dirección compacta y corrección de Calle10 a Calle10B",
+      "source": "User-provided location example; unit and identity sanitized in derived tests.",
+      "status": "bounded_recovery_validated_not_deployed",
+      "validation": "whatsapp-batch-474-validation.json",
+      "result": "Current live provider precisely geocodes Calle10B #81F-20. Fixed a separately reproduced compact letter/door parsing gap and added equivalent late abbreviation attempts. Historical cause not conclusively attributed."
+    },
+    {
+      "id": "N10-LOC-02",
+      "reportedDate": "2026-11-10",
+      "title": "Varias ubicaciones cercanas para Plazuelas de San Esteban",
+      "source": "User-provided landmark report; bounded live Google diagnostic.",
+      "status": "explicit_covered_possible_choices_validated_not_deployed",
+      "validation": "whatsapp-batch-474-validation.json",
+      "result": "Google returns two partial rooftop POIs. Offer possible destinations only after coverage routing and require explicit choice; do not silently select the first."
     }
   ]
 }

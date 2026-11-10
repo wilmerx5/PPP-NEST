@@ -1217,6 +1217,7 @@ export class WhatsappOrchestratorService {
         .join(', ');
       sessionLoc = {
         ...sessionLoc,
+        pendingDeliveryCandidates: undefined,
         pendingRecipientOrPlaceAddress: undefined,
         pendingRecipientOrPlacePin: undefined,
         orderType: 'delivery',
@@ -1281,6 +1282,7 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (await this.tryResolveNearbyDeliveryPlace(conv, msg.waId, text)) return;
     if (await this.tryClarifyUnknownRecipientEnvelope(conv, msg.waId, text)) return;
     text = await this.captureKnownRecipientAddressEnvelope(text, conv);
     text = this.normalizeColloquialCatalogQuestion(text) || text;
@@ -8514,7 +8516,7 @@ export class WhatsappOrchestratorService {
 
     if (!quote.ok) {
       if (quote.reason === 'address_ambiguous') {
-        return { session: { ...session, deliveryOutOfCoverage: false, deliveryDistanceKm: null,
+        return { session: { ...session, pendingDeliveryCandidates: quote.candidates?.length ? quote.candidates : undefined, deliveryOutOfCoverage: false, deliveryDistanceKm: null,
           deliveryFeeCalculated: null, deliveryLat: null, deliveryLng: null }, blocked: quote.message };
       }
       if (quote.reason === 'out_of_coverage') {
@@ -11322,6 +11324,7 @@ export class WhatsappOrchestratorService {
   private isReadyToConfirm(session: WhatsappSessionData, conv: WhatsappConversation): boolean {
     return (
       session.cart.length > 0 &&
+      !session.pendingDeliveryCandidates?.length &&
       isUsableWhatsappCustomerName(conv.customerName || '') &&
       !!session.fulfillmentChosen &&
       !!session.address?.trim() &&
@@ -11824,6 +11827,11 @@ export class WhatsappOrchestratorService {
         pending.selected || [],
         this.attributeFlowOpts(pending),
       ));
+      return;
+    }
+
+    if (session.pendingDeliveryCandidates?.length) {
+      await say(this.formatNearbyDeliveryPlaces(session));
       return;
     }
 
@@ -20513,6 +20521,7 @@ export class WhatsappOrchestratorService {
     return {
       ...session,
       orderType: 'pickup',
+      pendingDeliveryCandidates: undefined,
       pendingAddressConflict: undefined,
       pendingDeliveryUnit: undefined,
       pendingDeliveryPlace: undefined,
@@ -20550,7 +20559,7 @@ export class WhatsappOrchestratorService {
     }
     let addr = this.normalizeDeliveryAddress(address || '');
     if (!addr) return session;
-    session = { ...session, freshDeliveryAddressRequested: undefined };
+    session = { ...session, freshDeliveryAddressRequested: undefined, pendingDeliveryCandidates: undefined };
     if (session.pendingDeliveryUnit && this.isStrongExplicitAddress(addr)) {
       // The pending unit supplements this destination once, never an older remembered address.
       const hasExplicitUnit = /\b(?:apartamento|apto|apt|interior|int|torre|bloque|casa|local|oficina|piso)\.?\s+(?:[a-z]\d{0,3}|\d{1,4}[a-z]?)\b/i.test(addr);
@@ -24036,6 +24045,55 @@ export class WhatsappOrchestratorService {
     if (session.orderType!=='delivery' || this.isPinnedDeliveryAddress(session)) return false;
     const address=(session.address || '').replace(/\s*\(ref\..*$/i,'').trim();
     return /^(?:calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv|avenida)\.?\s*\d{1,3}[a-z]?(?:\s+sur)?(?:\s*#?\s*\d{1,3}[a-z]?)?(?:\s*(?:,|de)\s*[\p{L} ]+)?[ .]*$/iu.test(address);
+  }
+
+  private formatNearbyDeliveryPlaces(session: WhatsappSessionData): string {
+    const candidates = session.pendingDeliveryCandidates || [];
+    return `Encontré ${candidates.length === 1 ? (candidates[0].tentative?'este posible lugar':'este lugar') : `${candidates.length}${candidates.some(place=>place.tentative)?' posibles':''} lugares`} con ese nombre dentro de nuestra cobertura:\n` +
+      candidates.map((place,index)=>`${index+1}. ${place.address}`).join('\n') +
+      '\n¿Cuál es tu dirección? Escribe el número o la dirección completa. El pedido sigue sin confirmar.';
+  }
+
+  private async tryResolveNearbyDeliveryPlace(conv: WhatsappConversation, waId: string, text: string): Promise<boolean> {
+    let session = this.conversationService.getSession(conv);
+    const candidates = session.pendingDeliveryCandidates;
+    if (!candidates?.length || !session.cart.length || conv.humanTakeover || ['completed','closed'].includes(conv.state)) return false;
+    const said = this.normalizeForMatch(text).replace(/[.!]+$/, '').trim();
+    const selected = said.match(/^(?:(?:la|el|opcion)\s+)?(\d{1,2})$/);
+    const exact = candidates.findIndex(place => this.normalizeForMatch(place.address) === said);
+    if (selected || exact >= 0) {
+      if (selected && (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingAddOffer || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))) {
+        await this.reply(conv,waId,'Para evitar confundir las listas, escribe la dirección completa del lugar que elegiste. El pedido sigue igual.');return true;
+      }
+      const candidate = candidates[selected ? Number(selected[1])-1 : exact];
+      if (!candidate) {await this.reply(conv,waId,this.formatNearbyDeliveryPlaces(session));return true;}
+      const access = splitDeliveryAddressParts(session.address || '').details;
+      const selectedAddress = access && !candidate.address.toLowerCase().includes(access.toLowerCase())
+        ? `${candidate.address}, ${access}`.slice(0,240) : candidate.address;
+      session = this.withDeliveryAddress({...session,address:undefined,addressConfirmed:false,pendingDeliveryCandidates:undefined,
+        deliveryLat:null,deliveryLng:null,deliveryFeeCalculated:null,deliveryDistanceKm:null,deliveryOutOfCoverage:false},selectedAddress);
+      const cfg = await this.settingsService.getEffectiveConfig();
+      const quote = await this.deliveryRouting.quoteDeliveryFee({customerAddress:candidate.address,
+        customerCoords:{lat:candidate.lat,lng:candidate.lng},restaurant:{lat:Number(cfg.restaurantLat),lng:Number(cfg.restaurantLng)},
+        tiers:cfg.deliveryFeeTiers || [],maxKm:Number(cfg.deliveryMaxKm)||5.5,fallbackFee:cfg.defaultDeliveryFee,regionBias:'co'});
+      if (!quote.ok) {
+        await this.conversationService.saveSession(conv,{...session,addressConfirmed:false},'awaiting_address');
+        await this.reply(conv,waId,`No pude volver a validar la ruta de ese lugar. No registré el pedido. ${quote.message}`);return true;
+      }
+      session = {...session,addressConfirmed:true,deliveryLat:quote.customer.lat,deliveryLng:quote.customer.lng,
+        deliveryFeeCalculated:quote.fee,deliveryDistanceKm:quote.distanceKm,deliveryOutOfCoverage:false};
+      await this.conversationService.saveSession(conv,session,'awaiting_address');
+      await this.tryConfirmOrder(conv,waId,session,{requireFinalReview:true});
+      return true;
+    }
+    if (canonicalStreetAddress(text) || this.looksLikeAddressReplacement(text)) {
+      await this.conversationService.saveSession(conv,{...session,pendingDeliveryCandidates:undefined,addressConfirmed:false,
+        deliveryFeeCalculated:null,deliveryDistanceKm:null,deliveryLat:null,deliveryLng:null});return false;
+    }
+    if (/^(?:si|no|confirmar|confirmo|listo|dale)$/.test(said)) {
+      await this.reply(conv,waId,this.formatNearbyDeliveryPlaces(session));return true;
+    }
+    return false;
   }
 
   private stripTrailingPhoneFieldLabel(text: string): string {
