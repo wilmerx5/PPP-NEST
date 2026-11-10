@@ -219,7 +219,9 @@
         "62",
         "66"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "reproduced_and_fixed_candidate_router_validated_not_deployed",
+      "validation": "whatsapp-batch-469-validation.json",
+      "scope": "Confirmed order created through router with external ports mocked; retrospective correction preserves registered-order session and state. Three catalog families, agent off/mock, completed and closed (closed is assigned after simulated registration). Eight correction forms per family/mode/state followed by por favor; explicit new purchases still reopen. Four initial rice cases plus matrix."
     },
     {
       "id": "N08-12",
@@ -589,6 +591,13 @@
       "validation": "whatsapp-batch-468-validation.json",
       "stagingVerified": false,
       "engineChanged": false,
+      "deployed": false
+    },
+    {
+      "batch": 469,
+      "validation": "whatsapp-batch-469-validation.json",
+      "stagingVerified": false,
+      "engineChanged": true,
       "deployed": false
     }
   ]

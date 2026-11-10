@@ -2099,7 +2099,8 @@ export class WhatsappOrchestratorService {
       if (await this.tryUndoLastUnitOptionEdit(conv, msg.waId, this.conversationService.getSession(conv), originalText, cfg)) return;
       // A courtesy or repeated affirmative is not a new purchase. Preserve the
       // completed state so a trailing WhatsApp bubble cannot reopen the cart.
-      if (this.catalogService.isCourtesyOnlyMessage(originalText) || isFinalConfirmAffirmation(originalText) ||
+      if (this.catalogService.isCourtesyOnlyMessage(originalText) ||
+          /^(?:por favor|porfa)[.!]*$/.test(this.normalizeForMatch(originalText)) || isFinalConfirmAffirmation(originalText) ||
           isNothingElseOrderIntent(originalText)) {
         await this.reply(conv,msg.waId,'¡Con gusto!');
         return;
@@ -2109,6 +2110,23 @@ export class WhatsappOrchestratorService {
         return;
       }
       const postText = this.normalizeForMatch(originalText);
+      // A retrospective correction concerns the registered order, not another purchase.
+      // Keep its context intact; this router has no persisted-order mutation here.
+      const correctionText = postText.replace(/^(?:no[, ]+|perdon[, ]+|disculpa[, ]+|veci[, ]+)+/, '').trim();
+      const retrospective = /^(?:(?:yo\s+)?(?:te\s+)?(?:pedi|habia pedido)|era(?:n)?|no era(?:n)?|(?:quiero|necesito)\s+cambiar|cambia(?:me|lo|la)?|corrige(?:me)?)\b/.test(correctionText);
+      if (retrospective && correctionText.length <= 300) {
+        const menu = await this.catalogService.getMenuProducts();
+        const mentionsProduct = /\b(?:combo|plato|pedido|orden)\b/.test(correctionText) || menu.some(product => {
+          const name = this.normalizeForMatch(product.name);
+          return name.length >= 3 && (` ${correctionText} `).includes(` ${name} `);
+        });
+        if (mentionsProduct) {
+          await this.reply(conv, msg.waId,
+            'Tu pedido ya está registrado. No lo he modificado ni abrí otro pedido. Para revisar esta corrección antes de la entrega, contacta al restaurante. ' + this.humanPhoneHint());
+          return;
+        }
+      }
+
       if (/\b(?:me avisas|avisame|me notificas)\b.*\b(?:llegue|llega|pedido|domicilio)\b/.test(postText)) {
         await this.reply(conv, msg.waId, 'No puedo confirmar un aviso automático de llegada. Para coordinar la entrega, ' + this.humanPhoneHint());
         return;
