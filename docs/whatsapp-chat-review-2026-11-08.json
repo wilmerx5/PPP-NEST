@@ -233,7 +233,9 @@
       "orderReferences": [
         "130"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "reproduced_and_fixed_candidate_router_validated_not_deployed",
+      "validation": "whatsapp-batch-470-validation.json",
+      "scope": "Three catalog families (PPP rice combo, synthetic bowl and salad combos), agent off/mock, delivery with mocked routing, unknown/saved recipient, six numeric price fragments, included-drink correction, labelled recipient preceding/following street, building cart/final confirmation. Cart, name, reply, address and final simulated DTO checked. Saved invalid/other name is assigned defensively after a router prelude in48 cases. Historical Necesito only validated at name-validation level."
     },
     {
       "id": "N08-13",
@@ -596,6 +598,13 @@
     {
       "batch": 469,
       "validation": "whatsapp-batch-469-validation.json",
+      "stagingVerified": false,
+      "engineChanged": true,
+      "deployed": false
+    },
+    {
+      "batch": 470,
+      "validation": "whatsapp-batch-470-validation.json",
       "stagingVerified": false,
       "engineChanged": true,
       "deployed": false

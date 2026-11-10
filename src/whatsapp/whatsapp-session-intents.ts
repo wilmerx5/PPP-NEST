@@ -306,6 +306,8 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
     .trim();
   if (!t) return false;
   if (/\d{3,}/.test(t)) return false;
+  // Short prices/selections ("de47", "de 47", "47 mil") are not a recipient.
+  if (/^(?:(?:el|la)\s+)?(?:de\s*)?\d+(?:\s+(?:mil|pesos))?$/.test(t)) return false;
   if (
     /\b(calle|carrera|cra|cll|domicilio|direccion|whatsapp|telefono|celular)\b/.test(t)
   ) {

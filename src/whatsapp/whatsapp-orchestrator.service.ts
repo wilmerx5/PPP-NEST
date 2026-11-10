@@ -16067,6 +16067,14 @@ export class WhatsappOrchestratorService {
 
     const kitchen = splitAddressKitchenNote(text);
     if (kitchen) text = kitchen.address;
+    // A street correction can also explicitly name its recipient. Strip only a
+    // fully parsed address/contact message, preserving mixed purchase routing.
+    const namedAddress = /(?:\b(?:a nombre|mi nombre es|me llamo)\b|\bnombre\s*:)/i.test(text)
+      ? this.parseCompoundOrderMessage(text) : null;
+    const explicitRecipient = namedAddress?.customerNameExplicit && namedAddress.customerName &&
+      isUsableWhatsappCustomerName(namedAddress.customerName) && namedAddress.address &&
+      !namedAddress.productText.trim() ? namedAddress : null;
+    if (explicitRecipient) text = explicitRecipient.address!;
     const payingWithStreet = this.streetCorrectionDuringPayment(conv.state, session, text, cfg);
     const addr = (payingWithStreet || !!copiedStreet)
       ? this.normalizeDeliveryAddress(this.expandStreetAbbreviations(this.stripStreetLabel(text)))
@@ -16085,6 +16093,12 @@ export class WhatsappOrchestratorService {
         'awaiting_address',
       );
       return true;
+    }
+
+    if (explicitRecipient) {
+      await this.conversationService.updateCustomerName(conv, explicitRecipient.customerName!);
+      Object.assign(conv, await this.conversationService.reloadConversation(conv.id));
+      if (explicitRecipient.phone) session = { ...session, contactPhone: explicitRecipient.phone, phoneConfirmed: true };
     }
 
     let next = this.withDeliveryAddress(
@@ -16132,10 +16146,13 @@ export class WhatsappOrchestratorService {
         : '';
     if (!fee.blocked && keepStep) {
       const reminder = this.formatInterruptedStepReminder(conv, next);
+      const summary = explicitRecipient
+        ? this.formatOrderSummary(conv, next, this.deliveryFeeFor(next, cfg), cfg.paymentMethods)
+        : this.formatCartOnly(next, this.deliveryFeeFor(next, cfg));
       await this.reply(
         conv,
         waId,
-        `Listo, dirección actualizada:\n📍 _${next.address}_${feeLine}\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}${reminder ? `\n\n${reminder}` : ''}`,
+        `Listo, dirección actualizada:\n📍 _${next.address}_${feeLine}\n\n${summary}${reminder ? `\n\n${reminder}` : ''}`,
       );
       return true;
     }
@@ -23289,7 +23306,7 @@ export class WhatsappOrchestratorService {
     waId: string,
     session: WhatsappSessionData,
     originalText: string,
-    compound: { productText: string; address: string | null; phone?: string | null },
+    compound: { productText: string; address: string | null; phone?: string | null; customerName?: string | null; customerNameExplicit?: boolean },
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     // A plausible name answering the name prompt wins over a broad landmark guess.
@@ -23446,6 +23463,14 @@ export class WhatsappOrchestratorService {
         : null);
     if (!addr || !this.isPlausibleDeliveryAddress(addr)) return false;
     if (this.isPickupIntent(originalText) || this.isPickupIntent(addr)) return false;
+
+    // This address shortcut returns before the normal compound contact capture.
+    // A labelled recipient must still replace a missing, saved or invalid name.
+    if (spokenCompound.customerNameExplicit && spokenCompound.customerName &&
+        isUsableWhatsappCustomerName(spokenCompound.customerName)) {
+      await this.conversationService.updateCustomerName(conv, spokenCompound.customerName);
+      Object.assign(conv, await this.conversationService.reloadConversation(conv.id));
+    }
 
     // A shared pin is the precise destination; a complex or landmark name only describes it.
     const pinned = this.isPinnedDeliveryAddress(session);
