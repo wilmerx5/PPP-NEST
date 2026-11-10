@@ -1,0 +1,32 @@
+{
+  "batch": 482,
+  "baseCommit": "d08e911008be18066d9aba536f79d1411f8798c8",
+  "engineChanged": false,
+  "finding": "N08-15",
+  "findingPartiallyCovered": true,
+  "newTests": 24,
+  "simulatedClosures": 24,
+  "related": {
+    "tests": 242,
+    "suites": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit",
+    "exitCode": 0
+  },
+  "testSha256": "85fd97eb857ef92c5d75ca4bd2e7399eb8bdfdf615e6a85a739e8e1fcc8ca442",
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "scope": "Router replay: purchase one item, ask contents by family, ask price, checkout and confirm. Three synthetic families, four inquiry expressions, agent off/mock. Responses, unchanged cart and single DTO creation asserted.",
+  "limits": [
+    "No runtime changes; baseline already passes these bounded journeys.",
+    "Does not inject a historical erroneous addition or reproduce all original customer turns.",
+    "No live model or delivery provider; no historical order repair.",
+    "Global 481 is prior runtime evidence, not a newly executed global suite."
+  ]
+}

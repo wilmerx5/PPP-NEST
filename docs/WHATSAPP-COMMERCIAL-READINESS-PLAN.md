@@ -1,3 +1,11 @@
+## Tanda 482 — consultas de contenido y precio sin añadir productos (staging)
+
+24 recorridos nuevos por router derivados del chat N08-15: compra de una línea, «Q trae / Que trae / Qué incluye / Cómo viene» por familia y «Y q precio», seguidos de recogida, efectivo y confirmación. Tres catálogos sintéticos (Combo/Wrap/Bowl), agente off/mock. Se comprueban descripción, precio, carrito intacto y una sola creación DTO por recorrido. Los24 ya pasan sobre d08e9110; no se modifica runtime ni se atribuye una corrección nueva.
+
+Relacionadas242/2 aprobadas,0 fallos/omitidas; TypeScript general aprobado. No se repite la global:481 conserva la evidencia del runtime sin cambios. Evidencia whatsapp-batch-482-validation.json.0 inferencia pagada, Google, Meta u órdenes externas. Modelos/configuración/presupuesto intactos.
+
+N08-15 sigue parcial: este replay preventivo no introduce el producto erróneo histórico ni cubre todas las listas/repartos/formularios. Próximo: ampliar la recuperación tras corrección explícita y las combinaciones pendientes de ubicación. PPP producción479, servidor staging462 y Kamppo481 son las últimas verificaciones; esta tanda solo se publica en la rama staging, sin despliegue ni migración nueva.
+
 ## Kamppo sincronizado hasta 481 — despliegue verificado 10/11/2026
 
 PPP481 publicada en staging258a2c71. Se migran todas las tandas pendientes399–481 a Kamppo, preservando catálogo/UUID/opciones/recargos/sesiones y locks por restaurante. La cotización nativa usa origen, tarifas y cobertura propios; no añade Bogotá/Kennedy a las búsquedas. Se propagan candidatos de ubicación hasta el chat. No se copia entorno, DB ni módulos backend de PPP.
