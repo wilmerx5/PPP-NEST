@@ -56,6 +56,8 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  /** Verified named destination still needs its internal delivery point. */
+  pendingMappedDeliveryPoint?: boolean;
   /** Nearby matching map destinations; an explicit choice is required before checkout. */
   pendingDeliveryCandidates?: Array<{address:string;lat:number;lng:number;distanceKm:number;fee:number;tentative?:boolean}>;
   foreignSales?: { lastSeenAt: number; noticeAt: number };

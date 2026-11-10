@@ -263,10 +263,11 @@
       "orderReferences": [
         "107"
       ],
-      "status": "partially_fixed_map_precision_and_explicit_nearby_choices_validated_not_deployed",
-      "validation": "whatsapp-batch-474-validation.json",
-      "scope": "Compact numbered streets with a letter marking the cross-street/door boundary, plus two bounded late Google-style abbreviation queries preserving street identity. For named places, collect matching distinct coordinates and precise local partial rooftop POI candidates, route at most5 and offer at most3 within coverage. Partial options labelled possible; explicit numeric or full-address choice required, with fresh route validation and final order review. Preserve current access details, cart and quantities; clear choices on fresh street, pin, pickup or cancellation.",
-      "remaining": "Mandatory access/unit clarification for an otherwise precisely located complex remains pending. Candidate search is bounded; not all provider names, ordinal replies or competing selectors are covered. No historical address/order repair."
+      "status": "partially_fixed_mapped_name_delivery_point_validated_not_deployed",
+      "validation": "whatsapp-batch-476-validation.json",
+      "scope": "Verified mapped name without complete numbered street or exact shared pin and without apartment/house/local/office/access instruction needs a delivery point. Keeps map fee/coordinates; porteria/recepcion and unit details resolve before payment/final review. Existing complete streets, units, exact pin and pickup bypass bounded guard. No historic-order edits or live map diagnostics.",
+      "remaining": "Full numbered-street complexes without internal delivery point and unverified/no-coordinate destinations remain outside this bounded guard. Rich contact/purchase envelopes and competing lists require complete router journeys. Candidate search remains bounded; no historical address/order repair.",
+      "mappingValidation": "whatsapp-batch-474-validation.json"
     },
     {
       "id": "N08-15",
@@ -654,6 +655,14 @@
       "batch": 475,
       "finding": "N10-LOC-02",
       "validation": "whatsapp-batch-475-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 476,
+      "finding": "N08-14",
+      "validation": "whatsapp-batch-476-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
       "deployed": false

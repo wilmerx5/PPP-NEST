@@ -1217,6 +1217,7 @@ export class WhatsappOrchestratorService {
         .join(', ');
       sessionLoc = {
         ...sessionLoc,
+        pendingMappedDeliveryPoint: undefined,
         pendingDeliveryCandidates: undefined,
         pendingRecipientOrPlaceAddress: undefined,
         pendingRecipientOrPlacePin: undefined,
@@ -1282,6 +1283,7 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (await this.tryResolveMappedDeliveryPoint(conv, msg.waId, text)) return;
     if (await this.tryResolveNearbyDeliveryPlace(conv, msg.waId, text)) return;
     if (await this.tryClarifyUnknownRecipientEnvelope(conv, msg.waId, text)) return;
     text = await this.captureKnownRecipientAddressEnvelope(text, conv);
@@ -11325,6 +11327,7 @@ export class WhatsappOrchestratorService {
     return (
       session.cart.length > 0 &&
       !session.pendingDeliveryCandidates?.length &&
+      !session.pendingMappedDeliveryPoint && !this.needsMappedDeliveryPoint(session) &&
       isUsableWhatsappCustomerName(conv.customerName || '') &&
       !!session.fulfillmentChosen &&
       !!session.address?.trim() &&
@@ -11988,6 +11991,16 @@ export class WhatsappOrchestratorService {
         fulfillmentChosen: true,
       };
       await this.conversationService.saveSession(conv, session);
+    }
+
+    if (this.needsMappedDeliveryPoint(session)) {
+      session = {...session,pendingMappedDeliveryPoint:true};
+      await this.conversationService.saveSession(conv,session,'awaiting_address');
+      await say(this.mappedDeliveryPointQuestion(session));return;
+    }
+    if (session.pendingMappedDeliveryPoint) {
+      session = {...session,pendingMappedDeliveryPoint:undefined};
+      await this.conversationService.saveSession(conv,session);
     }
 
     // 4) Teléfono — por defecto el de WhatsApp (sin preguntar)
@@ -20521,6 +20534,7 @@ export class WhatsappOrchestratorService {
     return {
       ...session,
       orderType: 'pickup',
+      pendingMappedDeliveryPoint: undefined,
       pendingDeliveryCandidates: undefined,
       pendingAddressConflict: undefined,
       pendingDeliveryUnit: undefined,
@@ -20559,7 +20573,7 @@ export class WhatsappOrchestratorService {
     }
     let addr = this.normalizeDeliveryAddress(address || '');
     if (!addr) return session;
-    session = { ...session, freshDeliveryAddressRequested: undefined, pendingDeliveryCandidates: undefined };
+    session = { ...session, freshDeliveryAddressRequested: undefined, pendingDeliveryCandidates: undefined, pendingMappedDeliveryPoint: undefined };
     if (session.pendingDeliveryUnit && this.isStrongExplicitAddress(addr)) {
       // The pending unit supplements this destination once, never an older remembered address.
       const hasExplicitUnit = /\b(?:apartamento|apto|apt|interior|int|torre|bloque|casa|local|oficina|piso)\.?\s+(?:[a-z]\d{0,3}|\d{1,4}[a-z]?)\b/i.test(addr);
@@ -24045,6 +24059,76 @@ export class WhatsappOrchestratorService {
     if (session.orderType!=='delivery' || this.isPinnedDeliveryAddress(session)) return false;
     const address=(session.address || '').replace(/\s*\(ref\..*$/i,'').trim();
     return /^(?:calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv|avenida)\.?\s*\d{1,3}[a-z]?(?:\s+sur)?(?:\s*#?\s*\d{1,3}[a-z]?)?(?:\s*(?:,|de)\s*[\p{L} ]+)?[ .]*$/iu.test(address);
+  }
+
+  private hasMappedDeliveryPoint(address: string): boolean {
+    const said = this.normalizeForMatch(address);
+    if (/\b(?:apto|apartamento|apt|ap|casa|local|oficina|habitacion|consultorio)\s+(?:[a-z]\d{0,3}|\d{1,4}[a-z]?)\b/.test(said)) return true;
+    if (/\b(?:no|sin)\s+(?:(?:entregar|dejar)\s+)?(?:en\s+)?(?:la\s+)?(?:porteria|recepcion)\b/.test(said)) return false;
+    return /(?:^|[,;—])\s*(?:entregar\s+)?(?:en\s+)?(?:la\s+)?(?:porter[ií]a|recepci[oó]n)\b/i.test(address) ||
+      /\b(?:entregar|dejar|entregalo|dejalo)\s+en\s+(?:la\s+)?(?:porteria|recepcion)\b/.test(said);
+  }
+
+  private isNumberedDeliveryShorthand(address: string): boolean {
+    const base = this.normalizeForMatch(splitDeliveryAddressParts(address).base.split(',')[0]);
+    // Recognize the three numeric components without inferring a road type or changing the query.
+    return /^(?:[a-z]{1,3}\s*)?\d{1,3}\s*[a-z]?(?:\s+(?:sur|norte|este))?\s+\d{1,3}\s*[a-z]?(?:\s+(?:sur|norte|este))?\s+\d{1,3}(?:\s+(?:sur|norte|este))?$/.test(base);
+  }
+
+  private needsMappedDeliveryPoint(session: WhatsappSessionData): boolean {
+    return session.orderType === 'delivery' && !!session.addressConfirmed && !!session.address?.trim() &&
+      session.deliveryLat != null && session.deliveryLng != null && session.deliveryFeeCalculated != null &&
+      !session.deliveryOutOfCoverage && !session.pendingDeliveryCandidates?.length &&
+      !canonicalStreetAddress(session.address) && !this.isNumberedDeliveryShorthand(session.address) && !this.isPinnedDeliveryAddress(session) &&
+      !this.hasMappedDeliveryPoint(session.address);
+  }
+
+  private mappedDeliveryPointQuestion(session: WhatsappSessionData): string {
+    return /\b(?:torre|bloque)\s+[a-z0-9]+/i.test(session.address || '')
+      ? 'Ya tengo la torre o bloque. ¿Cuál es el apartamento, o entregamos en portería/recepción? El pedido sigue sin confirmar.'
+      : 'Ya ubiqué el lugar. ¿Entregamos en portería/recepción o me indicas torre y apartamento? El pedido sigue sin confirmar.';
+  }
+
+  private async tryResolveMappedDeliveryPoint(conv: WhatsappConversation, waId: string, text: string): Promise<boolean> {
+    let session = this.conversationService.getSession(conv);
+    if (!session.pendingMappedDeliveryPoint || !session.cart.length || conv.humanTakeover || ['completed','closed'].includes(conv.state)) return false;
+    if (canonicalStreetAddress(text)) return false;
+    const cfg = await this.settingsService.getEffectiveConfig();
+    const fullSaid = this.normalizeForMatch(text).replace(/\s+(?:porfa|por favor|gracias)$/, '');
+    const tailPayment = fullSaid.match(/^(.+?)(?:\s+y)?\s+pago\s+(?:por|con|en)\s+(nequi|daviplata|transferencia|efectivo|contraentrega)$/);
+    const headPayment = fullSaid.match(/^pago\s+(?:por|con|en)\s+(nequi|daviplata|transferencia|efectivo|contraentrega)\s+(?:y\s+)?(.+)$/);
+    const mixedPayment = tailPayment || headPayment
+      ? findPaymentMethodByText(tailPayment?.[2] || headPayment![1],cfg.paymentMethods) : undefined;
+    const pointSource = mixedPayment ? tailPayment?.[1] || headPayment![2] : text;
+    const said = this.normalizeForMatch(pointSource).replace(/\s+(?:porfa|por favor|gracias)$/, '');
+    const point = said.replace(/^(?:si|claro|listo)\s+(?=(?:en\s+)?(?:la\s+)?(?:porteria|recepcion)\b)/, '');
+    const access = point.match(/^(?:(?:en|a)\s+)?(?:la\s+)?(porteria|recepcion)(\s+(?:principal|de visitantes))?$/) ||
+      point.match(/^(?:entregar|dejar|entregalo|dejalo|me lo dejas|me lo deja|lo recibo|lo recojo)\s+en\s+(?:la\s+)?(porteria|recepcion)(\s+(?:principal|de visitantes))?$/);
+    const unitInput = pointSource.replace(/\s+(?:porfa|por favor|gracias)[.!]*$/i, '');
+    const unit = !/[¿?]/.test(text) && this.looksLikeUnitOrTowerDetailOnly(unitInput) ? this.normalizeUnitDetailText(unitInput) : '';
+    if (!/[¿?]/.test(text) && (access || unit)) {
+      let address = session.address || '';
+      if (access) address += ` — Entregar en ${access[1]==='porteria'?'portería':'recepción'}${access[2] || ''}`;
+      else {
+        const parts = splitDeliveryAddressParts(address);
+        address = `${parts.base}, ${mergeDeliveryUnitDetails(parts.details,unit)}`;
+      }
+      session = {...session,address:address.slice(0,240),pendingMappedDeliveryPoint:undefined,
+        ...(mixedPayment?{paymentMethod:mixedPayment.id}:{})};
+      await this.conversationService.saveSession(conv,session,'awaiting_address');
+      await this.tryConfirmOrder(conv,waId,session,{requireFinalReview:true});return true;
+    }
+    const standalonePayment = /^(?:(?:pago\s+(?:por|con|en)|por|con|en)\s+)?(?:nequi|daviplata|transferencia|efectivo|contraentrega)$/.test(fullSaid);
+    const payment = standalonePayment && !/[¿?]/.test(text) ? findPaymentMethodByText(text,cfg.paymentMethods) : undefined;
+    if (payment) {
+      session = {...session,paymentMethod:payment.id};
+      await this.conversationService.saveSession(conv,session);
+      await this.tryConfirmOrder(conv,waId,session,{requireFinalReview:true});return true;
+    }
+    if ((/[¿?]/.test(text) || /^(?:no|sin)\b/.test(said)) && /\b(?:porteria|recepcion|torre|apartamento|apto)\b/.test(said) || /^(?:si|no|confirmar|confirmo|listo|dale)$/.test(said)) {
+      await this.reply(conv,waId,this.mappedDeliveryPointQuestion(session));return true;
+    }
+    return false;
   }
 
   private formatNearbyDeliveryPlaces(session: WhatsappSessionData): string {

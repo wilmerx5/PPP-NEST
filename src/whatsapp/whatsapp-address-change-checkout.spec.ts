@@ -111,6 +111,15 @@ describe('Checkout interruptions preserve the order', () => {
     await h.send(address);
     expect(h.conv.sessionData.cart).toEqual(before);
     expect(h.conv.sessionData.address).toBeTruthy();
+    if (/hotel/i.test(address)) {
+      expect(h.conv.state).toBe('awaiting_address');
+      expect(h.conv.sessionData.pendingMappedDeliveryPoint).toBe(true);
+      expect(h.replies.at(-1)).toMatch(/recepci[oó]n/i);
+      await h.send('en recepción');
+      expect(h.conv.sessionData.pendingMappedDeliveryPoint).toBeUndefined();
+      expect(h.conv.sessionData.address).toMatch(/recepci[oó]n/i);
+      expect(h.deliveryRouting.quoteDeliveryFee).toHaveBeenCalledTimes(1);
+    }
     expect(h.conv.state).toBe('awaiting_payment');
     expect(h.replies.at(-1)).toMatch(/cómo pagas/i);
     expect(h.replies.join('\n')).not.toMatch(/cantidad entre 1 y 30/i);
