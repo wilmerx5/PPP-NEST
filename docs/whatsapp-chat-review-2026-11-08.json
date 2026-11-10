@@ -281,7 +281,8 @@
       "validation": "whatsapp-batch-477-validation.json",
       "scope": "N08-15 historical competing-price/quantity list sequence now has one owner before this change. Current no-op quantity reply misleadingly says corrected; new reply states unchanged, other rows retained and asks for explicit removal instruction. No new deletion or ownership algorithm. Router journeys select a line and then explicitly remove another before closing.",
       "remaining": "Other competing selector combinations and historical erroneous addition still need complete router reproduction. Automatic keep-only deletion is not implemented. Explicit named quantity from batch477 setup now has bounded coverage in478; implicit/conditional variants remain outside that scope.",
-      "explicitQuantityValidation": "whatsapp-batch-478-validation.json"
+      "explicitQuantityValidation": "whatsapp-batch-478-validation.json",
+      "optionPriceValidation": "whatsapp-batch-479-validation.json"
     },
     {
       "id": "N08-16",
@@ -696,6 +697,14 @@
       "relatedFinding": "N08-15",
       "validation": "whatsapp-batch-478-validation.json",
       "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 479,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-479-validation.json",
+      "engineChanged": false,
       "stagingVerified": false,
       "deployed": false
     }

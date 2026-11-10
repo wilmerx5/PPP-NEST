@@ -1,3 +1,9 @@
+## Tanda 479 — precio y sabor con listas competidoras (validada localmente; despliegue solicitado)
+
+290 pruebas nuevas y290 cierres DTO simulados:2 recorridos iniciales y288 de matriz con3 bebidas sintéticas, agente off/mock,6 números/ordinales, cantidades1/2, resolución directa de sabor o precio explícito primero y2 sabores. El preámbulo de compra, consulta, selección y cierre pasa por router; no se siembran listas. Se verifican carrito y sesión intactos ante elección ambigua, precio correcto, sabor/cantidad conservados y creación única. El comportamiento ya pasa en el motor actual; esta tanda no cambia runtime.
+
+Relacionadas640/4 sin fallos ni omitidas. La global anterior478 acredita47.577/551 y TypeScript/scripts para ese runtime; no se atribuye como ejecución nueva de479. Se validará por separado el merge de producción antes de desplegar, solicitado por el usuario. Evidencia whatsapp-batch-479-validation.json.0 inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos. N08-15 sigue parcial para otras combinaciones, especialmente ubicaciones y replay de adición histórica. Producción446 y staging462 son referencias previas, no una afirmación de despliegue479.
+
 ## Tanda 478 — cantidad total explícita por nombre (rama de staging validada; sin desplegar)
 
 Sobre d51f368e se reproducen2 fallos por router off/mock: «cambia la cantidad de Bowl Andino a2» deja3 unidades en vez de2. El parser admite ahora cambia/cámbiame/modifica/modifícame/ajusta/ajústame la cantidad de/del/de la PRODUCTO a/en N, con unidades opcionales y cortesía existente. Devuelve una cantidad absoluta y delega selección, límites y revisión al flujo existente; no añade una línea. Sin nombres, IDs ni precios especiales en runtime.
