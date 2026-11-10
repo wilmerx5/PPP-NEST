@@ -781,7 +781,13 @@
       "validation": "whatsapp-batch-481-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
-      "deployed": false
+      "deployed": false,
+      "kamppo": {
+        "migrated": true,
+        "runtimeCommit": "a953858747c77c5c114a2795225e8a3b5e06a809",
+        "deploymentVerified": true,
+        "sourcePPPCommit": "258a2c71ce36acf1c3fc17cd6b12b16d0fd6760a"
+      }
     }
   ],
   "subsequentLocationReports": [

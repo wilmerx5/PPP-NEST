@@ -1,3 +1,13 @@
+## Kamppo sincronizado hasta 481 — despliegue verificado 10/11/2026
+
+PPP481 publicada en staging258a2c71. Se migran todas las tandas pendientes399–481 a Kamppo, preservando catálogo/UUID/opciones/recargos/sesiones y locks por restaurante. La cotización nativa usa origen, tarifas y cobertura propios; no añade Bogotá/Kennedy a las búsquedas. Se propagan candidatos de ubicación hasta el chat. No se copia entorno, DB ni módulos backend de PPP.
+
+Kamppo48578 pruebas/537 suites, inventario exacto y640 fuentes idénticas;225 suites/32417 casos recuperados antes de completar con6 workers, sin cambios de fuente. TypeScript general/build del motor y92 scripts aprobados. API740 aprobadas/15 optativas omitidas; recuperación36/2 tras completar datos de un fixture de caché, sin cambios de runtime.115 de aislamiento. Builds shared/motor/API aprobados. API general conserva95 diagnósticos de fixtures iguales a main; no se presenta como limpio.
+
+Runtime Kamppo a953858747c77c5c114a2795225e8a3b5e06a809, imagen sha256:20791a8c2c3c5d06b5e9e476f117dd196519200a5de3c9e4cded60bd0db15491. Vía SSH tras fallo de Actions42903851936 antes de ejecutar pasos. Contenedor healthy/0 reinicios; API pública api.kamppo.com y DB up; entorno/compose intactos y sin migraciones DB. Dos restaurantes/dos cierres simulados pasan en candidata sin red y activa. Evidencia en Kamppo docs/whatsapp-migration/ppp-batch-481-{validation,deployment}.json y manifest de origen.0 inferencia pagada, Google, Meta u órdenes externas.
+
+No se acredita modelo vivo ni toda dirección/selector. N08-14/N08-15 siguen parciales según límites de las tandas. Producción PPP permanece479 y servidor staging462; no desplegados aquí. Próximo: nuevas conversaciones y combinaciones aún no cubiertas, sin reparación histórica automática.
+
 ## Tanda 481 — ubicación, categoría y composición (rama validada; sin desplegar)
 
 Sobre cfaef93d se reproducen4 fallos de elección de ubicación con categoría/composición pendientes. El guard numérico/ordinal conserva ambos propietarios. La ampliación detecta72 fallos de continuación por categoría después de completar dirección; ahora una categoría exacta retenida puede responderse de forma informativa durante checkout, sin abrir lista de compra ni consumir el número del pago. Se conserva carrito, dirección, coordenadas, tarifa y punto interno.
