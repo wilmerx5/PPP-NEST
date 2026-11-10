@@ -1,0 +1,103 @@
+{
+  "baseCommit": "4ab7b9706e9604ebb01010d4f7dccc6161820ae4",
+  "batches": [
+    480
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1868.74,
+      "sourceUnchanged": true,
+      "tests": 48291,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 7.24,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 773,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 553,
+  "tests": 48307,
+  "suites": 553,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 480,
+  "engineChanged": true,
+  "finding": "N08-15",
+  "findingPartiallyCovered": true,
+  "baseline": {
+    "passed": 2,
+    "failed": 2,
+    "issue": "Price inquiry plus location candidates: bare2 silently selects second destination. Flavor conflict already guarded."
+  },
+  "initialFocus": {
+    "passed": 4,
+    "failed": 0,
+    "simulatedClosures": 4
+  },
+  "newTests": 440,
+  "simulatedClosures": 440,
+  "caseBreakdown": {
+    "initialRouterJourneys": 4,
+    "locationPriceFlavorMatrix": 432,
+    "barePaymentAfterAddressControls": 4
+  },
+  "related": {
+    "tests": 1124,
+    "suites": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  "iterations": [
+    "Baseline2fail2pass; add pendingPriceInquiry to numeric/ordinal location guard.",
+    "Focus4 full router closures pass.",
+    "First related932pass144fail: explicit precio2 after selecting address loses inquiry because checkout state changed.",
+    "One diagnostic case proves only payment prompt returned, inquiry discarded on state mismatch; not hidden multi-message price.",
+    "Allow labelled explicit price continuation across active shopping/checkout states only with same cart signature, retain invalidation for bare answers/state change and changed/closed/human sessions.",
+    "Resume focus2pass434filtered; then remove diagnostic console and add4 real payment ownership journeys.",
+    "Final related1124/4 pass."
+  ],
+  "nodeScriptTests": 92,
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "deployed": false,
+  "sourceSnapshotSha256": "8c7aff3776b3a47a07e76a5e04debe2b2549010acb9b39b99800ae133d366427",
+  "scope": "Numeric/ordinal place selection now guards concurrent price inquiry. Labelled explicit price can resume after checkout state progression when cart unchanged and both origin/current states active; bare numbers retain state-based invalidation. Matrix uses actual router+delivery routing service, fetch/Directions/inference/order persistence mocked. Full-address choice and labelled price/flavor resolve in either order; fee/coordinates/internal point/cart preserved.",
+  "firstRelated": {
+    "passed": 932,
+    "failed": 144,
+    "suites": 3,
+    "reason": "Explicit price continuation after address advances checkout was discarded because pending state differed. Snapshot and response diagnostic confirmed no price hidden in separate replies."
+  },
+  "limits": [
+    "Derived sanitized full-router journeys; actual delivery routing service with fetch/Directions mocked, inference and order persistence mocked. No live provider diagnostics, model quality assessment or real orders.",
+    "432 matrix journeys:3 primary dishes,2 off/mock modes,6 numeric/ordinal answers,3 concurrent inquiries (price/flavor/both),2 resolution orders and2 purchased quantities.4 initial recoveries and4 bare-payment-after-address controls also close once.",
+    "The new place guard adds pendingPriceInquiry only; existing attribute/match/multi/add-offer/cart-edit guards are retained. Not exhaustive for category, composition, quantity-distribution or arbitrary competing selectors.",
+    "Labelled explicit price resumes only with unchanged cart signature and active origin/current states. Matrix covers state progression through location completion, not every possible transition among active states. Bare-number state invalidation remains; cash/transfer ownership after address is tested.",
+    "Complete offered address is explicit disambiguation; not every colloquial address, mixed contact form or historical wrong addition is replayed.",
+    "No historical order repair, deployment, migration or runtime configuration changes. Production remains at last verified479; staging server last462; Kamppo last398, not inspected this turn."
+  ]
+}

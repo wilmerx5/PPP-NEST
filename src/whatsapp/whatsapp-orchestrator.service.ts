@@ -19804,21 +19804,25 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const pending = session.pendingPriceInquiry;
     if (!pending) return false;
+    const normalized = this.normalizeForMatch(text);
+    const explicitPrice = normalized.match(/^(?:(?:el\s+)?precio|(?:a\s+)?cuanto\s+(?:vale|cuesta|sale|cobran|esta)|(?:a\s+)?como\s+(?:esta|sale))(?:\s+(?:del?|de la))?\s+(.+)$/);
+    const activeStates = ['building_cart','awaiting_attribute','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'];
+    // A labelled price answer may resume after checkout advances, provided the cart snapshot is unchanged.
+    // Bare numbers still lose their old owner when the checkout state changes.
+    const explicitContinuation = !!explicitPrice && activeStates.includes(pending.state) && activeStates.includes(conv.state);
     const clear = async () => {
       delete session.pendingPriceInquiry;
       await this.conversationService.saveSession(conv, session);
     };
-    if (pending.cartSignature !== JSON.stringify(session.cart) || pending.state !== conv.state ||
+    if (pending.cartSignature !== JSON.stringify(session.cart) || (pending.state !== conv.state && !explicitContinuation) ||
       ['completed', 'closed', 'human', 'human_takeover'].includes(conv.state)) {
       await clear(); return false;
     }
-    const normalized = this.normalizeForMatch(text);
     if (/^(?:no importa(?: olvida la pregunta)?|olvida la pregunta|ya no quiero saber|no gracias)$/.test(normalized)) {
       await clear();
       await this.reply(conv, waId, 'Listo, dejo esa consulta. El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, session));
       return true;
     }
-    const explicitPrice = normalized.match(/^(?:(?:el\s+)?precio|(?:a\s+)?cuanto\s+(?:vale|cuesta|sale|cobran|esta)|(?:a\s+)?como\s+(?:esta|sale))(?:\s+(?:del?|de la))?\s+(.+)$/);
     const selectionText = explicitPrice?.[1] || normalized;
     const ordinal = selectionText.match(/^(?:el|la)?\s*(primero|primera|segundo|segunda|tercero|tercera|cuarto|cuarta)$/);
     const positions = { primero: 1, primera: 1, segundo: 2, segunda: 2, tercero: 3, tercera: 3, cuarto: 4, cuarta: 4 };
@@ -24175,7 +24179,7 @@ export class WhatsappOrchestratorService {
       await this.reply(conv,waId,this.formatNearbyDeliveryPlaces(session));return true;
     }
     if (selected || ordinal || reference || exact >= 0) {
-      if ((selected || ordinal) && (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingAddOffer || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))) {
+      if ((selected || ordinal) && (session.pendingPriceInquiry || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingAddOffer || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))) {
         await this.reply(conv,waId,'Para evitar confundir las listas, escribe la dirección completa del lugar que elegiste. El pedido sigue igual.');return true;
       }
       const candidate = candidates[index];

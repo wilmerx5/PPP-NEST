@@ -291,13 +291,15 @@
       "evidence": "Tras añadir un combo por error, «es solo un combo» abre otra lista;1 produce«varias listas pendientes» y el nombre del plato se captura como dirección.",
       "expectedRegression": "Una corrección debe tener un único selector activo; la respuesta identifica el producto y retoma checkout sin modificar dirección. No eliminar líneas distintas por suposición.",
       "orderReferences": [],
-      "status": "partially_covered_price_quantity_journey_and_honest_noop_validated_deployed_production479",
-      "validation": "whatsapp-batch-477-validation.json",
-      "scope": "N08-15 historical competing-price/quantity list sequence now has one owner before this change. Current no-op quantity reply misleadingly says corrected; new reply states unchanged, other rows retained and asks for explicit removal instruction. No new deletion or ownership algorithm. Router journeys select a line and then explicitly remove another before closing.",
-      "remaining": "Other competing selector combinations and historical erroneous addition still need complete router reproduction. Automatic keep-only deletion is not implemented. Explicit named quantity from batch477 setup now has bounded coverage in478; implicit/conditional variants remain outside that scope.",
+      "status": "partially_fixed_location_price_ownership_validated_not_deployed",
+      "validation": "whatsapp-batch-480-validation.json",
+      "scope": "Numeric/ordinal place selection now guards concurrent price inquiry. Labelled explicit price can resume after checkout state progression when cart unchanged and both origin/current states active; bare numbers retain state-based invalidation. Matrix uses actual router+delivery routing service, fetch/Directions/inference/order persistence mocked. Full-address choice and labelled price/flavor resolve in either order; fee/coordinates/internal point/cart preserved.",
+      "remaining": "Other selector combinations, category/composition/distribution owners and historical erroneous addition still require complete router reproductions. Not every active-state transition or colloquial address tested. No automatic keep-only deletion or historic cleanup.",
       "explicitQuantityValidation": "whatsapp-batch-478-validation.json",
       "optionPriceValidation": "whatsapp-batch-479-validation.json",
-      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
+      "previousValidation": "whatsapp-batch-477-validation.json",
+      "locationPriceValidation": "whatsapp-batch-480-validation.json",
+      "previousProductionDeployment": "whatsapp-batch-479-production-deployment.json"
     },
     {
       "id": "N08-16",
@@ -763,6 +765,14 @@
       "deployed": false,
       "deployedInProduction479": true,
       "productionDeployment": "whatsapp-batch-479-production-deployment.json"
+    },
+    {
+      "batch": 480,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-480-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false
     }
   ],
   "subsequentLocationReports": [
