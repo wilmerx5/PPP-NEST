@@ -1,0 +1,88 @@
+{
+  "baseCommit": "af29055d8d4e3a7702d488352b6ba2d648a6dec7",
+  "batches": [
+    465,
+    466
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1502.88,
+      "sourceUnchanged": true,
+      "tests": 43749,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.49,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 758,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 538,
+  "tests": 43765,
+  "suites": 538,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 324,
+  "nodeScriptTests": 92,
+  "focused": {
+    "batch465": {
+      "newTests": 228,
+      "completeCompatibilityTests": 1449,
+      "completeCompatibilitySuites": 3,
+      "simulatedClosures": 174
+    },
+    "batch466": {
+      "newTests": 96,
+      "affectedTests": 178,
+      "affectedSuites": 6
+    }
+  },
+  "baseline": {
+    "batch465": {
+      "passed": 0,
+      "failed": 4,
+      "scope": "Derived whole/half cart target, off/mock"
+    },
+    "batch466": {
+      "passed": 0,
+      "failed": 60,
+      "scope": "Persisted closed delivery sessions, three address formats, off/mock; valid lookup mock"
+    }
+  },
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "sourceSnapshotSha256": "324790fe30c8698f44da476e5b3565630268f4eb88e6e4f9c18900ce5e9d910e",
+  "limits": [
+    "Mocked ports, not live model/geocoding QA",
+    "No registered order mutation or staff notification",
+    "Initial combined purchase with fristas not covered",
+    "Destination from retained chat session, not persisted order snapshot",
+    "Initial long geocoder label unchanged"
+  ],
+  "interruptedAttempts": [
+    "465 attempt 1 stopped after 8 compatibility regressions, fixed",
+    "465 attempt 2 interrupted by environment, resumed unchanged sources, then stopped after 6 reply wording regressions, fixed",
+    "465 attempt 3 preempted for new N09-01 chat; no complete result claimed"
+  ]
+}

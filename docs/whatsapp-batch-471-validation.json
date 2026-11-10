@@ -1,0 +1,139 @@
+{
+  "batch": 471,
+  "baseCommit": "e887423258dcc13b46545852b4fdf595aeb1821a",
+  "batches": [
+    471
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1423.74,
+      "sourceUnchanged": true,
+      "tests": 44653,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.45,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 763,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 543,
+  "tests": 44669,
+  "suites": 543,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "engineChanged": true,
+  "finding": "N08-13",
+  "findingPartiallyCovered": true,
+  "baseline": {
+    "passed": 0,
+    "failed": 4
+  },
+  "initialFocus": {
+    "passed": 4,
+    "failed": 0
+  },
+  "iterations": [
+    {
+      "report": "expanded-related",
+      "passed": 296,
+      "failed": 240,
+      "reasons": [
+        "Phone still included in street correction during final confirmation",
+        "Fixture expected byte-identical DTO address although contract appends payment method",
+        "Fixture closure omitted building-cart checkout transition for labelled-place controls"
+      ]
+    },
+    {
+      "report": "canonical-attempt",
+      "passed": 428,
+      "failed": 108,
+      "reason": "Intermediate explicit-label rewrite retained country prefix and could reinterpret a known surname as a place; replaced with direct validated contact capture."
+    },
+    {
+      "report": "phone-focus",
+      "passed": 40,
+      "failed": 0,
+      "skippedByFilter": 212
+    },
+    {
+      "report": "place-profile-baseline",
+      "passed": 0,
+      "failed": 4,
+      "skippedByFilter": 252,
+      "reason": "Saved place profiles matched the trailing address text; exclude strong place-like recipient profiles."
+    },
+    {
+      "report": "pre-comma-related",
+      "passed": 540,
+      "failed": 0
+    },
+    {
+      "report": "comma-baseline",
+      "passed": 0,
+      "failed": 6,
+      "skippedByFilter": 394
+    },
+    {
+      "report": "accent-attempt",
+      "passed": 540,
+      "failed": 144,
+      "reason": "Comma variants also used accented sí; punctuation support alone missed the accent."
+    }
+  ],
+  "newTests": 400,
+  "simulatedClosures": 388,
+  "related": {
+    "tests": 684,
+    "suites": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  "caseBreakdown": {
+    "derivedInitialJourneys": 4,
+    "knownRecipientMatrix": 360,
+    "labelledPlaceJourneys": 24,
+    "defensiveHelperControls": 12
+  },
+  "incompleteGlobalAttempts": [
+    {
+      "approved": false,
+      "reason": "Stopped before source edits to add comma/accent variants; archived frozen source manifest and partial journal. Not included in approved totals."
+    }
+  ],
+  "sourceSnapshotSha256": "165c9131a723dd9f467fcb5ab2d9d54133e04442e4dfb0555052ec4a98505730",
+  "nodeScriptTests": 92,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "deployed": false,
+  "scope": "Single-line explicit street with active cart; bounded affirmative/courtesy prefix; exactly one valid Colombian contact phone plus a matching already-known recipient of at least two words. Captures phone and returns street without duplicating known identity. Three catalogs and recipient names, agent off/mock, building/address/final-confirmation stages, national/international phone forms, before/after recipient placement and five prefixes. Cart, units, name, phone, response, and final DTO checked with routing and orders mocked.",
+  "limits": [
+    "Derived sanitized preludes with known recipient seeded, not full original transcript or live profile QA",
+    "Unknown/different/single-word recipients are not inferred; N08-13 remains partially pending",
+    "Single-line anchored street forms only; not all abbreviations, punctuation, multimessage forms or languages",
+    "Two phones, questions, missing phone, closed states, human takeover and empty carts excluded from this helper; defensive exclusions tested at helper level",
+    "No persisted-order edits or historical address cleanup",
+    "Routing, inference and order persistence mocked; no live map, audio, model or delivery QA",
+    "N08-14 delivery-point precision remains pending"
+  ]
+}

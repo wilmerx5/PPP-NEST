@@ -1,0 +1,73 @@
+{
+  "baseCommit": "69777331b9b3c1cdbe20d287dcca627501788317",
+  "batches": [
+    453
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1004.2,
+      "sourceUnchanged": true,
+      "tests": 42212,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.59,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 744,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 525,
+  "tests": 42228,
+  "suites": 525,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 76,
+  "baseline": {
+    "tests": 48,
+    "failed": 48,
+    "passed": 0
+  },
+  "focused": {
+    "tests": 338,
+    "suites": 4,
+    "failed": 0
+  },
+  "scriptTests": 92,
+  "mockedClosures": 48,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "52 full-router checks and24 direct guards; repeated explicit mixed combo plus one already registered side, current catalog price confirmation and idempotent recovery;48 mocked closures with retained payment and default catalog options",
+  "limits": [
+    "Bounded3 forms, one-word family and opposing cooking styles; side must uniquely match catalog name/singular and already be registered once",
+    "No competing decisions, new quantity/note/side or other family purchase; direct exclusions do not prove downstream resolution",
+    "Original audio and real model wording not evaluated",
+    "Fixed-fee typed address; no external geocoding, distances or payment reconciliation tested",
+    "Abbreviated restatement without cooking styles remains pending"
+  ],
+  "stagingVerified": true,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "runtimeCommit": "45b83ae69ed5ddc73fa17e6a595b0525ec9a2406",
+  "compiledJourneys": 52,
+  "compiledDirectGuards": 24,
+  "compiledMockedClosures": 48
+}

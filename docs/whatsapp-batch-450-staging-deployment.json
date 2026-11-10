@@ -1,0 +1,51 @@
+{
+  "environment": "staging",
+  "head": "08245e4a220a20829e8f6318b24262bbc2b2c08d",
+  "image": "sha256:ffa61d2e09c1065acdb9501aed56e8399a0e9b061d31d01b6f132cec05d4acf0",
+  "restarts": 0,
+  "running": true,
+  "health": "healthy",
+  "localHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "cacheSize": 0,
+    "memory": {
+      "heapUsed": 55.11,
+      "heapTotal": 63.63,
+      "rss": 125.89
+    },
+    "timestamp": "2026-11-08T21:25:24.995Z"
+  },
+  "publicHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "cacheSize": 0,
+    "memory": {
+      "heapUsed": 55.55,
+      "heapTotal": 63.88,
+      "rss": 126.26
+    },
+    "timestamp": "2026-11-08T21:25:25.141Z"
+  },
+  "models": {
+    "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+    "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+    "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+    "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+    "WHATSAPP_ASSIST_MODEL": "gpt-6-luna"
+  },
+  "privateConfigurationPreserved": true,
+  "compiledSmoke": "4 compiled batch292 dictated-address and incomplete-street checks passed\n13 compiled context and note boundary checks passed\n3 compiled compound selection, unit split and conflict-recovery journeys passed\nCompiled batch283 ni-exclusion parsing, conflict and recovery passed\n4 compiled multi-line redirection, clarification, cancellation and expiry journeys passed\n6 compiled pending-note ordinal repair and negative guards passed\n6 compiled router note-conflict and repeat checks passed\n7 compiled note redirection, repetition, stale, expiry, interruption and conflict checks passed\n8 compiled regional payment and wait checks passed\n8 compiled basic total/drink intent checks passed\n4 compiled category-boundary and closing-typo checks passed\n3 compiled greeting checks passed: default, stored invitation, legacy stored invitation\n3 compiled repeat-question checks passed: role repeated without mutation, specific question not swallowed, closed conversation excluded\n3 compiled role-pin checks passed: quote preserved, rejection preserved, mismatched pin discarded\n9 compiled colloquial account-question and mixed-request guards passed\n3 compiled interruption checks passed: fresh street tracked, pickup clears role, clarification preserves street\n3 compiled role checks passed: direct confirmation block, question preserved, place resolved\n7 compiled checkout checks passed: merchant questions, choice/mixed-request guards, ETA units and burst boundaries\n18 compiled referenced preparation routing, negated removal, atomic multiple-removal, short clarification, stale cart, direct guard, paired-plan, negation, atomic split, combo, supply, idempotency, repeated substitution, labelled drink, receipt notes and central-confirmation checks passed; external services isolated\n",
+  "backup": "/***/ppp-manual-release/20261108T212443Z-staging",
+  "checkedAt": "2026-11-08T21:25:30.828227+00:00",
+  "workflow": "https://github.com/wilmerx5/kamppo/actions/runs/42525052818",
+  "compiledJourneys": 50,
+  "compiledDirectGuards": 10,
+  "compiledMockedClosures": 0,
+  "compiledResult": "60 compiled confusion recovery checks passed:50 full-router journeys and10 direct exclusion guards; all external ports mocked, zero orders",
+  "compiledScope": "Actual dist full-router engine, all external ports mocked;36 confusion then mixed recovery journeys,12 objections before final confirmation,2 empty-cart checks;10 direct exclusion guards",
+  "productionChanged": false,
+  "kamppoChanged": false
+}

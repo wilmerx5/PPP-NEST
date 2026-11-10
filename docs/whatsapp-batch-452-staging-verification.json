@@ -1,0 +1,49 @@
+{
+  "environment": "staging",
+  "head": "36428b1dcb08ae0a22796ebf5a00493b38f612ab",
+  "image": "sha256:539d90692bbd946416015066a75bb6fe1ef3486be3aa14eb1d6088a7d37aa310",
+  "running": true,
+  "health": "healthy",
+  "restarts": 0,
+  "models": {
+    "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+    "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+    "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+    "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+    "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+  },
+  "localHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "cacheSize": 0,
+    "memory": {
+      "heapUsed": 54.57,
+      "heapTotal": 62.89,
+      "rss": 124.69
+    },
+    "timestamp": "2026-11-08T22:15:19.527Z"
+  },
+  "publicHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "cacheSize": 0,
+    "memory": {
+      "heapUsed": 54.7,
+      "heapTotal": 62.89,
+      "rss": 124.69
+    },
+    "timestamp": "2026-11-08T22:15:19.630Z"
+  },
+  "checkedAt": "2026-11-08T22:16:39.041349+00:00",
+  "compiledJourneys": 144,
+  "compiledMockedClosures": 144,
+  "compiledResult": "144 compiled repaired combo options and checkout journeys passed; one mocked order per journey, fixed delivery fee, all external ports mocked",
+  "externalOrders": 0,
+  "runtimeRedeployed": false,
+  "readOnlyVerification": true,
+  "previousDeploymentEvidence": "whatsapp-batch-451-staging-deployment.json",
+  "productionChanged": false,
+  "kamppoChanged": false
+}

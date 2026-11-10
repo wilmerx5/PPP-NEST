@@ -41,7 +41,16 @@ for (const [kind, comment] of comments) {
     const reply = h.replies.slice(start).join('\n');
     expect(reply).toMatch(kind === 'price' ? /precio|econ[oó]mic|presupuesto/i : /aclar|pregunta|parte|entend|revis/i);
     expect(reply).not.toMatch(/no (?:tenemos|manejamos)|ya (?:correg[ií]|cambi[eé])|necesito tu nombre real/i);
-    expect(reply).toMatch(stage === 'attribute' ? /sabor|limon|naranja/i : stage === 'awaiting_name' ? /nombre/i : /pago|pagas|pagar/i);
+    if (kind === 'understanding') {
+      // Repair the objection before repeating an unrelated checkout/option question.
+      expect(reply).toContain(dish);
+      expect(reply).toMatch(/qu[eé] parte.*corregir/i);
+      expect((reply.match(/\?/g) || []).length).toBe(1);
+      expect(reply).not.toMatch(/cu[aá]l prefieres|escribe confirmar|necesito tu nombre real/i);
+      expect(h.conv.sessionData).toEqual(before);
+    } else {
+      expect(reply).toMatch(stage === 'attribute' ? /sabor|limon|naranja/i : stage === 'awaiting_name' ? /nombre/i : /pago|pagas|pagar/i);
+    }
     expect(h.conv.state).toBe(state);
     expect(h.conv.sessionData.cart).toEqual(before.cart);
     expect(h.conv.sessionData.pendingAttribute).toEqual(before.pendingAttribute);

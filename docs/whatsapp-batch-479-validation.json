@@ -1,0 +1,36 @@
+{
+  "batch": 479,
+  "baseCommit": "6956cc8e78238f34d0fb55fdd83db84e05bbd95f",
+  "engineChanged": false,
+  "finding": "N08-15",
+  "findingPartiallyCovered": true,
+  "newTests": 290,
+  "simulatedClosures": 290,
+  "caseBreakdown": {
+    "initialJourneys": 2,
+    "priceFlavorMatrix": 288
+  },
+  "related": {
+    "tests": 640,
+    "suites": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  "globalReference": "whatsapp-batch-478-validation.json",
+  "globalReferenceScope": "Previous runtime validation:47577 tests/551 suites. Not a new batch479 global; production merge will be validated separately before deployment.",
+  "scope": "Full-router shopping prelude with two purchased products and pending flavored drink. Numeric/first-second ordinal answers preserve both competing price/flavor decisions. Explicit precio2 answers price while keeping flavor; labelled flavor alone or after price resolves purchase once.3 synthetic drink names,2 off/mock modes,6 short answers,2 quantities,2 resolution orders and2 flavors.",
+  "limits": [
+    "No runtime fix needed for this bounded sequence; already passes on current staging.",
+    "Not every selector combination, long mixed contact envelope, location list or historical wrong product addition is covered.",
+    "All inference/order persistence mocked; not live WhatsApp or model quality assessment."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "deployed": false,
+  "productionMergeValidationPending": true
+}

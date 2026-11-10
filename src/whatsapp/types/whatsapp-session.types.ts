@@ -56,6 +56,11 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  /** Verified named destination still needs its internal delivery point. */
+  pendingMappedDeliveryPoint?: boolean;
+  /** Nearby matching map destinations; an explicit choice is required before checkout. */
+  pendingDeliveryCandidates?: Array<{address:string;lat:number;lng:number;distanceKm:number;fee:number;tentative?:boolean}>;
+  foreignSales?: { lastSeenAt: number; noticeAt: number };
   /** One reversible drink addition, valid only while the cart signature matches. */
   lastDrinkAddition?: { productId: number; beforeCart: WhatsappCartItem[]; cartSignature: string };
 
@@ -223,6 +228,8 @@ export type WhatsappSessionData = {
     note: string;
   };
   pendingCartReplacement?: {
+    /** Cart-line selection for an existing dish conversion, not a new purchase. */
+    variantRequest?: string;
     cartSignature: string;
     options: Array<{ cartIndex: number; label: string }>;
     addQuery: string;

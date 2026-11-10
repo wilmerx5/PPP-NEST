@@ -1,0 +1,45 @@
+{
+  "reviewedOn": "2026-11-09",
+  "incidentDate": "unknown",
+  "source": "User-provided transcript; source retained privately",
+  "inboundMessagesInSanitizedReplay": 34,
+  "findings": [
+    {
+      "severity": "high",
+      "problem": "Foreign mobile-plan outreach entered food product matching; mocked baseline added a product not ordered",
+      "fix": "Detect explicit unrelated commercial outreach before catalog, models, pending choices, contact, checkout"
+    },
+    {
+      "severity": "medium",
+      "problem": "Repeated fallback and phone invitations fueled a bot-to-bot loop",
+      "fix": "One neutral notice per day; related followups suppressed for one hour after latest pitch"
+    },
+    {
+      "severity": "high",
+      "problem": "Risk that a campaign confirmation acts on a customer pending order",
+      "observed": false,
+      "fix": "Active-context short yes/numeric/confirmation replies cannot modify or confirm cart"
+    }
+  ],
+  "limits": [
+    "Recognizes explicit mobile-service sales and related followups, not all unsolicited messages or AI senders",
+    "Replay uses ordered text without the original elapsed timestamps; TTL has separate clock-controlled test",
+    "No permanent blacklist; menu or explicit purchase request resumes normal routing",
+    "No inference, Meta or external orders used",
+    "Does not repair historical conversations",
+    "Independent synthetic-catalog issue remains: Quiero pedir un Bowl De Garbanzos is ignored even with no campaign; direct Un Bowl De Garbanzos works. Not fixed by this batch."
+  ],
+  "fixtureSha256": "949028e00ec9835bc186d891a2027fa26cafead20eaf71eb62b3e356cced5aea",
+  "validation": {
+    "globalTests": 43297,
+    "globalSuites": 535,
+    "focusedTests": 22,
+    "syntheticDerivedExecutions": 22,
+    "deployed": false
+  },
+  "followUp": {
+    "batch": 464,
+    "status": "named-prefix gap corrected for documented scope; not deployed",
+    "validation": "whatsapp-batch-464-validation.json"
+  }
+}

@@ -18,6 +18,9 @@ export function parseCartQuantityCorrection(text: string): { quantity: number; q
   const result = (amount: string, query: string) =>
     /\b(?:no|pero|mas|menos|otros?|resto|igual|conserva|pedido|en vez)\b/.test(query) ? null
       : { quantity: words[amount] ?? Number(amount), query };
+  // An explicit named quantity is absolute; the router still resolves the existing line.
+  const namedQuantity = t.match(new RegExp(`^(?:cambia(?:me)?|modifica(?:me)?|ajusta(?:me)?)\\s+la\\s+cantidad\\s+(?:del?|de la)\\s+(.+?)\\s+(?:a|en)\\s+(${number})(?:\\s+unidades?)?$`));
+  if (namedQuantity) return result(namedQuantity[2], namedQuantity[1]);
   const reconsidered = t.match(new RegExp(`^mejor (?:quiero|deja|dame)\\s+(${number})\\s+(.+?)(?:\\s+en total)?$`));
   if (reconsidered) return result(reconsidered[1], reconsidered[2]);
   const apology = t.match(new RegExp(`^(?:perdon|perdona|disculpa|disculpe)\\s+(?:quiero\\s+)?(${number})\\s+(.+?)(?:\\s+en (?:esa|la) misma direccion)?$`));

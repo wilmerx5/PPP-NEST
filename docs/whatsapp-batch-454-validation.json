@@ -1,0 +1,71 @@
+{
+  "baseCommit": "f715f2deb76255a2ea3d5729e98e176bfb16d81f",
+  "batches": [
+    454
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1016.07,
+      "sourceUnchanged": true,
+      "tests": 42262,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.83,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 745,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 526,
+  "tests": 42278,
+  "suites": 526,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 50,
+  "baseline": {
+    "tests": 42,
+    "passed": 16,
+    "failed": 26,
+    "scope": "Initial42 cases before adding8 explicit non-mixed combo controls; corrected test type errors archived before baseline"
+  },
+  "focused": {
+    "tests": 270,
+    "suites": 3,
+    "failed": 0
+  },
+  "scriptTests": 92,
+  "mockedClosures": 24,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "34 full-router checks and16 direct guards; abbreviated combo plus already registered side, preserve selected offer/cart or clarify family combos without choosing by remembered price;24 mocked closures",
+  "limits": [
+    "Anchored abbreviated phrase, one-word family, exactly one already registered side matching catalog name/singular",
+    "No competing decisions or new quantity/note/side; direct guards prove no interception only",
+    "Original audio, real inference, external geocoding and payment reconciliation not evaluated",
+    "Fixed-fee written address and mocked order ports"
+  ],
+  "stagingVerified": true,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "runtimeCommit": "d1615e423caf781b231e6e4714da6ff264d51cdc",
+  "deploymentEvidence": "whatsapp-batch-454-staging-deployment.json"
+}

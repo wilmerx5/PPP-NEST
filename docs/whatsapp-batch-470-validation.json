@@ -1,0 +1,109 @@
+{
+  "batch": 470,
+  "baseCommit": "ee956f6680472f68f82f4b789d6201330f98d409",
+  "batches": [
+    470
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1429.24,
+      "sourceUnchanged": true,
+      "tests": 44253,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.56,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 762,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 542,
+  "tests": 44269,
+  "suites": 542,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "engineChanged": true,
+  "baseline": {
+    "passed": 2,
+    "failed": 4,
+    "tests": 6
+  },
+  "validatorOnlyFocus": {
+    "passed": 4,
+    "failed": 2
+  },
+  "initialAddressFixFocus": {
+    "passed": 6,
+    "failed": 0
+  },
+  "firstExpandedRelated": {
+    "passed": 529,
+    "failed": 12,
+    "reason": "Trailing labelled recipient lost when a street correction interrupts final confirmation."
+  },
+  "lateStepFocus": {
+    "passed": 0,
+    "failed": 12,
+    "skippedByFilter": 132,
+    "reason": "Recipient now persisted, but address-only reply omitted the changed name; show complete summary for explicit recipient changes."
+  },
+  "newTests": 144,
+  "simulatedClosures": 122,
+  "related": {
+    "distinctTests": 715,
+    "distinctSuites": 9,
+    "runs": [
+      {
+        "tests": 541,
+        "suites": 6
+      },
+      {
+        "tests": 210,
+        "suites": 4
+      }
+    ],
+    "overlapTests": 36,
+    "failed": 0,
+    "skipped": 0
+  },
+  "caseBreakdown": {
+    "initialRouterCases": 6,
+    "recipientValidatorControls": 18,
+    "priceThenNamedDelivery": 72,
+    "storedRecipientCorrection": 48
+  },
+  "sourceSnapshotSha256": "ab5a14196ccd6ee709ee5ffd46b6568069cd1de10ef37ff6633c417a610902c3",
+  "nodeScriptTests": 92,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "deployed": false,
+  "scope": "Three catalog families (PPP rice combo, synthetic bowl and salad combos), agent off/mock, delivery with mocked routing, unknown/saved recipient, six numeric price fragments, included-drink correction, labelled recipient preceding/following street, building cart/final confirmation. Cart, name, reply, address and final simulated DTO checked. Saved invalid/other name is assigned defensively after a router prelude in48 cases.",
+  "limits": [
+    "Derived sanitized preludes, not full original transcript replay",
+    "Only bounded numeric price/selection fragments in recipient validation; not a general price-intent resolver",
+    "Recipient must be explicitly labelled; unlabelled personal names and courtesy removal remain N08-13",
+    "No historical order backfill or persisted-order modification",
+    "Delivery routing, inference and order creation mocked; no live model, audio, maps or external orders",
+    "Necesito historical case has validator control, not a new full historical replay"
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "baseCommit": "75f205740b7dd8f65348816cc4e008b2cfe30375",
+  "batches": [
+    476
+  ],
+  "phases": {
+    "nonTimerRemaining": {
+      "exitCode": 0,
+      "seconds": 10.53,
+      "sourceUnchanged": true,
+      "tests": 319,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 13.73,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 769,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "recovery": {
+    "reason": "Runner disappeared before final report; saved per-suite results recovered only after exact source hash and current inventory validation.",
+    "completedSuites": 514,
+    "passedTests": 46570,
+    "remainingSuites": 35,
+    "uninterruptedGlobal": false
+  },
+  "suiteCheckpoints": 549,
+  "tests": 46905,
+  "suites": 549,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 476,
+  "engineChanged": true,
+  "finding": "N08-14",
+  "findingPartiallyCovered": true,
+  "baseline": {
+    "passed": 0,
+    "failed": 4
+  },
+  "initialFocus": {
+    "passed": 4,
+    "failed": 0
+  },
+  "newTests": 588,
+  "simulatedClosures": 570,
+  "caseBreakdown": {
+    "initialJourneys": 4,
+    "mappedPointMatrix": 540,
+    "alreadySuppliedPointOrStreet": 10,
+    "questioningOrNegativeReplies": 12,
+    "cancelPickupStreetPinExits": 8,
+    "richerEnvelopeHelperDelegation": 4,
+    "numericShorthandCompatibility": 8,
+    "hotelReceptionJourneys": 2
+  },
+  "related": {
+    "tests": 1564,
+    "suites": 8,
+    "failed": 0,
+    "skipped": 0
+  },
+  "nodeScriptTests": 92,
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "configurationChanged": false,
+  "deployed": false,
+  "sourceSnapshotSha256": "24aa89b033cb944c0cf4ca3a893a660fce6349887be25061c50a13986e674873",
+  "scope": "Verified mapped name without complete numbered street or exact shared pin and without apartment/house/local/office/access instruction needs a delivery point. Keeps map fee/coordinates; porteria/recepcion and unit details resolve before payment/final review. Existing complete streets, units, exact pin and pickup bypass bounded guard. No historic-order edits or live map diagnostics.",
+  "iterations": [
+    "baseline4fail;focus4pass",
+    "related1220pass/54fail: fixture expected lowercase torre3 but normalizer stores Torre3; fixed case-insensitive assertion, retained unit number",
+    "natural-baseline2fail/464filtered skips: si en la porteria and porteria principal not recognized; added bounded affirmative prefix and qualifier preservation",
+    "final-related1382/7 passed",
+    "First global stopped before edits:65 suites/19428 passed/0failed archived; no approved full run",
+    "mixed-baseline2fail/572filtered skips: point+payment in either order remained pending",
+    "mixed-related1490/7 passed after bounded mixed payment parsing, standalone-payment restriction and generic-envelope delegation",
+    "delegation-focus4passed/574filtered skips: helper preserves state and returns false for contact/purchase-rich envelopes; helper-level only",
+    "Second global stopped/archived after4 legacy checkout failures:2 numeric shorthand regressions and2 hotel cases now intentionally needing reception. No edits while active.",
+    "Added bounded three-number shorthand exclusion without inventing a road type/changing query;8 router regressions. Updated2 old hotel parameter cases to assert reception prompt then payment, keeping map/cart/agent assertions. Added2 complete hotel reception journeys.",
+    "shorthand-related1564/8 passed; new588 cases/570 mocked closures."
+  ],
+  "incompleteRuns": [
+    {
+      "attempt": 1,
+      "suites": 65,
+      "passed": 19428,
+      "failed": 0,
+      "reason": "Stopped before edits to reproduce mixed point/payment omission; not an approved global."
+    },
+    {
+      "attempt": 2,
+      "suites": 223,
+      "passed": 32176,
+      "failed": 4,
+      "reason": "Stopped before edits: two numeric shorthand false prompts fixed, two hotel-only destination contracts updated to require reception. Not an approved global."
+    }
+  ],
+  "limits": [
+    "Derived sanitized router journeys with routing, inference, Meta and order persistence mocked; no live Google diagnostics or historical transcript replay in this batch.",
+    "Guard covers a confirmed mapped destination with coordinates and fee, no complete numbered street, no recognized three-number shorthand, no exact shared pin and no supplied unit/access. Full-street complex addresses lacking apartment are not newly required to give a unit.",
+    "Unverified destinations, destinations without coordinates and fixed-fee-only paths are not newly covered.",
+    "Four contact/purchase-rich controls test helper delegation only, not complete router journeys for richer envelopes. Not all regional forms, ETA interruptions or mixed selectors are covered.",
+    "Numeric shorthand exemption recognizes a bounded form only; it does not infer a road type, change the geocoding query or prove Google locates the address.",
+    "Global inventory completed through validated per-suite checkpoint recovery after runner disappearance: 514 saved suites plus 35 remaining suites on identical source hashes. Not one uninterrupted process.",
+    "No historical order changes, persisted cleanup, deployment or Kamppo migration."
+  ]
+}

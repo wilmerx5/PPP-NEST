@@ -1,0 +1,88 @@
+{
+  "baseCommit": "18fe15b06e3fcfd483b0165a8adda2faecc2e69e",
+  "batches": [
+    473
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1374.06,
+      "sourceUnchanged": true,
+      "tests": 45173,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.64,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 765,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 545,
+  "tests": 45189,
+  "suites": 545,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 473,
+  "engineChanged": true,
+  "finding": "N08-14",
+  "findingPartiallyCovered": true,
+  "newTests": 157,
+  "simulatedClosures": 144,
+  "nodeScriptTests": 92,
+  "related": {
+    "tests": 440,
+    "suites": 9,
+    "failed": 0,
+    "skipped": 0
+  },
+  "caseBreakdown": {
+    "initialRouterJourneys": 4,
+    "ambiguousPlaceRecoveryJourneys": 144,
+    "preciseLandmarkRoutingControls": 9
+  },
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "configurationChanged": false,
+  "deployed": false,
+  "sourceSnapshotSha256": "e6b3a17897a52954391ccc1bac3415e7b42ff71ee91088a3db046acfd47a1680",
+  "baseline": {
+    "tests": 4,
+    "failed": 4,
+    "report": "baseline-tiers.json",
+    "reason": "Bare complex name accepted a synthetic neighborhood centroid and advanced to payment instead of requesting a precise destination."
+  },
+  "fixtureCorrection": "First baseline omitted delivery fee tiers, so an accepted route incorrectly appeared out of coverage. Added synthetic tiers and reran before changing runtime; all four still failed, now advancing to payment. Neither result is counted as an approved run.",
+  "initialFocus": {
+    "tests": 49,
+    "suites": 3,
+    "failed": 0
+  },
+  "scope": "Map validation for non-numbered destinations, including bare names without conjunto/edificio prefix. Requires name tokens to match and rejects purely administrative/neighborhood results even when named alike. Existing explicit numbered-street and coordinate paths remain separate. Complete router journeys use the actual delivery-routing service with fetch and Directions mocked, three catalogs, two agent modes, three places, four ambiguous map results and street/unit or pin/unit recovery.",
+  "limits": [
+    "Synthetic provider results and sanitized derived journeys; no live Google, inference, audio, Meta or order persistence.",
+    "Initial four router cases check blocked behavior without closure; matrix144 verifies preserved cart/units, location clarification, no premature order, recovery fee/address/unit and final DTO items/address; nine exact-landmark controls exercise routing only.",
+    "Name-token matching is conservative, not universal fuzzy place-name resolution or verification of all provider metadata.",
+    "Explicit numbered-street validation retains its existing path; no historical cache/address/order repair.",
+    "N08-14 remains partial: no new requirement to clarify portería or apartment for an otherwise precisely located complex. Must reproduce and design that separately, including explicit entrance delivery and pickup controls.",
+    "No production/staging runtime deployment or Kamppo migration in this batch."
+  ]
+}

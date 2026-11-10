@@ -1,0 +1,78 @@
+{
+  "baseCommit": "b1f6086ae27e7c2526f90ee94474f1bfe2dcb75d",
+  "batches": [
+    456
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1108.78,
+      "sourceUnchanged": true,
+      "tests": 42420,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 13.53,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 747,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 528,
+  "tests": 42436,
+  "suites": 528,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 78,
+  "baseline": {
+    "tests": 8,
+    "passed": 4,
+    "failed": 4,
+    "scope": "Natural initial order from empty cart; combo-first failed while soup-first passed"
+  },
+  "focused": [
+    {
+      "tests": 8,
+      "suites": 1,
+      "failed": 0
+    },
+    {
+      "tests": 248,
+      "suites": 4,
+      "failed": 0
+    }
+  ],
+  "scriptTests": 92,
+  "mockedClosures": 48,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "58 full-router checks and20 direct guards; explicit single independent dish addition retains a current single-product offer for the exact validated turn;48 integrated mocked closures",
+  "limits": [
+    "One new single-unit non-drink dish without attributes, unique canonical/singular catalog match and explicit additive connector",
+    "No competing decisions, existing products, new notes/options/multiple units; direct guards only prove no interception",
+    "Original audio, real inference, external geocoding and payment reconciliation not evaluated",
+    "Known fixture contact; written address with fixed-fee delivery and all external ports mocked"
+  ],
+  "stagingVerified": true,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "runtimeCommit": "c97fc336fd1b5801065e98a442abbc653dba1bbe",
+  "deploymentEvidence": "whatsapp-batch-456-staging-deployment.json"
+}

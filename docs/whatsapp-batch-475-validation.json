@@ -1,0 +1,93 @@
+{
+  "baseCommit": "f6b01e9db6c311deb7fab75c2d00cd38f6dd4a64",
+  "batches": [
+    475
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1423.98,
+      "sourceUnchanged": true,
+      "tests": 46301,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.39,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 768,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 548,
+  "tests": 46317,
+  "suites": 548,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 475,
+  "engineChanged": true,
+  "finding": "N10-LOC-02",
+  "findingPartiallyCovered": true,
+  "baseline": {
+    "passed": 0,
+    "failed": 4
+  },
+  "initialFocus": {
+    "passed": 4,
+    "failed": 0
+  },
+  "expanded": {
+    "passed": 344,
+    "failed": 0
+  },
+  "newTests": 350,
+  "simulatedClosures": 328,
+  "caseBreakdown": {
+    "initialNaturalJourneys": 4,
+    "naturalChoiceMatrix": 324,
+    "ambiguousOrQuestioningReplies": 12,
+    "competingSelectorControls": 6,
+    "unavailableOrdinalJourneys": 4
+  },
+  "related": {
+    "tests": 1702,
+    "suites": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "nodeScriptTests": 92,
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "configurationChanged": false,
+  "deployed": false,
+  "sourceSnapshotSha256": "bc75ac231335d6022a7e404dfb060a1063f3a8ec71cbaea1112ca516addc88f8",
+  "scope": "Active nearby-place list only. Bounded first/second/third ordinals, uno/dos/tres, option/place/address labels and courtesy suffixes. Explicit road references match a full canonical street or a uniquely identifying road/number; no invented street numbers or fuzzy guessing. Questioning replies, alternative ordinals, absent positions and nonunique streets preserve the list. Ordinals use the existing competing-purchase-selector guard. Selection then follows batch474 fresh quote, access preservation and final review.",
+  "limits": [
+    "Derived sanitized journeys with actual router/routing service and mocked fetch, Directions, inference and order persistence; not a full historical transcript replay.",
+    "Six competing-selector tests seed pendingMatch/pendingAttribute/pendingAddOffer defensively after a normal location prelude; not complete real mixed-list journeys or exhaustive coverage of every pending selector.",
+    "First/second/third positions and bounded Spanish grammar only; not all typos, regional references, numeric alternatives, full-address courtesies or long copied descriptions.",
+    "Partial road references must uniquely identify one offered candidate; ambiguous or absent roads retain the existing options.",
+    "No new Google live diagnostics; provider evidence remains in batch474. No changes to geocoding coverage or map candidates themselves.",
+    "N08-14 missing portería/unit for an otherwise precisely located complex remains pending. N08-15 competing lists, including price inquiries, require separate reproduction before declaring them solved.",
+    "No persisted order edits, historical cleanup, deployment or Kamppo migration."
+  ]
+}

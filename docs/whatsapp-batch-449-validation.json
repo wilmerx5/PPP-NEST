@@ -1,0 +1,72 @@
+{
+  "baseCommit": "95d3e770692ed3c02b72bb1cdce82890621c6a8c",
+  "batches": [
+    449
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 987.54,
+      "sourceUnchanged": true,
+      "tests": 41854,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.22,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 740,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 521,
+  "tests": 41870,
+  "suites": 521,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 20,
+  "baseline": {
+    "tests": 12,
+    "failed": 12,
+    "passed": 0
+  },
+  "finalFocused": {
+    "tests": 58,
+    "suites": 3,
+    "failed": 0
+  },
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "mockedClosures": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "12 full-router repeated composed mixed acceptance journeys preserve entire session, same enabled payment and missing-address requirement;8 direct handler exclusion guards",
+  "limits": [
+    "Text transcript only; original audio not evaluated",
+    "No closure because real delivery address missing",
+    "Direct exclusion guards do not prove downstream resolution",
+    "Other wording, changed payment and frustration repair remain pending"
+  ],
+  "stagingVerified": true,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "runtimeCommit": "158b46dc3e3a5d53d7d7ec16e1396b04c0ad4149",
+  "compiledJourneys": 12,
+  "compiledLegacyGuard": 1,
+  "compiledMockedClosures": 0
+}

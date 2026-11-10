@@ -1,0 +1,123 @@
+{
+  "baseCommit": "d9f5d337a78927693a964c72b7eec065c968cd93",
+  "batches": [
+    460
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1206.77,
+      "sourceUnchanged": true,
+      "tests": 42659,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.68,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 751,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 532,
+  "tests": 42675,
+  "suites": 532,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 64,
+  "fullRouterJourneys": 64,
+  "mockedClosures": 72,
+  "previousGlobalAttempt": {
+    "completed": false,
+    "reason": "Stopped after existing reserved-allergy-consultation regression; purchase scope narrowed to multiline non-question messages before rerun"
+  },
+  "baseline": {
+    "tests": 32,
+    "passed": 18,
+    "failed": 14,
+    "scope": "12 combo follow-up duplicate failures and2 synthetic purchase/address false unavailable failures; half chicken/address did not duplicate on current staging"
+  },
+  "focused": [
+    {
+      "tests": 93,
+      "suites": 3,
+      "failed": 14
+    },
+    {
+      "tests": 56,
+      "suites": 1,
+      "failed": 28
+    },
+    {
+      "tests": 56,
+      "suites": 1,
+      "failed": 2
+    },
+    {
+      "tests": 2,
+      "suites": 1,
+      "failed": 0,
+      "filtered": true,
+      "skipped": 54
+    },
+    {
+      "tests": 168,
+      "suites": 4,
+      "failed": 0
+    },
+    {
+      "tests": 176,
+      "suites": 4,
+      "failed": 8,
+      "fixtureError": "New completed-order tests lacked mocked persistence reopenForNewOrder; fixed before final source freeze"
+    },
+    {
+      "tests": 64,
+      "suites": 1,
+      "failed": 0
+    },
+    {
+      "tests": 732,
+      "suites": 2,
+      "failed": 0
+    }
+  ],
+  "fixtureCorrections": [
+    "Initial compile error: nullable find results,0 executed tests",
+    "Initial fixture used nonexistent deliveryService.quoteDelivery;32 fixture failures, not engine baseline",
+    "Synthetic no-attribute dish replaced an inappropriate Arepas attribute; original multiline unavailable failure persisted",
+    "Completed-order persistence reopen contract added after8 fixture-only failures"
+  ],
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "stagingVerified": true,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Explicit short el combo con VALUE; one cart combo and one unit required for unambiguous change",
+    "Multiple combos or units ask for owner clarification; no persisted owner-choice flow added by this change",
+    "64 full-router journeys include8 with a previous completed mocked order;72 total DTO closures",
+    "Persistence ID-claim and reopening are mocked contracts, not multi-worker/database proof",
+    "Jest exercises actual coalescer timers; compiled QA flushes coalescer explicitly",
+    "No automatic cleanup of already duplicated production carts; no paid model, audio or real provider traffic"
+  ],
+  "runtimeCommit": "f3f04d2b298152e050e413f721bbbecf38938f4f",
+  "deploymentEvidence": "whatsapp-batch-460-staging-deployment.json"
+}

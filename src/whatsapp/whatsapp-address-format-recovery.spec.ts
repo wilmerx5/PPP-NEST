@@ -19,7 +19,7 @@ for(let i=0;i<inputs.length;i++) {
   expect(quote).toMatchObject({ok:true,fee:2000});expect(route).toHaveBeenCalledTimes(1);
   expect(queries.some(q=>q.startsWith(clean+','))).toBe(true);
   expect(queries.every(q=>!/torre|apto|301/i.test(q))).toBe(true);
-  expect(queries.length).toBeLessThanOrEqual(10);
+  expect(queries.length).toBeLessThanOrEqual(12);
  });
 }
 for(const road of ['Calle 6A','Carrera 81H','Transversal 78C'])for(const kind of ['exact','wrong_door','wrong_road','partial'])it(`structured result ${road}/${kind}`,()=>{

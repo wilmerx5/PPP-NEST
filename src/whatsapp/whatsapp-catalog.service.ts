@@ -1,3 +1,4 @@
+import { isCompoundExclusionNote } from './whatsapp-partial-note';
 import { omitSubstitutionChoice } from './whatsapp-substitution-choice';
 import {splitIntensityPreference} from './whatsapp-kitchen-description';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
@@ -2460,7 +2461,7 @@ export class WhatsappCatalogService {
       const following: string[] = [];
       for (const segment of segments.slice(segments.indexOf(named[0])+1)) {
         const q=normalizeText(segment).replace(/^(?:el|la|las|los|sus)\s+/,'');
-        if (/^(?:aparte\s+|adicional\s+)?(?:un|una|uno|dos|tres|\d+)\b/.test(q)) {
+        if (/^(?:aparte\s+|adicional\s+)?(?:un|una|uno|dos|tres|\d+|medio|media|cuarto|cuarta)\b/.test(q)) {
           const other = this.findProductEmbeddedInMessage(segment, products);
           if (other && other.id !== product.id) break;
         }
@@ -3285,6 +3286,14 @@ export class WhatsappCatalogService {
       }
     }
     return best;
+  }
+
+  /** A named compound keeps a cooking choice represented by its own catalog attributes. */
+  private fullyNamedPreparationDish(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null {
+    const named = this.productFullyNamedIn(text,products);
+    return named && normalizeText(named.name).split(/[^a-z0-9]+/).filter(word=>word.length >= 3).length >= 4 &&
+      named.attributes?.some(attribute=>attribute.options.some(option=>COOKING_STYLE_TOKENS.has(normalizeText(option)) &&
+        this.queryHasToken(normalizeText(text),normalizeText(option)))) ? named : null;
   }
 
   /** A long word the menu never uses, one spelling slip away from exactly one menu word ("milanesa" / "Milensa"). */
@@ -9227,6 +9236,16 @@ export class WhatsappCatalogService {
    * También bullets/líneas WhatsApp: "* Medio pollo\n* Porción de papas".
    */
   splitMultiProductSegments(text: string, products?: WhatsappCatalogProduct[]): string[] {
+    // An uncounted named compound is still one dish. Do not let the raw
+    // "con medio…" splitter detach its included preparation from its owner.
+    if (products?.length) {
+      const heads = [...new Set(products.filter(product=>product.availableNow !== false).map(product=>
+        normalizeText(product.name).replace(/^\d+(?:\s*\/\s*\d+)?\s+/,'').split(' ')[0]).filter(head=>head.length >= 3))];
+      const boundary = new RegExp(`(?:\\s+y\\s+|,\\s*)(?=(?:(?:aparte|adem[aá]s)\\s+)?(?:un[oa]?|dos|tres|cuatro|\\d+|medio|media|cuarto|cuarta|${heads.map(escapeRegExp).join('|')})\\b)`,'i');
+      const clauses = text.split(boundary).map(clause=>clause.trim()).filter(Boolean);
+      if (clauses.length >= 2 && clauses.some(clause=>this.fullyNamedPreparationDish(clause,products)) &&
+          clauses.every(clause=>this.fullyNamedPreparationDish(clause,products) || this.productFullyNamedIn(clause,products))) return clauses;
+    }
     // Explicit purchase lines stay independent even when a later line supplies
     // modifiers for the last dish. Delivery/courtesy framing is not a dish.
     if (/[;\n]/.test(text)) {
@@ -9290,7 +9309,15 @@ export class WhatsappCatalogService {
     });
     const addVerbOnly = /^(?:y\s+)?(?:agrega(?:le|me|r)?|agregue(?:le|me)?|pon(?:le|me|ga|gale|game)?|suma(?:le|me)?|anade(?:le|me)?|incluye(?:le|me)?|mete(?:le|me)?|echa(?:le|me)?)(?:\s+(?:tambien|ademas|porfa|por favor))*$/;
     const kept = raw.filter((part) => !addVerbOnly.test(normalizeText(part)));
-    const parts = kept.length ? kept : raw;
+    const parts: string[] = [];
+    for (const part of kept.length ? kept : raw) {
+      const previous = parts[parts.length - 1];
+      const exclusions = previous?.match(/\bsin\s+.+$/i)?.[0];
+      // A second exclusion belongs to the same named dish, not a rejected SKU to sell.
+      if (products?.length && exclusions && isCompoundExclusionNote(`${exclusions} y ${part}`) &&
+          this.resolveSpokenDish(previous.slice(0, previous.search(/\bsin\b/i)), products)) parts[parts.length - 1] += ` y ${part}`;
+      else parts.push(part);
+    }
     if (!products?.length || parts.length < 2) return parts;
     // "dos cola y pola": the "y" belongs to the catalog name "Cola Y Pola".
     const conjoined = products
@@ -10213,6 +10240,11 @@ export class WhatsappCatalogService {
       /\b(?:aparte|adicional|extra)\b/.test(normalizeText(fixCommonOrderTypos(text))) &&
       this.extractRequestedDrinkVolumeMl(text) != null;
     const fullyNamedSeparateHosts = new Map<string, WhatsappCatalogProduct>();
+    for (const segment of segments) {
+      const host = this.fullyNamedPreparationDish(segment,products);
+      if (host) fullyNamedSeparateHosts.set(segment,host);
+    }
+    const hasScopedPreparationHost = fullyNamedSeparateHosts.size > 0;
     if (asksSeparateSizedDrink) {
       const drinks = products.filter(
         (product) => product.availableNow !== false && this.isLikelyDrinkProduct(product),
@@ -10364,7 +10396,7 @@ export class WhatsappCatalogService {
       }
     }
 
-    if (embeddedAll.length >= 2 && !this.looksLikeClearlyMultiDishOrder(text) && !hasDistributedVariants) {
+    if (embeddedAll.length >= 2 && !hasScopedPreparationHost && !this.looksLikeClearlyMultiDishOrder(text) && !hasDistributedVariants) {
       const namesUnstatedStyle = embeddedAll.some((product) => {
         const base = this.stripCookingStyleTokens(product.name);
         const siblings = products.filter(

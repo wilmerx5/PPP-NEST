@@ -1,0 +1,85 @@
+{
+  "batch": 469,
+  "baseCommit": "e8effabd21d3e98dae3e5c94d106036e8af7dfdb",
+  "batches": [
+    469
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1353.47,
+      "sourceUnchanged": true,
+      "tests": 44109,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.36,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 761,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 541,
+  "tests": 44125,
+  "suites": 541,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "engineChanged": true,
+  "baseline": {
+    "passed": 0,
+    "failed": 4
+  },
+  "initialFocus": {
+    "passed": 4,
+    "failed": 0
+  },
+  "firstExpanded": {
+    "passed": 16,
+    "failed": 96,
+    "reason": "All96 correction sequences reopened on the trailing por favor; extend completed/closed courtesy handling."
+  },
+  "newTests": 112,
+  "simulatedClosures": 112,
+  "related": {
+    "tests": 359,
+    "suites": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "caseBreakdown": {
+    "derivedRiceCorrection": 4,
+    "threeCatalogCorrectionMatrix": 96,
+    "explicitNewPurchaseControls": 12
+  },
+  "sourceSnapshotSha256": "cb95cfabe644fbf97825ba1d616439c1ef41a52acaaa99255a5eddb20912c218",
+  "nodeScriptTests": 92,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "deployed": false,
+  "scope": "Confirmed order created through router with external ports mocked; retrospective correction preserves registered-order session and state. Three catalog families, agent off/mock, completed and closed (closed is assigned after simulated registration). Eight correction forms per family/mode/state followed by por favor; explicit new purchases still reopen. Four initial rice cases plus matrix.",
+  "limits": [
+    "Derived preludes, not a complete literal replay of the original chat",
+    "No persisted-order update or automatic staff notification; response explicitly directs restaurant review",
+    "Bounded Spanish correction grammar up to300 normalized characters with full catalog name or order/dish/combo mention; not every typo, ellipsis or language",
+    "Pickup and known contact; completed created by router, closed is a defensive state variant",
+    "External services and inference mocked; no live model, audio, delivery or external order QA"
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "baseCommit": "df8be82e4143ed49dc9362b5c25290ba343abe85",
+  "batches": [
+    455
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1032.96,
+      "sourceUnchanged": true,
+      "tests": 42342,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.28,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 746,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 527,
+  "tests": 42358,
+  "suites": 527,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 80,
+  "baseline": {
+    "tests": 36,
+    "passed": 0,
+    "failed": 36,
+    "notExecuted": 28,
+    "scope": "Initial36 full-router journeys before additional stock, coverage and legacy guards"
+  },
+  "focused": [
+    {
+      "tests": 190,
+      "suites": 3,
+      "failed": 0
+    },
+    {
+      "tests": 216,
+      "suites": 2,
+      "failed": 0
+    },
+    {
+      "tests": 80,
+      "suites": 1,
+      "failed": 0
+    }
+  ],
+  "scriptTests": 92,
+  "mockedClosures": 36,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "64 full-router checks and16 direct guards; read-only availability verification for explicit offer, order list or cart;36 mocked closures after explicit final confirmation",
+  "limits": [
+    "Three anchored phrases and no competing decisions; availability is catalog status, not physical inventory or delivery commitment",
+    "Direct exclusion guards prove no interception only",
+    "Original audio, real inference, external geocoding and payment reconciliation not evaluated",
+    "Written address and fixed-fee delivery with all external ports mocked",
+    "Coverage flag seeded; actual coverage calculation not evaluated"
+  ],
+  "stagingVerified": true,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "runtimeCommit": "6140f59f127ee492601066143e166cf829a690c0",
+  "deploymentEvidence": "whatsapp-batch-455-staging-deployment.json"
+}

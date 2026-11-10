@@ -1,0 +1,97 @@
+{
+  "baseCommit": "7e6825416e864f8ed5733501f5fee993ed96642e",
+  "batches": [
+    462
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1252.78,
+      "sourceUnchanged": true,
+      "tests": 43259,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.32,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 753,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 534,
+  "tests": 43275,
+  "suites": 534,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 216,
+  "fullRouterJourneys": 216,
+  "mockedClosures": 216,
+  "baseline": {
+    "tests": 8,
+    "passed": 0,
+    "failed": 8,
+    "scope": "Products added but exclusion notes lost; transcript also offers rejected yuca as alternative"
+  },
+  "focused": [
+    {
+      "tests": 29,
+      "suites": 3,
+      "failed": 8
+    },
+    {
+      "tests": 29,
+      "suites": 3,
+      "failed": 0
+    },
+    {
+      "tests": 144,
+      "suites": 1,
+      "failed": 0
+    },
+    {
+      "tests": 2,
+      "suites": 1,
+      "failed": 2,
+      "filtered": true,
+      "skipped": 214,
+      "scope": "Single sin yuca still lost while only compound notes were protected"
+    },
+    {
+      "tests": 237,
+      "suites": 3,
+      "failed": 0
+    }
+  ],
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "stagingVerified": true,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Segment reattachment uses the existing bounded2\u20133 exclusion grammar and a resolved preceding dish",
+    "Single exclusions use the existing kitchen preference grammar; no broad arbitrary-clause merger",
+    "Three catalog families,6 exclusion formulations,agent off/mock,three stages andpartial repetition",
+    "All journeys use pickup and known contact;external model/Meta/order persistence mocked",
+    "No automatic repair of old carts or registered orders;live inference and delivery maps not exercised"
+  ],
+  "runtimeCommit": "e911a066e613147ad961793b39a1a222326adde1",
+  "deploymentEvidence": "whatsapp-batch-462-staging-deployment.json"
+}

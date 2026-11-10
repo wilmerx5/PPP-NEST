@@ -1,0 +1,63 @@
+{
+  "batch": 468,
+  "baseCommit": "a16e05ecf7b581f5ae907301494f9a173db29e80",
+  "engineChanged": false,
+  "historicalIssueNotReproduced": true,
+  "baseline": {
+    "passed": 8,
+    "failed": 0
+  },
+  "newTests": 80,
+  "simulatedClosures": 80,
+  "related": {
+    "tests": 446,
+    "suites": 9,
+    "failed": 0,
+    "skipped": 0
+  },
+  "phases": {
+    "related": {
+      "exitCode": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "sourceUnchanged": true,
+  "sourceFiles": 760,
+  "sourceSnapshotSha256": "3e2d0c2bfd2784c116303c933c5a345d03f672dbbfffd50fbdbe96a62bbeb065",
+  "reusedGlobal": {
+    "sourceFilesUnchanged": 759,
+    "tests": 43933,
+    "suites": 539,
+    "evidence": "whatsapp-batch-467-validation.json",
+    "newCombinedGlobalRun": false
+  },
+  "caseBreakdown": {
+    "originalDerivedPricePrelude": 8,
+    "catalogInquiryMatrix": 72
+  },
+  "scope": "Three catalog families; price/description/composition query then elliptical combo with half chicken, pollo/pollor, Frito/Broaster, agent off/mock, pickup and known contact. Inquiry never buys; selected SKU and attributes checked before checkout; all80 close with correct simulated SKU;72 also compare final attributes snapshot.",
+  "fixtureCorrections": [
+    "First matrix run failed72 DTO assertions after reading the cleared completed cart; store selected attributes before checkout. No engine change for those assertion failures."
+  ],
+  "limits": [
+    "Derived inquiry preludes, not literal complete original transcript",
+    "No prior cart, interleaved unrelated discussion, delivery, audio or live model QA",
+    "No combined global run; previous759 TS sources exactly match batch467 snapshot",
+    "Redundant con medio pollo preparation note remains and is tracked under N08-23"
+  ],
+  "nodeScriptTests": 92,
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "deployed": false
+}

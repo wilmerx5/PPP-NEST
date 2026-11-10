@@ -7,7 +7,7 @@ import {
 } from './whatsapp-delivery-fee';
 
 class AmbiguousDeliveryAddressError extends Error {
-  constructor(readonly alternatives: string[] = []) { super('Ambiguous delivery address'); }
+  constructor(readonly alternatives: string[] = [], readonly places: Array<LatLng & {formatted?: string;tentative?: boolean}> = []) { super('Ambiguous delivery address'); }
 }
 
 export type LatLng = { lat: number; lng: number };
@@ -26,6 +26,7 @@ export type DeliveryRouteQuote =
       ok: false;
       reason: 'address_ambiguous' | 'out_of_coverage' | 'no_api_key' | 'geocode_failed' | 'route_failed' | 'no_restaurant_coords';
       distanceKm?: number;
+      candidates?: Array<LatLng & {address: string; distanceKm: number; fee: number; tentative?: boolean}>;
       message: string;
     };
 
@@ -109,6 +110,21 @@ export class WhatsappDeliveryRoutingService {
         });
       } catch (error) {
         if (!(error instanceof AmbiguousDeliveryAddressError)) throw error;
+        if (error.places.length) {
+          const candidates: Array<LatLng & {address: string; distanceKm: number; fee: number; tentative?: boolean}> = [];
+          for (const place of error.places.slice(0, 5)) {
+            const route = await this.directionsDistance(params.restaurant, place);
+            if (!route || !Number.isFinite(route.distanceKm) || route.distanceKm < 0) continue;
+            const priced = feeFromDistanceKm(route.distanceKm, params.tiers, params.maxKm);
+            if ('outOfCoverage' in priced || !place.formatted) continue;
+            candidates.push({lat:place.lat,lng:place.lng,address:place.formatted,distanceKm:route.distanceKm,fee:priced.fee,...(place.tentative?{tentative:true}:{})});
+          }
+          const nearby = candidates.slice(0, 3);
+          return {ok:false,reason:'address_ambiguous',candidates:nearby,message:nearby.length
+            ? `Encontré ${nearby.length === 1 ? (nearby[0].tentative?'este posible lugar':'este lugar') : `${nearby.length}${nearby.some(place=>place.tentative)?' posibles':''} lugares`} con ese nombre dentro de nuestra cobertura:\n` +
+              nearby.map((place,index)=>`${index+1}. ${place.address}`).join('\n') + '\n¿Cuál es tu dirección? Escribe el número o la dirección completa.'
+            : 'Encontré lugares con ese nombre, pero no pude verificar ninguno dentro de nuestra cobertura. ¿Me compartes la ubicación exacta o la dirección con calle y número?'};
+        }
         return { ok: false, reason: 'address_ambiguous', message:
           canonicalStreetAddress(params.customerAddress)
             ? error.alternatives.length
@@ -202,6 +218,7 @@ export class WhatsappDeliveryRoutingService {
         if (hit) return hit;
       } catch (error) {
         if (!(error instanceof AmbiguousDeliveryAddressError)) throw error;
+        if (error.places.length) throw error;
         ambiguous = true;
         error.alternatives.forEach(value => alternatives.add(value));
       }
@@ -230,6 +247,14 @@ export class WhatsappDeliveryRoutingService {
       // Same numbered destination, alternative separators; never strip letters or zones.
       const plain = street.replace(/[#-]/g, ' ').replace(/\s+/g, ' ').trim();
       out.splice(Math.min(2, out.length), 0, `${plain}, Kennedy, Bogotá, Colombia`, `${plain}, Bogotá, Colombia`);
+    }
+    if (street) {
+      // Two bounded late retries using the same numbered identity in Maps' compact spelling.
+      // Never remove letters, BIS, zones or door numbers to manufacture a match.
+      const aliases: Record<string,string> = {'Avenida Carrera':'Ak.','Avenida Calle':'Ac.','Carrera':'Cra.','Calle':'Cl.','Transversal':'Tv.','Diagonal':'Dg.','Avenida':'Av.'};
+      const compact = street.replace(/^(Avenida Carrera|Avenida Calle|Carrera|Calle|Transversal|Diagonal|Avenida) /,
+        (_all, road: string) => aliases[road] + ' ').replace(/ # /, ' #');
+      out.push(`${compact}, Bogotá, Colombia`, compact);
     }
     return [...new Set(out)];
   }
@@ -293,8 +318,15 @@ export class WhatsappDeliveryRoutingService {
 
       let uncertain = false;
       const alternatives: string[] = [];
+      const acceptedPlaces: Array<LatLng & {formatted?: string;tentative?: boolean}> = [];
       for (const result of data.results) {
-        if (!this.resultMatchesNamedPlace(q, result)) {
+        // Partial POI results are never an automatic destination. A precise local
+        // provider candidate may be shown for explicit customer confirmation only.
+        const tentative = !canonicalStreetAddress(q) &&
+          !/\b(?:calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv|avenida)\.?\s*\d/i.test(q) &&
+          result.partial_match === true && result.geometry?.location_type === 'ROOFTOP' &&
+          Array.isArray(result.types) && result.types.some((type:string)=>['premise','subpremise','establishment','point_of_interest'].includes(type));
+        if (!this.resultMatchesNamedPlace(q, result) && !tentative) {
           uncertain = true;
           const street = canonicalStreetAddress(result.formatted_address || '');
           if (canonicalStreetAddress(q) && street && !result.partial_match && this.acceptGeocodeResult(result, opts.near, opts.maxStraightKm)) alternatives.push(street);
@@ -302,11 +334,20 @@ export class WhatsappDeliveryRoutingService {
         }
         const accepted = this.acceptGeocodeResult(result, opts.near, opts.maxStraightKm);
         if (accepted) {
+          if (!canonicalStreetAddress(q)) {
+            if (!acceptedPlaces.some(place => Math.abs(place.lat-accepted.lat)<0.000001 && Math.abs(place.lng-accepted.lng)<0.000001)) acceptedPlaces.push({...accepted,...(tentative?{tentative:true}:{})});
+            continue;
+          }
           this.geocodeCache.set(cacheKey, { at: Date.now(), value: accepted });
           return accepted;
         }
       }
 
+      if (acceptedPlaces.length > 1 || acceptedPlaces.some(place=>place.tentative)) throw new AmbiguousDeliveryAddressError([], acceptedPlaces.slice(0, 5));
+      if (acceptedPlaces.length === 1) {
+        this.geocodeCache.set(cacheKey, {at:Date.now(),value:acceptedPlaces[0]});
+        return acceptedPlaces[0];
+      }
       if (uncertain) throw new AmbiguousDeliveryAddressError([...new Set(alternatives)].slice(0, 3));
 
       this.logQuote({
@@ -351,7 +392,11 @@ export class WhatsappDeliveryRoutingService {
       return !!route && !!number && streetKey(`${route.long_name || route.short_name || ''} # ${number.long_name || number.short_name || ''}`) === numberedStreet;
     }
     const raw = normalize(splitDeliveryAddressParts(query).base).replace(/^a\s+/,'').replace(/^condomino\b/, 'condominio').split(',')[0];
-    if (!/\b(?:plazuelas?|condominio|conjunto|residencial|urbanizacion|hotel|almacen|edificio|villa)\b/.test(raw)) return true;
+    // A neighborhood centroid is not a verified delivery destination, even when its name matches.
+    const types: string[] = Array.isArray(result.types) ? result.types : [];
+    if (types.some(type => /^(?:political|neighborhood|sublocality(?:_level_\d+)?|locality|administrative_area_level_\d+)$/.test(type)) &&
+        !types.some(type => ['premise','subpremise','street_address','establishment','point_of_interest'].includes(type))) return false;
+    // Bare complex/place names need the same evidence as explicitly labelled destinations.
     const ignored = new Set(['plazuela','plazuelas','condominio','conjunto','residencial','urbanizacion','hotel','almacen','edificio','de','del','la','el','las','los','para','en']);
     const tokens = (raw.match(/[a-z0-9]+/g) || []).filter(token => !ignored.has(token));
     if (!tokens.length) return false;

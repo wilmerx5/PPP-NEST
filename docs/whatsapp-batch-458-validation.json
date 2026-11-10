@@ -1,0 +1,89 @@
+{
+  "baseCommit": "10c67a72953d24876fd11433dfc9c6d43a4fdc44",
+  "batches": [
+    458
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1444.31,
+      "sourceUnchanged": true,
+      "tests": 42527,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.02,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 749,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 530,
+  "tests": 42543,
+  "suites": 530,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "interruptedGlobalAttempt": {
+    "completeInventory": false,
+    "failedTests": 6,
+    "passedTestsBeforeStop": 23346,
+    "reason": "Six allCancel drink regressions from central attribute guard; explicit optional drink rejection corrected before a fresh full run"
+  },
+  "newTests": 56,
+  "fullRouterCases": 44,
+  "centralConfirmationCases": 4,
+  "directGuards": 8,
+  "mockedClosures": 40,
+  "baseline": {
+    "tests": 8,
+    "failed": 8,
+    "passed": 0,
+    "scope": "Valid baseline after correcting fixture attribute property; recap reopens selected flavor in both catalog families, missing/present food"
+  },
+  "focused": [
+    {
+      "tests": 204,
+      "suites": 4,
+      "failed": 0,
+      "scope": "Before final original-wording, ambiguity and availability/hour controls"
+    },
+    {
+      "tests": 260,
+      "suites": 3,
+      "failed": 0,
+      "scope": "Final correction, standalone-drink interruptions and combo-contact interruptions"
+    }
+  ],
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "stagingVerified": true,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Exactly two distinct canonical catalog names after bounded recap prefixes, no competing product/edit/contact decisions",
+    "Missing-product journeys start in building_cart; final-review recaps have both products registered",
+    "Pickup with known fixture contact; no real inference, audio, geocoding or payment reconciliation",
+    "Does not automatically remove duplicate pending attributes in conversations created before this correction",
+    "Direct guards only prove no interception; other 08/11 incident families remain pending"
+  ],
+  "runtimeCommit": "83ff5e002eff5d7b73c4663628290f1acd785705",
+  "deploymentEvidence": "whatsapp-batch-458-staging-deployment.json"
+}

@@ -1,0 +1,17 @@
+{
+  "batch": 465,
+  "baseCommit": "af29055d8d4e3a7702d488352b6ba2d648a6dec7",
+  "newTests": 228,
+  "focusedCompleteTests": 1449,
+  "focusedCompleteSuites": 3,
+  "simulatedClosures": 174,
+  "baselineFailed": 4,
+  "globalValidation": "whatsapp-batch-466-validation.json",
+  "globalTests": 43765,
+  "globalSuites": 538,
+  "sharedGlobalRun": true,
+  "deployed": false,
+  "paidRequests": 0,
+  "scope": "Selected cart line converted to combo; other line, quantity, notes and compatible attributes preserved",
+  "limits": "Bounded references and whole-line conversion; not initial combined pollo y medio/fristas parsing"
+}

@@ -1,0 +1,76 @@
+{
+  "baseCommit": "165ef7f8912e91429226cce52d1ab4c12d157a2b",
+  "batches": [
+    447
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1000.19,
+      "sourceUnchanged": true,
+      "tests": 41816,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.33,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 738,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 519,
+  "tests": 41832,
+  "suites": 519,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 20,
+  "baseline": {
+    "tests": 12,
+    "failed": 12,
+    "passed": 0
+  },
+  "focused": {
+    "tests": 80,
+    "suites": 3,
+    "failed": 0
+  },
+  "finalNew": {
+    "tests": 20,
+    "failed": 0
+  },
+  "mockedClosures": 0,
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "Delivery pending offer only: standalone explicit affirmative, own-location promise, enabled payment and optional courtesy in3/4 clauses normalized to existing atomic offer/contact parser; promise never stored as address;12 router journeys stop at missing-address gate;8 direct normalizer guards",
+  "fixtureCorrections": [
+    "Initial test wrongly expected a required beverage choice; accepting offer retains existing catalog default policy, test corrected without policy change"
+  ],
+  "limits": [
+    "No real order closure: journeys intentionally stop until actual address is supplied",
+    "No original audio or real-model wording evaluated",
+    "Long composition clause before acceptance remains outside pattern",
+    "Direct normalizer guards do not claim full-router handling of every rejected input"
+  ],
+  "stagingVerified": true,
+  "runtimeCommit": "3fc8c3d20783bde0cbe22590dd5bb3fb89b39efc",
+  "compiledJourneys": 12,
+  "compiledMockedClosures": 0
+}

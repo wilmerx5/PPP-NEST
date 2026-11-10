@@ -1,0 +1,79 @@
+{
+  "baseCommit": "82e2bfe88b8b009a697d4d02249072ac7760a1e3",
+  "batches": [
+    457
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1150.6,
+      "sourceUnchanged": true,
+      "tests": 42471,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.85,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 748,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 529,
+  "tests": 42487,
+  "suites": 529,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 51,
+  "fullRouterCases": 40,
+  "directGuards": 11,
+  "mockedClosures": 40,
+  "baseline": [
+    {
+      "scope": "colloquial catalog questions",
+      "tests": 36,
+      "failed": 28,
+      "passed": 8
+    },
+    {
+      "scope": "phone/payment after query correction",
+      "tests": 40,
+      "failed": 4,
+      "passed": 36
+    }
+  ],
+  "focused": {
+    "tests": 228,
+    "suites": 5,
+    "failed": 0
+  },
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "stagingVerified": true,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "limits": [
+    "Phone/payment: two bubbles in awaiting_payment, pickup fixture and preexisting contact; real coalescer, no external geocoding",
+    "Question journeys: two catalog families, mocked agent or disabled; no real inference/audio",
+    "Other 08/11 incident families remain pending"
+  ],
+  "runtimeCommit": "fb032ff5ad39dfa5764ced5b19b3fe728691812e",
+  "deploymentEvidence": "whatsapp-batch-457-staging-deployment.json"
+}

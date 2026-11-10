@@ -1,0 +1,85 @@
+{
+  "baseCommit": "ab922821f9f74c80e750acdb33baafeaae7b06c7",
+  "batches": [
+    451
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 987.91,
+      "sourceUnchanged": true,
+      "tests": 41992,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 10.39,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 742,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 523,
+  "tests": 42008,
+  "suites": 523,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "newTests": 78,
+  "baseline": {
+    "tests": 48,
+    "failed": 48,
+    "passed": 0,
+    "setup": "Corrected precondition accepts pendingMatch or pendingMultiOrder; rerun against published450 sources"
+  },
+  "initialBaselineIssue": "Initial fixture wrongly required pendingMatch when multi queue uses pendingMultiOrder; archived and corrected before baseline",
+  "initialFocused": {
+    "tests": 194,
+    "suites": 4,
+    "failed": 0
+  },
+  "sharedFocused": {
+    "tests": 274,
+    "suites": 7,
+    "failed": 0
+  },
+  "finalFocused": {
+    "tests": 221,
+    "suites": 6,
+    "failed": 0
+  },
+  "scriptTests": 92,
+  "externalOrders": 0,
+  "newMockedClosures": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "scope": "62 full-router checks and16 direct guards: explicit correction redirects single-family one-unit list/queue to available combos; cart/payment preserved; full name or code selects correct SKU; repeat and ambiguous yes do not duplicate; exact-name purchase respects closed hours",
+  "limits": [
+    "Only3 bounded correction phrases and single-word family, one unit, no competing notes/options/other queued products",
+    "Combo fixtures have no attributes; repaired-list drink/arepa selection and full DTO closure remain pending",
+    "48 journeys stop at awaiting_address; no real geocoding or order closure claimed",
+    "Original audio and real model wording not evaluated",
+    "Direct exclusion guards do not prove downstream resolution"
+  ],
+  "stagingVerified": true,
+  "productionChanged": false,
+  "kamppoChanged": false,
+  "runtimeCommit": "36428b1dcb08ae0a22796ebf5a00493b38f612ab",
+  "compiledJourneys": 62,
+  "compiledDirectGuards": 16,
+  "compiledMockedClosures": 0
+}
