@@ -1281,6 +1281,7 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    text = await this.captureKnownRecipientAddressEnvelope(text, conv);
     text = this.normalizeColloquialCatalogQuestion(text) || text;
 
     // A pending dish decision and any contact form must be validated before
@@ -24034,6 +24035,39 @@ export class WhatsappOrchestratorService {
     if (session.orderType!=='delivery' || this.isPinnedDeliveryAddress(session)) return false;
     const address=(session.address || '').replace(/\s*\(ref\..*$/i,'').trim();
     return /^(?:calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv|avenida)\.?\s*\d{1,3}[a-z]?(?:\s+sur)?(?:\s*#?\s*\d{1,3}[a-z]?)?(?:\s*(?:,|de)\s*[\p{L} ]+)?[ .]*$/iu.test(address);
+  }
+
+  /** Consume only a bounded street/contact form matching the already-known recipient. */
+  private async captureKnownRecipientAddressEnvelope(raw: string, conv: WhatsappConversation): Promise<string> {
+    const session = this.conversationService.getSession(conv);
+    if (conv.humanTakeover || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        !session.cart.length || /[¿?\n]/.test(raw)) return raw;
+    const street = /^(?:calle|cll?|carrera|cra|kr|diagonal|diag|dg|transversal|avenida)\b/i;
+    const text = raw.replace(/^(?:s[ií](?:[,!.]?\s*(?:porfa|por favor))?|claro|listo|dale|porfa|por favor)[,!.\s]+(?=(?:calle|cll?|carrera|cra|kr|diagonal|diag|dg|transversal|avenida)\b)/i, '');
+    if (!street.test(text) || !this.isStrongExplicitAddress(text)) return raw;
+    const name = conv.customerName || '';
+    if (!isUsableWhatsappCustomerName(name) || this.looksLikeAddressRejectingPersonName(name) ||
+        name.trim().split(/\s+/).length < 2) return text;
+    const phones = [...text.matchAll(/(?<!\d)(?:\+?57[\s.-]*)?3(?:[\s().-]*\d){9}(?!\d)/g)]
+      .filter(match => this.looksLikePhoneNumber(match[0]));
+    if (phones.length !== 1) return text;
+    const phone = phones[0];
+    const after = text.slice(phone.index! + phone[0].length).replace(/^[,;\s]+|[.!;\s]+$/g, '');
+    const before = text.slice(0, phone.index!).trimEnd();
+    const unlabeled = before.replace(/\s+(?:celular|tel[eé]fono|whatsapp)\s*:?$/i, '');
+    let address: string;
+    if (this.normalizeForMatch(after) === this.normalizeForMatch(name)) address = unlabeled;
+    else {
+      if (after) return text;
+      const candidate = unlabeled.match(/(?:\d|[,;])\s+([\p{L}][\p{L}\s.'’-]{1,80})$/u);
+      if (!candidate || this.normalizeForMatch(candidate[1]) !== this.normalizeForMatch(name)) return text;
+      const cut = candidate.index! + candidate[0].indexOf(candidate[1]);
+      address = unlabeled.slice(0, cut).trimEnd();
+    }
+    const contactPhone = this.normalizeContactPhone(phone[0], conv.phoneE164);
+    if (!contactPhone || !this.isStrongExplicitAddress(address)) return text;
+    await this.conversationService.saveSession(conv, { ...session, contactPhone, phoneConfirmed: true });
+    return address;
   }
 
   private normalizeDeliveryAddress(raw: string): string {

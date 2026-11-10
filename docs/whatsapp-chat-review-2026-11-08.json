@@ -248,7 +248,10 @@
         "182",
         "113"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "partially_fixed_known_recipient_candidate_validated_not_deployed",
+      "validation": "whatsapp-batch-471-validation.json",
+      "scope": "Single-line explicit street with active cart; bounded affirmative/courtesy prefix; exactly one valid Colombian contact phone plus a matching already-known recipient of at least two words. Captures phone and returns street without duplicating known identity. Three catalogs and recipient names, agent off/mock, building/address/final-confirmation stages, national/international phone forms, before/after recipient placement and five prefixes. Cart, units, name, phone, response, and final DTO checked with routing and orders mocked.",
+      "remaining": "Unknown/different or single-word unlabelled recipients and other address forms still require reproduction and clarification design; not a universal contact parser."
     },
     {
       "id": "N08-14",
@@ -605,6 +608,13 @@
     {
       "batch": 470,
       "validation": "whatsapp-batch-470-validation.json",
+      "stagingVerified": false,
+      "engineChanged": true,
+      "deployed": false
+    },
+    {
+      "batch": 471,
+      "validation": "whatsapp-batch-471-validation.json",
       "stagingVerified": false,
       "engineChanged": true,
       "deployed": false
