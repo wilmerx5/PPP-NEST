@@ -1,0 +1,89 @@
+{
+  "baseCommit": "cfaef93de6428fbd16ed4f8d26905a2c6853e47d",
+  "batches": [
+    481
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 2198.59,
+      "sourceUnchanged": true,
+      "tests": 48587,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 11.28,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 774,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 554,
+  "tests": 48603,
+  "suites": 554,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 481,
+  "engineChanged": true,
+  "finding": "N08-15",
+  "findingPartiallyCovered": true,
+  "baseline": {
+    "passed": 0,
+    "failed": 4,
+    "scope": "Confirmed prelude creates real pendingCategoryBrowse or pendingCompositionAsk before bare2 selects wrong location."
+  },
+  "newTests": 296,
+  "simulatedClosures": 296,
+  "caseBreakdown": {
+    "initialJourneys": 4,
+    "menuLocationMatrix": 288,
+    "paymentOwnership": 4
+  },
+  "related": {
+    "tests": 824,
+    "suites": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  "iterations": [
+    "Exploratory4fail:2 category failures real;2 composition assertions initially invalid because query already answered; preserve report separately.",
+    "Changed composition prelude to named Wrap description then y el otro; assert pendingCompositionAsk exists. Confirmed baseline4fail.",
+    "Add category/composition to existing location numeric/ordinal conflict guard; focus4closures pass.",
+    "First related748pass72fail: after address completion, named category ignored by checkout, only payment prompt.",
+    "Add bounded named-category read-only continuation in active checkout states, exact category name, no competing purchase/edit/price/composition; lists products as bullets without opening purchase selector, preserves checkout and cart. Category focus1pass291filtered.",
+    "Add4 payment-number controls; final related824/4 pass."
+  ],
+  "nodeScriptTests": 92,
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "deployed": false,
+  "sourceSnapshotSha256": "a63c2b29833bcab903e5c3869f9706f76b2418ee79474164f3deda1182641482",
+  "scope": "Location choice guards category/composition owners. Named category after checkout advances may answer a retained category browse read-only, clears browse only and resumes current step without buying.3 dishes,2 off/mock modes,6 numeric/ordinals,2 query types,2 resolution orders,2 quantities; all router-derived, external ports mocked.",
+  "limits": [
+    "External ports mocked; no live model, Google, Meta or real orders.",
+    "Numeric/ordinal conflict guard now covers category/composition; not every selector/distribution/mixed form or historical wrong addition.",
+    "Named category continuation is exact, read-only and bounded to active checkout without competing purchase/edit/price/composition.",
+    "All new journeys derive lists through the router and close one mocked DTO; no historic order repair."
+  ]
+}

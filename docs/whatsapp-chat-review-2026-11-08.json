@@ -291,15 +291,16 @@
       "evidence": "Tras añadir un combo por error, «es solo un combo» abre otra lista;1 produce«varias listas pendientes» y el nombre del plato se captura como dirección.",
       "expectedRegression": "Una corrección debe tener un único selector activo; la respuesta identifica el producto y retoma checkout sin modificar dirección. No eliminar líneas distintas por suposición.",
       "orderReferences": [],
-      "status": "partially_fixed_location_price_ownership_validated_not_deployed",
-      "validation": "whatsapp-batch-480-validation.json",
-      "scope": "Numeric/ordinal place selection now guards concurrent price inquiry. Labelled explicit price can resume after checkout state progression when cart unchanged and both origin/current states active; bare numbers retain state-based invalidation. Matrix uses actual router+delivery routing service, fetch/Directions/inference/order persistence mocked. Full-address choice and labelled price/flavor resolve in either order; fee/coordinates/internal point/cart preserved.",
-      "remaining": "Other selector combinations, category/composition/distribution owners and historical erroneous addition still require complete router reproductions. Not every active-state transition or colloquial address tested. No automatic keep-only deletion or historic cleanup.",
+      "status": "partially_fixed_location_menu_ownership_validated_not_deployed",
+      "validation": "whatsapp-batch-481-validation.json",
+      "scope": "Location choice guards category/composition owners. Named category after checkout advances may answer a retained category browse read-only, clears browse only and resumes current step without buying.3 dishes,2 off/mock modes,6 numeric/ordinals,2 query types,2 resolution orders,2 quantities; all router-derived, external ports mocked.",
+      "remaining": "Other selector/distribution combinations, mixed forms and the complete historical erroneous-addition replay remain. No automatic keep-only deletion or historical cleanup.",
       "explicitQuantityValidation": "whatsapp-batch-478-validation.json",
       "optionPriceValidation": "whatsapp-batch-479-validation.json",
       "previousValidation": "whatsapp-batch-477-validation.json",
       "locationPriceValidation": "whatsapp-batch-480-validation.json",
-      "previousProductionDeployment": "whatsapp-batch-479-production-deployment.json"
+      "previousProductionDeployment": "whatsapp-batch-479-production-deployment.json",
+      "locationMenuValidation": "whatsapp-batch-481-validation.json"
     },
     {
       "id": "N08-16",
@@ -770,6 +771,14 @@
       "batch": 480,
       "finding": "N08-15",
       "validation": "whatsapp-batch-480-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 481,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-481-validation.json",
       "engineChanged": true,
       "stagingVerified": false,
       "deployed": false

@@ -1,3 +1,13 @@
+## Tanda 481 — ubicación, categoría y composición (rama validada; sin desplegar)
+
+Sobre cfaef93d se reproducen4 fallos de elección de ubicación con categoría/composición pendientes. El guard numérico/ordinal conserva ambos propietarios. La ampliación detecta72 fallos de continuación por categoría después de completar dirección; ahora una categoría exacta retenida puede responderse de forma informativa durante checkout, sin abrir lista de compra ni consumir el número del pago. Se conserva carrito, dirección, coordenadas, tarifa y punto interno.
+
+296 pruebas nuevas/296 cierres DTO simulados:4 iniciales,288 de matriz (3 platos, agente off/mock,6 respuestas cortas, categoría/composición,2 órdenes de resolución y cantidades1/2) y4 controles de pago. Preámbulos por router, sin sembrar pendientes; dirección final opuesta al número ambiguo. Relacionadas824/4 aprobadas. Exploración inicial corrigió2 expectativas de composición antes del baseline confirmado; primer related748 aprobadas/72 fallos; foco de categoría1 aprobada/291 filtradas. Evidencia conserva esos intentos.
+
+Global48.603/554 sin fallos ni omitidas,774 fuentes congeladas e inventario exacto. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-481-validation.json.0 inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos.
+
+N08-15 sigue parcial para otros selectores/repartos, formularios mixtos y replay de adición histórica. No reparación histórica ni prueba de modelo vivo. Publicar rama no equivale a desplegar: última producción verificada479 y servidor staging462. El usuario pide migrar todo lo pendiente399–481 a Kamppo, adaptado por restaurante; esa migración continúa en worktree aislado y requiere validación nativa antes de publicación.
+
 ## Tanda 480 — ubicación y precio con listas competidoras (rama de staging validada; sin desplegar)
 
 Sobre4ab7b970,4 recorridos por router reproducen2 fallos y2 controles ya protegidos: con ubicaciones y consulta de precio pendientes, «2» elige silenciosamente la segunda dirección; con sabor pendiente ya se pedía dirección completa. Se incorpora pendingPriceInquiry al guard existente de selección numérica/ordinal de lugares. No cambia carrito, dirección ni rutas ante esa respuesta ambigua; la dirección completa ofrecida sigue siendo una elección explícita.

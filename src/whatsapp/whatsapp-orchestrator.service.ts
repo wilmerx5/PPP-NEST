@@ -1285,6 +1285,7 @@ export class WhatsappOrchestratorService {
 
     if (await this.tryResolveMappedDeliveryPoint(conv, msg.waId, text)) return;
     if (await this.tryResolveNearbyDeliveryPlace(conv, msg.waId, text)) return;
+    if (await this.tryResolveNamedCategoryInterruption(conv, msg.waId, text)) return;
     if (await this.tryClarifyUnknownRecipientEnvelope(conv, msg.waId, text)) return;
     text = await this.captureKnownRecipientAddressEnvelope(text, conv);
     text = this.normalizeColloquialCatalogQuestion(text) || text;
@@ -24143,6 +24144,26 @@ export class WhatsappOrchestratorService {
     return false;
   }
 
+  /** A named category can finish a read-only browse after checkout advances, without opening a purchase list. */
+  private async tryResolveNamedCategoryInterruption(conv: WhatsappConversation, waId: string, text: string): Promise<boolean> {
+    const session = this.conversationService.getSession(conv);
+    if (conv.humanTakeover || !session.cart.length || !session.pendingCategoryBrowse?.categories.length ||
+      !['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+      session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingPriceInquiry ||
+      session.pendingCompositionAsk || CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const matches = session.pendingCategoryBrowse.categories.filter(category => this.normalizeForMatch(category) === this.normalizeForMatch(text));
+    if (matches.length !== 1 || /[¿?;\n]/.test(text)) return false;
+    const products = (await this.catalogService.getMenuProducts()).filter(product => product.categoryName === matches[0] && product.availableNow !== false);
+    if (!products.length) return false;
+    const next = {...session,pendingCategoryBrowse:undefined};
+    await this.conversationService.saveSession(conv,next);
+    const reminder = this.formatInterruptedStepReminder(conv,next);
+    await this.reply(conv,waId,`En *${matches[0]}* tenemos:\n` +
+      products.map(product => `• *${product.name}* · ${this.catalogService.formatMoney(product.price)}`).join('\n') +
+      '\n\nPara agregar un producto, escribe su nombre.' + (reminder ? `\n\n${reminder}` : ''));
+    return true;
+  }
+
   private formatNearbyDeliveryPlaces(session: WhatsappSessionData): string {
     const candidates = session.pendingDeliveryCandidates || [];
     return `Encontré ${candidates.length === 1 ? (candidates[0].tentative?'este posible lugar':'este lugar') : `${candidates.length}${candidates.some(place=>place.tentative)?' posibles':''} lugares`} con ese nombre dentro de nuestra cobertura:\n` +
@@ -24179,7 +24200,7 @@ export class WhatsappOrchestratorService {
       await this.reply(conv,waId,this.formatNearbyDeliveryPlaces(session));return true;
     }
     if (selected || ordinal || reference || exact >= 0) {
-      if ((selected || ordinal) && (session.pendingPriceInquiry || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingAddOffer || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))) {
+      if ((selected || ordinal) && (session.pendingCategoryBrowse || session.pendingCompositionAsk || session.pendingPriceInquiry || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingAddOffer || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))) {
         await this.reply(conv,waId,'Para evitar confundir las listas, escribe la dirección completa del lugar que elegiste. El pedido sigue igual.');return true;
       }
       const candidate = candidates[index];
