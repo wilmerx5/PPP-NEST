@@ -1,3 +1,13 @@
+## Tanda 468 — contexto de consulta al comprar el combo compuesto (solo regresiones; rama de staging, sin desplegar)
+
+N08-10 no se reproduce en el candidato actual a16e05ec:8/8 recorridos iniciales consultan el precio del arroz y luego piden«el combo con medio pollo/pollor frito/broaster». Se obtiene el combo de arroz con la preparación correcta y cierre DTO simulado. No se atribuye una reparación nueva ni a un modelo específico. Preludio derivado,no replay íntegro del chat original.
+
+80 regresiones nuevas:8 controles iniciales y72 combinaciones de3 catálogos(arroz PPP,bowl y ensalada sintéticos),consultas de precio/qué trae/cómo viene,pollo/pollor,Frito/Broaster y agente off/mock. La consulta no añade productos;la compra elíptica conserva la familia consultada y la preparación. Los80 casos registran un DTO simulado con el SKU correcto;72 comparan además las opciones finales con un snapshot anterior al cierre. Solo recogida y contacto conocidos,sin carrito previo. Primera ampliación tuvo72 fallos de aserción al consultar el carrito ya limpiado después de confirmar;se guarda el snapshot antes de cerrar. No se cambia el motor por esos fallos de fixture.
+
+80/1 y446/9 relacionadas aprobadas,sin fallos ni omitidas;TypeScript general/build y92 scripts aprobados. Las759 fuentes de467 coinciden byte a byte:se reutiliza explícitamente su global43.933/539 y se añade un solo spec. No se ejecutó ni se afirma un nuevo global combinado. Evidencia whatsapp-batch-468-validation.json.0 inferencias pagadas,Meta u órdenes externas;motor,modelos,configuración y presupuesto intactos.
+
+Límites:consultas derivadas seguidas de compra,carrito inicialmente vacío y3 familias;no toda conversación intercalada,carrito previo,errata o idioma. Persiste una nota redundante«con medio pollo…»aunque SKU y preparación son correctos;queda como limpieza de N08-23,no como fallo de selección actual. Sin despliegue:últimos runtimes verificados staging462,producción446 yKamppo398. Próximo N08-11:«era un combo…»después de confirmar no debe abrir una compra nueva ni afirmar que modificó la orden.
+
 ## Tanda 467 — preparación del compuesto y del producto aparte (validada en rama de staging; sin desplegar)
 
 N08-09 reproducido sobre e499fd1e:de8 recorridos iniciales,6 fallan y2 pasan. Con arroz primero,el atributo Pollo toma Broaster del medio aparte;al pedir combo,se elige un combo de pollo. Con el orden invertido,el arroz sin combo ya funcionaba en esos2 controles. No se atribuye a un modelo:agente off/mock y puertos externos simulados.

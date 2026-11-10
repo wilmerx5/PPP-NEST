@@ -203,7 +203,10 @@
       "orderReferences": [
         "62"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "historical_issue_not_reproduced_candidate_router_regressions_added",
+      "regressionBatch": 468,
+      "validation": "whatsapp-batch-468-validation.json",
+      "scope": "80 derived router journeys: three catalog families, three inquiry types, pollo/pollor, two preparations, off/mock, empty cart. All close with correct SKU. No engine change or deployment; not full original transcript replay."
     },
     {
       "id": "N08-11",
@@ -364,7 +367,8 @@
         "172",
         "187"
       ],
-      "status": "observed_in_transcript_not_reproduced_on_current_staging"
+      "status": "observed_in_transcript_not_reproduced_on_current_staging",
+      "candidateObservation468": "Correct compound SKU and preparation retain a redundant con medio pollo preparation note. No note-cleanup correction claimed."
     },
     {
       "id": "N08-24",
@@ -578,6 +582,13 @@
       "batch": 467,
       "validation": "whatsapp-batch-467-validation.json",
       "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 468,
+      "validation": "whatsapp-batch-468-validation.json",
+      "stagingVerified": false,
+      "engineChanged": false,
       "deployed": false
     }
   ]
