@@ -1281,6 +1281,7 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (await this.tryClarifyUnknownRecipientEnvelope(conv, msg.waId, text)) return;
     text = await this.captureKnownRecipientAddressEnvelope(text, conv);
     text = this.normalizeColloquialCatalogQuestion(text) || text;
 
@@ -24037,6 +24038,44 @@ export class WhatsappOrchestratorService {
     return /^(?:calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv|avenida)\.?\s*\d{1,3}[a-z]?(?:\s+sur)?(?:\s*#?\s*\d{1,3}[a-z]?)?(?:\s*(?:,|de)\s*[\p{L} ]+)?[ .]*$/iu.test(address);
   }
 
+  private stripTrailingPhoneFieldLabel(text: string): string {
+    return text.replace(/\s+(?:(?:(?:mi|el)\s+)?(?:cel(?:ular)?|tel(?:[eé]fono)?|whatsapp|wa|n[uú]mero)(?:\s+es)?|(?:llamar\s+)?al)\s*:?$/i, '').trimEnd();
+  }
+
+  /** A new bare label in a street/contact form needs a role before checkout. */
+  private async tryClarifyUnknownRecipientEnvelope(conv: WhatsappConversation, waId: string, raw: string): Promise<boolean> {
+    const session = this.conversationService.getSession(conv);
+    if (conv.humanTakeover || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        !session.cart.length || session.pendingRecipientOrPlace || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingAddOffer ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) || /[¿?;\n]/.test(raw) || /(?:\ba nombre\b|\bmi nombre es\b|\bme llamo\b|\bnombre\s*:)/i.test(raw)) return false;
+    const text = raw.replace(/^(?:s[ií](?:[,!.]?\s*(?:porfa|por favor))?|claro|listo|dale|porfa|por favor)[,!.\s]+(?=(?:calle|cll?|carrera|cra|kr|diagonal|diag|dg|transversal|avenida)\b)/i, '');
+    if (!/^(?:calle|cll?|carrera|cra|kr|diagonal|diag|dg|transversal|avenida)\b/i.test(text) || !this.isStrongExplicitAddress(text)) return false;
+    const phones = [...text.matchAll(/(?<!\d)(?:\+?57[\s.-]*)?3(?:[\s().-]*\d){9}(?!\d)/g)].filter(match => this.looksLikePhoneNumber(match[0]));
+    if (phones.length !== 1) return false;
+    const phone = phones[0];
+    const before = this.stripTrailingPhoneFieldLabel(text.slice(0, phone.index!).trimEnd());
+    const after = text.slice(phone.index! + phone[0].length).replace(/^[,;\s]+|[.!;\s]+$/g, '');
+    let label = after, address = before;
+    if (!after) {
+      const tail = before.match(/(?:\d|[,;])\s+([\p{L}][\p{L}\s.'’-]{1,80})$/u);
+      if (!tail) return false;
+      label = tail[1].trim();
+      address = before.slice(0, tail.index! + tail[0].indexOf(tail[1])).trimEnd();
+    }
+    if (!isUsableWhatsappCustomerName(label) || label.split(/\s+/).length > 6 || /\by\b/.test(this.normalizeForMatch(label)) || this.looksLikeAddressRejectingPersonName(label) ||
+        /\b(?:frente|junto|cerca|porteria|entrada|esquina|puerta|porton)\b/.test(this.normalizeForMatch(label)) ||
+        this.normalizeForMatch(label) === this.normalizeForMatch(conv.customerName || '') || !this.isStrongExplicitAddress(address)) return false;
+    if (this.catalogService.productFullyNamedIn(label, await this.catalogService.getMenuProducts())) return false;
+    const contactPhone = this.normalizeContactPhone(phone[0], conv.phoneE164);
+    if (!contactPhone) return false;
+    const next = this.withDeliveryAddress({...session, address:undefined, addressConfirmed:false, deliveryLat:null, deliveryLng:null,
+      deliveryFeeCalculated:null, deliveryDistanceKm:null, deliveryOutOfCoverage:false, pendingDeliveryPlace:undefined, pendingDeliveryUnit:undefined}, address);
+    Object.assign(next, {contactPhone,phoneConfirmed:true,pendingRecipientOrPlace:label,pendingRecipientOrPlaceAddress:address,pendingRecipientOrPlacePin:undefined});
+    await this.conversationService.saveSession(conv, next, 'awaiting_name');
+    await this.reply(conv, waId, `¿*${label}* es el nombre para el pedido o una referencia del lugar? Ya guardé la calle y el teléfono; el pedido sigue sin confirmar.`);
+    return true;
+  }
+
   /** Consume only a bounded street/contact form matching the already-known recipient. */
   private async captureKnownRecipientAddressEnvelope(raw: string, conv: WhatsappConversation): Promise<string> {
     const session = this.conversationService.getSession(conv);
@@ -24054,7 +24093,7 @@ export class WhatsappOrchestratorService {
     const phone = phones[0];
     const after = text.slice(phone.index! + phone[0].length).replace(/^[,;\s]+|[.!;\s]+$/g, '');
     const before = text.slice(0, phone.index!).trimEnd();
-    const unlabeled = before.replace(/\s+(?:celular|tel[eé]fono|whatsapp)\s*:?$/i, '');
+    const unlabeled = this.stripTrailingPhoneFieldLabel(before);
     let address: string;
     if (this.normalizeForMatch(after) === this.normalizeForMatch(name)) address = unlabeled;
     else {
@@ -25438,8 +25477,8 @@ export class WhatsappOrchestratorService {
     const label = session.pendingRecipientOrPlace;
     if (!label || !session.cart.length || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
     const said = this.normalizeForMatch(text).replace(/[.!]+$/, '').trim();
-    const nameRole = /^(?:es |ese es |eso es )?(?:mi nombre|el nombre|el destinatario)$/.test(said);
-    const placeRole = /^(?:es |ese es |eso es )?(?:el barrio|el conjunto|la urbanizacion|el lugar de entrega|la casa|una referencia|la referencia(?: de entrega)?)$/.test(said);
+    const nameRole = /^(?:es |ese es |eso es )?(?:mi nombre|el nombre|el destinatario)$/.test(said) || /^(?:es )?(?:nombre|destinatario)$/.test(said);
+    const placeRole = /^(?:es |ese es |eso es )?(?:el barrio|el conjunto|la urbanizacion|el lugar de entrega|la casa|una referencia|la referencia(?: de entrega)?)$/.test(said) || /^(?:es )?(?:referencia|barrio|conjunto)$/.test(said);
     if ((nameRole || placeRole) && /[¿?]/.test(text)) {
       await this.reply(conv, waId, `Necesito que aclares si *${label}* es tu nombre o el barrio/conjunto de entrega. El pedido sigue igual.`);
       return true;

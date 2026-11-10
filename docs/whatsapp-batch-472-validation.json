@@ -1,0 +1,121 @@
+{
+  "baseCommit": "f1e506003e3cc58091e7c71c5bf06ec6f37b86f9",
+  "batches": [
+    472
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 2694.12,
+      "sourceUnchanged": true,
+      "tests": 45016,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 14.57,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 764,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 544,
+  "tests": 45032,
+  "suites": 544,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 472,
+  "engineChanged": true,
+  "finding": "N08-13",
+  "findingPartiallyCovered": true,
+  "baseline": {
+    "passed": 0,
+    "failed": 4
+  },
+  "initialFocus": {
+    "passed": 4,
+    "failed": 0
+  },
+  "newTests": 363,
+  "simulatedClosures": 344,
+  "related": {
+    "tests": 1009,
+    "suites": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "caseBreakdown": {
+    "initialJourneys": 4,
+    "unknownRecipientMatrix": 288,
+    "paymentAndCancelInterruptions": 12,
+    "defensiveHelperControls": 13,
+    "briefRoleJourneys": 10,
+    "personalPhoneFieldJourneys": 36
+  },
+  "sourceSnapshotSha256": "4490ca8c0d68e5356f7de56c2913568999ff13d1b2403e73d71b0737c16b173e",
+  "nodeScriptTests": 92,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "modelsChanged": false,
+  "budgetChanged": false,
+  "configurationChanged": false,
+  "deployed": false,
+  "iterations": [
+    {
+      "report": "expanded-related",
+      "passed": 932,
+      "failed": 6,
+      "reason": "Fixture expected nonexistent DTO paymentMethod; corrected to session method and DTO address payment label."
+    },
+    {
+      "report": "brief-baseline",
+      "failed": 4,
+      "reason": "Bare nombre/referencia did not resolve pending role."
+    },
+    {
+      "report": "brief-focus",
+      "passed": 10,
+      "skippedByFilter": 317
+    },
+    {
+      "report": "post-global-related",
+      "passed": 1009,
+      "failed": 0,
+      "suites": 6
+    }
+  ],
+  "incompleteGlobalAttempts": [
+    {
+      "approved": false,
+      "reason": "Stopped before source edits to add brief role replies; archived manifest and partial journal."
+    },
+    {
+      "approved": false,
+      "failed": 4,
+      "reason": "Legacy dictated-address journeys interpreted residual mi before teléfono as a recipient. Stopped before edits; shared phone-field label stripper and 36 journeys added. Archived manifest and journal."
+    }
+  ],
+  "scope": "Active cart, single-line explicit street plus one valid Colombian phone and plausible unknown unlabelled recipient/reference. Ask role, retain street and phone, block premature confirmation, resolve short role answers, preserve payment/cancellation. Known-recipient path shares phone-field label stripping. Three catalogs, agent off/mock, multiple checkout stages and final mocked DTOs.",
+  "limits": [
+    "Derived sanitized preludes, not full original transcript replay; stored-name variants seeded defensively after checkout prelude.",
+    "Single-line explicit street and exactly one valid phone; not all contact formats, languages or mixed purchases.",
+    "Genuine pending product choices excluded; defensive exclusions tested at helper level.",
+    "Routing, inference and persistence mocked; no live model, audio, maps or delivery QA.",
+    "No persisted-order edits or historical cleanup. N08-13 remains bounded/partial; N08-14 precise delivery points remains pending."
+  ]
+}

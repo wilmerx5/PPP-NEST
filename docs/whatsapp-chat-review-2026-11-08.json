@@ -248,10 +248,10 @@
         "182",
         "113"
       ],
-      "status": "partially_fixed_known_recipient_candidate_validated_not_deployed",
-      "validation": "whatsapp-batch-471-validation.json",
-      "scope": "Single-line explicit street with active cart; bounded affirmative/courtesy prefix; exactly one valid Colombian contact phone plus a matching already-known recipient of at least two words. Captures phone and returns street without duplicating known identity. Three catalogs and recipient names, agent off/mock, building/address/final-confirmation stages, national/international phone forms, before/after recipient placement and five prefixes. Cart, units, name, phone, response, and final DTO checked with routing and orders mocked.",
-      "remaining": "Unknown/different or single-word unlabelled recipients and other address forms still require reproduction and clarification design; not a universal contact parser."
+      "status": "partially_fixed_known_and_unknown_recipient_candidate_validated_not_deployed",
+      "validation": "whatsapp-batch-472-validation.json",
+      "scope": "Active cart, single-line explicit street plus one valid Colombian phone and plausible unknown unlabelled recipient/reference. Ask role, retain street and phone, block premature confirmation, resolve short role answers, preserve payment/cancellation. Known-recipient path shares phone-field label stripping. Three catalogs, agent off/mock, multiple checkout stages and final mocked DTOs.",
+      "remaining": "Other contact/address formats, multiple or missing phones, multiline messages and genuine pending purchase choices remain outside this bounded clarification. Not a universal contact parser."
     },
     {
       "id": "N08-14",
@@ -617,6 +617,14 @@
       "validation": "whatsapp-batch-471-validation.json",
       "stagingVerified": false,
       "engineChanged": true,
+      "deployed": false
+    },
+    {
+      "batch": 472,
+      "finding": "N08-13",
+      "validation": "whatsapp-batch-472-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
       "deployed": false
     }
   ]
