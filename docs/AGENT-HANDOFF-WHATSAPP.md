@@ -1,3 +1,11 @@
+## Tanda 492 — corregir cantidad con sabores parcialmente elegidos (rama staging)
+
+72 recorridos nuevos sobre414da18a:3 postres sintéticos, agente off/mock,1/2 unidades ya asignadas a Mango, cantidad inicial3/4 corregida a2/4 o3/5 y3 frases («mejor que sean», «cambia la cantidad a», «mejor solo»). Se crea el reparto parcial por mensajes reales del router, sin sembrar pendientes. La sopa existente permanece intacta; se conservan partes elegidas tras corregir cantidad y consultar precio, se rechaza Mora sin mutaciones y «los otros con lulo» completa cantidades exactas hasta una única orden DTO y total correcto.
+
+Los36 iniciales pasan; ampliación a72 con2 unidades asignadas también pasa. Relacionadas176/3,0 fallos/omitidas; TypeScript general aprobado. No se reproduce defecto nuevo ni se modifica runtime. Global491 (49.020/564) sigue como evidencia previa, no repetida. Evidencia whatsapp-batch-492-validation.json.
+
+0 inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos. Pendiente: total corregido igual o menor que lo ya asignado, cancelar/cambiar reparto parcial, mensajes consecutivos de acceso/pin y posconfirmación. N08-14/N08-15 siguen parciales. Solo publicación en rama staging, sin despliegue ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
 ## Tanda 491 — conservar acceso tras fallo de ruta y recuperación por pin (rama staging)
 
 Sobre832e0f05:36 recorridos iniciales pasan (pin tras propuesta de lugar, interrupción por no/Nequi y cancelación seguida de nueva compra). Al añadir12 casos de ruta no disponible/fuera de cobertura al seleccionar el candidato, primero se corrige una aserción demasiado estricta null/undefined. Luego se reproduce el defecto real: la orden final pierde el apartamento tras enviar un pin para recuperar la ruta fallida.

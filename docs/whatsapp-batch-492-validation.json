@@ -1,0 +1,36 @@
+{
+  "batch": 492,
+  "baseCommit": "414da18af6b5b0a5785ce179f3c4aca242916e1d",
+  "engineChanged": false,
+  "newTests": 72,
+  "simulatedClosures": 72,
+  "related": {
+    "tests": 176,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typescript": {
+    "exitCode": 0,
+    "command": "node node_modules/typescript/bin/tsc --noEmit --incremental false"
+  },
+  "testSha256": "150396c307d1e1cf50b61386dadf5452b25c3fd17619ca7e01f06c1342e0d878",
+  "scope": "3 dessert catalogs x agent off/mock x1/2 units assigned to Mango x corrected total assigned+1/assigned+3 x3 correction phrases. Existing soup preserved. Partial distribution survives quantity correction and price inquiry, unknown remaining flavor does not mutate cart or pending parts. Explicit remaining Lulo completes exact final quantities, total and single order DTO.",
+  "iterations": [
+    "Initial36pass with one assigned unit; expanded to72 with two assigned units and total3/5. Related176/3pass. No runtime defect reproduced."
+  ],
+  "limits": [
+    "Corrected total remains greater than assigned quantity; equal/smaller totals remain pending coverage.",
+    "No cancellation of partial split, concurrent messages or paid/live inference.",
+    "Global491 (49020/564) is prior runtime evidence, not rerun for test-only change.",
+    "N08-14/N08-15 remain partial."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false
+}

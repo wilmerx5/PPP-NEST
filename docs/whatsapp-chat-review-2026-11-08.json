@@ -874,6 +874,15 @@
       "stagingVerified": false,
       "deployed": false,
       "result": "Fixed lost apartment after selected-candidate route failure then bare-pin recovery.48 new journeys covering pin, cancellation/new purchase and route failure; full49020/564pass."
+    },
+    {
+      "batch": 492,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-492-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "72 quantity correction journeys after partial flavor assignment. Preserve staged choices, reject unknown remaining flavor, finish exact counts and total. Equal/below assigned totals not yet covered."
     }
   ],
   "subsequentLocationReports": [
