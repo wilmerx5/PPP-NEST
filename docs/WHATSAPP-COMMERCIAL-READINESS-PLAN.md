@@ -1,3 +1,11 @@
+## Tanda 501 — pins repetidos y acceso después de confirmar
+
+36 regresiones nuevas cubren dos pins consecutivos, coordenadas solas, nombre de conjunto o dirección adjunta, seguidos de torre/apartamento y consulta del destino. Tres direcciones, agente off/mock y estados completed/closed. Se verifica sesión y destino originales, respuesta de revisión del pedido registrado y ausencia de reapertura u orden nueva.
+
+Relacionadas72/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. La global500 (49.674/573) permanece como evidencia previa. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Pendiente corrección retrospectiva mezclada con una compra nueva, retirada de cantidades específicas de grupos y concurrencia. Cambiar efectivamente el destino de la orden registrada requiere revisión del restaurante. N08-14/N08-15 siguen parciales. Producción498 f720ede1 y servidor staging49875ca2f52 son los últimos despliegues verificados. Kamppo481.
+
 ## Tanda 500 — dirección y pin después de confirmar
 
 36 regresiones nuevas cubren secuencias de calle, torre/apartamento y consulta del destino, más pins nativos de WhatsApp después de completed/closed, tres direcciones y agente off/mock. Inicial24 mensajes de texto pasan y12 pins fallan: la ruta de ubicación sobrescribía la sesión antes de alcanzar la protección pospedido. Se añade una guarda antes de procesar el pin que conserva la sesión y solicita revisión del restaurante para el pedido registrado.

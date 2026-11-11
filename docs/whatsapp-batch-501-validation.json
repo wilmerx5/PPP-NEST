@@ -1,0 +1,16 @@
+{
+  "batch": 501,
+  "engineChanged": false,
+  "newTests": 36,
+  "relatedTests": 72,
+  "relatedSuites": 2,
+  "failed": 0,
+  "typeScriptExitCode": 0,
+  "scope": "Repeated native pins with coordinates, place name or address, followed by tower/apartment and destination inquiry after completed/closed, three saved addresses and agent off/mock.",
+  "limits": [
+    "New purchase mixed with retrospective correction remains pending. Persisted-order destination changes require restaurant review."
+  ],
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false
+}
