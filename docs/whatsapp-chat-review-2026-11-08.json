@@ -847,6 +847,15 @@
       "engineChanged": false,
       "stagingVerified": false,
       "deployed": false
+    },
+    {
+      "batch": 489,
+      "relatedFinding": "N08-14",
+      "validation": "whatsapp-batch-489-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Generic word-boundary matching and explicit covered selection for nameless rooftop POIs. No place-specific runtime aliases."
     }
   ],
   "subsequentLocationReports": [
@@ -870,6 +879,14 @@
       "mappingValidation": "whatsapp-batch-474-validation.json",
       "naturalChoiceScope": "Active nearby-place list only. Bounded first/second/third ordinals, uno/dos/tres, option/place/address labels and courtesy suffixes. Explicit road references match a full canonical street or a uniquely identifying road/number; no invented street numbers or fuzzy guessing. Questioning replies, alternative ordinals, absent positions and nonunique streets preserve the list. Ordinals use the existing competing-purchase-selector guard. Selection then follows batch474 fresh quote, access preservation and final review.",
       "remaining": "Bounded natural selection only; mandatory unit/access clarification, all competing selectors and longer copied descriptions remain pending."
+    },
+    {
+      "id": "N10-LOC-03",
+      "reportedDate": "2026-11-10",
+      "title": "Villagalante y lugares cuyo nombre no devuelve Geocoding",
+      "status": "bounded_recovery_validated_not_deployed",
+      "validation": "whatsapp-batch-489-validation.json",
+      "result": "Live Google returns precise street-only rooftop POI. Replayed provider shape rejected before fix, now offered for explicit covered selection. General synthetic building/complex controls, not a hardcoded place fix. No complete live router replay."
     }
   ]
 }
