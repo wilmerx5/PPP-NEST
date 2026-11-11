@@ -1,3 +1,11 @@
+## Tanda 488 — corregir cantidad antes de repartir sabores (rama staging)
+
+48 recorridos nuevos por router sobre e1bc7dfe:3 postres sintéticos, agente off/mock, cantidad inicial3 corregida a2/4 con «mejor que sean», «cambia la cantidad a», «en vez de tres quiero» y «mejor solo». Se preserva la sopa ya comprada, la cantidad pendiente durante consulta de precio, el rechazo del reparto antiguo de3 unidades y el nuevo reparto exacto hasta una única orden DTO con cantidades/sabores/total correctos. No se siembran pendientes.
+
+Los36 iniciales pasan; se amplía la cuarta frase. Relacionadas146/3 aprobadas,0 fallos/omitidas,48 cierres simulados. TypeScript general aprobado. No cambia runtime; global487 es evidencia previa y no se repite. Evidencia whatsapp-batch-488-validation.json.0 inferencia pagada, Google, Meta u órdenes reales; modelos/configuración/presupuesto intactos.
+
+Pendiente: cantidad corregida después de asignar parcialmente sabores, reparto escalonado y sobres mixtos. N08-14/N08-15 siguen parciales. Publicación solo en rama staging; últimos runtimes verificados PPP479, servidor staging462 y Kamppo481. Sin despliegue ni migración nuevos.
+
 ## Tanda 487 — reparto explícito de opciones pendientes (rama staging)
 
 Sobre53e6b928 se reproducen36 fallos: «dos de mango y uno de lulo» asigna el primer sabor a las tres unidades; un reparto que suma4 también modifica el carrito. Un helper anterior a la selección individual reconoce listas completas contadas con «de» o valor directo cuando queda un solo atributo. Usa parseOptionDistribution para validar opciones exactas y suma, y delega al planificador atómico existente. Preguntas, condiciones, opciones desconocidas y totales incorrectos conservan carrito/pendiente en los casos probados. Sin nombres/IDs/precios PPP en runtime.

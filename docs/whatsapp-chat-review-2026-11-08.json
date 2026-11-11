@@ -839,6 +839,14 @@
       "stagingVerified": false,
       "deployed": false,
       "result": "Counted whole pending option lists validated before adding; preserve exact split and repeated-flavor quantity."
+    },
+    {
+      "batch": 488,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-488-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false
     }
   ],
   "subsequentLocationReports": [
