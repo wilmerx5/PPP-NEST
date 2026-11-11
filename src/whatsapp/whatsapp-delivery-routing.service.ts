@@ -320,11 +320,16 @@ export class WhatsappDeliveryRoutingService {
       const alternatives: string[] = [];
       const acceptedPlaces: Array<LatLng & {formatted?: string;tentative?: boolean}> = [];
       for (const result of data.results) {
-        // Partial POI results are never an automatic destination. A precise local
-        // provider candidate may be shown for explicit customer confirmation only.
+        // Geocoding may resolve a named POI to its street without returning its name.
+        // Such results (like partial matches) require explicit selection, never silent acceptance.
+        const unnamedPoi = typeof result.place_id === 'string' && !!result.place_id &&
+          !result.name && !!canonicalStreetAddress(result.formatted_address || '') &&
+          Array.isArray(result.types) && result.types.some((type:string)=>['establishment','point_of_interest'].includes(type)) &&
+          !(result.address_components || []).some((part:any)=>(part.types || []).some((type:string)=>
+            ['premise','subpremise','establishment','point_of_interest'].includes(type)));
         const tentative = !canonicalStreetAddress(q) &&
           !/\b(?:calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv|avenida)\.?\s*\d/i.test(q) &&
-          result.partial_match === true && result.geometry?.location_type === 'ROOFTOP' &&
+          (result.partial_match === true || unnamedPoi) && result.geometry?.location_type === 'ROOFTOP' &&
           Array.isArray(result.types) && result.types.some((type:string)=>['premise','subpremise','establishment','point_of_interest'].includes(type));
         if (!this.resultMatchesNamedPlace(q, result) && !tentative) {
           uncertain = true;
@@ -403,7 +408,27 @@ export class WhatsappDeliveryRoutingService {
     const candidate = normalize([result.formatted_address || '', result.name || '',
       ...(result.address_components || []).map((part: any) => part.long_name || '')].join(' '));
     const words = new Set(candidate.match(/[a-z0-9]+/g) || []);
-    return !result.partial_match && tokens.every(token => words.has(token));
+    if (result.partial_match) return false;
+    if (tokens.every(token => words.has(token))) return true;
+    // Spacing alone must not turn an exact place name into an unknown destination.
+    // Compare whole contiguous words within one provider field/locality segment;
+    // never assemble a name from unrelated components or accept a substring.
+    const compact = tokens.join('');
+    if (compact.length < 8 || !/^[a-z]+$/.test(compact)) return false;
+    const fields = [result.name || '', result.formatted_address || '',
+      ...(result.address_components || []).map((part: any) => part.long_name || '')];
+    return fields.some(field => normalize(field).split(/[,;\n]/).some(segment => {
+      const parts = segment.match(/[a-z0-9]+/g) || [];
+      for (let start = 0; start < parts.length; start++) {
+        let joined = '';
+        for (let end = start; end < parts.length && end < start + 3; end++) {
+          joined += parts[end];
+          if (joined === compact) return true;
+          if (joined.length >= compact.length) break;
+        }
+      }
+      return false;
+    }));
   }
 
   private acceptGeocodeResult(
