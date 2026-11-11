@@ -1,3 +1,11 @@
+## Tanda 496 — cambiar cantidad, sabor y presentación juntos (rama staging)
+
+144 recorridos nuevos sobre c2ddd405: tres postres sintéticos, agente off/mock, cantidades1/2/3 tras elegir dos Mango en Vaso, cuatro frases de corrección y dos órdenes de opciones («con lulo en botella» / «con botella de lulo»). Se verifica que el cambio sustituye ambos atributos, conserva la sopa existente, no duplica tras preguntar precio y llega a una única orden DTO con cantidades, opciones y total correctos.
+
+Primera ejecución36 falla por una aserción heredada que esperaba solo sabor; el router conservaba correctamente también la presentación. Ajustada la expectativa al texto completo del reparto:36 pasan. Ampliación144 y relacionadas288/3 aprobadas, sin fallos/omitidas. TypeScript general aprobado. No se reproduce defecto nuevo ni se modifica runtime. Global495 (49.296/568) permanece como evidencia previa, no repetida. Evidencia whatsapp-batch-496-validation.json.
+
+Pendiente: opciones inválidas, retirada de un grupo parcial, atributos adicionales, concurrencia y ubicaciones posconfirmación/acceso/pin. N08-14/N08-15 siguen parciales. Cero inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
 ## Tanda 495 — cambiar cantidad y sabor después de reparto parcial (rama staging)
 
 Sobre a4fec1f9 se reproducen18 fallos iniciales: «que sean 2 con lulo» intenta corregir una línea del carrito en vez de la compra pendiente. «Mejor solo» y cancelar todo el pedido pasan. La guardia del corrector de carrito ahora cede al resolvedor pendiente cuando «que sean»/«mejor que sean» incluye una opción explícita del catálogo, sin aclaración de cantidad de carrito ni pedido múltiple pendiente. No cambia cantidades por sí misma ni añade excepciones de productos.

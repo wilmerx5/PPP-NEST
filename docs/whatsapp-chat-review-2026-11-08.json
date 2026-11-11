@@ -910,6 +910,15 @@
       "stagingVerified": false,
       "deployed": false,
       "result": "Explicit que sean/mejor que sean quantity-and-option corrections now reach pending purchase resolver rather than cart correction.90 journeys including whole-order cancellation/restart; global49296/568pass. Selective staged-group removal and multi-attribute corrections remain pending."
+    },
+    {
+      "batch": 496,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-496-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "144 quantity/flavor/presentation replacement journeys with price interruption and exact closure. Related288/3pass, TypeScript pass. No new runtime defect; global495 remains previous evidence."
     }
   ],
   "subsequentLocationReports": [
