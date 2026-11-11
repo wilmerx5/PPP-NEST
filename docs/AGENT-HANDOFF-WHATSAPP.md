@@ -1,3 +1,9 @@
+## Tanda 503 — condiciones, preguntas y negación de nueva compra
+
+36 regresiones nuevas cubren corrección retrospectiva acompañada de compra condicional, pregunta de compra o negación de otro pedido. Se comprueba conservación de la orden/sesión, cortesía posterior sin reapertura y compra explícita posterior que crea un segundo pedido exacto. Tres catálogos, agente off/mock, completed/closed. Relacionadas72/2 y TypeScript general aprobados. Solo cambian pruebas y documentación.
+
+Sigue pendiente implementar continuidad de la compra adicional explícita en el mismo mensaje mixto. Esta tanda protege los casos que requieren esperar una instrucción clara. Global500 permanece como evidencia previa. Cero inferencia pagada y órdenes externas. Publicación en rama staging. Evidencia whatsapp-batch-503-validation.json.
+
 ## Tanda 502 — corrección retrospectiva y recuperación de nueva compra
 
 36 regresiones nuevas prueban tres frases que mezclan corrección del pedido confirmado y compra adicional, tres catálogos, agente off/mock y estados completed/closed. Se verifica la respuesta de revisión, conservación de la sesión/primera orden y posterior petición explícita de dos unidades que termina en una segunda orden independiente. TypeScript general aprobado. Solo cambian pruebas y documentación. Evidencia whatsapp-batch-502-validation.json.
