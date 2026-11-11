@@ -1,3 +1,11 @@
+## Tanda 490 — corregir el destino después de una propuesta (rama staging)
+
+72 recorridos nuevos sobre40ace52c:3 lugares iniciales, agente off/mock,6 interrupciones («no», «esa no es», «ninguna de esas», opción9, Nequi y confirmar) y2 recuperaciones (calle completa o nuevo conjunto). El router genera el pendiente desde un POI sin nombre realista; no se siembra la lista. Se verifica candidato pendiente/tarifa sin resolver/orden bloqueada, carrito intacto, reemplazo del destino y apartamento anteriores, cierre único con2 platos y acceso correcto.
+
+Primera versión48 fallos de aserción: addressConfirmed no acredita por sí solo geocodificación; la lista pendiente y la tarifa aún sin resolver bloquean checkout. Corregida la aserción a esas invariantes observables:48 aprobadas. Ampliación de rechazo natural:72 aprobadas. Relacionadas456/3,0 fallos/omitidas; TypeScript general aprobado. No se reproduce un defecto nuevo ni cambia runtime. Global489 (48.900/562) es evidencia previa y no se repite. Evidencia whatsapp-batch-490-validation.json.
+
+0 inferencia pagada, Google, Meta u órdenes externas. Modelos/configuración/presupuesto intactos. N08-14/N08-15 siguen parciales; pendiente pin en vez de candidato, cancelación durante elección, concurrencia y revalidación de rutas. Solo publicación en rama staging; sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
 ## Tanda 489 — nombres de lugares y POI sin nombre (rama staging)
 
 Sobre3bcee322 se reproduce que «Villagalante»/«Villa Galante» y otros nombres unidos/separados se rechazan pese a recibir el lugar preciso:8 fallos iniciales. La comparación admite equivalencia de palabras contiguas completas dentro de un mismo campo/segmento del proveedor, sin subcadenas ni unir componentes distintos. Sin nombres, IDs o direcciones locales codificados en runtime.

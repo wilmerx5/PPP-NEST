@@ -856,6 +856,15 @@
       "stagingVerified": false,
       "deployed": false,
       "result": "Generic word-boundary matching and explicit covered selection for nameless rooftop POIs. No place-specific runtime aliases."
+    },
+    {
+      "batch": 490,
+      "relatedFinding": "N08-14",
+      "validation": "whatsapp-batch-490-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "72 tentative place rejection/interruption and destination replacement journeys, no stale apartment/candidate in final DTO. Runtime already passes."
     }
   ],
   "subsequentLocationReports": [
