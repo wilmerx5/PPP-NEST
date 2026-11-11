@@ -1,3 +1,11 @@
+## Tanda 499 — consultas del destino confirmado con datos de acceso
+
+36 regresiones nuevas verifican tres direcciones con torre/apartamento o referencias de mapa diferentes, agente off/mock y estados completed/closed. Las respuestas conservan el destino del cliente y la sesión completa. Relacionadas132/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. La global498 (49.602/571) sigue como evidencia previa.
+
+Estado actualizado de despliegue verificado en el turno anterior: PPP producción ejecuta f720ede123b98f6212789a0b6633b375e7a15b31 con correcciones hasta498, API/DB correctas y744 controles aislados antes/después. Servidor staging ejecuta75ca2f529b289f9ee2a3621ef70c084dbb8af236. Evidencia de producción en Main: docs/whatsapp-batch-498-production-deployment.json. Kamppo permanece481.
+
+Pendiente cubrir modificaciones consecutivas de acceso/pin después de confirmar, retirada de cantidades específicas dentro de grupos y el resto del análisis de chats. N08-14/N08-15 siguen parciales. Cero inferencia pagada y órdenes externas en esta tanda. Publicación de499 en rama staging.
+
 ## Tanda 498 — retirar un grupo del reparto pendiente (rama staging)
 
 Sobre a05ce7fc se reproducen12 fallos: «quita los de mango» y «retira los de mango» buscan una línea en el carrito aunque esas unidades están elegidas dentro de una compra pendiente. La nueva ruta acotada reconoce una opción única del catálogo, retira los grupos que la eligieron explícitamente, reduce el total pendiente y conserva otros grupos y el carrito. Si la opción también aparece en el carrito, no modifica nada y solicita cantidad total/opciones para corregir explícitamente la compra pendiente.
