@@ -919,6 +919,15 @@
       "stagingVerified": false,
       "deployed": false,
       "result": "144 quantity/flavor/presentation replacement journeys with price interruption and exact closure. Related288/3pass, TypeScript pass. No new runtime defect; global495 remains previous evidence."
+    },
+    {
+      "batch": 497,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-497-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "108 invalid remaining-option journeys, repetition/price/premature confirm and valid recovery with exact final allocation. Related342/3pass, TypeScript pass. No new runtime defect; global495 remains previous evidence."
     }
   ],
   "subsequentLocationReports": [

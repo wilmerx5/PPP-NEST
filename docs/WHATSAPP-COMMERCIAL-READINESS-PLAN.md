@@ -1,3 +1,11 @@
+## Tanda 497 — opciones inválidas en las unidades restantes (rama staging)
+
+108 recorridos nuevos sobre019dc3b1: tres postres sintéticos, agente off/mock, una/dos unidades Mango en Vaso ya repartidas, sabor inexistente, presentación inexistente o ambos. Tras la solicitud inválida se repite, se pregunta precio o se intenta confirmar; después «los otros con lulo en botella» recupera el pedido. Se verifican respuesta de opciones, carrito intacto, cantidad pendiente, ausencia de orden prematura y cierre único con reparto exacto, sopa previa y total correcto.
+
+Inicial12 aprobadas; ampliación108 nuevas y relacionadas342/3 aprobadas sin fallos/omitidas. TypeScript general aprobado. No se reproduce defecto nuevo ni se cambia runtime. Global495 (49.296/568) permanece como evidencia previa, no repetida. Evidencia whatsapp-batch-497-validation.json.
+
+Alcance: opciones de las unidades restantes; no cubre reemplazo simultáneo de cantidad total con opciones inválidas. Pendiente retirada de un grupo parcial, concurrencia y ubicaciones posconfirmación/acceso/pin. N08-14/N08-15 siguen parciales. Cero inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
 ## Tanda 496 — cambiar cantidad, sabor y presentación juntos (rama staging)
 
 144 recorridos nuevos sobre c2ddd405: tres postres sintéticos, agente off/mock, cantidades1/2/3 tras elegir dos Mango en Vaso, cuatro frases de corrección y dos órdenes de opciones («con lulo en botella» / «con botella de lulo»). Se verifica que el cambio sustituye ambos atributos, conserva la sopa existente, no duplica tras preguntar precio y llega a una única orden DTO con cantidades, opciones y total correctos.
