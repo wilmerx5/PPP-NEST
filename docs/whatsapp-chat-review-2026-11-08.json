@@ -822,6 +822,14 @@
       "stagingVerified": false,
       "deployed": false,
       "result": "Bounded dessert flavor gap from484 fixed for helado/paleta/sorbete family or category. Other attribute families remain unverified."
+    },
+    {
+      "batch": 486,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-486-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false
     }
   ],
   "subsequentLocationReports": [

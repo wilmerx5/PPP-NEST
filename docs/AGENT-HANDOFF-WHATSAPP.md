@@ -1,3 +1,11 @@
+## Tanda 486 — interrupciones y cancelación con sabor pendiente (rama staging)
+
+42 recorridos nuevos sobre9db713e3.36 combinan reconocimiento por nombre/categoría principal/categoría secundaria, agente off/mock, cantidades1/2 y consulta de precio/opción inválida/nombre del destinatario. Verifican pregunta visible, sopa existente intacta, postre sin añadir antes de elegir, pendiente conservado y resolución numérica al sabor Lulo hasta un único DTO.6 recorridos cancelan el pedido pendiente, comprueban carrito/lista vacíos y cierran una nueva compra de sopa sin arrastrar postre.
+
+Todos ya pasan; no cambio de runtime. Relacionadas117/3 aprobadas,0 fallos/omitidas; TypeScript general aprobado.42 cierres DTO simulados. Evidencia whatsapp-batch-486-validation.json. La global485 es evidencia previa del mismo runtime, no una ejecución nueva.0 inferencia pagada, Google, Meta u órdenes reales; modelos/configuración/presupuesto intactos.
+
+N08-14/N08-15 siguen parciales: no concurrencia, todas las opciones/familias ni proveedores reales. Próximo: reparto de sabores por unidades y corrección explícita mientras faltan opciones. Publicación solo en rama staging; últimos runtimes verificados PPP479, servidor staging462, Kamppo481. Sin despliegue, migración nueva ni reparación histórica.
+
 ## Tanda 485 — elegir sabor en helados, paletas y sorbetes (rama staging)
 
 Sobre fe240bc4 se reproducen24 fallos: un postre con varios sabores toma la primera opción sin preguntar. La regla de elección explícita ahora incluye las familias helado/paleta/sorbete por nombre o categoría, también secundaria. No depende de IDs, precios ni productos PPP. Conserva valores ya seleccionados y atributos con una sola opción. Una mención incidental como «Bowl con helado» no activa la regla por nombre. No cambia la clasificación comida/bebida ni los valores predeterminados de otros atributos.
