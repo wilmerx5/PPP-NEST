@@ -1,3 +1,11 @@
+## Tanda 494 — corregir cantidad y consultar precio con reparto parcial (rama staging)
+
+Sobre b91a3e9c se reproducen 24 fallos de 36 casos iniciales: «deja 2 Helado Artesanal, cuanto cuesta» cambia la cantidad pendiente sin reconciliar los sabores ya elegidos. La ruta compuesta ahora comparte la reconciliación de la tanda493: si coincide con lo asignado, aplica las opciones guardadas; si queda por debajo, explica el reparto incompatible y solicita uno nuevo. Responde el precio por unidad y conserva las guardas de ambigüedad y límites de cantidad.
+
+54 pruebas nuevas y 54 cierres DTO simulados: tres postres sintéticos, agente off/mock, cantidades1/2/3 después de elegir dos Mango, consulta antes/después de la corrección, carrito existente, cantidades0/31 y producto tanto en carrito como pendiente. Relacionadas186/3 aprobadas. Global49.206/567 aprobada,0 fallos/omitidas,787 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Ejecución por bloques supervisados, temporizadores separados. Evidencia whatsapp-batch-494-validation.json.
+
+Alcance acotado a cláusulas separadas de cantidad y precio con nombre explícito del producto. Pendiente: otras formas compuestas, cambio simultáneo de opción, reemplazos/cancelación del reparto y concurrencia. N08-14/N08-15 siguen parciales; quedan ubicaciones posconfirmación y mensajes consecutivos de acceso/pin. Cero inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
 ## Tanda 493 — reducir cantidad hasta o por debajo del reparto parcial (rama staging)
 
 Sobre318d2209 se reproducen24 fallos: reducir al número de unidades ya elegidas vuelve a preguntar sabor, y reducir por debajo conserva partes incompatibles sin explicar la necesidad de repartir otra vez. La corrección de cantidad simple ahora compara el nuevo total con lo asignado. Si coincide, aplica el planificador atómico existente con las opciones guardadas; consolida grupos de texto idéntico antes de añadir para evitar deduplicación de unidades. Si es menor, informa del reparto anterior, limpia solo las partes incompatibles y pide uno nuevo sin mutar el carrito.

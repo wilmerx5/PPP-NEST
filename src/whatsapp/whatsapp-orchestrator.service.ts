@@ -4617,30 +4617,7 @@ export class WhatsappOrchestratorService {
           }
           session.pendingQuantityHint = undefined;
           await this.conversationService.saveSession(conv, session);
-          const staged = session.pendingAttribute?.distributionParts;
-          if (!includesOption && staged?.length) {
-            const groups = new Map<string, {quantity:number; options:string}>();
-            for (const part of staged) {
-              const options = part.replace(/^\S+\s+con\s+/i, '').trim();
-              const count = this.catalogService.extractQuantityFromSegment(part.replace(/\s+con\s+.+$/i, ' platos'));
-              const key = options.toLowerCase();
-              const group = groups.get(key);
-              if (group) group.quantity += count;
-              else groups.set(key, {quantity:count,options});
-            }
-            const assigned = [...groups.values()].reduce((sum,group)=>sum+group.quantity,0);
-            if (quantity < assigned) {
-              session.pendingAttribute!.distributionParts = undefined;
-              await this.conversationService.saveSession(conv, session);
-              await this.reply(conv,msg.waId,`Ahora son ${quantity} ${quantity === 1 ? 'unidad' : 'unidades'}. El reparto anterior tenía ${assigned} unidades elegidas; necesitamos un nuevo reparto para esa cantidad. El carrito sigue igual.\n\n` + this.formatPendingPurchaseReminder(session));
-              return;
-            }
-            if (quantity === assigned) {
-              const available = cfg.ignoreBusinessHours ? products.map(product=>({...product,availableNow:true})) : products;
-              if (await this.tryHandleAttributeDistribution(conv,msg.waId,session,
-                `los quiero ${[...groups.values()].map(group=>`${group.quantity} con ${group.options}`).join(' y ')}`,available,cfg,true)) return;
-            }
-          }
+          if (!includesOption && await this.tryResolveReducedPendingDistribution(conv,msg.waId,session,products,cfg)) return;
           if (includesOption && tail) {
             const addedNote = interpretProductNote(tail,[optionProduct!])?.note ||
               this.catalogService.extractProductModificationNote(tail);
@@ -9988,6 +9965,8 @@ export class WhatsappOrchestratorService {
         }
         const next = {...session, pendingAttribute: {...pending, quantity: correction.quantity}};
         await this.conversationService.saveSession(conv, next);
+        if (await this.tryResolveReducedPendingDistribution(conv,waId,next,menu,cfg,
+          `*${product.name}*: ${this.catalogService.formatMoney(product.price)} por unidad.`)) return true;
         await this.reply(conv, waId, `Listo, quedan ${correction.quantity} unidades pendientes de *${product.name}*. ` +
           `${this.catalogService.formatMoney(product.price)} por unidad.\n\n` + this.formatPendingPurchaseReminder(next));
         return true;
@@ -10718,6 +10697,37 @@ export class WhatsappOrchestratorService {
     const available = cfg.ignoreBusinessHours ? menu.map(item => ({...item,availableNow:true})) : menu;
     return this.tryHandleAttributeDistribution(conv, waId, session,
       `los quiero ${groups.map(group => `${group.quantity} con ${group.value}`).join(' y ')}`, available, cfg, groups.length === 1);
+  }
+
+  /** Quantity-only and quantity-plus-price turns must reconcile the same staged choices. */
+  private async tryResolveReducedPendingDistribution(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    products: MenuProduct[], cfg: EffectiveWhatsappConfig, priceNotice?: string,
+  ): Promise<boolean> {
+    const staged = session.pendingAttribute?.distributionParts;
+    const quantity = session.pendingAttribute?.quantity;
+    if (!staged?.length || quantity == null) return false;
+    const groups = new Map<string, {quantity:number; options:string}>();
+    for (const part of staged) {
+      const options = part.replace(/^\S+\s+con\s+/i, '').trim();
+      const count = this.catalogService.extractQuantityFromSegment(part.replace(/\s+con\s+.+$/i, ' platos'));
+      const key = options.toLowerCase();
+      const group = groups.get(key);
+      if (group) group.quantity += count;
+      else groups.set(key, {quantity:count,options});
+    }
+    const assigned = [...groups.values()].reduce((sum,group)=>sum+group.quantity,0);
+    if (quantity > assigned) return false;
+    if (priceNotice) await this.reply(conv,waId,priceNotice);
+    if (quantity < assigned) {
+      session.pendingAttribute!.distributionParts = undefined;
+      await this.conversationService.saveSession(conv, session);
+      await this.reply(conv,waId,`Ahora son ${quantity} ${quantity === 1 ? 'unidad' : 'unidades'}. El reparto anterior tenía ${assigned} unidades elegidas; necesitamos un nuevo reparto para esa cantidad. El carrito sigue igual.\n\n` + this.formatPendingPurchaseReminder(session));
+      return true;
+    }
+    const available = cfg.ignoreBusinessHours ? products.map(product=>({...product,availableNow:true})) : products;
+    return this.tryHandleAttributeDistribution(conv,waId,session,
+      `los quiero ${[...groups.values()].map(group=>`${group.quantity} con ${group.options}`).join(' y ')}`,available,cfg,true);
   }
 
   /** Collect counted options over several turns without applying one group's choice to every unit. */
