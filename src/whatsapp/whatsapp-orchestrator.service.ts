@@ -24246,7 +24246,8 @@ export class WhatsappOrchestratorService {
         customerCoords:{lat:candidate.lat,lng:candidate.lng},restaurant:{lat:Number(cfg.restaurantLat),lng:Number(cfg.restaurantLng)},
         tiers:cfg.deliveryFeeTiers || [],maxKm:Number(cfg.deliveryMaxKm)||5.5,fallbackFee:cfg.defaultDeliveryFee,regionBias:'co'});
       if (!quote.ok) {
-        await this.conversationService.saveSession(conv,{...session,addressConfirmed:false},'awaiting_address');
+        // Mark this destination as unresolved, so a follow-up bare pin retains its access details.
+        await this.conversationService.saveSession(conv,{...session,addressConfirmed:false,deliveryFeeCalculated:null},'awaiting_address');
         await this.reply(conv,waId,`No pude volver a validar la ruta de ese lugar. No registré el pedido. ${quote.message}`);return true;
       }
       session = {...session,addressConfirmed:true,deliveryLat:quote.customer.lat,deliveryLng:quote.customer.lng,

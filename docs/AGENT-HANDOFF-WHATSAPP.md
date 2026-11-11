@@ -1,3 +1,13 @@
+## Tanda 491 — conservar acceso tras fallo de ruta y recuperación por pin (rama staging)
+
+Sobre832e0f05:36 recorridos iniciales pasan (pin tras propuesta de lugar, interrupción por no/Nequi y cancelación seguida de nueva compra). Al añadir12 casos de ruta no disponible/fuera de cobertura al seleccionar el candidato, primero se corrige una aserción demasiado estricta null/undefined. Luego se reproduce el defecto real: la orden final pierde el apartamento tras enviar un pin para recuperar la ruta fallida.
+
+La selección fallida guardaba tarifa undefined al reemplazar la dirección; el handler de pin conserva acceso de destinos sin resolver identificados por tarifa null. Corrección acotada: guardar deliveryFeeCalculated:null junto a addressConfirmed:false cuando falla la recotización del candidato. No amplía la reutilización de direcciones antiguas ni cambia precios/cobertura. Funciona sin nombres/IDs/direcciones PPP en runtime.
+
+48 pruebas nuevas/48 cierres DTO simulados:3 lugares, agente off/mock,18 recorridos de pin,18 cancelaciones/reinicio y12 fallos de ruta con recuperación. Relacionadas154/3 aprobadas. Global49.020/564 aprobada,0 fallos/omitidas,784 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Global ejecutada por bloques supervisados, temporizadores separados, checkpoints conciliados. Evidencia whatsapp-batch-491-validation.json.
+
+0 inferencia pagada, Google, Meta u órdenes externas. Modelos/configuración/presupuesto intactos. N08-14/N08-15 siguen parciales; no se prueba concurrencia, corrección posconfirmación ni proveedor real. Pendiente: mensajes consecutivos de acceso/pin y cambios de destino tras una confirmación; retomar también cantidades parcialmente repartidas. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
 ## Tanda 490 — corregir el destino después de una propuesta (rama staging)
 
 72 recorridos nuevos sobre40ace52c:3 lugares iniciales, agente off/mock,6 interrupciones («no», «esa no es», «ninguna de esas», opción9, Nequi y confirmar) y2 recuperaciones (calle completa o nuevo conjunto). El router genera el pendiente desde un POI sin nombre realista; no se siembra la lista. Se verifica candidato pendiente/tarifa sin resolver/orden bloqueada, carrito intacto, reemplazo del destino y apartamento anteriores, cierre único con2 platos y acceso correcto.
