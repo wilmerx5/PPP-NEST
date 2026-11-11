@@ -1,0 +1,59 @@
+{
+  "batch": 498,
+  "baseCommit": "a05ce7fc14b84c7e3cbfb2dc51f5351ef38d647b",
+  "engineChanged": true,
+  "newTests": 54,
+  "simulatedClosures": 54,
+  "related": {
+    "tests": 252,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "baseline": {
+    "tests": 12,
+    "failed": 12,
+    "passed": 0
+  },
+  "scope": "Explicit removal of all staged units matching a unique catalog option, reducing pending total and preserving other staged groups/cart. Three synthetic desserts, agent off/mock, one/two removed units, two verbs, additional staged group and six cart/pending ambiguity recovery journeys.",
+  "iterations": [
+    "Initial12 fail: removal searched cart for flavor instead of pending distribution. Fixed12pass. Expanded54 new, related252/3pass."
+  ],
+  "limits": [
+    "Bounded quita/retira los/las de [exact catalog option] syntax; removes all staged groups with that option, not an arbitrary partial count.",
+    "Overlapping cart option refuses mutation and requests explicit pending total/options. Multiple drafts, pending cart removal/quantity, unknown or ambiguous option names excluded.",
+    "No live inference or concurrent events. N08-14/N08-15 remain partial."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "global": {
+    "tests": 49602,
+    "suites": 571,
+    "failed": 0,
+    "skipped": 0,
+    "sourceFiles": 791,
+    "sourceUnchanged": true,
+    "inventoryExact": true,
+    "checks": {
+      "tsc": {
+        "exitCode": 0
+      },
+      "build": {
+        "exitCode": 0
+      },
+      "scripts": {
+        "exitCode": 0,
+        "passed": 92
+      }
+    },
+    "execution": "Supervised bounded chunks against frozen source hashes; timers isolated. All suite checkpoints reconciled with exact Jest inventory."
+  },
+  "testSha256": "3ce46a16860bcc3e6f1f199443e9e84c3e7507717b7396c3b8be2765e1852417",
+  "runtimeSha256": "f7818d88e6b9f175ac64ffdcaec8d778c78c553b920a042d6aa4f87bbcbaca0c"
+}

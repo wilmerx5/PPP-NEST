@@ -1,3 +1,13 @@
+## Tanda 498 — retirar un grupo del reparto pendiente (rama staging)
+
+Sobre a05ce7fc se reproducen12 fallos: «quita los de mango» y «retira los de mango» buscan una línea en el carrito aunque esas unidades están elegidas dentro de una compra pendiente. La nueva ruta acotada reconoce una opción única del catálogo, retira los grupos que la eligieron explícitamente, reduce el total pendiente y conserva otros grupos y el carrito. Si la opción también aparece en el carrito, no modifica nada y solicita cantidad total/opciones para corregir explícitamente la compra pendiente.
+
+54 pruebas nuevas/54 cierres DTO simulados: tres postres sintéticos, agente off/mock, una/dos unidades retiradas, dos verbos, con/sin otro grupo ya elegido y seis ambigüedades entre carrito y pendiente con recuperación. Se verifican cantidad y partes pendientes, sopa y grupos conservados, ausencia de Mango retirado, reparto final exacto y una única orden con total correcto. Inicial12 fallos; corregidas12 aprobadas; ampliación y relacionadas252/3 aprobadas.
+
+Global49.602/571 aprobada,0 fallos/omitidas,791 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Ejecución por bloques supervisados y temporizadores separados. Evidencia whatsapp-batch-498-validation.json. Cero inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos.
+
+Alcance: «quita/retira los/las de [opción exacta]», retirando todos los grupos pendientes que coincidan. No cubre quitar una cantidad arbitraria dentro de un grupo, opciones desconocidas/ambiguas, varios borradores simultáneos ni concurrencia. Pendiente ampliar esas retiradas y retomar ubicaciones posconfirmación/acceso/pin. N08-14/N08-15 siguen parciales. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
 ## Tanda 497 — opciones inválidas en las unidades restantes (rama staging)
 
 108 recorridos nuevos sobre019dc3b1: tres postres sintéticos, agente off/mock, una/dos unidades Mango en Vaso ya repartidas, sabor inexistente, presentación inexistente o ambos. Tras la solicitud inválida se repite, se pregunta precio o se intenta confirmar; después «los otros con lulo en botella» recupera el pedido. Se verifican respuesta de opciones, carrito intacto, cantidad pendiente, ausencia de orden prematura y cierre único con reparto exacto, sopa previa y total correcto.

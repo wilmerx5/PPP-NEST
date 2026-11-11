@@ -3209,6 +3209,7 @@ export class WhatsappOrchestratorService {
     }
     if (await this.tryAnswerPendingComboQuestion(conv, msg.waId, session, originalText)) return;
     if (await this.tryResolveCountedPendingOptionGroups(conv, msg.waId, session, originalText, cfg)) return;
+    if (await this.tryRemoveStagedOptionGroup(conv, msg.waId, session, originalText)) return;
     if (await this.tryStagePendingAttributeDistribution(conv, msg.waId, session, originalText, cfg)) return;
     const unitSplit = this.rememberIncomingUnitSplit(session, originalText);
     if (unitSplit.handled) {
@@ -10731,6 +10732,43 @@ export class WhatsappOrchestratorService {
   }
 
   /** Collect counted options over several turns without applying one group's choice to every unit. */
+  private async tryRemoveStagedOptionGroup(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+  ): Promise<boolean> {
+    const pending = session.pendingAttribute;
+    if (!pending?.distributionParts?.length || session.pendingMultiOrder || session.pendingMatch ||
+      session.pendingCartRemoval || session.pendingCartQuantity || /[¿?]/.test(text)) return false;
+    const match = this.normalizeForMatch(text).match(/^(?:quita|retira)(?:me)? (?:los|las) de (.+?)(?: por favor| porfa)?[.!]?$/);
+    if (!match) return false;
+    const options = pending.attributes.flatMap(attribute => attribute.options.map(value => ({attributeName:attribute.attributeName,value})))
+      .filter(option => this.normalizeForMatch(option.value) === match[1]);
+    if (options.length !== 1) return false;
+    const option = options[0];
+    if (session.cart.some(line => line.attributes?.some(attribute =>
+      this.normalizeForMatch(attribute.attributeValue) === this.normalizeForMatch(option.value)))) {
+      await this.reply(conv,waId,'Esa opción aparece en el carrito y hay una compra pendiente. Para cambiar la compra pendiente, dime la cantidad total y las opciones que deben quedar. El pedido sigue igual.');
+      return true;
+    }
+    const product = (await this.catalogService.getMenuProducts()).find(item => item.id === pending.productId);
+    if (!product) return false;
+    const removed = pending.distributionParts.filter(part =>
+      this.catalogService.extractExplicitAttributeChoice(part,product)?.some(choice =>
+        this.normalizeForMatch(choice.attributeName) === this.normalizeForMatch(option.attributeName) &&
+        this.normalizeForMatch(choice.attributeValue) === this.normalizeForMatch(option.value)));
+    if (!removed.length) {
+      await this.reply(conv,waId,'No hay unidades elegidas con esa opción en la compra pendiente. El pedido sigue igual.\n\n'+this.formatPendingPurchaseReminder(session));
+      return true;
+    }
+    const count = removed.reduce((sum,part) => sum + this.catalogService.extractQuantityFromSegment(part.replace(/\s+con\s+.+$/i,' platos')),0);
+    const quantity = (pending.quantity || 1) - count;
+    if (quantity < 1) return false;
+    const parts = pending.distributionParts.filter(part => !removed.includes(part));
+    const next = {...session,pendingAttribute:{...pending,quantity,distributionParts:parts.length ? parts : undefined}};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,`Retiré ${count} ${count === 1 ? 'unidad' : 'unidades'} con ${option.value} de la compra pendiente. Quedan ${quantity}.\n\n`+this.formatPendingPurchaseReminder(next));
+    return true;
+  }
+
   private async tryStagePendingAttributeDistribution(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {

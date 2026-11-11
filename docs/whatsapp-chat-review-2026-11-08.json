@@ -928,6 +928,15 @@
       "stagingVerified": false,
       "deployed": false,
       "result": "108 invalid remaining-option journeys, repetition/price/premature confirm and valid recovery with exact final allocation. Related342/3pass, TypeScript pass. No new runtime defect; global495 remains previous evidence."
+    },
+    {
+      "batch": 498,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-498-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Explicit staged-option removal now reduces pending total and preserves other groups/cart, refusing ambiguous cart overlap.54 journeys, global49602/571pass. Arbitrary partial-count removal and broader phrasing remain pending."
     }
   ],
   "subsequentLocationReports": [
