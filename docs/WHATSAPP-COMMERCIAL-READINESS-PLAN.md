@@ -1,3 +1,13 @@
+## Tanda 495 — cambiar cantidad y sabor después de reparto parcial (rama staging)
+
+Sobre a4fec1f9 se reproducen18 fallos iniciales: «que sean 2 con lulo» intenta corregir una línea del carrito en vez de la compra pendiente. «Mejor solo» y cancelar todo el pedido pasan. La guardia del corrector de carrito ahora cede al resolvedor pendiente cuando «que sean»/«mejor que sean» incluye una opción explícita del catálogo, sin aclaración de cantidad de carrito ni pedido múltiple pendiente. No cambia cantidades por sí misma ni añade excepciones de productos.
+
+90 pruebas nuevas/90 cierres DTO simulados: tres postres sintéticos, agente off/mock, cantidades1/2/3 tras elegir dos Mango, cuatro frases de reemplazo de cantidad+sabor y18 cancelaciones completas con reinicio limpio. Se verifica sopa existente, ausencia de Mango anterior, cantidades finales de Lulo, total y una única orden. Inicial54:36 pasan/18 fallan. Primera corrección54 aprobadas; ampliación reproduce18 fallos equivalentes con «mejor que sean», corregidos. Relacionadas finales204/3 aprobadas.
+
+Global49.296/568 aprobada,0 fallos/omitidas,788 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Global por bloques supervisados con temporizadores separados. Evidencia whatsapp-batch-495-validation.json. Cero inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos.
+
+Pendiente: retirar solo un grupo del reparto, opciones inválidas o múltiples atributos en correcciones compuestas, concurrencia y ubicaciones posconfirmación/acceso/pin. N08-14/N08-15 siguen parciales. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
 ## Tanda 494 — corregir cantidad y consultar precio con reparto parcial (rama staging)
 
 Sobre b91a3e9c se reproducen 24 fallos de 36 casos iniciales: «deja 2 Helado Artesanal, cuanto cuesta» cambia la cantidad pendiente sin reconciliar los sabores ya elegidos. La ruta compuesta ahora comparte la reconciliación de la tanda493: si coincide con lo asignado, aplica las opciones guardadas; si queda por debajo, explica el reparto incompatible y solicita uno nuevo. Responde el precio por unidad y conserva las guardas de ambigüedad y límites de cantidad.

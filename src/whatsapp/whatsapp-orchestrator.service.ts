@@ -18836,6 +18836,13 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, 'El pedido sigue igual. Para aplicar el cambio, dime el producto y la cantidad total: «cambia la cantidad de [producto] a [cantidad]».');
       return true;
     }
+    // A quantity plus an explicit option belongs to the unresolved purchase,
+    // not to an existing cart line named "con lulo". Let its resolver apply both.
+    if (session.pendingAttribute && !session.pendingCartQuantity && !session.pendingMultiOrder &&
+      /^(?:mejor )?que sean (?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) (?:con|sin)\b/.test(this.normalizeForMatch(text))) {
+      const product = (await this.catalogService.getMenuProducts()).find(item => item.id === session.pendingAttribute!.productId);
+      if (product && this.catalogService.extractExplicitAttributeChoice(text,product)?.length) return false;
+    }
     let correction = parseCartQuantityCorrection(text);
     const shortText = this.normalizeForMatch(text).replace(/\s+(?:por favor|porfa|gracias)$/, '');
     const shortAmount = '(\\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';

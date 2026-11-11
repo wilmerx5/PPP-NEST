@@ -901,6 +901,15 @@
       "stagingVerified": false,
       "deployed": false,
       "result": "Compound quantity-plus-price requests now share staged distribution reconciliation with simple corrections; explicit unit price, preserved guards and correct final flavor counts.54 new journeys; global49206/567pass. Other compound forms and option-tail corrections remain pending."
+    },
+    {
+      "batch": 495,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-495-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Explicit que sean/mejor que sean quantity-and-option corrections now reach pending purchase resolver rather than cart correction.90 journeys including whole-order cancellation/restart; global49296/568pass. Selective staged-group removal and multi-attribute corrections remain pending."
     }
   ],
   "subsequentLocationReports": [

@@ -1,0 +1,60 @@
+{
+  "batch": 495,
+  "baseCommit": "a4fec1f920ef32cd294972394deeda4c87ab2401",
+  "engineChanged": true,
+  "newTests": 90,
+  "simulatedClosures": 90,
+  "related": {
+    "tests": 204,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "baseline": {
+    "tests": 54,
+    "passed": 36,
+    "failed": 18
+  },
+  "iterations": [
+    "Initial que sean quantity-plus-option routed to cart correction instead of pending purchase.18 failed; first correction54pass.",
+    "Expanded mejor que sean exposes18 equivalent failures; optional prefix fixed. Final related204/3pass."
+  ],
+  "scope": "Pending quantity and explicit flavor replacement after partial allocation: three synthetic desserts, agent off/mock, quantity1/2/3, four phrasings;18 whole-order cancellation and clean restart journeys. Cart soup, exact final flavor quantities, total and single order asserted.",
+  "limits": [
+    "Only explicit known options for the current single pending purchase; concurrent cart-quantity clarification and multi-order drafts excluded from new routing guard.",
+    "Whole-order cancellation covered; selective removal of one staged group and concurrent events remain pending.",
+    "N08-14/N08-15 remain partial; no live provider or model execution."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "global": {
+    "tests": 49296,
+    "suites": 568,
+    "failed": 0,
+    "skipped": 0,
+    "sourceFiles": 788,
+    "sourceUnchanged": true,
+    "inventoryExact": true,
+    "checks": {
+      "tsc": {
+        "exitCode": 0
+      },
+      "build": {
+        "exitCode": 0
+      },
+      "scripts": {
+        "exitCode": 0,
+        "passed": 92
+      }
+    },
+    "execution": "Supervised bounded chunks against frozen source hashes; timers isolated. All suite checkpoints reconciled with exact Jest inventory."
+  },
+  "testSha256": "656ddcca33db39fd6a0226866d7bdd728eba063867cd226ebef6fd2bffaa5dd0",
+  "runtimeSha256": "a02c307934cc4bb363293a7ecadf16da658b973541c4914a0d27cb1246da75a1"
+}
