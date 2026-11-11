@@ -1,0 +1,79 @@
+{
+  "baseCommit": "53e6b92826b8f87befdee0bff9dbe5a6e652354e",
+  "batches": [
+    487
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1811.68,
+      "sourceUnchanged": true,
+      "tests": 48802,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 7.47,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0
+    },
+    "tsc-build": {
+      "exitCode": 0
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 780,
+  "workers": 8,
+  "nonTimerTestTimeoutMs": 20000,
+  "suiteCheckpoints": 560,
+  "tests": 48818,
+  "suites": 560,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "batch": 487,
+  "engineChanged": true,
+  "newTests": 56,
+  "simulatedClosures": 56,
+  "related": {
+    "tests": 131,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "baseline": {
+    "failed": 36,
+    "passed": 0
+  },
+  "nodeScriptTests": 92,
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "iterations": [
+    "Baseline36 failures: full counted de/bare flavor lists applied first flavor to all units; mismatched total also mutated cart.",
+    "Initial helper reuses strict option parser and atomic planner:36pass.",
+    "Expanded related127pass4fail: initial same-flavor workaround split into identical additions, dedup lost a unit.",
+    "Pass merged verified group through internal allowSingleGroup planner flag. Final related131/3pass.",
+    "Background launcher exited before creating sources or starting Jest. Supervised execution completed all phases and final inventory/hash report. Outer terminal later returned143; all phase exits and final report are0/complete, no test result recovery needed."
+  ],
+  "scope": "Pending single remaining attribute, total>=2, whole counted lists with de or bare option values. Parse exact catalog options and total before mutation; canonical groups reuse atomic distribution. Verified repeated flavors remain merged. Existing con/multi-attribute syntax stays with existing planner.",
+  "limits": [
+    "Bounded Spanish integer counted lists, not every grammar, negative/decimal form or staged correction.",
+    "No new pending-quantity correction behavior; invalid distribution recovery is covered.",
+    "No live inference/maps/orders; no historic repair.",
+    "N08-14/N08-15 partial. Kamppo not migrated and production not deployed."
+  ]
+}

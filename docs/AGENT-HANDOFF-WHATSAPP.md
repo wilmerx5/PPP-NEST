@@ -1,3 +1,13 @@
+## Tanda 487 — reparto explícito de opciones pendientes (rama staging)
+
+Sobre53e6b928 se reproducen36 fallos: «dos de mango y uno de lulo» asigna el primer sabor a las tres unidades; un reparto que suma4 también modifica el carrito. Un helper anterior a la selección individual reconoce listas completas contadas con «de» o valor directo cuando queda un solo atributo. Usa parseOptionDistribution para validar opciones exactas y suma, y delega al planificador atómico existente. Preguntas, condiciones, opciones desconocidas y totales incorrectos conservan carrito/pendiente en los casos probados. Sin nombres/IDs/precios PPP en runtime.
+
+56 pruebas nuevas/56 cierres DTO simulados:36 recorridos de3 unidades (3 postres, off/mock,3 expresiones, precio/reparto incorrecto) y20 controles de2 unidades (12 rechazos con recuperación,8 repartos válidos incluyendo sabor repetido). Primera corrección36 aprobadas; ampliación127 aprobadas/4 fallos porque separar un sabor idéntico en dos adiciones activaba deduplicación. Ahora se conserva el grupo verificado con cantidad total y el planificador admite internamente ese único grupo. Relacionadas131/3 aprobadas.
+
+Global48.818/560 aprobada,0 fallos/omitidas,780 fuentes congeladas e inventario exacto. TypeScript general/build y92 scripts aprobados. Lanzador background inicial no inició pruebas; sesión supervisada completó todas las fases y reporte final. La herramienta de terminal devolvió143 después; se verifican reporte final, salidas0 de cada fase y hashes intactos, sin recuperar ni repetir resultados. Evidencia whatsapp-batch-487-validation.json.
+
+Alcance acotado: mantiene la ruta existente de «con» y múltiples atributos; no toda gramática, decimales/negativos, reparto escalonado ni corrección de cantidad pendiente.0 inferencia pagada, Google, Meta u órdenes reales; modelos/configuración/presupuesto intactos. N08-14/N08-15 siguen parciales. Próximo: corregir la cantidad solicitada mientras faltan opciones y ampliar reparto escalonado. Solo rama staging; últimos runtimes verificados PPP479, servidor staging462 y Kamppo481. Sin despliegue ni migración nuevos.
+
 ## Tanda 486 — interrupciones y cancelación con sabor pendiente (rama staging)
 
 42 recorridos nuevos sobre9db713e3.36 combinan reconocimiento por nombre/categoría principal/categoría secundaria, agente off/mock, cantidades1/2 y consulta de precio/opción inválida/nombre del destinatario. Verifican pregunta visible, sopa existente intacta, postre sin añadir antes de elegir, pendiente conservado y resolución numérica al sabor Lulo hasta un único DTO.6 recorridos cancelan el pedido pendiente, comprueban carrito/lista vacíos y cierran una nueva compra de sopa sin arrastrar postre.

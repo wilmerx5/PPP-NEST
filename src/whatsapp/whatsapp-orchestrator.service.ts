@@ -3208,6 +3208,7 @@ export class WhatsappOrchestratorService {
       return;
     }
     if (await this.tryAnswerPendingComboQuestion(conv, msg.waId, session, originalText)) return;
+    if (await this.tryResolveCountedPendingOptionGroups(conv, msg.waId, session, originalText, cfg)) return;
     if (await this.tryStagePendingAttributeDistribution(conv, msg.waId, session, originalText, cfg)) return;
     const unitSplit = this.rememberIncomingUnitSplit(session, originalText);
     if (unitSplit.handled) {
@@ -10663,6 +10664,36 @@ export class WhatsappOrchestratorService {
     );
     await this.applyStashedUnitSplit(conv, waId, products, cfg);
     return true;
+  }
+
+  /** Resolve a whole counted option list before a single choice can consume its first flavor. */
+  private async tryResolveCountedPendingOptionGroups(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const pending = session.pendingAttribute;
+    if (!pending || session.pendingMatch || session.pendingMultiOrder) return false;
+    const total = pending.quantity || this.catalogService.extractQuantityFromSegment(pending.sourceText || '') || 1;
+    if (total < 2) return false;
+    const count = '(?:\\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
+    const raw = text.trim();
+    if (!new RegExp(`^[¿?]?${count}\\s+`, 'i').test(raw) ||
+        !new RegExp(`(?:\\s+y\\s+|[,;]\\s*)${count}\\s+`, 'i').test(raw)) return false;
+    const menu = await this.catalogService.getMenuProducts();
+    const product = menu.find(item => item.id === pending.productId);
+    if (!product) return false;
+    const remaining = this.catalogService.getRemainingAttributes(product, pending.selected);
+    if (remaining.length !== 1) return false;
+    // Existing multi-attribute/notes syntax remains owned by its atomic planner.
+    if (new RegExp(`^${count}\\s+con\\s+`, 'i').test(raw)) return false;
+    const groups = parseOptionDistribution(raw, remaining[0].options, total);
+    if (!groups) {
+      await this.reply(conv, waId, `Son ${total} unidades de ${pending.name}. Indica la cantidad y opción de cada grupo; deben sumar ${total}. El carrito sigue igual.\n\n${this.formatPendingPurchaseReminder(session)}`);
+      return true;
+    }
+    // Keep identical flavors merged so addition deduplication cannot drop a unit.
+    const available = cfg.ignoreBusinessHours ? menu.map(item => ({...item,availableNow:true})) : menu;
+    return this.tryHandleAttributeDistribution(conv, waId, session,
+      `los quiero ${groups.map(group => `${group.quantity} con ${group.value}`).join(' y ')}`, available, cfg, groups.length === 1);
   }
 
   /** Collect counted options over several turns without applying one group's choice to every unit. */
@@ -28263,12 +28294,12 @@ export class WhatsappOrchestratorService {
 
   private async tryHandleAttributeDistribution(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
-    text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
+    text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig, allowSingleGroup = false,
   ): Promise<boolean> {
     if (/[?¿]/.test(text) || !/^(?:los|las)\s+quiero\s+/i.test(text.trim())) return false;
     if (session.pendingUnitDistribution && CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) { await this.reply(conv,waId,this.formatPendingCartEditReminder(session));return true; }
     const parts = text.trim().replace(/^(?:los|las)\s+quiero\s+/i, '').split(/(?:\s+y\s+|[,;]\s*)(?=(?:\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+)/i).map(part => part.trim());
-    if (parts.length < 2 || parts.length > 6 || parts.some(part => !/^(?:\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+/i.test(part))) return false;
+    if (parts.length < (allowSingleGroup ? 1 : 2) || parts.length > 6 || parts.some(part => !/^(?:\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+/i.test(part))) return false;
     if (session.pendingMultiOrder || session.pendingMatch) {
       await this.reply(conv, waId, '¿Cuál presentación quieres repartir? Primero debemos aclarar el producto; el pedido sigue igual.');
       return true;

@@ -830,6 +830,15 @@
       "engineChanged": false,
       "stagingVerified": false,
       "deployed": false
+    },
+    {
+      "batch": 487,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-487-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Counted whole pending option lists validated before adding; preserve exact split and repeated-flavor quantity."
     }
   ],
   "subsequentLocationReports": [
