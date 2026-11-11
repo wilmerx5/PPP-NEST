@@ -1189,6 +1189,11 @@ export class WhatsappOrchestratorService {
         recentImageCartSignature: undefined,
       });
     } else if (msg.messageType === 'location') {
+      if (['completed', 'closed'].includes(conv.state)) {
+        await this.reply(conv, msg.waId,
+          'Recibí una ubicación para el pedido ya registrado. Para verificar el cambio antes de la entrega, ' + this.humanPhoneHint());
+        return;
+      }
       const addr = this.formatLocationAddress(msg);
       if (!addr) {
         await this.reply(

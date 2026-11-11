@@ -1,3 +1,11 @@
+## Tanda 500 — dirección y pin después de confirmar
+
+36 regresiones nuevas cubren secuencias de calle, torre/apartamento y consulta del destino, más pins nativos de WhatsApp después de completed/closed, tres direcciones y agente off/mock. Inicial24 mensajes de texto pasan y12 pins fallan: la ruta de ubicación sobrescribía la sesión antes de alcanzar la protección pospedido. Se añade una guarda antes de procesar el pin que conserva la sesión y solicita revisión del restaurante para el pedido registrado.
+
+Relacionadas168/3 aprobadas. Global49.674/573 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Servicios externos simulados, cero inferencia pagada y órdenes externas. Evidencia whatsapp-batch-500-validation.json. Publicación en rama staging.
+
+La modificación efectiva de dirección/tarifa de una orden registrada sigue requiriendo revisión del restaurante. Pendientes del análisis de chats incluyen acceso y pin combinados con nuevas compras, retirada de cantidades específicas de grupos y concurrencia. N08-14/N08-15 siguen parciales. Último despliegue verificado producción498 f720ede1 y servidor staging49875ca2f52, Kamppo481.
+
 ## Tanda 499 — consultas del destino confirmado con datos de acceso
 
 36 regresiones nuevas verifican tres direcciones con torre/apartamento o referencias de mapa diferentes, agente off/mock y estados completed/closed. Las respuestas conservan el destino del cliente y la sesión completa. Relacionadas132/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. La global498 (49.602/571) sigue como evidencia previa.
