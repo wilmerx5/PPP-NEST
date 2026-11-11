@@ -8546,7 +8546,7 @@ export class WhatsappCatalogService {
       const remaining = this.getRemainingAttributes(product, selected, opts);
       const next = remaining[0];
       if (!next?.options?.length) break;
-      // A juice flavor is a customer choice, not a kitchen garnish default.
+      // Required flavor choices must not become implicit first-option defaults.
       if (this.requiresExplicitAttributeChoice(product, next, opts)) break;
       // La opción 1 se aplica a atributos faltantes, incluso al estilo.
       // Las elecciones explícitas del cliente ya están en selected y NO se pisan.
@@ -8573,6 +8573,11 @@ export class WhatsappCatalogService {
     if (name === 'sabor' && (this.isLikelyDrinkProduct(product) ||
       flavorBeverage.test(normalizeText(product.name)) ||
       flavorBeverage.test(normalizeText(product.categoryName || '')))) return true;
+    // Frozen desserts also need an explicit flavor. Match the product family or
+    // its category, not incidental mentions such as "combo con helado".
+    const flavorDessert = /^(?:helados?|paletas?|sorbetes?)(?:\s|$)/;
+    if (name === 'sabor' && [product.name, product.categoryName, ...(product.categoryNames || [])]
+      .some(value => flavorDessert.test(normalizeText(value || '')))) return true;
     // A dish picked from a list never had its included drink mentioned.
     return !!opts?.askIncludedDrink && /^(?:bebida|gaseosa|refresco|jugo|soda)s?\b/.test(name);
   }

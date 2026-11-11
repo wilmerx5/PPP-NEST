@@ -1,0 +1,75 @@
+{
+  "baseCommit": "fe240bc48ef29c314da1d3377be28bfb860529e3",
+  "batches": [
+    485
+  ],
+  "phases": {
+    "nonTimer": {
+      "exitCode": 0,
+      "seconds": 1915.19,
+      "sourceUnchanged": true,
+      "tests": 48704,
+      "failed": 0,
+      "skipped": 0
+    },
+    "timers": {
+      "exitCode": 0,
+      "seconds": 14.6,
+      "sourceUnchanged": true,
+      "tests": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tsc": {
+      "exitCode": 0,
+      "evidence": "runner.log tsc0 before interruption"
+    },
+    "tsc-build": {
+      "exitCode": 0,
+      "recovered": true
+    },
+    "node": {
+      "exitCode": 0
+    }
+  },
+  "paidRequests": 0,
+  "sourceFiles": 778,
+  "workers": 6,
+  "nonTimerTestTimeoutMs": 20000,
+  "batch": 485,
+  "engineChanged": true,
+  "newTests": 33,
+  "simulatedClosures": 24,
+  "tests": 48720,
+  "suites": 558,
+  "inventoryExact": true,
+  "sourceUnchanged": true,
+  "nodeScriptTests": 92,
+  "related": {
+    "tests": 99,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "baseline": {
+    "failed": 24,
+    "passed": 0
+  },
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "recovery": "Runner exited143 after complete nonTimer/timer suites and tsc0. No remaining processes; all778 source hashes and558suite checkpoints verified. Build TypeScript and92 scripts completed separately; full test phases not rerun.",
+  "scope": "Sabor with multiple options stays explicit for helado/paleta/sorbete families by name or category (including secondary categories). Selected values and single-option attributes retained. Incidental combo mentions do not trigger the family rule.24 router delivery journeys and9 catalog controls.",
+  "limits": [
+    "Bounded Spanish family names and Sabor singular; not every dessert or attribute.",
+    "PPP attribute schema has no explicit default metadata; existing selected choices are preserved.",
+    "No live inference or real maps/orders.",
+    "Kamppo native required/optional adapter not changed or tested in this batch.",
+    "N08-14/N08-15 remain partial; no historic order repair."
+  ]
+}

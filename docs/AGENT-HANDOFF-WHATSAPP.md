@@ -1,3 +1,13 @@
+## Tanda 485 — elegir sabor en helados, paletas y sorbetes (rama staging)
+
+Sobre fe240bc4 se reproducen24 fallos: un postre con varios sabores toma la primera opción sin preguntar. La regla de elección explícita ahora incluye las familias helado/paleta/sorbete por nombre o categoría, también secundaria. No depende de IDs, precios ni productos PPP. Conserva valores ya seleccionados y atributos con una sola opción. Una mención incidental como «Bowl con helado» no activa la regla por nombre. No cambia la clasificación comida/bebida ni los valores predeterminados de otros atributos.
+
+33 pruebas nuevas:24 recorridos por router (3 familias, off/mock,2 sabores, corrección de cantidad antes/después de dirección),24 cierres DTO simulados y9 controles de catálogo para categorías/selección previa/opción única/menciones incidentales. Consulta de precio mientras falta sabor, sopa adicional, reducción2→1, apartamento y revisión42000 permanecen correctos. Relacionadas99/3 aprobadas.
+
+Global48.720/558 aprobada,0 fallos/omitidas;778 fuentes congeladas e inventario exacto. TypeScript general/build y92 scripts aprobados. El runner terminó143 después de completar las dos fases Jest y TypeScript general: se verificaron hashes/checkpoints y se completaron build y scripts por separado; no se presenta como ejecución ininterrumpida. Evidencia whatsapp-batch-485-validation.json.
+
+0 inferencia pagada, Google, Meta u órdenes reales; modelos/configuración/presupuesto intactos. Alcance acotado a Sabor singular y familias españolas; PPP no tiene metadato separado de default configurado. Kamppo y su adaptador required/optional no se modifican aquí. N08-14/N08-15 siguen parciales. Próximo: opciones explícitas en otros tipos de producto y recuperación de selectores mixtos. Publicación en rama staging únicamente; últimos runtimes verificados PPP479, servidor staging462 y Kamppo481. Sin reparación histórica ni despliegue nuevo.
+
 ## Tanda 484 — sabor, cantidad y dirección (rama staging)
 
 24 recorridos nuevos por router con Jugo Natural/Batido Frutal/Refresco Natural, agente off/mock, Mango/Lulo y dirección antes/después de corregir cantidad. La consulta de precio interrumpe una elección de sabor real; después se selecciona, se añade sopa, se reduce bebida de2 a1 y se cierra a domicilio. Se verifica sabor/cantidad, sopa intacta, apartamento, revisión de42000 y una única creación DTO con sabor y dirección. Todos los servicios externos son simulados.
