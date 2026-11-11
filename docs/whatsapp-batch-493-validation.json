@@ -1,0 +1,59 @@
+{
+  "batch": 493,
+  "baseCommit": "318d2209650eddd2346f8e7828ee89f2c99a727d",
+  "engineChanged": true,
+  "newTests": 60,
+  "simulatedClosures": 60,
+  "related": {
+    "tests": 180,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "scope": "Reduce pending quantity to equal/below staged option count. Equal totals reuse the existing atomic distribution planner, merging exactly repeated option texts first; smaller totals clear incompatible staged parts with explicit explanation and request a new distribution. Three synthetic desserts, agent off/mock, one/two assigned units, multiple messages with same/different flavors, existing soup and price interruptions, exact final flavor quantities and total.",
+  "baseline": {
+    "tests": 24,
+    "failed": 24,
+    "description": "Equal total unnecessarily retains pending flavor selection; smaller total retains incompatible staged distribution without explaining reset."
+  },
+  "iterations": [
+    "Initial24fail; correction passes related144/3. Expanded repeated/mixed groups48pass. Added equality at one unit: final60 new, related180/3pass."
+  ],
+  "limits": [
+    "Only simple standalone pending quantity corrections without explicit new option tail; combined quantity-and-price commands and replacement purchases are not new coverage.",
+    "No live inference, concurrent events or catalog mutation during staged selection in new fixtures.",
+    "N08-14/N08-15 remain partial."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "global": {
+    "tests": 49152,
+    "suites": 566,
+    "failed": 0,
+    "skipped": 0,
+    "sourceFiles": 786,
+    "sourceUnchanged": true,
+    "inventoryExact": true,
+    "checks": {
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "scripts": {
+        "exitCode": 0,
+        "passed": 92
+      }
+    },
+    "execution": "Supervised bounded chunks against frozen source hashes; timers isolated. All suite checkpoints reconciled with exact Jest inventory."
+  },
+  "testSha256": "0591bcabfa299ad90aeab4cfd7cfcf60bdf95bef4947f7bade6a07485e674eb8",
+  "runtimeSha256": "51f567cd26df5465e748c7f33edda78628e7986205abd4fe94b260a75cc7f7b5"
+}

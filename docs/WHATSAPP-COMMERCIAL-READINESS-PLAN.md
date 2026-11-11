@@ -1,3 +1,13 @@
+## Tanda 493 — reducir cantidad hasta o por debajo del reparto parcial (rama staging)
+
+Sobre318d2209 se reproducen24 fallos: reducir al número de unidades ya elegidas vuelve a preguntar sabor, y reducir por debajo conserva partes incompatibles sin explicar la necesidad de repartir otra vez. La corrección de cantidad simple ahora compara el nuevo total con lo asignado. Si coincide, aplica el planificador atómico existente con las opciones guardadas; consolida grupos de texto idéntico antes de añadir para evitar deduplicación de unidades. Si es menor, informa del reparto anterior, limpia solo las partes incompatibles y pide uno nuevo sin mutar el carrito.
+
+60 pruebas nuevas/60 cierres DTO simulados:3 postres sintéticos, agente off/mock, reducción1/2,1/2 unidades elegidas, dos frases de corrección, grupos guardados en uno o varios mensajes, sabores iguales/distintos, sopa existente y consulta de precio después de reiniciar reparto. Se verifican cantidades/sabores/total final y una única orden. Inicial24 fallos; corrección144/3 aprobadas; ampliación48 focales y luego igualdad de1 unidad:60 nuevas, relacionadas180/3 aprobadas.
+
+Global49.152/566 aprobada,0 fallos/omitidas,786 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Global por bloques supervisados con temporizadores separados, sin recuperación de interrupciones. Evidencia whatsapp-batch-493-validation.json.0 inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos.
+
+Alcance: correcciones simples pendientes sin opción nueva explícita en la misma frase. Pendiente cubrir reducción y precio en un mismo mensaje (ruta separada), cambio simultáneo de opción, reemplazos de productos, cancelación de reparto y concurrencia. N08-14/N08-15 siguen parciales; siguen pendientes ubicaciones posconfirmación y mensajes consecutivos de acceso/pin. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
 ## Tanda 492 — corregir cantidad con sabores parcialmente elegidos (rama staging)
 
 72 recorridos nuevos sobre414da18a:3 postres sintéticos, agente off/mock,1/2 unidades ya asignadas a Mango, cantidad inicial3/4 corregida a2/4 o3/5 y3 frases («mejor que sean», «cambia la cantidad a», «mejor solo»). Se crea el reparto parcial por mensajes reales del router, sin sembrar pendientes. La sopa existente permanece intacta; se conservan partes elegidas tras corregir cantidad y consultar precio, se rechaza Mora sin mutaciones y «los otros con lulo» completa cantidades exactas hasta una única orden DTO y total correcto.

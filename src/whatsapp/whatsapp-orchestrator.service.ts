@@ -4617,6 +4617,30 @@ export class WhatsappOrchestratorService {
           }
           session.pendingQuantityHint = undefined;
           await this.conversationService.saveSession(conv, session);
+          const staged = session.pendingAttribute?.distributionParts;
+          if (!includesOption && staged?.length) {
+            const groups = new Map<string, {quantity:number; options:string}>();
+            for (const part of staged) {
+              const options = part.replace(/^\S+\s+con\s+/i, '').trim();
+              const count = this.catalogService.extractQuantityFromSegment(part.replace(/\s+con\s+.+$/i, ' platos'));
+              const key = options.toLowerCase();
+              const group = groups.get(key);
+              if (group) group.quantity += count;
+              else groups.set(key, {quantity:count,options});
+            }
+            const assigned = [...groups.values()].reduce((sum,group)=>sum+group.quantity,0);
+            if (quantity < assigned) {
+              session.pendingAttribute!.distributionParts = undefined;
+              await this.conversationService.saveSession(conv, session);
+              await this.reply(conv,msg.waId,`Ahora son ${quantity} ${quantity === 1 ? 'unidad' : 'unidades'}. El reparto anterior tenía ${assigned} unidades elegidas; necesitamos un nuevo reparto para esa cantidad. El carrito sigue igual.\n\n` + this.formatPendingPurchaseReminder(session));
+              return;
+            }
+            if (quantity === assigned) {
+              const available = cfg.ignoreBusinessHours ? products.map(product=>({...product,availableNow:true})) : products;
+              if (await this.tryHandleAttributeDistribution(conv,msg.waId,session,
+                `los quiero ${[...groups.values()].map(group=>`${group.quantity} con ${group.options}`).join(' y ')}`,available,cfg,true)) return;
+            }
+          }
           if (includesOption && tail) {
             const addedNote = interpretProductNote(tail,[optionProduct!])?.note ||
               this.catalogService.extractProductModificationNote(tail);

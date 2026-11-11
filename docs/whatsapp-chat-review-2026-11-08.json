@@ -883,6 +883,15 @@
       "stagingVerified": false,
       "deployed": false,
       "result": "72 quantity correction journeys after partial flavor assignment. Preserve staged choices, reject unknown remaining flavor, finish exact counts and total. Equal/below assigned totals not yet covered."
+    },
+    {
+      "batch": 493,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-493-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Simple pending quantity reduction now commits an exactly covered staged distribution, or explicitly resets incompatible parts below assigned count.60 new journeys, global49152/566pass. Compound quantity/price route remains pending."
     }
   ],
   "subsequentLocationReports": [
