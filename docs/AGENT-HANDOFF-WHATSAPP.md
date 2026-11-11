@@ -1,3 +1,9 @@
+## Tanda 502 — corrección retrospectiva y recuperación de nueva compra
+
+36 regresiones nuevas prueban tres frases que mezclan corrección del pedido confirmado y compra adicional, tres catálogos, agente off/mock y estados completed/closed. Se verifica la respuesta de revisión, conservación de la sesión/primera orden y posterior petición explícita de dos unidades que termina en una segunda orden independiente. TypeScript general aprobado. Solo cambian pruebas y documentación. Evidencia whatsapp-batch-502-validation.json.
+
+Límite identificado: la compra mencionada dentro del mensaje mixto requiere que el cliente la solicite explícitamente otra vez. Esta tanda verifica la recuperación actual. Queda pendiente mejorar la aclaración y continuidad de esa compra en el mismo turno. La corrección efectiva de la orden confirmada requiere revisión del restaurante. Otros pendientes incluyen cantidades específicas dentro de grupos y concurrencia. Global500 permanece como evidencia previa. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
 ## Tanda 501 — pins repetidos y acceso después de confirmar
 
 36 regresiones nuevas cubren dos pins consecutivos, coordenadas solas, nombre de conjunto o dirección adjunta, seguidos de torre/apartamento y consulta del destino. Tres direcciones, agente off/mock y estados completed/closed. Se verifica sesión y destino originales, respuesta de revisión del pedido registrado y ausencia de reapertura u orden nueva.
