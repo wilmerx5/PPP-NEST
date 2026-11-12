@@ -207,3 +207,17 @@ test('the agent tool card and detailed menu expose the actual database relations
   expect(agent.productCard(current.find(product => product.id === 701))).toMatchObject({ comboBaseProductId: null, comboRole: 'normal' });
   expect(await catalog.getMenuDetailedText()).toContain('Producto normal vinculado: #11 Bowl Andino');
 });
+
+for (const previousFood of [false, true]) {
+  test(`an independent combo without a normal counterpart can still be purchased, previous food ${previousFood}`, async () => {
+    const products = menu();
+    products[2] = {...products[2], name: 'Combo Mixto', comboBaseProductId: null};
+    const h = harness(products, false);
+    h.service.aiService.classifyMessage = jest.fn().mockResolvedValue(null);
+    if (previousFood) h.conv.sessionData.cart = [{productId:704,name:'Sopa Casera',code:14,quantity:1,unitPrice:5000}];
+    await h.sendQueued('quiero un Combo Mixto');
+    expect(h.conv.sessionData.cart.filter(line => line.productId === 703)).toHaveLength(1);
+    expect(h.conv.sessionData.cart.find(line => line.productId === 703)?.quantity).toBe(1);
+    expect(h.conv.sessionData.cart).toHaveLength(previousFood ? 2 : 1);
+  });
+}

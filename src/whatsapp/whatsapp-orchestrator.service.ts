@@ -13989,6 +13989,11 @@ export class WhatsappOrchestratorService {
     const configuredFamily = this.catalogService.getConfiguredVariantFamily(product, products);
     // Current database catalogs always expose this nullable field. Legacy adapters
     // may omit it while upgrading, but an explicit null never authorizes guessing a link.
+    const directComboPurchase = hint === 'combo' && !opts.targetLine && !opts.fromPendingAttribute &&
+      this.catalogService.productImpliesCombo(product) &&
+      /^(?:quiero|quisiera|dame|deme|me das|me regalas|agrega|agregame|anade)\b/.test(this.normalizeForMatch(text)) &&
+      (` ${this.normalizeForMatch(text)} `).includes(` ${this.normalizeForMatch(product.name)} `);
+    if (!configuredFamily && directComboPurchase) return false;
     if (!configuredFamily && product.comboBaseProductId !== undefined && hint) {
       await this.reply(conv, waId, `*${product.name}* no tiene una relación de combo configurada. El restaurante debe configurar la presentación correspondiente. Tu pedido sigue igual.`);
       return true;

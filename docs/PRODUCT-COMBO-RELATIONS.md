@@ -14,7 +14,7 @@ El catálogo transporta el campo nullable hasta el motor. El vínculo configurad
 
 Una conversión conserva la cantidad y las opciones compatibles, retira las exclusivas del producto anterior y usa el precio del SKU de destino. Las opciones adicionales pendientes mantienen el carrito original hasta completar la elección. Si hay varios combos elegibles se pregunta cuál. Si la presentación vinculada está ausente o fuera de horario, se conserva el carrito y se explica la imposibilidad.
 
-Los catálogos actuales procedentes de base de datos exponen `comboBaseProductId`, incluso cuando vale `null`. Una conversión desde un producto sin relación configurada se detiene con una explicación. Los adaptadores históricos que todavía omiten el campo conservan el contrato anterior durante su actualización. Para activar la semántica de relaciones explícitas, los adaptadores deben transmitir siempre el campo nullable.
+Los catálogos actuales procedentes de base de datos exponen `comboBaseProductId`, incluso cuando vale `null`. Una conversión desde un producto sin relación configurada se detiene con una explicación. La compra directa de un combo por su nombre completo sigue disponible aunque ese producto no tenga una contraparte normal. Los adaptadores históricos que todavía omiten el campo conservan el contrato anterior durante su actualización. Para activar la semántica de relaciones explícitas, los adaptadores deben transmitir siempre el campo nullable.
 
 ## Adaptación a Kamppo
 
