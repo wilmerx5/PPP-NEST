@@ -1,3 +1,11 @@
+## Tanda 506 — mensajes posteriores a compra aparte
+
+36 regresiones nuevas verifican «por favor», «gracias» y consulta de precio, cada una repetida dos veces después de corregir la dirección del pedido registrado y pedir dos unidades aparte. Tres catálogos, agente off/mock, completed/closed. Se verifica carrito de dos unidades, primera orden intacta, una sola reapertura y segunda orden exacta.
+
+Relacionadas108/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. Global505 (49.854/577) permanece como evidencia previa. Cero inferencia pagada y órdenes externas. Publicación en rama staging. Evidencia whatsapp-batch-506-validation.json.
+
+Pendientes concurrencia, retirada de cantidades específicas de grupos y otras formulaciones mixtas. La revisión efectiva de órdenes registradas corresponde al restaurante. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
 ## Tanda 505 — dirección retrospectiva y compra aparte
 
 72 recorridos nuevos cubren cambio de dirección de orden registrada mezclado con compra aparte explícita, condicional, pregunta o negación. Tres catálogos, agente off/mock y completed/closed. La ruta de dirección reutiliza la extracción acotada de compra aparte, informa cómo revisar el cambio y continúa la compra mediante reapertura normal. «La dirección correcta es» se reconoce como corrección del cliente. La extracción se comparte con las correcciones retrospectivas de producto.
