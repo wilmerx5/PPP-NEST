@@ -1288,6 +1288,10 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    const mixedEditSession=this.conversationService.getSession(conv);
+    if (mixedEditSession.pendingCartReplacement?.mixedPurchase &&
+        await this.tryHandleMixedReplacementPurchase(conv,msg.waId,mixedEditSession,text,cfg)) return;
+
     if (await this.tryResolveMappedDeliveryPoint(conv, msg.waId, text)) return;
     if (await this.tryResolveNearbyDeliveryPlace(conv, msg.waId, text)) return;
     if (await this.tryResolveNamedCategoryInterruption(conv, msg.waId, text)) return;
@@ -1762,6 +1766,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleCountedRemovalAddition(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleReferencedUnitRemoval(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandlePairedPreparationCorrection(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
+    if (await this.tryHandleMixedReplacementPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleReferencedCookingChange(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandleRejectedProductRemoval(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
     if (await this.tryHandlePairedCatalogPurchase(conv,msg.waId,this.conversationService.getSession(conv),inboundText,cfg)) return;
@@ -17626,6 +17631,155 @@ export class WhatsappOrchestratorService {
     if(!limit.ok) return unchanged('El cambio supera los límites del pedido.');
     await this.conversationService.saveSession(conv,next);
     await this.reply(conv,waId,'Listo ✅\n\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
+  }
+
+  /** One explicit replacement and one new purchase form a single cart change. */
+  private async tryHandleMixedReplacementPurchase(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const pending = session.pendingCartReplacement;
+    const mixed = pending?.mixedPurchase;
+    const said = this.normalizeForMatch(text).replace(/[.!]+$/,'').trim();
+    let request = said.match(/^(.+?)\s*,?\s+y\s+(?:(?:ademas|tambien)\s+)?(?:(?:agrega|agregame|anade|anademe|ponme|dame)\s+)?((?:un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\s+.+)$/);
+    if (!request) {
+      const reversed=said.match(/^(?:agrega|agregame|anade|anademe|ponme|dame) (.+?) y ((?:cambia|cambiame|cambialo|cambiala|pasalo|pasala) .+)$/);
+      if (reversed) request=[reversed[0],reversed[2],reversed[1]] as RegExpMatchArray;
+    }
+    const replacement = request?.[1].match(/^(?:cambia|cambiame) (?:el|la|los|las) (.+?) (?:a|por) (.+)$/);
+    const pronoun = request?.[1].match(/^(?:cambialo|cambiala|pasalo|pasala) (?:a|por) (.+)$/);
+    if (!mixed && !(request && (replacement || pronoun))) return false;
+    const unchanged = async (reason: string, clear = false) => {
+      if (clear) await this.conversationService.saveSession(conv, {...session,pendingCartReplacement:undefined});
+      await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;
+    };
+    if (mixed && /^(?:cancela|olvida) (?:ese|el) cambio$|^(?:mejor no|no|no gracias)$/.test(said))
+      return unchanged('Cancelé el cambio y la compra pendientes.',true);
+    // Whole-order cancellation retains the existing cancellation route.
+    if (mixed && (this.isCancelIntent(text) || this.isClearCartIntent(text))) return false;
+    if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+        session.pendingUnitDistribution || session.pendingSubsetKitchenNote || session.pendingComposedDishRecovery ||
+        CART_EDIT_SELECTION_KEYS.some(key=>key!=='pendingCartReplacement' && !!session[key]) || pending && !mixed)
+      return unchanged('Hay una selección o pago pendiente; aclaremos eso antes de aplicar el cambio y la compra.');
+    const products = await this.catalogService.getMenuProducts(true);
+    let index: number, target: MenuProduct | undefined, addition: MenuProduct | undefined, quantity: number;
+    let selectedTarget: {attributeName:string;attributeValue:string}[] = [];
+    let selectedAddition: {attributeName:string;attributeValue:string}[] = [];
+    let additionNote: string | undefined;
+    const fingerprint = (a:MenuProduct,b:MenuProduct) => JSON.stringify([a,b].map(p=>[p.id,p.name,p.price,p.hasAttributes,p.comboBaseProductId,p.attributes || []]));
+    if (mixed) {
+      if (pending!.cartSignature !== JSON.stringify(session.cart) || Date.now()-mixed.createdAt>10*60*1000)
+        return unchanged('La selección cambió o venció. Repite el cambio y la compra juntos.',true);
+      index=pending!.options[0]?.cartIndex;
+      target=products.find(p=>p.id===mixed.replacementProductId);
+      addition=products.find(p=>p.id===mixed.productId);quantity=mixed.quantity;
+      if (!target || !addition || target.availableNow===false || addition.availableNow===false ||
+          fingerprint(target,addition)!==mixed.catalogFingerprint)
+        return unchanged('Cambió la carta, el precio o la disponibilidad. Revisa los productos y repite ambos cambios.',true);
+      selectedTarget=mixed.replacementAttributes;selectedAddition=mixed.attributes;additionNote=mixed.note;
+      const choosing = mixed.choosing==='replacement' ? target : addition;
+      const selected = mixed.choosing==='replacement' ? selectedTarget : selectedAddition;
+      const remaining = this.catalogService.getRemainingAttributes(choosing,selected);
+      const optionText = said.replace(/^(?:opcion|la|el) /,'');
+      const allowed = /^\d+$/.test(optionText) || remaining.some(attr=>attr.options.some(option=>this.normalizeForMatch(option)===said));
+      const choice = allowed && !/[¿?]/.test(text)
+        ? this.catalogService.resolveNextAttributeChoice(choosing,text,selected) : null;
+      if (choice && choice.status!=='invalid') {
+        if (mixed.choosing==='replacement') selectedTarget=choice.attributes;else selectedAddition=choice.attributes;
+      } else {
+        await this.reply(conv,waId,'Para aplicar el cambio y la compra juntos, falta esta opción. El pedido sigue igual.\n\n'+
+          this.catalogService.formatProductOptionsPrompt(choosing,selected));return true;
+      }
+    } else {
+      if (/[¿?]/.test(text)) return unchanged('Para aplicar el cambio y la compra, envía la instrucción sin pregunta.');
+      const reference = replacement?.[1].replace(/^de /,'');
+      const indices=session.cart.flatMap((line,i)=>pronoun
+        ? (session.productFocus?.productId!=null ? line.productId===session.productFocus.productId : session.cart.length===1)?[i]:[]
+        : correctionMatchesLine(line,reference!)?[i]:[]);
+      if (!indices.length && reference && this.catalogService.detectPortionHint(reference)) {
+        const matched=this.matchCartItemsForRemoval(reference,session,products);
+        if (matched.kind==='single') indices.push(...matched.indices);
+      }
+      if (indices.length!==1) return unchanged('Indica una sola línea del carrito para cambiar y el nombre completo de la compra nueva.');
+      index=indices[0];const original=session.cart[index];const source=products.find(p=>p.id===original.productId);
+      if (!source) return unchanged('No encontré el plato original en la carta actual.');
+      const destination=(replacement?.[2] || pronoun![1]).replace(/^(?:el|la|los|las) /,'');
+      const exact=products.filter(p=>this.normalizeForMatch(p.name)===destination);
+      const style=this.catalogService.extractRequestedProteinStyle(destination);
+      const hint=this.catalogService.extractVariantPreferenceHint(destination);
+      if (exact.length>1) return unchanged('Hay varios productos con ese nombre de reemplazo. Indica su código y repite ambos cambios.');
+      const attributeChange=!exact.length && !hint && style
+        ? this.catalogService.applyCookingStyleToAttributes(source,original.attributes || [],style) : null;
+      if (exact.length===1) target=exact[0];
+      else if (hint) {
+        const family=this.catalogService.getConfiguredVariantFamily(source,products);
+        const candidates=family?.variants.filter(p=>(hint==='combo' ? p.comboBaseProductId!=null : p.comboBaseProductId==null) &&
+          (!style || this.catalogService.matchesCookingStyle(p.name,style))) || [];
+        if (candidates.length===1) target=candidates[0];
+      } else if (style) target=attributeChange ? source : this.catalogService.findCookingStyleSibling(source,products,style) || undefined;
+      if (!target || target.availableNow===false) return unchanged('No encontré un único reemplazo disponible para ese plato.');
+      if (!exact.length) {
+        const words=this.normalizeForMatch([target.name,attributeChange?.attributeValue].filter(Boolean).join(' ')).split(' ');
+        if (!destination.split(' ').every(word=>['el','la','a','por','con','en','normal','solo'].includes(word) || words.includes(word) ||
+          !!style && this.catalogService.extractRequestedProteinStyle(word)===style))
+          return unchanged('Necesito aclarar el reemplazo completo antes de aplicar también la compra.');
+      }
+      selectedTarget=attributeChange?.attributes || (original.attributes || []).filter(choice=>target!.attributes?.some(attr=>
+        attr.attributeName===choice.attributeName && attr.options.includes(choice.attributeValue)));
+      const count=request![2].match(/^(un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+) (.+)$/)!;
+      const counts:Record<string,number>={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+      quantity=counts[count[1]]??Number(count[1]);
+      if (!Number.isSafeInteger(quantity) || quantity<1 || quantity>30) return unchanged('La compra nueva necesita una cantidad entera entre 1 y 30.');
+      let candidates=products.filter(p=>this.normalizeForMatch(p.name)===count[2]);
+      if (!candidates.length) {
+        const named=products.filter(p=>count[2].startsWith(this.normalizeForMatch(p.name)+' '));
+        const longest=Math.max(0,...named.map(p=>this.normalizeForMatch(p.name).length));
+        candidates=named.filter(p=>this.normalizeForMatch(p.name).length===longest);
+        if (candidates.length===1) {
+          const suffix=count[2].slice(longest).trim();const product=candidates[0];
+          const note=/^(?:sin [a-z ]{2,80}|bajit[oa] de azucar)$/.test(suffix) &&
+            !/\b(?:agrega|cambia|cancela|quita|pedido|orden|direccion|calle|pago|si|pero|sino)\b/.test(suffix);
+          if (note) additionNote=suffix;
+          else {
+            const step=this.catalogService.resolveAttributesFromMessage(product,suffix,[]);
+            const attrs=step.status!=='invalid'?step.attributes:[];
+            const words=this.normalizeForMatch(attrs.map(a=>a.attributeName+' '+a.attributeValue).join(' ')).split(' ');
+            if (!attrs.length || !suffix.split(' ').every(word=>['con','de'].includes(word) || words.includes(word))) candidates=[];
+            else selectedAddition=attrs;
+          }
+        }
+      }
+      if (candidates.length!==1 || candidates[0].availableNow===false)
+        return unchanged('No encontré un único producto disponible para la compra nueva. Repite ambos cambios con el nombre completo de ese producto y sus opciones.');
+      addition=candidates[0];
+    }
+    const original=session.cart[index];
+    if (!original) return unchanged('No encontré la línea original. Repite ambos cambios.',true);
+    const base={...session,pendingCartReplacement:undefined,pendingPriceInquiry:undefined,pendingCompositionAsk:undefined,
+      pendingAddOffer:undefined,pendingCategoryBrowse:undefined,pendingQuantityHint:undefined};
+    const replaced=this.tryAddProductToCart(base,target!,original.quantity,cfg,undefined,selectedTarget,
+      {replacement:{originalLine:structuredClone(original)}});
+    if (replaced.blocked) return unchanged('El reemplazo supera los límites del pedido.',!!mixed);
+    const added=replaced.missingAttributes ? null : this.tryAddProductToCart(replaced.session,addition!,quantity,cfg,additionNote,selectedAddition);
+    if (added?.blocked) return unchanged('La compra nueva supera los límites del pedido; no apliqué ninguno de los dos cambios.',!!mixed);
+    if (replaced.missingAttributes || added?.missingAttributes) {
+      const choosing=replaced.missingAttributes ? 'replacement' as const : 'purchase' as const;
+      const targetAttributes=replaced.missingAttributes || replaced.session.cart[index].attributes || [];
+      const additionAttributes=added?.missingAttributes || selectedAddition;
+      await this.conversationService.saveSession(conv,{...session,pendingCartReplacement:{
+        cartSignature:JSON.stringify(session.cart),options:[{cartIndex:index,label:this.formatCartLineLabel(original)}],addQuery:target!.name,
+        mixedPurchase:{productId:addition!.id,quantity,createdAt:mixed?.createdAt || Date.now(),replacementProductId:target!.id,
+          replacementAttributes:targetAttributes,attributes:additionAttributes,note:additionNote,choosing,catalogFingerprint:fingerprint(target!,addition!)},
+      }});
+      await this.reply(conv,waId,'Para aplicar el cambio y la compra juntos, elige esta opción. El pedido sigue igual.\n\n'+
+        this.catalogService.formatProductOptionsPrompt(choosing==='replacement'?target!:addition!,choosing==='replacement'?targetAttributes:additionAttributes));
+      return true;
+    }
+    const next={...this.reconcileSubstitutionPending(added!.session),lastDrinkAddition:undefined};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,`Listo, cambié *${original.name}* por *${target!.name}* y agregué ${quantity} de *${addition!.name}*.\n\n`+
+      this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
     return true;
   }
 
