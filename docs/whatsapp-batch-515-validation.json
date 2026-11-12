@@ -1,0 +1,120 @@
+{
+  "batch": 515,
+  "sourceCommit": "33362327ced7f77364ffdd293bf7b0d093e9ea2d",
+  "newRegressionTests": 93,
+  "relatedTestsPassed": 615,
+  "relatedSuitesPassed": 5,
+  "sourceFiles": 811,
+  "sourceManifestSha256": "12537bc542dc2a43f25d4dd6d853488513d2a30470dc5a4d0a020fdf3aa5c8b1",
+  "typescriptGeneralPassed": true,
+  "dockerBuildPassed": true,
+  "compiledSimulatedJourneysPassed": 80,
+  "catalogSnapshotSimulatedJourneysPassed": 10,
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "modelChanges": false,
+  "globalStatus": "passed",
+  "stagingDeployment": {
+    "environment": "staging",
+    "head": "33362327ced7f77364ffdd293bf7b0d093e9ea2d",
+    "image": "sha256:ed27b15f0847fc2d94375c1818ff36ad2e5c776df9fe64c2e8de013fb291bc91",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.81,
+        "heapTotal": 63.82,
+        "rss": 125.57
+      },
+      "timestamp": "2026-11-12T18:31:44.588Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 56.02,
+        "heapTotal": 63.82,
+        "rss": 125.95
+      },
+      "timestamp": "2026-11-12T18:31:44.823Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-12T18:32:03.650231+00:00",
+    "backup": "/root/ppp-manual-release/20261112T183047Z-staging-515"
+  },
+  "productionPromoted": false,
+  "kamppoMigrated": false,
+  "candidateImage": "sha256:3703105cbfccf054011bf8ad8969c80926553da12081a8f2409e055d96f179f3",
+  "validationMode": "Full repository Jest inventory with isolated ts-jest runtime transform and diagnostics disabled in a private temporary config. Separate general TypeScript and five default ts-jest related suites passed.",
+  "coveredBehaviors": [
+    "Named preparation changes replace the existing line in both directions",
+    "Quantity, compatible options, kitchen notes and unrelated lines are preserved",
+    "Canonical catalog titles starting with 1 do not reset existing quantity",
+    "Half/quarter portion owners and feminine preparation aliases remain supported",
+    "Preparations represented by product attributes update the existing meal",
+    "Configured combo conversions retain their own route",
+    "Ambiguous owners, unavailable destinations, pending selections and payment links retain the cart until clarified",
+    "Repeating the same preparation is idempotent",
+    "Explicit new purchases continue to add products"
+  ],
+  "date": "2026-11-12T18:30:57.875414+00:00",
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 50727,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 588,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 50743,
+    "totalPassedSuites": 590
+  },
+  "developmentHistory": [
+    "Initial full-router reproduction failed both preparation directions by adding another SKU.",
+    "Expansion found feminine preparation aliases, portion-owner and attribute-backed preparation boundaries. The first global attempt exposed two historical half-chicken reward-followup failures, repaired before final global.",
+    "Two interim global attempts were interrupted for confirmed combo-route ownership failures. Only the final frozen-source global result is accredited.",
+    "Two early Salsa-required expectations were corrected to existing catalog default policy. Explicit raw quantity validation compares product identity and quantity without imposing cart row order."
+  ],
+  "limits": [
+    "AI and order creation are mocked. Passing regressions do not certify interpretation by the live model or actual WhatsApp delivery.",
+    "No production promotion or Kamppo migration in this batch.",
+    "Broader phrasing and newly observed client chats remain ongoing pilot work."
+  ],
+  "postDeployCatalogJourneysPassed": 10,
+  "catalogSnapshotSha256": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+  "productionSourceUnchanged": "aaca0c43ffaa87a81af2a3c716762b6e8b74738f",
+  "nextPriorities": [
+    "New customer chat replay for mixed corrections and additions, preserving line identity.",
+    "Port this validated preparation replacement behavior and the pending direct-combo purchase guard to Kamppo when migration is requested.",
+    "Live-model held-out verification remains separate from these free simulated regressions."
+  ]
+}

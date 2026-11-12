@@ -1,3 +1,13 @@
+## Tanda 515 — cambios de preparación sobre la línea existente
+
+Se reprodujo «cambia el pollo a frito/broaster» añadiendo otro SKU. El router identifica ahora el propietario en el carrito y reutiliza el reemplazo atómico, conservando cantidad, notas y opciones compatibles. Un título de catálogo como «1 Pollo» no reduce a una las unidades existentes. Los medios/cuartos y las preparaciones como atributo mantienen su identidad. Las conversiones de combo usan las relaciones configuradas y conservan el propietario explícito. Ambigüedades, selección pendiente, destino agotado y pago con enlace dejan el carrito para aclarar.
+
+93 regresiones nuevas y615 relacionadas/5 suites aprobadas con dependencias externas simuladas, TypeScript general limpio. 80 recorridos del código compilado pasan con red deshabilitada y80 cierres simulados. Diez recorridos adicionales leen el catálogo real de staging y simulan el cierre completo. No se han creado órdenes externas ni enviado mensajes Meta; cero inferencia pagada y modelos sin cambios.
+
+Global final50.743/590 aprobada, cero fallos y omitidas, inventario exacto y811 fuentes congeladas. Configuración Jest privada con transformación aislada; TypeScript general y615 relacionadas con ts-jest predeterminado acreditan tipos por separado. Los intentos rojos e interrumpidos de desarrollo se conservan en la evidencia, sin atribuirles aprobación. Código33362327 publicado en staging y desplegado, imagened27b15f0847fc2d94375c1818ff36ad2e5c776df9fe64c2e8de013fb291bc91, saludable y cero reinicios. Salud local/pública y DB correctas, configuración privada preservada. Los80 controles compilados pasan también sobre el contenedor activo y diez recorridos con catálogo leído después del despliegue vuelven a pasar. Producciónaaca0c43 y Kamppo permanecen sin cambios. Evidencia: whatsapp-batch-515-validation.json.
+
+Pendientes: revisar chats nuevos y compras mezcladas con correcciones por identidad de línea. La migración a Kamppo y promoción de esta tanda a producción no forman parte de esta entrega. Estas pruebas simuladas no acreditan modelo/canal real ni cierre comercial de todo el piloto.
+
 ## Relaciones de combos activas en producción — 12/11
 
 Usuario autoriza backend de producción y configuración automática de parejas existentes. Confirma broaster→combo broaster y frito→combo frito. El panel lo construirá/publicará el usuario en Hostinger. Panel main9c995fd, checkout limpio ppp-admin-production-combos con .env.production local y build aprobado.
