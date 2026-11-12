@@ -8644,6 +8644,10 @@ export class WhatsappOrchestratorService {
     /** Ya estaba en carrito y el cliente aclaró "solo X" */
     alreadyHad?: boolean;
   } {
+    if (attrOpts?.sourceText && this.catalogService.productImpliesCombo(product) &&
+        this.catalogService.extractVariantPreferenceHint(attrOpts.sourceText) === 'solo') {
+      return {session,blocked:{ok:false,reason:`Pediste sin combo. No añadí *${product.name}* porque es un combo. Dime otro plato o consulta el menú.`}};
+    }
     let selected = attributes ? [...attributes] : [];
     const textSwap = attrOpts?.sourceText
       ? this.catalogService.swapIntent(attrOpts.sourceText)

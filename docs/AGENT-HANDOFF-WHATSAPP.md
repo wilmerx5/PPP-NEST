@@ -1,3 +1,11 @@
+## Tanda 511 — exclusión de combo ante falta de presentación sola
+
+La ampliación del chat «sin combo» reproduce10 fallos en12 casos de plato normal agotado/ausente. El intento de añadir un SKU combo ahora devuelve una explicación y conserva el carrito cuando el texto fuente pide presentación sola. Reutiliza el resultado de bloqueo existente con su razón visible. Las pruebas también conservan una sopa previa, verifican cantidades2/3, corrección, bebida aparte nombrada explícitamente y otro combo independiente en el mismo pedido.
+
+72 pruebas nuevas,54 cierres DTO simulados. Relacionadas114/2 aprobadas. La primera ampliación usaba «una Limonada», que abre selección de categoría en12 casos. Para probar adición explícita se usa el nombre completo «Limonada Natural» y se mantiene el flujo genérico como pendiente. Global50.298/584 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-511-validation.json. Servicios externos simulados, cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Pendientes peticiones genéricas de bebida, preferencias contradictorias, más expresiones de negación, concurrencia distribuida y proveedores reales. El chat original está cubierto desde510. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
 ## Tanda 510 — «sin combo» y confirmaciones repetidas
 
 El chat aportado por el usuario reproduce36 fallos de selección/corrección con «sin combo», «sin el combo» y mayúsculas. El catálogo ahora trata esa negación como preferencia sola y la aplica antes de elegir entre variantes. Conserva la familia original para identificar el combo del carrito. Se prueban pollo broaster y dos familias sintéticas, pedido inicial/corrección y seis sustituciones con bebida/acompañamiento guardados que retiran la bebida incluida.

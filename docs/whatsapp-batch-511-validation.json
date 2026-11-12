@@ -1,0 +1,38 @@
+{
+  "batch": 511,
+  "baseCommit": "1c9fe2e837f89d7e4dbb1cb5dd9589703725ec70",
+  "engineChanged": true,
+  "newTests": 72,
+  "simulatedClosures": 54,
+  "relatedTests": 114,
+  "relatedSuites": 2,
+  "availabilityBaseline": {
+    "tests": 12,
+    "failed": 10,
+    "passed": 2
+  },
+  "globalTests": 50298,
+  "globalSuites": 584,
+  "sourceFiles": 804,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "checks": {
+    "tsc": 0,
+    "build": 0,
+    "scripts": 0
+  },
+  "scriptsPassed": 92,
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "scope": "Prevent adding combo SKU when source requests solo/sin combo, including missing/unavailable plain sibling and existing unrelated basket. Verify quantities2/3, explicit named drink apart, correction and another independently requested combo.",
+  "iterations": [
+    "Missing/unavailable plain tests expose10/12 failures. Cart-add exclusion guard resolves12/12.",
+    "Expanded quantity tests initially use generic Limonada which opens category selection in12 cases. Use full catalog name Limonada Natural for explicit purchase fixtures; generic drink flow remains pending.",
+    "Final72 new and114/2 related pass, including six existing-basket cases."
+  ],
+  "limits": [
+    "Generic drink wording can still open category selection; named-drink fixtures cover explicit item addition.",
+    "Paid model behavior, real Meta retries and distributed concurrency remain unverified."
+  ]
+}
