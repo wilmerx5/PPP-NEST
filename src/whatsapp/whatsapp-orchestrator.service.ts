@@ -17656,6 +17656,8 @@ export class WhatsappOrchestratorService {
     const destination = contrast ? contrast[3] : pronoun ? pronoun[1] : change[2];
     // Explicit replacement quantities retain the existing catalog replacement path.
     if (direct && /^(?:un|una|uno|dos|tres|cuatro|cinco|\d+)\b/.test(destination)) return false;
+    // Combo/normal conversions belong to the configured product-relation flow.
+    if (pronoun && this.catalogService.extractVariantPreferenceHint(destination)) return false;
     const style = this.catalogService.extractRequestedProteinStyle(destination);
     if (!style) return false;
     const unchanged = async (reason: string) => { await this.reply(conv,waId,reason+' El pedido sigue igual.');return true; };
@@ -17680,6 +17682,10 @@ export class WhatsappOrchestratorService {
     const index=indices[0], original=session.cart[index];
     const source=menu.find(product=>product.id===original.productId);
     if (!source) return unchanged('No encontré el plato original en la carta actual.');
+    if (direct && !namedDestination && this.catalogService.extractVariantPreferenceHint(destination)) {
+      return this.tryApplyVariantPreferenceToProduct(conv, waId, session, text, menu, cfg, source,
+        { fromPendingAttribute: false, targetLine: original });
+    }
     const requestedPortion = this.catalogService.detectPortionHint(destination);
     if (direct && requestedPortion && requestedPortion !== this.catalogService.detectProductPortionSize(source.name)) return false;
     if (contrast) {

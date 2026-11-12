@@ -629,3 +629,15 @@ test('an unavailable preparation option does not add a separate chicken', async 
   await h.sendQueued('cambia el arroz chino con medio pollo a broaster');
   expect(h.conv.sessionData.cart).toEqual(before);
 });
+
+for (const [sourceId,targetId,style] of [[701,703,'frito'],[702,704,'broaster']] as const) {
+ for (const text of [`pásalo a combo de pollo ${style}`,`cambia el pollo a combo ${style}`]) {
+  test(`combo route ownership ${text}`,async()=>{
+   const h=setup(sourceId,2);
+   await h.sendQueued(text);
+   expect(h.conv.sessionData.cart).toHaveLength(2);
+   expect(h.conv.sessionData.cart.find(line=>line.productId===targetId)).toMatchObject({quantity:2,note:'Sin sal'});
+   expect(h.conv.sessionData.cart.some(line=>line.productId===sourceId)).toBe(false);
+  });
+ }
+}
