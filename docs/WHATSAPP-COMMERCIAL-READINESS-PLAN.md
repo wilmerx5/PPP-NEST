@@ -1,3 +1,11 @@
+## Tanda 509 — recuperación de grupos ambiguos con reparto completo
+
+36 regresiones nuevas prueban Mango en Vaso y Mango en Botella como grupos pendientes diferentes. «Quita 1»/«retira uno» requiere aclaración, se consulta precio y después se reemplaza el reparto completo en tres formas: conservar ambos grupos, unificar Mango en Botella o cambiar todas las unidades a Lulo en Botella. Tres catálogos y agente off/mock. Se verifica sesión intacta al rechazar, cantidades y presentaciones exactas al terminar, sopa conservada y una única orden.
+
+Relacionadas102/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. Global507 (49.956/579) permanece como evidencia previa. Cero inferencia pagada y órdenes externas. Publicación en rama staging. Evidencia whatsapp-batch-509-validation.json.
+
+Pendientes concurrencia y más formulaciones de retirada/corrección. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
 ## Tanda 508 — cantidades en palabras e interrupción de precio
 
 120 regresiones nuevas cubren un/uno/una/dos/tres, quita/retira, retirada parcial/total, tres catálogos y agente off/mock. Después de retirar se consulta precio, se verifica conservación del pendiente/carrito y se termina el reparto hasta un único DTO con cantidades exactas. Relacionadas186/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. Global507 (49.956/579) permanece como evidencia previa.
