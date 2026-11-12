@@ -1,0 +1,125 @@
+{
+  "environment": "production",
+  "head": "aaca0c43ffaa87a81af2a3c716762b6e8b74738f",
+  "image": "sha256:b8683c1f793cd90752de1e65eb77e0e49b336ebb14e91560052e5e6dd1044d53",
+  "running": true,
+  "restarts": 0,
+  "health": null,
+  "localHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "cacheSize": 0,
+    "memory": {
+      "heapUsed": 63.87,
+      "heapTotal": 89.81,
+      "rss": 150.39
+    },
+    "timestamp": "2026-11-12T17:01:38.144Z"
+  },
+  "publicHealth": {
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "cacheSize": 0,
+    "memory": {
+      "heapUsed": 64.03,
+      "heapTotal": 90.06,
+      "rss": 150.39
+    },
+    "timestamp": "2026-11-12T17:01:38.303Z"
+  },
+  "models": {
+    "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+    "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+    "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+    "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+    "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+  },
+  "privateConfigurationPreserved": true,
+  "compiledSmoke": "4 compiled batch292 dictated-address and incomplete-street checks passed\n13 compiled context and note boundary checks passed\n3 compiled compound selection, unit split and conflict-recovery journeys passed\nCompiled batch283 ni-exclusion parsing, conflict and recovery passed\n4 compiled multi-line redirection, clarification, cancellation and expiry journeys passed\n6 compiled pending-note ordinal repair and negative guards passed\n6 compiled router note-conflict and repeat checks passed\n7 compiled note redirection, repetition, stale, expiry, interruption and conflict checks passed\n8 compiled regional payment and wait checks passed\n8 compiled basic total/drink intent checks passed\n4 compiled category-boundary and closing-typo checks passed\n3 compiled greeting checks passed: default, stored invitation, legacy stored invitation\n3 compiled repeat-question checks passed: role repeated without mutation, specific question not swallowed, closed conversation excluded\n3 compiled role-pin checks passed: quote preserved, rejection preserved, mismatched pin discarded\n9 compiled colloquial account-question and mixed-request guards passed\n3 compiled interruption checks passed: fresh street tracked, pickup clears role, clarification preserves street\n3 compiled role checks passed: direct confirmation block, question preserved, place resolved\n7 compiled checkout checks passed: merchant questions, choice/mixed-request guards, ETA units and burst boundaries\n18 compiled referenced preparation routing, negated removal, atomic multiple-removal, short clarification, stale cart, direct guard, paired-plan, negation, atomic split, combo, supply, idempotency, repeated substitution, labelled drink, receipt notes and central-confirmation checks passed; external services isolated\n",
+  "candidateRouterSmoke": "744 compiled full-router controls passed;734 mocked closures; all external ports mocked.",
+  "runningRouterSmoke": "744 compiled full-router controls passed;734 mocked closures; all external ports mocked.",
+  "comboConfiguration": {
+    "ok": true,
+    "pairs": [
+      [
+        98,
+        4
+      ],
+      [
+        99,
+        1
+      ],
+      [
+        94,
+        35
+      ],
+      [
+        85,
+        84
+      ],
+      [
+        97,
+        36
+      ]
+    ],
+    "pricesAndAttributesPreserved": true,
+    "createdProducts": 0,
+    "externalOrders": 0
+  },
+  "comboSmoke": "Compiled configured combo identity and both conversion directions passed\n",
+  "compiledControls": 744,
+  "compiledMockedClosures": 734,
+  "candidateNetwork": "none; no application env",
+  "backup": "/<private>/ppp-manual-release/20261112T165822Z-production-combo-relations",
+  "checkedAt": "2026-11-12T17:03:55.231510+00:00",
+  "deployedVia": "Authorized SSH; CLI unauthenticated and connector lacks dispatch capability",
+  "stagingRuntimeChanged": false,
+  "kamppoChanged": false,
+  "publicCatalogVerification": {
+    "ok": true,
+    "health": "ok",
+    "db": "connected",
+    "pairs": {
+      "98": 4,
+      "99": 1,
+      "94": 35,
+      "85": 84,
+      "97": 36
+    },
+    "pricesNamesCodesAttributesVerified": true,
+    "publicProductCount": 66
+  },
+  "globalBeforeFinalDirectPurchaseGuard": {
+    "commit": "faffb554e4becba48007cff39a3a8026a49167c1",
+    "passedTests": 47922,
+    "skippedTests": 11,
+    "passedSuites": 559,
+    "skippedSuites": 2,
+    "reasonForSkips": "Existing Bold DB tests require their separate integration configuration"
+  },
+  "finalRelated": {
+    "passedTests": 470,
+    "suites": 11,
+    "newPurchaseDefaultRegressions": 4,
+    "focusedProductAndComboTests": 46
+  },
+  "actualProductionCatalogMockedClosures": 10,
+  "usualOrderBaselineComparisons": 8,
+  "generalTypeScript": true,
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "admin": {
+    "commit": "9c995fd",
+    "branch": "main",
+    "build": "passed",
+    "deployment": "user will build and publish to Hostinger",
+    "checkout": "/home/levi/Documents/programming/PPP/ppp-admin-production-combos"
+  },
+  "knownExistingBehavior": [
+    "The deterministic path can add a second line for cambia el pollo a frito/broaster. Observed on baseline and candidate with AI disabled.",
+    "Arroz chino con medio pollo still opens the existing selection in the AI-disabled baseline comparison."
+  ],
+  "finalSourceManifestSha256": "e67c3357ea23d3e01ddaf7e6fa5c5916c65133c0770f81191faeeef55bfa9377"
+}
