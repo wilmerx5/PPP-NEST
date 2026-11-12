@@ -282,3 +282,43 @@ test('a changed price is re-quoted before completing the configured conversion',
   ]);
   await close(h,705,2,'69.000');
 });
+
+for (const preparation of ['Broaster', 'Frito']) {
+  for (const withPriorItem of [false, true]) {
+    test(`direct configured ${preparation} combo retains normal purchase defaults, prior item ${withPriorItem}`, async () => {
+      const arepas = { attributeName: 'Arepas', options: ['Blancas', 'Fritas'] };
+      const beverage = { attributeName: 'Bebida', options: ['Colombiana', 'Manzana'] };
+      const original: WhatsappProductCandidate[] = [
+        { id: 701, code: 11, name: `1 Pollo ${preparation}`, price: 18000, availableNow: true, hasAttributes: true, attributes: [arepas] },
+        { id: 702, code: 12, name: `Combo De Pollo ${preparation}`, price: 26000, availableNow: true, hasAttributes: true, attributes: [arepas, beverage] },
+        { id: 704, code: 14, name: 'Sopa Casera', price: 5000, availableNow: true, attributes: [] },
+      ];
+      const linked = original.map(product => ({ ...product, comboBaseProductId: product.id === 702 ? 701 : null }));
+      const oldFlow = harness(original, false);
+      const newFlow = harness(linked, false);
+      for (const h of [oldFlow, newFlow]) {
+        h.service.aiService.classifyMessage = jest.fn().mockResolvedValue(null);
+        h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 514, dailyOrderNumber: 514 });
+        h.service.ordersService.findTodayOrdersByPhone = jest.fn().mockResolvedValue([]);
+        if (withPriorItem) await h.sendQueued('Una Sopa Casera');
+        await h.sendQueued(`quiero un Combo De Pollo ${preparation}`);
+      }
+      expect(oldFlow.conv.sessionData.cart).toEqual(expect.arrayContaining([
+        expect.objectContaining({ productId: 702, quantity: 1, unitPrice: 26000,
+          attributes: expect.arrayContaining([
+            { attributeName: 'Arepas', attributeValue: 'Blancas' },
+            { attributeName: 'Bebida', attributeValue: 'Colombiana' },
+          ]) }),
+      ]));
+      expect(newFlow.conv.sessionData.cart).toEqual(oldFlow.conv.sessionData.cart);
+      expect(newFlow.replies.at(-1)).toEqual(oldFlow.replies.at(-1));
+      expect(newFlow.conv.sessionData.pendingAttribute).toBeUndefined();
+      await newFlow.sendQueued('no más, recojo en el local');
+      await newFlow.sendQueued('efectivo');
+      await newFlow.sendQueued('confirmar');
+      expect(newFlow.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const items = newFlow.service.ordersService.create.mock.calls[0][0].items;
+      expect(items.map((item: { productId: number }) => item.productId).sort()).toEqual(withPriorItem ? [702, 704] : [702]);
+    });
+  }
+}
