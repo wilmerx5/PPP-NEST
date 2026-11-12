@@ -17638,7 +17638,7 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
-  private mixedCatalogFacts(text:string,products:MenuProduct[],active:MenuProduct[]): {products:MenuProduct[];body:string} | null {
+  private mixedCatalogFacts(text:string,products:MenuProduct[],active:MenuProduct[]): {products:MenuProduct[];body:string;ambiguousPrefix?:boolean} | null {
     const adjusted=text.replace(/\bq\s+(?=trae|lleva|incluye|contiene)/gi,'que ').replace(/\bcomo vienes\b/gi,'como viene');
     const price=this.catalogService.isPriceInquiryIntent(adjusted);
     const description=this.catalogService.isProductDescriptionInquiry(adjusted) || /^(?:ya )?no (?:venia|viene|traia|trae) con\b/.test(this.normalizeForMatch(adjusted));
@@ -17681,7 +17681,7 @@ export class WhatsappOrchestratorService {
     const cards=candidates.map(product=>this.catalogService.formatProductHeader(product.name,product.price,product.code)+
       (product.availableNow===false?'\nAhora no figura disponible.':'')+'\n'+
       (description || serving ? product.description?.trim().slice(0,240) || 'La carta no detalla ingredientes ni tamaño de esta presentación.' : 'Precio por unidad.'));
-    return {products:candidates,body:(serving?'Esto es lo que indica la carta sobre su presentación:\n\n':'')+cards.join('\n\n')};
+    return {products:candidates,ambiguousPrefix:combo && query.length>0 && candidates.length>1 && candidates.every(p=>query.every((word,i)=>tokens(p)[i]===word)),body:(serving?'Esto es lo que indica la carta sobre su presentación:\n\n':'')+cards.join('\n\n')};
   }
 
   private async tryHandleReadOnlyCatalogThread(conv:WhatsappConversation,waId:string,session:WhatsappSessionData,text:string):Promise<boolean> {
@@ -17707,7 +17707,7 @@ export class WhatsappOrchestratorService {
       }
       await this.reply(conv,waId,'Conservo estas presentaciones para la consulta:\n\n'+this.catalogService.formatProductChoicePrompt('presentación',active)+'\nEl pedido sigue igual.');return true;
     }
-    if (!facts || !facts.products.length || !pending && (!said.includes('combo') || facts.products.length<2) && !/\b(?:una|1|un) (?:sola? )?persona\b/.test(said)) return false;
+    if (!facts || !facts.products.length || !pending && !facts.ambiguousPrefix && !/\b(?:una|1|un) (?:sola? )?persona\b/.test(said)) return false;
     if (!pending && (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))) return false;
     return this.presentReadOnlyCatalog(conv,waId,session,facts.products,facts.body);
   }

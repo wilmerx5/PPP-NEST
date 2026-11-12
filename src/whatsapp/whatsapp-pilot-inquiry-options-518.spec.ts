@@ -123,3 +123,8 @@ for(const agent of [false,true])test(`two generic purchases remain separate unti
  expect(h.conv.sessionData.cart.find(line=>line.productId===8601)).toMatchObject({quantity:2,attributes:[{attributeName:'Sabor',attributeValue:'Pepsi'}]});
  expect(h.conv.sessionData.cart.find(line=>line.productId===8602)).toMatchObject({quantity:1,attributes:[{attributeName:'Sabor',attributeValue:'Colombiana'}]});
 });
+for(const agent of [false,true])test(`an accompaniment question keeps the existing information route ${agent}`,async()=>{
+ const {h,products}=setup(agent);h.conv.sessionData.cart.push({productId:8503,code:26,name:products[2].name,unitPrice:38000,quantity:1,attributes:[]});
+ h.agent.runTurn.mockResolvedValue({reply:'Sí, las papas están incluidas en el combo.',actions:{},toolCalls:['search_menu']});const before=structuredClone(h.conv.sessionData.cart);
+ const reply=await h.sendQueued('Antes de pagar, el combo trae papas o se cobran aparte?');expect(reply).not.toMatch(/Cuál presentación quieres consultar/);expect(h.conv.sessionData.pendingCatalogInquiry).toBeUndefined();expect(h.conv.sessionData.cart).toEqual(before);
+});
