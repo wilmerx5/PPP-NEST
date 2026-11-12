@@ -1,3 +1,13 @@
+## Relaciones de combos activas en producción — 12/11
+
+Usuario autoriza backend de producción y configuración automática de parejas existentes. Confirma broaster→combo broaster y frito→combo frito. El panel lo construirá/publicará el usuario en Hostinger. Panel main9c995fd, checkout limpio ppp-admin-production-combos con .env.production local y build aprobado.
+
+Backend Mainaaca0c43 desplegado, imagenb8683c1f793cd90752de1e65eb77e0e49b336ebb14e91560052e5e6dd1044d53, API local/pública saludable y DB conectada. Cinco relaciones reales guardadas98→4,99→1,94→35,85→84,97→36. SKU nuevos0, nombres/precios/códigos/atributos verificados. Se promueve la mejora de combos sobre Main498 y sus dependencias, con compra directa conservando valores por defecto. Las otras tandas de staging mantienen su promoción pendiente. No interpretar esta entrega como promoción general de499–513.
+
+Global previa al ajuste final47.922 aprobadas/559 suites,11 omitidas de dos suites Bold DB. Al comparar ocho compras del catálogo real se halló que dos combos vinculados preguntaban opciones que antes se completaban. Guardia final+4 regresiones conservan compras directas;46 focalizadas y470 relacionadas/11 suites pasan. Comparación de ocho resultados con Main498 coincide semánticamente. Diez cierres simulados con catálogo real de producción pasan. Imagen candidata y activa superan744 controles compilados y smoke histórico, cero órdenes externas/inferencia pagada. Evidencia detallada en product-combo-production-release.md y product-combo-production-validation.json. Main9a0bc664 registra el cierre documental.
+
+Pendientes explícitos. En la ruta sin IA «cambia el pollo a frito/broaster» añade otra línea tanto en Main498 como en la entrega. La petición inicial de arroz chino con medio pollo mantiene selección ambigua existente. Probar y reparar en siguiente tanda sin atribuirlos a esta migración. Guardia de compra directa publicada en staging5414d79e, pero runtime staging continúa1e496fd0. Portar guardia y cuatro regresiones a la rama de relaciones de Kamppo antes de integrarla. Kamppo continúa con su versión anterior en producción.
+
 ## Gestión visible de combos y adaptación a Kamppo — 12/11
 
 PPP backend1e496fd0 y admin5ef0741 publicados en staging. Cada producto normal ofrece «Añadir combo», creación con formulario precargado, vinculación existente, edición y desvinculación con precios visibles. El alta del combo y su vínculo se guardan atómicamente con atributos, categorías, stock por variante y horarios.24 pruebas de producto aprobadas, TypeScript y builds backend/admin aprobados. Navegador local con API sintética comprobó creación, vínculo y desvinculación. La publicación web del panel sigue pendiente.
