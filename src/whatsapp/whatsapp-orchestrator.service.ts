@@ -17737,9 +17737,6 @@ export class WhatsappOrchestratorService {
       if (/^(?:no )?(?:arreglar|arreglalo|corregir|corrige|corrigelo)$/.test(said)) {
         await this.reply(conv,waId,'¿Qué plato y qué opción o cantidad quieres corregir? El pedido sigue igual.');return true;
       }
-      if (conv.state==='building_cart' && /^(?:si|claro|dale|ok)$/.test(said) && !session.pendingAddOffer && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder && !CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) {
-        await this.reply(conv,waId,'¿Qué te gustaría agregar o cambiar? El pedido sigue igual.');return true;
-      }
       return false;
     }
     if (pending && /^(?:no|no gracias|mejor no|cancela ese cambio)$/.test(said)) {
