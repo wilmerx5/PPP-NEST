@@ -2117,9 +2117,12 @@ export class WhatsappOrchestratorService {
         await this.reply(conv,msg.waId,'¡Con gusto!');
         return;
       }
-      if (isAddressChangeIntent(originalText) || this.isAddressOnlyCustomerMessage(originalText) || this.extractAddressChangeTarget(originalText) || this.looksLikeUnitOrTowerDetailOnly(originalText)) {
+      if (/^la direccion correcta es\b/.test(this.normalizeForMatch(originalText)) || isAddressChangeIntent(originalText) || this.isAddressOnlyCustomerMessage(originalText) || this.extractAddressChangeTarget(originalText) || this.looksLikeUnitOrTowerDetailOnly(originalText)) {
         await this.reply(conv,msg.waId,'Recibí una posible corrección de dirección para el pedido ya registrado. No modifiqué la dirección ni la tarifa de esa orden. Para verificar el cambio antes de la entrega, '+this.humanPhoneHint());
-        return;
+        const separatePurchase = this.extractSeparatePostOrderPurchase(originalText);
+        if (!separatePurchase) return;
+        originalText = `quiero ${separatePurchase}`;
+        text = originalText;
       }
       const postText = this.normalizeForMatch(originalText);
       // A retrospective correction concerns the registered order, not another purchase.
@@ -2133,10 +2136,8 @@ export class WhatsappOrchestratorService {
           return name.length >= 3 && (` ${correctionText} `).includes(` ${name} `);
         });
         if (mentionsProduct) {
-          const separatePurchase = originalText.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().match(/[;,]\s*(?:y\s+)?(?:aparte|para otro pedido|ademas)\s+quiero\s+(.+)$/);
-          const newPurchase = separatePurchase?.[1];
-          if (newPurchase && !/[¿?]/.test(originalText) &&
-              !/\b(?:si|cuando|despues|luego|no|todavia|puedo|podria)\b/.test(correctionText)) {
+          const newPurchase = this.extractSeparatePostOrderPurchase(originalText);
+          if (newPurchase) {
             await this.reply(conv, msg.waId,
               'Para revisar la corrección del pedido registrado, contacta al restaurante. ' + this.humanPhoneHint() +
               '\n\nVoy a preparar la compra que pediste aparte.');
@@ -10748,6 +10749,12 @@ export class WhatsappOrchestratorService {
   }
 
   /** Collect counted options over several turns without applying one group's choice to every unit. */
+  private extractSeparatePostOrderPurchase(text: string): string | undefined {
+    const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (/[¿?]/.test(text) || /\b(?:si|cuando|despues|luego|no|todavia|puedo|podria)\b/.test(normalized)) return undefined;
+    return normalized.match(/[;,]\s*(?:y\s+)?(?:aparte|para otro pedido|ademas)\s+quiero\s+(.+)$/)?.[1];
+  }
+
   private async tryRemoveStagedOptionGroup(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
   ): Promise<boolean> {

@@ -1,3 +1,11 @@
+## Tanda 505 — dirección retrospectiva y compra aparte
+
+72 recorridos nuevos cubren cambio de dirección de orden registrada mezclado con compra aparte explícita, condicional, pregunta o negación. Tres catálogos, agente off/mock y completed/closed. La ruta de dirección reutiliza la extracción acotada de compra aparte, informa cómo revisar el cambio y continúa la compra mediante reapertura normal. «La dirección correcta es» se reconoce como corrección del cliente. La extracción se comparte con las correcciones retrospectivas de producto.
+
+Inicial36:28 fallan y8 pasan. Primera corrección deja4 desvíos hacia ubicación del local, corregidos mediante el prefijo explícito. Ampliación72 y relacionadas144/3 aprobadas. Se verifica conservación del primer DTO y segundo pedido con cantidades exactas. Global49.854/577 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-505-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+El cambio efectivo de dirección de una orden registrada requiere revisión del restaurante. Alcance de compra aparte delimitado por coma/punto y coma y «aparte/para otro pedido/además quiero». Pendientes otras formulaciones, cantidades específicas dentro de grupos y concurrencia. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
 ## Tanda 504 — continuar compra aparte desde una corrección retrospectiva
 
 La ruta pospedido ahora reconoce una petición explícita separada por coma/punto y coma con «aparte», «para otro pedido» o «además quiero». Responde cómo revisar la corrección de la orden registrada y pasa la compra adicional al flujo existente de reapertura y compra. Mantiene la protección ante preguntas, condiciones y negaciones. La detección conserva puntuación porque la normalización general la elimina.
