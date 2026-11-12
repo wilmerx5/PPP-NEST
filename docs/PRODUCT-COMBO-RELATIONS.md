@@ -2,7 +2,9 @@
 
 ## Configuración
 
-Cada combo conserva su SKU, precio, disponibilidad e inventario. `comboBaseProductId` apunta al SKU normal mediante una clave foránea. Varios combos pueden compartir un producto normal. La relación se configura desde la edición del producto en el administrador y se guarda al seleccionar. Para crear una relación, primero se crean ambos productos y después se edita el combo.
+Cada combo conserva su SKU, precio, disponibilidad e inventario. `comboBaseProductId` apunta al SKU normal mediante una clave foránea. Varios combos pueden compartir un producto normal. En el administrador, cada producto normal ofrece «Añadir combo». Desde allí se puede crear un combo nuevo con el formulario existente o vincular un producto ya creado. La lista muestra sus precios y permite editar o desvincular. Al crear un combo se precargan nombre editable, categorías y atributos del producto normal, y se solicita su propio precio.
+
+`POST /api/products/:id/combos` requiere administrador y recibe el mismo DTO de creación de producto. Crea el SKU y su vínculo en una transacción, incluyendo atributos, categorías, variantes de stock y horarios. Un fallo revierte los cambios de esa creación.
 
 `PATCH /api/products/:id/combo-relation` requiere administrador y recibe `{ "comboBaseProductId": 123 }` o `{ "comboBaseProductId": null }` para desvincular. Omitir el campo, usar un ID inexistente, autorreferenciarse o vincular a otro combo se rechaza. Un producto que sirve de base de otros combos debe desvincular sus hijos antes de convertirse a su vez en combo. La actualización bloquea los extremos en orden de ID dentro de una transacción. La FK impide eliminar una base referenciada.
 

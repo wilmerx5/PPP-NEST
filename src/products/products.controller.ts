@@ -30,6 +30,13 @@ import { ValidRoles } from '../auth/interfaces/valid.roles.interface';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  @Post(':id/combos')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  createCombo(@Param('id', ParseIntPipe) id: number, @Body() dto: CreateProductDto) {
+    return this.productsService.createCombo(id, dto);
+  }
+
   @Patch(':id/combo-relation')
   @Auth(ValidRoles.admin)
   @ApiBearerAuth()
