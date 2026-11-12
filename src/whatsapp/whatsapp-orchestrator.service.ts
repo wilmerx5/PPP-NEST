@@ -14011,7 +14011,7 @@ export class WhatsappOrchestratorService {
       this.catalogService.productImpliesCombo(product) &&
       /^(?:quiero|quisiera|dame|deme|me das|me regalas|agrega|agregame|anade)\b/.test(this.normalizeForMatch(text)) &&
       (` ${this.normalizeForMatch(text)} `).includes(` ${this.normalizeForMatch(product.name)} `);
-    if (!configuredFamily && directComboPurchase) return false;
+    if (directComboPurchase) return false;
     if (!configuredFamily && product.comboBaseProductId !== undefined && hint) {
       await this.reply(conv, waId, `*${product.name}* no tiene una relación de combo configurada. El restaurante debe configurar la presentación correspondiente. Tu pedido sigue igual.`);
       return true;
