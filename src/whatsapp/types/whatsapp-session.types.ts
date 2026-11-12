@@ -14,6 +14,8 @@ export type WhatsappProductAttribute = {
 };
 
 export type WhatsappProductCandidate = {
+  comboBaseProductId?: number | null;
+  comboRole?: 'normal' | 'combo';
   id: number;
   name: string;
   code: number;

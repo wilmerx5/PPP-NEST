@@ -169,6 +169,32 @@ export class ProductsService {
   /**
    * Crea un producto con atributos, categorías y stock opcional.
    */
+  async setComboBaseProduct(id: number, baseId: number | null) {
+    if (!Number.isInteger(id) || id < 1 || (baseId !== null && (!Number.isInteger(baseId) || baseId < 1))) {
+      throw new BadRequestException('Selecciona un producto válido');
+    }
+    if (baseId === id) throw new BadRequestException('Un combo debe vincularse a otro producto');
+    const result = await this.productRepo.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(Product);
+      // Lock both endpoints in ID order. Every link writer follows this protocol.
+      const ids = [...new Set([id, ...(baseId === null ? [] : [baseId])])].sort((a, b) => a - b);
+      const rows = await repo.find({ where: { id: In(ids) }, order: { id: 'ASC' }, lock: { mode: 'pessimistic_write' } });
+      const product = rows.find(row => row.id === id);
+      if (!product) throw new NotFoundException('No se encontró el combo');
+      if (baseId !== null) {
+        const base = rows.find(row => row.id === baseId);
+        if (!base) throw new NotFoundException('No se encontró el producto normal');
+        if (base.comboBaseProductId != null) throw new BadRequestException('El producto normal ya está configurado como combo');
+        const children = await repo.count({ where: { comboBaseProductId: id } });
+        if (children) throw new BadRequestException('Este producto ya tiene combos vinculados. Retira esos vínculos primero');
+      }
+      product.comboBaseProductId = baseId;
+      return repo.save(product);
+    });
+    this.cache.invalidate('products:');
+    return result;
+  }
+
   async create(createProductDto: CreateProductDto) {
     const code = Math.floor(Number(createProductDto.code));
     if (!Number.isFinite(code) || code < 1) {
@@ -509,6 +535,7 @@ export class ProductsService {
                   description: product.description,
                   code: product.code,
                   price: product.price,
+                  comboBaseProductId: product.comboBaseProductId ?? null,
                   imageUrl: product.imageUrl,
                   hasAttributes: product.hasAttributes,
                   hasSchedule: !!product.hasSchedule,
