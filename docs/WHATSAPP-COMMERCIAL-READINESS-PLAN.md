@@ -1,3 +1,11 @@
+## Tanda 512 — pedidos de bebidas genéricas y elección con cantidad
+
+La reproducción inicial encuentra12 fallos en24 recorridos: «una limonada/jugo/gaseosa» abre lista aun con producto único, mientras cantidades plurales se añaden. La nueva ruta interpreta la petición cuantificada antes de explorar categorías, conserva carrito previo y delega al flujo existente de bebida. Si hay varias opciones, guarda selección pendiente con cantidad explícita. La categoría se busca por el sustantivo para que «dos» tampoco elija silenciosamente la primera presentación. Se rechaza cero y se mantienen consultas de catálogo como lectura.
+
+90 regresiones nuevas,66 cierres DTO simulados: tres etiquetas, agente off/mock, cantidades1/2/3, comida previa, preguntas, agotados, elecciones1/2 entre dos SKU, cero y sabor obligatorio. Relacionadas162/2 aprobadas. Global50.388/585 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-512-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Comprobación aislada del catálogo con dependencias simuladas confirma «una limonada» para Limonada Natural y «una gaseosa» para Gaseosa400ml únicos. «Un jugo» frente a Jugo Natural En Agua conserva la selección existente para precisar presentación. El primer intento del probe carecía de inicialización de la clase y se corrigió usando su constructor. No acredita proveedores reales. Pendientes otras formulaciones coloquiales y concurrencia distribuida. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
 ## Tanda 511 — exclusión de combo ante falta de presentación sola
 
 La ampliación del chat «sin combo» reproduce10 fallos en12 casos de plato normal agotado/ausente. El intento de añadir un SKU combo ahora devuelve una explicación y conserva el carrito cuando el texto fuente pide presentación sola. Reutiliza el resultado de bloqueo existente con su razón visible. Las pruebas también conservan una sopa previa, verifican cantidades2/3, corrección, bebida aparte nombrada explícitamente y otro combo independiente en el mismo pedido.

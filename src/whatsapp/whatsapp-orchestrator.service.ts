@@ -2678,6 +2678,7 @@ export class WhatsappOrchestratorService {
         text = originalText;
       }
     }
+    if (await this.tryHandleQuantifiedGenericDrink(conv,msg.waId,session,originalText,cfg)) return;
     // Resolve the active quantity list before interpreting its note labels as new notes.
     if (session.pendingCartQuantity?.options?.length && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
         !session.pendingSubsetKitchenNote && !session.pendingPriceInquiry &&
@@ -11664,6 +11665,37 @@ export class WhatsappOrchestratorService {
   }
 
   /** Gaseosa suelta (“Una Coca-Cola 400”) se agrega con su sabor y tamaño. */
+  private async tryHandleQuantifiedGenericDrink(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const request = text.trim().match(/^(?:(?:quiero|dame|agrega|me das|me regalas?)\s+)?(un[oa]?|dos|tres|\d{1,2})\s+([\p{L}]+)(?:\s+(?:por favor|porfa))?[.!]*$/iu);
+    if (!request || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingAddOffer ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) ||
+        !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const menu = await this.catalogService.getMenuProducts();
+    const products = cfg.ignoreBusinessHours ? menu.map(product => ({...product,availableNow:true})) : menu;
+    const category = this.catalogService.findCategoryBrowseHit(request[2],products,cfg.menuConceptGroups);
+    const standalone = this.catalogService.resolveStandaloneDrinkOrder(text,products);
+    if (!standalone && !category?.products.some(product => this.catalogService.isLikelyDrinkProduct(product))) return false;
+    const status = await this.businessService.getStatus();
+    if (!status.isOpen && !cfg.ignoreBusinessHours) return false;
+    const quantity = /^\d+$/.test(request[1]) ? Number(request[1]) : this.catalogService.extractQuantityFromSegment(text);
+    if (quantity < 1 && category?.products.some(product => this.catalogService.isLikelyDrinkProduct(product))) {
+      await this.reply(conv,waId,'Dime una cantidad mayor que cero. El pedido sigue igual.');
+      return true;
+    }
+    if (category && category.products.length > 1 && category.products.every(product => this.catalogService.isLikelyDrinkProduct(product))) {
+      const next = {...session,pendingMatch:{query:category.categoryName,candidates:category.products,intent:'order' as const,quantity}};
+      await this.conversationService.saveSession(conv,next,'building_cart');
+      await this.reply(conv,waId,this.catalogService.formatCategoryList(category.categoryName,category.products));
+      return true;
+    }
+    if ((!category || category.products.length === 1) && standalone) {
+      return this.tryHandleStandaloneDrink(conv,waId,session,text,products,cfg);
+    }
+    return false;
+  }
+
   private async tryHandleStandaloneDrink(
     conv: WhatsappConversation,
     waId: string,

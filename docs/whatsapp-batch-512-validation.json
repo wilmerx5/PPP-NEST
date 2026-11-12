@@ -1,0 +1,43 @@
+{
+  "batch": 512,
+  "engineChanged": true,
+  "newTests": 90,
+  "simulatedClosures": 66,
+  "relatedTests": 162,
+  "relatedSuites": 2,
+  "baseline": {
+    "tests": 24,
+    "failed": 12,
+    "passed": 12
+  },
+  "globalTests": 50388,
+  "globalSuites": 585,
+  "sourceFiles": 805,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "checks": {
+    "tsc": 0,
+    "build": 0,
+    "scripts": 0
+  },
+  "scriptsPassed": 92,
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "scope": "Quantified single-word generic drink orders resolve before browsing. Unique resolved drink uses normal standalone order flow, multiple drink choices persist quantity and await selection, zero is rejected. Three labels, agent off/mock, quantity1/2/3, existing food, inquiry/stock/ambiguity guards and required flavor through closure.",
+  "iterations": [
+    "Initial24 exposes12 singular requests browsing while plural quantity works.",
+    "Expanded ambiguity coverage exposes inconsistent pending choices and quantity2 choosing first option. Resolve category using noun token and persist order quantity before selection.",
+    "Final90 new and162/2 related pass."
+  ],
+  "catalogProbe": {
+    "limonadaNatural": true,
+    "gaseosa400ml": true,
+    "jugoNaturalEnAgua": false
+  },
+  "limits": [
+    "New quantified grammar is a single drink noun with optional purchase verb/courtesy. Broader colloquial forms remain pending.",
+    "Generic jugo with a longer preparation-specific name can retain existing selection flow; no automatic agua/leche assumption.",
+    "No live inference, real Meta traffic or distributed concurrency."
+  ]
+}
