@@ -326,3 +326,8 @@ for(const [source,target,owner,destination] of [[707,708,'medio frito','medio br
  expect(h.conv.sessionData.cart.find(line=>line.productId===target)).toMatchObject({quantity:2,note:'Sin sal'});
  expect(h.conv.sessionData.cart.some(line=>line.productId===source)).toBe(false);expect(h.conv.sessionData.cart.find(line=>line.productId===710)).toMatchObject({quantity:2});
 });
+for(const agent of [false,true])test(`new purchase cannot turn sin combo into a kitchen note ${agent}`,async()=>{
+ const {h}=withWater(701,agent);const before=structuredClone(h.conv.sessionData.cart);
+ const reply=await h.sendQueued('cambia el pollo a broaster y agrega dos Combo De Pollo Frito sin combo');
+ expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/sin combo/i);expect(reply).toMatch(/igual/);
+});

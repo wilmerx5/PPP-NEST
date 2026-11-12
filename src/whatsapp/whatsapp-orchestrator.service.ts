@@ -17763,8 +17763,9 @@ export class WhatsappOrchestratorService {
     const replaced=this.tryAddProductToCart(base,target!,original.quantity,cfg,undefined,selectedTarget,
       {replacement:{originalLine:structuredClone(original)}});
     if (replaced.blocked) return unchanged('El reemplazo supera los límites del pedido.',!!mixed);
-    const added=replaced.missingAttributes ? null : this.tryAddProductToCart(replaced.session,addition!,quantity,cfg,additionNote,selectedAddition);
-    if (added?.blocked) return unchanged('La compra nueva supera los límites del pedido; no apliqué ninguno de los dos cambios.',!!mixed);
+    const added=replaced.missingAttributes ? null : this.tryAddProductToCart(replaced.session,addition!,quantity,cfg,additionNote,selectedAddition,
+      {sourceText:`ponme ${quantity} ${addition!.name}${additionNote ? ' '+additionNote : ''}`});
+    if (added?.blocked) return unchanged((added.blocked.reason || 'No pude completar la compra nueva.')+' No apliqué ninguno de los dos cambios.',!!mixed);
     if (replaced.missingAttributes || added?.missingAttributes) {
       const choosing=replaced.missingAttributes ? 'replacement' as const : 'purchase' as const;
       const targetAttributes=replaced.missingAttributes || replaced.session.cart[index].attributes || [];
