@@ -17721,8 +17721,10 @@ export class WhatsappOrchestratorService {
       if (!target || target.availableNow===false) return unchanged('No encontré un único reemplazo disponible para ese plato.');
       if (!exact.length) {
         const words=this.normalizeForMatch([target.name,attributeChange?.attributeValue].filter(Boolean).join(' ')).split(' ');
+        const requestedPortion=this.catalogService.detectPortionHint(destination);
+        const matchingPortion=requestedPortion && requestedPortion===this.catalogService.detectProductPortionSize(target.name);
         if (!destination.split(' ').every(word=>['el','la','a','por','con','en','normal','solo'].includes(word) || words.includes(word) ||
-          hint==='solo' && ['sin','combo'].includes(word) || !!style && this.catalogService.extractRequestedProteinStyle(word)===style))
+          matchingPortion && this.catalogService.detectPortionHint(word)===requestedPortion || hint==='solo' && ['sin','combo'].includes(word) || !!style && this.catalogService.extractRequestedProteinStyle(word)===style))
           return unchanged('Necesito aclarar el reemplazo completo antes de aplicar también la compra.');
       }
       selectedTarget=attributeChange?.attributes || (original.attributes || []).filter(choice=>target!.attributes?.some(attr=>

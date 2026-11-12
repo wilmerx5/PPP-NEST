@@ -321,3 +321,8 @@ for(const agent of [false,true])for(const style of ['frito','broaster'])test(`at
  expect(h.conv.sessionData.cart.find(line=>line.productId===714)).toMatchObject({quantity:2,note:'Sin sal',attributes:expect.arrayContaining([{attributeName:'Pollo',attributeValue:style==='frito'?'Frito':'Broaster'}])});
  expect(h.conv.sessionData.cart.some(line=>line.productId===701||line.productId===702)).toBe(false);expect(h.conv.sessionData.cart.find(line=>line.productId===710)).toMatchObject({quantity:2});
 });
+for(const [source,target,owner,destination] of [[707,708,'medio frito','medio broaster'],[708,707,'medio broaster','medio frito'],[712,713,'cuarto frito','cuarto broaster'],[713,712,'cuarto broaster','cuarto frito']] as const)for(const agent of [false,true])test(`portion alias with new purchase ${source} ${agent}`,async()=>{
+ const {h}=withWater(source,agent);await h.sendQueued(`cambia el ${owner} por ${destination} y agrega dos Agua Mineral`);
+ expect(h.conv.sessionData.cart.find(line=>line.productId===target)).toMatchObject({quantity:2,note:'Sin sal'});
+ expect(h.conv.sessionData.cart.some(line=>line.productId===source)).toBe(false);expect(h.conv.sessionData.cart.find(line=>line.productId===710)).toMatchObject({quantity:2});
+});
