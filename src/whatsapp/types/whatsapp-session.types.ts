@@ -58,6 +58,8 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  pendingCatalogInquiry?: {productIds:number[];createdAt:number};
+  pendingCartOptionChoice?: {cartSignature:string;createdAt:number;candidates:Array<{cartIndex:number;attributeName:string}>;selected?:number;catalogFingerprint?:string};
   /** Verified named destination still needs its internal delivery point. */
   pendingMappedDeliveryPoint?: boolean;
   /** Nearby matching map destinations; an explicit choice is required before checkout. */
@@ -241,9 +243,9 @@ export type WhatsappSessionData = {
       productId: number; quantity: number; createdAt: number; replacementProductId: number;
       replacementAttributes: {attributeName:string;attributeValue:string}[];
       attributes: {attributeName:string;attributeValue:string}[]; note?: string;
-      choosing: 'replacement' | 'purchase'; catalogFingerprint: string;
+      choosing: 'replacement' | 'purchase' | 'product'; catalogFingerprint: string;
       purchaseIndex?: number;
-      purchases?: Array<{productId:number;quantity:number;attributes:{attributeName:string;attributeValue:string}[];note?:string}>;
+      purchases?: Array<{productId:number;quantity:number;attributes:{attributeName:string;attributeValue:string}[];note?:string;candidateIds?:number[]}>;
     };
     cartSignature: string;
     options: Array<{ cartIndex: number; label: string }>;
