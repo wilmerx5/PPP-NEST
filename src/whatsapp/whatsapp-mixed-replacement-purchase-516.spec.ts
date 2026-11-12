@@ -309,3 +309,15 @@ for(const agent of [false,true])for(const state of ['awaiting_name','awaiting_ph
  expect(h.conv.sessionData.cart.find(line=>line.productId===710)).toMatchObject({quantity:2});
  expect(h.conv.customerName).toBe(name);expect(h.conv.sessionData.address).toBe(address);expect(h.conv.state).toBe(state);
 });
+for(const [source,target] of [[703,701],[704,702]] as const)for(const agent of [false,true])for(const destination of ['pollo sin combo','pollo normal'])test(`combo to normal with new purchase ${source} ${agent} ${destination}`,async()=>{
+ const {h}=withWater(source,agent);await h.sendQueued(`cambia el combo a ${destination} y agrega dos Agua Mineral`);
+ expect(h.conv.sessionData.cart.some(line=>line.productId===source)).toBe(false);
+ expect(h.conv.sessionData.cart.find(line=>line.productId===target)).toMatchObject({quantity:2,note:'Sin sal'});
+ expect(h.conv.sessionData.cart.find(line=>line.productId===710)).toMatchObject({quantity:2});
+});
+for(const agent of [false,true])for(const style of ['frito','broaster'])test(`attribute preparation and purchase ${agent} ${style}`,async()=>{
+ const {h}=withWater(714,agent);h.conv.sessionData.cart[0].attributes!.push({attributeName:'Pollo',attributeValue:style==='frito'?'Broaster':'Frito'});
+ await h.sendQueued(`cambia el arroz chino con medio pollo a ${style} y agrega dos Agua Mineral`);
+ expect(h.conv.sessionData.cart.find(line=>line.productId===714)).toMatchObject({quantity:2,note:'Sin sal',attributes:expect.arrayContaining([{attributeName:'Pollo',attributeValue:style==='frito'?'Frito':'Broaster'}])});
+ expect(h.conv.sessionData.cart.some(line=>line.productId===701||line.productId===702)).toBe(false);expect(h.conv.sessionData.cart.find(line=>line.productId===710)).toMatchObject({quantity:2});
+});

@@ -17707,7 +17707,7 @@ export class WhatsappOrchestratorService {
       const destination=(replacement?.[2] || pronoun![1]).replace(/^(?:el|la|los|las) /,'');
       const exact=products.filter(p=>this.normalizeForMatch(p.name)===destination);
       const style=this.catalogService.extractRequestedProteinStyle(destination);
-      const hint=this.catalogService.extractVariantPreferenceHint(destination);
+      const hint=this.catalogService.extractVariantPreferenceHint(destination) || (/\bnormal\b/.test(destination) ? 'solo' : null);
       if (exact.length>1) return unchanged('Hay varios productos con ese nombre de reemplazo. Indica su código y repite ambos cambios.');
       const attributeChange=!exact.length && !hint && style
         ? this.catalogService.applyCookingStyleToAttributes(source,original.attributes || [],style) : null;
@@ -17722,7 +17722,7 @@ export class WhatsappOrchestratorService {
       if (!exact.length) {
         const words=this.normalizeForMatch([target.name,attributeChange?.attributeValue].filter(Boolean).join(' ')).split(' ');
         if (!destination.split(' ').every(word=>['el','la','a','por','con','en','normal','solo'].includes(word) || words.includes(word) ||
-          !!style && this.catalogService.extractRequestedProteinStyle(word)===style))
+          hint==='solo' && ['sin','combo'].includes(word) || !!style && this.catalogService.extractRequestedProteinStyle(word)===style))
           return unchanged('Necesito aclarar el reemplazo completo antes de aplicar también la compra.');
       }
       selectedTarget=attributeChange?.attributes || (original.attributes || []).filter(choice=>target!.attributes?.some(attr=>
