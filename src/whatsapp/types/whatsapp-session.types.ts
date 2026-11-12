@@ -235,11 +235,15 @@ export type WhatsappSessionData = {
     /** Cart-line selection for an existing dish conversion, not a new purchase. */
     variantRequest?: string;
     /** An explicit replacement and new purchase commit together after options. */
+    /** Preserve every clause while choosing the original cart line. */
+    mixedSourceRequest?: {text:string;createdAt:number};
     mixedPurchase?: {
       productId: number; quantity: number; createdAt: number; replacementProductId: number;
       replacementAttributes: {attributeName:string;attributeValue:string}[];
       attributes: {attributeName:string;attributeValue:string}[]; note?: string;
       choosing: 'replacement' | 'purchase'; catalogFingerprint: string;
+      purchaseIndex?: number;
+      purchases?: Array<{productId:number;quantity:number;attributes:{attributeName:string;attributeValue:string}[];note?:string}>;
     };
     cartSignature: string;
     options: Array<{ cartIndex: number; label: string }>;

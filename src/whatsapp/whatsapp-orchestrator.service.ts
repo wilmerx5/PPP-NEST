@@ -1,3 +1,4 @@
+import {parseCountedPurchaseList} from './whatsapp-counted-purchase-list';
 import { isForeignSalesPitch, isForeignSalesFollowup } from './whatsapp-foreign-sales';
 import { canonicalCompoundDishRequest } from './whatsapp-compound-dish-request';
 import { parseMultiAttributeDistribution } from './whatsapp-multi-attribute-distribution';
@@ -1289,7 +1290,7 @@ export class WhatsappOrchestratorService {
     }
 
     const mixedEditSession=this.conversationService.getSession(conv);
-    if (mixedEditSession.pendingCartReplacement?.mixedPurchase &&
+    if ((mixedEditSession.pendingCartReplacement?.mixedPurchase || mixedEditSession.pendingCartReplacement?.mixedSourceRequest) &&
         await this.tryHandleMixedReplacementPurchase(conv,msg.waId,mixedEditSession,text,cfg)) return;
 
     if (await this.tryResolveMappedDeliveryPoint(conv, msg.waId, text)) return;
@@ -17634,74 +17635,106 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
-  /** One explicit replacement and one new purchase form a single cart change. */
+  /** A replacement and counted purchases commit only after the complete plan is resolved. */
   private async tryHandleMixedReplacementPurchase(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+    opts?: { sourceIndex: number },
   ): Promise<boolean> {
     if (!['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
     const pending = session.pendingCartReplacement;
     const mixed = pending?.mixedPurchase;
+    const sourceRequest = pending?.mixedSourceRequest;
     const said = this.normalizeForMatch(text).replace(/[.!]+$/,'').trim();
-    let request = said.match(/^(.+?)\s*,?\s+y\s+(?:(?:ademas|tambien)\s+)?(?:(?:agrega|agregame|anade|anademe|ponme|dame)\s+)?((?:un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\s+.+)$/);
-    if (!request) {
+    let request = said.match(/^(.+?)\s+y\s+(?:(?:ademas|tambien)\s+)?(?:(?:agrega|agregame|anade|anademe|ponme|dame)\s+)?((?:un|una|uno|otro|otra|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\s+.+)$/);
+    if (!request || !/^(?:cambia|cambiame|cambialo|cambiala|pasalo|pasala)\b/.test(request[1])) {
       const reversed=said.match(/^(?:agrega|agregame|anade|anademe|ponme|dame) (.+?) y ((?:cambia|cambiame|cambialo|cambiala|pasalo|pasala) .+)$/);
       if (reversed) request=[reversed[0],reversed[2],reversed[1]] as RegExpMatchArray;
     }
     const replacement = request?.[1].match(/^(?:cambia|cambiame) (?:el|la|los|las) (.+?) (?:a|por) (.+)$/);
     const pronoun = request?.[1].match(/^(?:cambialo|cambiala|pasalo|pasala) (?:a|por) (.+)$/);
-    if (!mixed && !(request && (replacement || pronoun))) return false;
+    if (!mixed && !sourceRequest && !(request && (replacement || pronoun))) return false;
     const unchanged = async (reason: string, clear = false) => {
-      if (clear) await this.conversationService.saveSession(conv, {...session,pendingCartReplacement:undefined});
+      if (clear || opts) await this.conversationService.saveSession(conv, {...session,pendingCartReplacement:undefined});
       await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;
     };
-    if (mixed && /^(?:cancela|olvida) (?:ese|el) cambio$|^(?:mejor no|no|no gracias)$/.test(said))
-      return unchanged('Cancelé el cambio y la compra pendientes.',true);
-    // Whole-order cancellation retains the existing cancellation route.
-    if (mixed && (this.isCancelIntent(text) || this.isClearCartIntent(text))) return false;
+    if ((mixed || sourceRequest) && /^(?:cancela|olvida) (?:ese|el) cambio$|^(?:mejor no|no|no gracias)$/.test(said))
+      return unchanged('Cancelé el cambio y las compras pendientes.',true);
+    if ((mixed || sourceRequest) && (this.isCancelIntent(text) || this.isClearCartIntent(text))) return false;
     if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
         session.pendingUnitDistribution || session.pendingSubsetKitchenNote || session.pendingComposedDishRecovery ||
-        CART_EDIT_SELECTION_KEYS.some(key=>key!=='pendingCartReplacement' && !!session[key]) || pending && !mixed)
-      return unchanged('Hay una selección o pago pendiente; aclaremos eso antes de aplicar el cambio y la compra.');
+        CART_EDIT_SELECTION_KEYS.some(key=>key!=='pendingCartReplacement' && !!session[key]) || pending && !mixed && !sourceRequest)
+      return unchanged('Hay una selección o pago pendiente; aclaremos eso antes de aplicar el cambio y las compras.');
+    const sourcePrompt = (options: {cartIndex:number;label:string}[]) => '¿Cuál línea quieres cambiar?\n\n'+
+      options.map((option,i)=>`${i+1}. ${option.label}`).join('\n')+
+      '\n\nEscribe el número o identifica el plato y su opción. Conservo también las compras nuevas; el pedido sigue igual.';
+    if (sourceRequest) {
+      if (pending!.cartSignature!==JSON.stringify(session.cart) || Date.now()-sourceRequest.createdAt>10*60*1000)
+        return unchanged('La selección cambió o venció. Repite el cambio y las compras juntos.',true);
+      const number=said.match(/^(?:(?:opcion|la|el) )?([1-9]\d*)$/);
+      const eligible=pending!.options.filter((option,i)=>number ? i===Number(number[1])-1 : correctionMatchesLine(session.cart[option.cartIndex],said));
+      if (/[¿?]/.test(text) || eligible.length!==1) {
+        await this.reply(conv,waId,sourcePrompt(pending!.options));return true;
+      }
+      return this.tryHandleMixedReplacementPurchase(conv,waId,{...session,pendingCartReplacement:undefined},sourceRequest.text,cfg,
+        {sourceIndex:eligible[0].cartIndex});
+    }
     const products = await this.catalogService.getMenuProducts(true);
-    let index: number, target: MenuProduct | undefined, addition: MenuProduct | undefined, quantity: number;
+    let index: number, target: MenuProduct | undefined;
     let selectedTarget: {attributeName:string;attributeValue:string}[] = [];
-    let selectedAddition: {attributeName:string;attributeValue:string}[] = [];
-    let additionNote: string | undefined;
-    const fingerprint = (a:MenuProduct,b:MenuProduct) => JSON.stringify([a,b].map(p=>[p.id,p.name,p.price,p.hasAttributes,p.comboBaseProductId,p.attributes || []]));
+    type Purchase = {product:MenuProduct;quantity:number;attributes:{attributeName:string;attributeValue:string}[];note?:string};
+    let purchases: Purchase[] = [];
+    const fingerprint = (...items:MenuProduct[]) => JSON.stringify(items.map(p=>[p.id,p.name,p.price,p.hasAttributes,p.comboBaseProductId,p.attributes || []]));
     if (mixed) {
       if (pending!.cartSignature !== JSON.stringify(session.cart) || Date.now()-mixed.createdAt>10*60*1000)
-        return unchanged('La selección cambió o venció. Repite el cambio y la compra juntos.',true);
+        return unchanged('La selección cambió o venció. Repite el cambio y las compras juntos.',true);
       index=pending!.options[0]?.cartIndex;
       target=products.find(p=>p.id===mixed.replacementProductId);
-      addition=products.find(p=>p.id===mixed.productId);quantity=mixed.quantity;
-      if (!target || !addition || target.availableNow===false || addition.availableNow===false ||
-          fingerprint(target,addition)!==mixed.catalogFingerprint)
-        return unchanged('Cambió la carta, el precio o la disponibilidad. Revisa los productos y repite ambos cambios.',true);
-      selectedTarget=mixed.replacementAttributes;selectedAddition=mixed.attributes;additionNote=mixed.note;
-      const choosing = mixed.choosing==='replacement' ? target : addition;
-      const selected = mixed.choosing==='replacement' ? selectedTarget : selectedAddition;
+      const rows=mixed.purchases || [{productId:mixed.productId,quantity:mixed.quantity,attributes:mixed.attributes,note:mixed.note}];
+      for (const row of rows) {
+        const product=products.find(p=>p.id===row.productId);
+        if (!product || product.availableNow===false) return unchanged('Cambió la disponibilidad. Revisa los productos y repite todos los cambios.',true);
+        purchases.push({product,quantity:row.quantity,attributes:row.attributes,note:row.note});
+      }
+      if (!target || target.availableNow===false || fingerprint(target,...purchases.map(p=>p.product))!==mixed.catalogFingerprint)
+        return unchanged('Cambió la carta, el precio o la disponibilidad. Revisa los productos y repite todos los cambios.',true);
+      selectedTarget=mixed.replacementAttributes;
+      const current=purchases[mixed.purchaseIndex || 0];
+      if (!current) return unchanged('No encontré la compra pendiente. Repite todos los cambios.',true);
+      const choosing = mixed.choosing==='replacement' ? target : current.product;
+      const selected = mixed.choosing==='replacement' ? selectedTarget : current.attributes;
       const remaining = this.catalogService.getRemainingAttributes(choosing,selected);
       const optionText = said.replace(/^(?:opcion|la|el) /,'');
       const allowed = /^\d+$/.test(optionText) || remaining.some(attr=>attr.options.some(option=>this.normalizeForMatch(option)===said));
       const choice = allowed && !/[¿?]/.test(text)
         ? this.catalogService.resolveNextAttributeChoice(choosing,text,selected) : null;
       if (choice && choice.status!=='invalid') {
-        if (mixed.choosing==='replacement') selectedTarget=choice.attributes;else selectedAddition=choice.attributes;
+        if (mixed.choosing==='replacement') selectedTarget=choice.attributes;else current.attributes=choice.attributes;
       } else {
-        await this.reply(conv,waId,'Para aplicar el cambio y la compra juntos, falta esta opción. El pedido sigue igual.\n\n'+
+        await this.reply(conv,waId,'Para aplicar el cambio y las compras juntos, falta esta opción. El pedido sigue igual.\n\n'+
           this.catalogService.formatProductOptionsPrompt(choosing,selected));return true;
       }
     } else {
-      if (/[¿?]/.test(text)) return unchanged('Para aplicar el cambio y la compra, envía la instrucción sin pregunta.');
+      if (/[¿?]/.test(text)) return unchanged('Para aplicar el cambio y las compras, envía la instrucción sin pregunta.');
+      const raw=text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[−–]/g,'-');
+      if (/\b(?:y|agrega|agregame|anade|anademe|ponme|dame)\s+(?:(?:ademas|tambien)\s+)?(?:(?:agrega|agregame|anade|anademe|ponme|dame)\s+)?(?:[+-]\s*\d+|\d+[.,]\d+)(?=\s)/.test(raw))
+        return unchanged('Las compras necesitan cantidades enteras positivas; no apliqué ningún cambio.');
       const reference = replacement?.[1].replace(/^de /,'');
-      const indices=session.cart.flatMap((line,i)=>pronoun
+      const indices=opts ? [opts.sourceIndex] : session.cart.flatMap((line,i)=>pronoun
         ? (session.productFocus?.productId!=null ? line.productId===session.productFocus.productId : session.cart.length===1)?[i]:[]
         : correctionMatchesLine(line,reference!)?[i]:[]);
       if (!indices.length && reference && this.catalogService.detectPortionHint(reference)) {
         const matched=this.matchCartItemsForRemoval(reference,session,products);
         if (matched.kind==='single') indices.push(...matched.indices);
       }
-      if (indices.length!==1) return unchanged('Indica una sola línea del carrito para cambiar y el nombre completo de la compra nueva.');
+      if (indices.length>1) {
+        const options=indices.map(cartIndex=>({cartIndex,label:this.formatCartLineLabel(session.cart[cartIndex])+
+          (session.cart[cartIndex].note?` · ${session.cart[cartIndex].note}`:'')}));
+        await this.conversationService.saveSession(conv,{...session,pendingCartReplacement:{
+          cartSignature:JSON.stringify(session.cart),options,addQuery:'',mixedSourceRequest:{text,createdAt:Date.now()},
+        }});
+        await this.reply(conv,waId,sourcePrompt(options));return true;
+      }
+      if (indices.length!==1 || !session.cart[indices[0]]) return unchanged('Indica una sola línea del carrito para cambiar y los nombres completos de las compras nuevas.');
       index=indices[0];const original=session.cart[index];const source=products.find(p=>p.id===original.productId);
       if (!source) return unchanged('No encontré el plato original en la carta actual.');
       const destination=(replacement?.[2] || pronoun![1]).replace(/^(?:el|la|los|las) /,'');
@@ -17729,61 +17762,89 @@ export class WhatsappOrchestratorService {
       }
       selectedTarget=attributeChange?.attributes || (original.attributes || []).filter(choice=>target!.attributes?.some(attr=>
         attr.attributeName===choice.attributeName && attr.options.includes(choice.attributeValue)));
-      const count=request![2].match(/^(un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+) (.+)$/)!;
-      const counts:Record<string,number>={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
-      quantity=counts[count[1]]??Number(count[1]);
-      if (!Number.isSafeInteger(quantity) || quantity<1 || quantity>30) return unchanged('La compra nueva necesita una cantidad entera entre 1 y 30.');
+      purchases=this.parseMixedPurchaseList(request![2],products) || [];
+      if (!purchases.length) return unchanged('No identifiqué todas las compras. Repite los cambios con cantidades enteras entre 1 y 30 y los nombres completos de los productos y sus opciones.');
+    }
+    const original=session.cart[index];
+    if (!original) return unchanged('No encontré la línea original. Repite todos los cambios.',true);
+    const base={...session,pendingCartReplacement:undefined,pendingPriceInquiry:undefined,pendingCompositionAsk:undefined,
+      pendingAddOffer:undefined,pendingCategoryBrowse:undefined,pendingQuantityHint:undefined};
+    const replaced=this.tryAddProductToCart(base,target!,original.quantity,cfg,undefined,selectedTarget,
+      {replacement:{originalLine:structuredClone(original)}});
+    if (replaced.blocked) return unchanged('El reemplazo supera los límites del pedido.',!!mixed);
+    let draft=replaced.session;
+    let choosing:'replacement'|'purchase'|undefined=replaced.missingAttributes?'replacement':undefined;
+    let purchaseIndex=0;
+    if (!choosing) for (let i=0;i<purchases.length;i++) {
+      const purchase=purchases[i];
+      const added=this.tryAddProductToCart(draft,purchase.product,purchase.quantity,cfg,purchase.note,purchase.attributes,
+        {sourceText:`ponme ${purchase.quantity} ${purchase.product.name}${purchase.note?' '+purchase.note:''}`});
+      if (added.blocked) return unchanged((added.blocked.reason || 'No pude completar una compra.')+' No apliqué ninguno de los cambios.',!!mixed);
+      if (added.missingAttributes) {purchase.attributes=added.missingAttributes;choosing='purchase';purchaseIndex=i;break;}
+      const units=(cart:WhatsappCartItem[])=>cart.reduce((sum,line)=>sum+line.quantity,0);
+      if (units(added.session.cart)-units(draft.cart)!==purchase.quantity)
+        return unchanged('La cantidad completa supera el límite de unidades. No apliqué ninguno de los cambios.',!!mixed);
+      draft=added.session;
+    }
+    if (choosing) {
+      const targetAttributes=replaced.missingAttributes || replaced.session.cart[index].attributes || [];
+      const first=purchases[0];
+      await this.conversationService.saveSession(conv,{...session,pendingCartReplacement:{
+        cartSignature:JSON.stringify(session.cart),options:[{cartIndex:index,label:this.formatCartLineLabel(original)}],addQuery:target!.name,
+        mixedPurchase:{productId:first.product.id,quantity:first.quantity,createdAt:mixed?.createdAt || Date.now(),replacementProductId:target!.id,
+          replacementAttributes:targetAttributes,attributes:first.attributes,note:first.note,choosing,purchaseIndex,
+          purchases:purchases.map(p=>({productId:p.product.id,quantity:p.quantity,attributes:p.attributes,note:p.note})),
+          catalogFingerprint:fingerprint(target!,...purchases.map(p=>p.product))},
+      }});
+      const current=choosing==='replacement'?target!:purchases[purchaseIndex].product;
+      await this.reply(conv,waId,'Para aplicar el cambio y las compras juntos, elige esta opción. El pedido sigue igual.\n\n'+
+        this.catalogService.formatProductOptionsPrompt(current,choosing==='replacement'?targetAttributes:purchases[purchaseIndex].attributes));
+      return true;
+    }
+    const next={...this.reconcileSubstitutionPending(draft),lastDrinkAddition:undefined};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,`Listo, cambié *${original.name}* por *${target!.name}* y agregué `+
+      purchases.map(p=>`${p.quantity} de *${p.product.name}*`).join(', ')+'.\n\n'+
+      this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
+  }
+
+  private parseMixedPurchaseList(text:string, products:MenuProduct[]):
+    Array<{product:MenuProduct;quantity:number;attributes:{attributeName:string;attributeValue:string}[];note?:string}> | null {
+    return parseCountedPurchaseList(text,clause=>{
+      const count=clause.match(/^(un|una|uno|otro|otra|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+) (.+)$/);
+      if (!count) return null;
+      const counts:Record<string,number>={un:1,una:1,uno:1,otro:1,otra:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+      const quantity=counts[count[1]]??Number(count[1]);
+      if (!Number.isSafeInteger(quantity) || quantity<1 || quantity>30) return null;
       let candidates=products.filter(p=>this.normalizeForMatch(p.name)===count[2]);
+      let note:string|undefined;
+      let attributes:{attributeName:string;attributeValue:string}[]=[];
       if (!candidates.length) {
         const named=products.filter(p=>count[2].startsWith(this.normalizeForMatch(p.name)+' '));
         const longest=Math.max(0,...named.map(p=>this.normalizeForMatch(p.name).length));
         candidates=named.filter(p=>this.normalizeForMatch(p.name).length===longest);
         if (candidates.length===1) {
           const suffix=count[2].slice(longest).trim();const product=candidates[0];
-          const note=/^(?:sin [a-z ]{2,80}|bajit[oa] de azucar)$/.test(suffix) &&
-            !/\b(?:agrega|cambia|cancela|quita|pedido|orden|direccion|calle|pago|si|pero|sino)\b/.test(suffix);
-          if (note) additionNote=suffix;
+          if (/\by (?:(?:ademas|tambien) )?(?:(?:agrega|agregame|anade|ponme|dame) )?(?:un|una|uno|otr[oa]s?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b/.test(suffix)) return null;
+          if (/^(?:sin [a-z ]{2,80}|bajit[oa] de azucar)$/.test(suffix) &&
+              !/\b(?:agrega|cambia|cancela|quita|pedido|orden|direccion|calle|pago|si|pero|sino)\b/.test(suffix)) note=suffix;
           else {
             const step=this.catalogService.resolveAttributesFromMessage(product,suffix,[]);
-            const attrs=step.status!=='invalid'?step.attributes:[];
-            const words=this.normalizeForMatch(attrs.map(a=>a.attributeName+' '+a.attributeValue).join(' ')).split(' ');
-            if (!attrs.length || !suffix.split(' ').every(word=>['con','de'].includes(word) || words.includes(word))) candidates=[];
-            else selectedAddition=attrs;
+            attributes=step.status!=='invalid'?step.attributes:[];
+            const words=this.normalizeForMatch(attributes.map(a=>a.attributeName+' '+a.attributeValue).join(' ')).split(' ');
+            if (!attributes.length || !suffix.split(' ').every(word=>['con','de'].includes(word) || words.includes(word))) return null;
           }
         }
       }
-      if (candidates.length!==1 || candidates[0].availableNow===false)
-        return unchanged('No encontré un único producto disponible para la compra nueva. Repite ambos cambios con el nombre completo de ese producto y sus opciones.');
-      addition=candidates[0];
-    }
-    const original=session.cart[index];
-    if (!original) return unchanged('No encontré la línea original. Repite ambos cambios.',true);
-    const base={...session,pendingCartReplacement:undefined,pendingPriceInquiry:undefined,pendingCompositionAsk:undefined,
-      pendingAddOffer:undefined,pendingCategoryBrowse:undefined,pendingQuantityHint:undefined};
-    const replaced=this.tryAddProductToCart(base,target!,original.quantity,cfg,undefined,selectedTarget,
-      {replacement:{originalLine:structuredClone(original)}});
-    if (replaced.blocked) return unchanged('El reemplazo supera los límites del pedido.',!!mixed);
-    const added=replaced.missingAttributes ? null : this.tryAddProductToCart(replaced.session,addition!,quantity,cfg,additionNote,selectedAddition,
-      {sourceText:`ponme ${quantity} ${addition!.name}${additionNote ? ' '+additionNote : ''}`});
-    if (added?.blocked) return unchanged((added.blocked.reason || 'No pude completar la compra nueva.')+' No apliqué ninguno de los dos cambios.',!!mixed);
-    if (replaced.missingAttributes || added?.missingAttributes) {
-      const choosing=replaced.missingAttributes ? 'replacement' as const : 'purchase' as const;
-      const targetAttributes=replaced.missingAttributes || replaced.session.cart[index].attributes || [];
-      const additionAttributes=added?.missingAttributes || selectedAddition;
-      await this.conversationService.saveSession(conv,{...session,pendingCartReplacement:{
-        cartSignature:JSON.stringify(session.cart),options:[{cartIndex:index,label:this.formatCartLineLabel(original)}],addQuery:target!.name,
-        mixedPurchase:{productId:addition!.id,quantity,createdAt:mixed?.createdAt || Date.now(),replacementProductId:target!.id,
-          replacementAttributes:targetAttributes,attributes:additionAttributes,note:additionNote,choosing,catalogFingerprint:fingerprint(target!,addition!)},
-      }});
-      await this.reply(conv,waId,'Para aplicar el cambio y la compra juntos, elige esta opción. El pedido sigue igual.\n\n'+
-        this.catalogService.formatProductOptionsPrompt(choosing==='replacement'?target!:addition!,choosing==='replacement'?targetAttributes:additionAttributes));
-      return true;
-    }
-    const next={...this.reconcileSubstitutionPending(added!.session),lastDrinkAddition:undefined};
-    await this.conversationService.saveSession(conv,next);
-    await this.reply(conv,waId,`Listo, cambié *${original.name}* por *${target!.name}* y agregué ${quantity} de *${addition!.name}*.\n\n`+
-      this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
-    return true;
+      return candidates.length===1 && candidates[0].availableNow!==false ? {product:candidates[0],quantity,attributes,note} : null;
+    },clause=>{
+      const rest=clause.match(/^\S+ (.+)$/)?.[1];
+      if (!rest) return 0;
+      const prefixLength=clause.length-rest.length;
+      return Math.max(0,...products.map(product=>this.normalizeForMatch(product.name))
+        .filter(name=>rest===name || rest.startsWith(name+' ')).map(name=>prefixLength+name.length));
+    });
   }
 
   /** A referenced option identifies the existing meal, not a new whole protein. */
