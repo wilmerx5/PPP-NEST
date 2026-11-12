@@ -1,0 +1,128 @@
+{
+  "batch": 517,
+  "sourceCommit": "c5254f9bf893edd1891264eada6247d84e0db9f6",
+  "newRegressionTests": 136,
+  "relatedTestsPassed": 970,
+  "relatedSuitesPassed": 9,
+  "typescriptGeneralPassed": true,
+  "dockerBuildPassed": true,
+  "compiledNewScenariosPassed": 136,
+  "compiledPreviousMixedCasesPassed": 163,
+  "compiledPriorReplacementJourneysPassed": 80,
+  "catalogSnapshotJourneysPassed": 29,
+  "sourceFiles": 814,
+  "sourceManifestSha256": "2b0f975f9a02691f9961862da387031b84d8c55f7fd9001e8910cb01567041c2",
+  "scope": "One whole-cart-line replacement with an ordered list of counted purchases. Source ambiguity retains the original complete request, supports numeric or identifying option selection, then resolves each required product option before a joint commit. Catalog compound prefixes cannot be split into different products.",
+  "limits": [
+    "Generic or ambiguous new-product names still require complete product identification.",
+    "Subset-unit replacement remains outside this bounded mixed route.",
+    "Independent information questions during a multi-product decision remain a follow-up priority.",
+    "AI/channel/order creation are simulated; no live-model or commercial certification claimed."
+  ],
+  "developmentHistory": [
+    "Initial sixteen full-router cases failed on staging baseline.",
+    "An early eight-case expectation retained source code11 instead of target code12; corrected the expected catalog identity, without changing runtime for that oracle.",
+    "Expanded journeys exposed32 failures for reverse-order multi-purchase recognition and2 failures where normalization removed a negative quantity sign. Both were repaired, with raw count and bottle-size regressions.",
+    "Four catalog-compound regressions failed when an unavailable or ambiguous compound could be decomposed as separate purchases. Longest named catalog prefix now protects that identity before splitting.",
+    "One temporary live-catalog probe expected Sabor with uppercase S but actual catalog attribute label was sabor. Its assertion was made case insensitive; no runtime change for this display-label difference.",
+    "All136 new cases,970 related cases,29 real-catalog snapshot cases and compiled136+163+80 checks passed before starting the final full run."
+  ],
+  "validationMode": "Private isolated ts-jest runtime config plus separate default ts-jest related suites and general TypeScript. Complete suite inventory scheduled by prior duration. Two timer suites run separately.",
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "modelChanges": false,
+  "productionPromoted": false,
+  "kamppoMigrated": false,
+  "globalStatus": "passed",
+  "stagingDeployment": {
+    "environment": "staging",
+    "head": "c5254f9bf893edd1891264eada6247d84e0db9f6",
+    "image": "sha256:002109c308b7b487ac657c2a233d26ded8c5c585cb32906f57d0d4bc6427cd16",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.7,
+        "heapTotal": 63.86,
+        "rss": 125.27
+      },
+      "timestamp": "2026-11-12T20:41:17.652Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 56.05,
+        "heapTotal": 63.86,
+        "rss": 125.77
+      },
+      "timestamp": "2026-11-12T20:41:17.892Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-12T20:41:50.596659+00:00",
+    "backup": "/root/ppp-manual-release/20261112T204021Z-staging-517"
+  },
+  "date": "2026-11-12T20:40:46.580418+00:00",
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51026,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 590,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 51042,
+    "totalPassedSuites": 592
+  },
+  "candidateImage": "sha256:e29de52f36e8ccf5f42dcc49d1ac8d02f7774b53d4d85ff22d1e2415825a114b",
+  "validationConfigSha256": "1bb5283d3202482799be6afe6d652c8d89c3d093c235a1d2e76961dc7bf22ed8",
+  "sequencerSha256": "0cb5d99c5223276857ecd30362c0b5a684f40b00723684155e7ef698f0da5002",
+  "nextPriorities": [
+    "Resolve a generic or ambiguous new-purchase product while retaining the complete mixed plan.",
+    "Answer independent product-information questions during source/option selection without committing the plan.",
+    "Broaden natural source-identification follow-ups and keep subset-unit changes explicitly scoped."
+  ],
+  "postDeployCatalogJourneysPassed": 29,
+  "catalogSnapshotSha256": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa"
+}
