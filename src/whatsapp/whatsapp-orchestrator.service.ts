@@ -10761,7 +10761,9 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingAttribute;
     if (!pending?.distributionParts?.length || session.pendingMultiOrder || session.pendingMatch ||
       session.pendingCartRemoval || session.pendingCartQuantity || /[¿?]/.test(text)) return false;
-    const match = this.normalizeForMatch(text).match(/^(?:quita|retira)(?:me)? (?:los|las) de (.+?)(?: por favor| porfa)?[.!]?$/);
+    const normalized = this.normalizeForMatch(text);
+    const counted = normalized.match(/^(?:quita|retira)(?:me)? (\d{1,2}|un[oa]?|dos|tres) de (?:los|las) de (.+?)(?: por favor| porfa)?[.!]?$/);
+    const match = counted ? [counted[0],counted[2]] : normalized.match(/^(?:quita|retira)(?:me)? (?:los|las) de (.+?)(?: por favor| porfa)?[.!]?$/);
     if (!match) return false;
     const options = pending.attributes.flatMap(attribute => attribute.options.map(value => ({attributeName:attribute.attributeName,value})))
       .filter(option => this.normalizeForMatch(option.value) === match[1]);
@@ -10782,10 +10784,19 @@ export class WhatsappOrchestratorService {
       await this.reply(conv,waId,'No hay unidades elegidas con esa opción en la compra pendiente. El pedido sigue igual.\n\n'+this.formatPendingPurchaseReminder(session));
       return true;
     }
-    const count = removed.reduce((sum,part) => sum + this.catalogService.extractQuantityFromSegment(part.replace(/\s+con\s+.+$/i,' platos')),0);
+    const assigned = removed.reduce((sum,part) => sum + this.catalogService.extractQuantityFromSegment(part.replace(/\s+con\s+.+$/i,' platos')),0);
+    const count = counted ? (/^\d+$/.test(counted[1]) ? Number(counted[1]) : this.catalogService.extractQuantityFromSegment(`${counted[1]} platos`)) : assigned;
+    if (count < 1 || count > assigned || (counted && removed.length !== 1)) {
+      await this.reply(conv,waId,'Necesito una cantidad válida de un solo grupo elegido. Indica el reparto completo que debe quedar. El pedido sigue igual.');
+      return true;
+    }
     const quantity = (pending.quantity || 1) - count;
     if (quantity < 1) return false;
-    const parts = pending.distributionParts.filter(part => !removed.includes(part));
+    const parts = pending.distributionParts.flatMap(part => {
+      if (!removed.includes(part)) return [part];
+      if (counted && count < assigned) return [part.replace(/^\S+/,String(assigned-count))];
+      return [];
+    });
     const next = {...session,pendingAttribute:{...pending,quantity,distributionParts:parts.length ? parts : undefined}};
     await this.conversationService.saveSession(conv,next);
     await this.reply(conv,waId,`Retiré ${count} ${count === 1 ? 'unidad' : 'unidades'} con ${option.value} de la compra pendiente. Quedan ${quantity}.\n\n`+this.formatPendingPurchaseReminder(next));

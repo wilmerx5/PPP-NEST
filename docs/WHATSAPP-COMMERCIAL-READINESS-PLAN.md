@@ -1,3 +1,11 @@
+## Tanda 507 — retirar cantidades concretas del reparto pendiente
+
+Sobre97ee6213 se reproducen24 fallos al pedir «quita/retira 1/2 de los de mango». La retirada ahora reconoce cantidad explícita, reduce el total pendiente y conserva las unidades restantes del grupo con sus opciones. Reutiliza las guardas de coincidencia con carrito y rechaza cero, cantidad excesiva o varios grupos coincidentes, solicitando reparto completo antes de cambiar.
+
+66 pruebas nuevas y cierres DTO simulados, tres catálogos, agente off/mock, dos verbos, retirada parcial/total y guardas. Relacionadas228/3 aprobadas. Global49.956/579 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. La ejecución global tuvo interrupción143 tras37 checkpoints, recuperación posterior e interrupción del usuario/reinicio. Se completan únicamente suites pendientes desde465 checkpoints con fuentes idénticas. Evidencia whatsapp-batch-507-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Alcance «quita/retira [cantidad] de los/las de [opción exacta]» para un único grupo elegido. Se conservan otras partes del reparto y productos. Pendientes concurrencia, más formulaciones y casos de varios grupos con opciones diferentes. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
 ## Tanda 506 — mensajes posteriores a compra aparte
 
 36 regresiones nuevas verifican «por favor», «gracias» y consulta de precio, cada una repetida dos veces después de corregir la dirección del pedido registrado y pedir dos unidades aparte. Tres catálogos, agente off/mock, completed/closed. Se verifica carrito de dos unidades, primera orden intacta, una sola reapertura y segunda orden exacta.
