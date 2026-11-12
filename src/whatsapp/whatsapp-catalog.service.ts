@@ -8448,10 +8448,10 @@ export class WhatsappCatalogService {
 
   /** Estilo pedido en la nota (“broaster”, “frito”…) para anotar en el plato base. */
   extractRequestedProteinStyle(text: string): string | null {
-    const q = normalizeText(text || '');
+    const q = normalizeText(fixCommonOrderTypos(text || ''));
     if (/\bbroaster\b/.test(q)) return 'broaster';
-    if (/\bfrito\b/.test(q)) return 'frito';
-    if (/\basado\b/.test(q)) return 'asado';
+    if (/\bfrit[oa]\b/.test(q)) return 'frito';
+    if (/\basad[oa]\b/.test(q)) return 'asado';
     if (/\bsudad[oa]\b/.test(q)) return 'sudado';
     if (/\bplancha\b/.test(q)) return 'plancha';
     if (/\bapanad[oa]\b/.test(q)) return 'apanado';

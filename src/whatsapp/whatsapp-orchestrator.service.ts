@@ -17645,32 +17645,71 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const short = said.match(/^(?:cambia|cambiame) (?:el|la) (?:de |que tiene )(.+?) (?:con|a|por) (.+)$/);
+    const direct = short ? null : said.match(/^(?:cambia|cambiame) (?:el|la|los|las) (.+?) (?:a|por) (.+)$/);
+    const pronoun = said.match(/^(?:cambialo|cambiala|pasalo|pasala) (?:a|por) (.+)$/);
+    const wholeLineChange = !!direct || !!pronoun;
     const contrast = said.match(/^(?:el|la) que tiene (.+?) que ya no sea (.+?) (?:sino|sink) (.+)$/);
     const partial = said.match(/^(?:cambia|cambiame) (?:uno de los|una de las) (?:de |que tienen )(.+?) (?:con|a|por) (.+)$/);
-    if (!short && !contrast && !partial) return false;
-    const reference = (partial || short || contrast)![1];
-    const destination = partial ? partial[2] : short ? short[2] : contrast![3];
+    const change = partial || short || contrast || direct || pronoun;
+    if (!change) return false;
+    const reference = pronoun ? session.productFocus?.name || 'plato' : change[1];
+    const destination = contrast ? contrast[3] : pronoun ? pronoun[1] : change[2];
+    // Explicit replacement quantities retain the existing catalog replacement path.
+    if (direct && /^(?:un|una|uno|dos|tres|cuatro|cinco|\d+)\b/.test(destination)) return false;
     const style = this.catalogService.extractRequestedProteinStyle(destination);
     if (!style) return false;
     const unchanged = async (reason: string) => { await this.reply(conv,waId,reason+' El pedido sigue igual.');return true; };
-    if (/[¿?]/.test(text)) return unchanged(`Si quieres aplicar ese cambio, escribe «cambia ${partial ? 'uno de los de' : 'el de'} ${reference} a ${destination}».`);
+    if (/[¿?]/.test(text)) return unchanged(`Si quieres aplicar ese cambio, escribe «cambia ${partial ? 'uno de los de' : wholeLineChange ? 'el' : 'el de'} ${reference} a ${destination}».`);
     if (session.mpPreferenceId || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingUnitDistribution || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return unchanged('Hay una selección o pago pendiente; aclaremos eso antes de cambiar la preparación.');
-    const indices = session.cart.flatMap((line,index)=>correctionMatchesLine(line,reference)?[index]:[]);
-    if (indices.length!==1 || (!partial && session.cart[indices[0]].quantity!==1)) return unchanged('Necesito identificar una sola unidad: dime el plato y la opción que tiene para cambiar su preparación.');
+    const menu = await this.catalogService.getMenuProducts(wholeLineChange);
+    const destinationTitle = destination.replace(/^(?:el|la|los|las) /, '');
+    const namedDestination = direct ? menu.find(product => this.normalizeForMatch(product.name) === destinationTitle) : undefined;
+    let indices = session.cart.flatMap((line, index) => {
+      if (pronoun) {
+        const matchesFocus = session.productFocus?.productId != null
+          ? line.productId === session.productFocus.productId : session.cart.length === 1;
+        return matchesFocus ? [index] : [];
+      }
+      return correctionMatchesLine(line, reference) ? [index] : [];
+    });
+    if (!indices.length && direct && this.catalogService.detectPortionHint(reference)) {
+      const owner = this.matchCartItemsForRemoval(reference, session, menu);
+      if (owner.kind === 'single') indices = owner.indices;
+    }
+    if (indices.length!==1 || (!partial && !wholeLineChange && session.cart[indices[0]].quantity!==1)) return unchanged('Necesito identificar una sola unidad: dime el plato y la opción que tiene para cambiar su preparación.');
     const index=indices[0], original=session.cart[index];
-    const menu=await this.catalogService.getMenuProducts();
     const source=menu.find(product=>product.id===original.productId);
     if (!source) return unchanged('No encontré el plato original en la carta actual.');
+    const requestedPortion = this.catalogService.detectPortionHint(destination);
+    if (direct && requestedPortion && requestedPortion !== this.catalogService.detectProductPortionSize(source.name)) return false;
     if (contrast) {
       const fromStyle=this.catalogService.extractRequestedProteinStyle(contrast[2]);
       if (!fromStyle || !this.catalogService.matchesCookingStyle(original.name,fromStyle)) return unchanged('La preparación que indicas no coincide con esa línea; aclara cuál cambiamos.');
     }
-    const target=this.catalogService.findCookingStyleSibling(source,menu,style);
-    if (!target) return unchanged('No encontré una única presentación disponible de ese mismo plato con esa preparación.');
-    const words=this.normalizeForMatch(target.name).split(' ');
-    if (!destination.split(' ').filter(word=>!['el','la','con','en','a'].includes(word)).every(word=>words.includes(word))) return unchanged('Necesito aclarar la preparación completa que quieres para ese plato.');
-    if (target.id===original.productId) return unchanged('Ese plato ya tiene esa preparación.');
-    if ((original.attributes || []).some(chosen=>!target.attributes?.some(attr=>attr.attributeName===chosen.attributeName && attr.options.includes(chosen.attributeValue)))) return unchanged('Esa presentación no admite todas las opciones actuales; dime cuáles quieres conservar o cambiar.');
+    const attributeChange = wholeLineChange && !namedDestination
+      ? this.catalogService.applyCookingStyleToAttributes(source, original.attributes || [], style) : null;
+    const target=namedDestination || (attributeChange ? source : this.catalogService.findCookingStyleSibling(source,menu,style));
+    if (!target || target.availableNow === false) return unchanged('No encontré una única presentación disponible de ese mismo plato con esa preparación.');
+    const words=this.normalizeForMatch([target.name, attributeChange?.attributeValue].filter(Boolean).join(' ')).split(' ');
+    const matchingPortion = requestedPortion && requestedPortion === this.catalogService.detectProductPortionSize(target.name);
+    const destinationWords = destination.split(' ').filter(word => !['el', 'la', 'con', 'en', 'a'].includes(word));
+    if (!destinationWords.every(word => words.includes(word) || this.catalogService.extractRequestedProteinStyle(word) === style ||
+        matchingPortion && this.catalogService.detectPortionHint(word) === requestedPortion)) {
+      return unchanged('Necesito aclarar la preparación completa que quieres para ese plato.');
+    }
+    if (target.id===original.productId && (!attributeChange ||
+        JSON.stringify(attributeChange.attributes) === JSON.stringify(original.attributes || []))) return unchanged('Ese plato ya tiene esa preparación.');
+    if (attributeChange) {
+      const added = this.tryAddProductToCart(session, source, original.quantity, cfg, undefined, attributeChange.attributes,
+        {replacement: {originalLine: structuredClone(original)}});
+      if (added.blocked || added.missingAttributes) return unchanged('No pude completar el cambio conservando las opciones actuales.');
+      await this.conversationService.saveSession(conv, added.session);
+      await this.reply(conv, waId, `Listo, cambié la preparación de *${source.name}* a *${attributeChange.attributeValue}*.\n\n` +
+        this.formatCartOnly(added.session, this.deliveryFeeFor(added.session, cfg)) + '\n\n' +
+        (this.formatInterruptedStepReminder(conv, added.session) || this.formatContinueShoppingPrompt(added.session)));
+      return true;
+    }
+    if (!wholeLineChange && (original.attributes || []).some(chosen=>!target.attributes?.some(attr=>attr.attributeName===chosen.attributeName && attr.options.includes(chosen.attributeValue)))) return unchanged('Esa presentación no admite todas las opciones actuales; dime cuáles quieres conservar o cambiar.');
     if (partial) {
       // Build the full result in memory. Never persist a split until the target and limits are valid.
       const added = this.tryAddProductToCart(session,target,1,cfg,undefined,original.attributes,
@@ -17904,7 +17943,7 @@ export class WhatsappOrchestratorService {
     const product = targets[0];
     const replacement = { originalLine: structuredClone(original) };
     const base = { ...session, pendingCartReplacement: undefined };
-    const quantity = /^(?:un|una|uno|dos|tres|cuatro|cinco|\d+)\b/i.test(addQuery)
+    const quantity = !opts?.sourceIsCatalogTitle && /^(?:un|una|uno|dos|tres|cuatro|cinco|\d+)\b/i.test(addQuery)
       ? this.catalogService.extractQuantityFromMessage(addQuery) : original.quantity;
     const compatible = (original.attributes || []).filter(chosen => product.attributes?.some(attribute =>
       attribute.attributeName === chosen.attributeName && attribute.options.includes(chosen.attributeValue)));
