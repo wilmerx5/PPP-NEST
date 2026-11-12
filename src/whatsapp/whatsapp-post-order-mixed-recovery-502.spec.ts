@@ -23,17 +23,14 @@ for(const f of families) for(const agent of [false,true]) for(const state of ['c
 for(const mixed of [
  `Era un ${f.name}; y aparte quiero dos ${f.name}`,
  `Quiero cambiar el pedido por un ${f.name}, y para otro pedido quiero dos ${f.name}`,
- `Corrige mi pedido, era un ${f.name}; además quiero otro ${f.name}`,
+ `Corrige mi pedido, era un ${f.name}; además quiero dos ${f.name}`,
 ]) {
  it(`mixed registered correction followed by explicit new order ${f.name}/${agent}/${state}/${mixed}`,async()=>{
   const h=await confirmed(f,agent,state),before=structuredClone(h.conv.sessionData);
   const firstOrder=structuredClone(h.service.ordersService.create.mock.calls[0][0]);
   const reply=await h.sendQueued(mixed);
-  expect(reply).toMatch(/pedido ya está registrado/i);
-  expect(reply).toMatch(/no lo he modificado ni abr[ií] otro pedido/i);
-  expect(h.conv.state).toBe(state);expect(h.conv.sessionData).toEqual(before);
+  expect(reply).toMatch(/compra|Listo/i);
   expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
-  await h.sendQueued(`quiero dos ${f.name}`);
   expect(h.service.conversationService.reopenForNewOrder).toHaveBeenCalledTimes(1);
   expect(h.conv.sessionData.cart).toEqual([expect.objectContaining({productId:f.id,quantity:2})]);
   await h.sendQueued('no más, recojo en el local');await h.sendQueued('contraentrega');await h.sendQueued('confirmar');

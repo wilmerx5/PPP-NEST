@@ -1,3 +1,11 @@
+## Tanda 504 — continuar compra aparte desde una corrección retrospectiva
+
+La ruta pospedido ahora reconoce una petición explícita separada por coma/punto y coma con «aparte», «para otro pedido» o «además quiero». Responde cómo revisar la corrección de la orden registrada y pasa la compra adicional al flujo existente de reapertura y compra. Mantiene la protección ante preguntas, condiciones y negaciones. La detección conserva puntuación porque la normalización general la elimina.
+
+Se actualizan36 recorridos de502 para exigir continuidad directa y segunda orden exacta, conservando el primer DTO. Relacionadas72/2 aprobadas con las guardas de503. Global49.782/576 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-504-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Alcance acotado a corrección retrospectiva de producto con una compra aparte explícita. Pendientes dirección retrospectiva mezclada con compra, otras construcciones lingüísticas, cantidades específicas dentro de grupos y concurrencia. La corrección efectiva de una orden registrada requiere revisión del restaurante. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
 ## Tanda 503 — condiciones, preguntas y negación de nueva compra
 
 36 regresiones nuevas cubren corrección retrospectiva acompañada de compra condicional, pregunta de compra o negación de otro pedido. Se comprueba conservación de la orden/sesión, cortesía posterior sin reapertura y compra explícita posterior que crea un segundo pedido exacto. Tres catálogos, agente off/mock, completed/closed. Relacionadas72/2 y TypeScript general aprobados. Solo cambian pruebas y documentación.

@@ -2133,9 +2133,20 @@ export class WhatsappOrchestratorService {
           return name.length >= 3 && (` ${correctionText} `).includes(` ${name} `);
         });
         if (mentionsProduct) {
-          await this.reply(conv, msg.waId,
-            'Tu pedido ya está registrado. No lo he modificado ni abrí otro pedido. Para revisar esta corrección antes de la entrega, contacta al restaurante. ' + this.humanPhoneHint());
-          return;
+          const separatePurchase = originalText.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().match(/[;,]\s*(?:y\s+)?(?:aparte|para otro pedido|ademas)\s+quiero\s+(.+)$/);
+          const newPurchase = separatePurchase?.[1];
+          if (newPurchase && !/[¿?]/.test(originalText) &&
+              !/\b(?:si|cuando|despues|luego|no|todavia|puedo|podria)\b/.test(correctionText)) {
+            await this.reply(conv, msg.waId,
+              'Para revisar la corrección del pedido registrado, contacta al restaurante. ' + this.humanPhoneHint() +
+              '\n\nVoy a preparar la compra que pediste aparte.');
+            originalText = `quiero ${newPurchase}`;
+            text = originalText;
+          } else {
+            await this.reply(conv, msg.waId,
+              'Tu pedido ya está registrado. No lo he modificado ni abrí otro pedido. Para revisar esta corrección antes de la entrega, contacta al restaurante. ' + this.humanPhoneHint());
+            return;
+          }
         }
       }
 
