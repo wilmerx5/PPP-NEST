@@ -1,3 +1,11 @@
+## Tanda 513 — cortesías y comas en bebidas genéricas
+
+La ampliación inicial144 reproduce12 fallos de «una limonada/jugo/gaseosa, porfa» en catálogos con varias opciones: la coma evita la ruta de aclaración y se elige la primera presentación. La gramática cuantificada admite coma con/sin espacio y porfa/por fa/porfavor/por favor. Se amplía a216 recorridos con nueve formas, tres etiquetas, agente off/mock, comida previa y catálogo único/múltiple. Cada recorrido termina en una orden DTO exacta.
+
+Relacionadas306/2 y TypeScript general/build/92 scripts aprobados. Global50.604/586 aprobada, fuentes congeladas e inventario exacto. Tras interrupción se retoma desde51 suites/17.584 aprobadas con fuentes idénticas. Evidencia whatsapp-batch-513-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+El usuario plantea revisar el modelado de productos y combos. Se confirma que la familia comercial se infiere de nombres y la entidad Product carece de vínculo explícito producto normal/combo. Se propone evaluar relación comercial explícita y validación de operaciones, junto con cobertura de chats reales por comportamiento. Esa propuesta sigue en discusión. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
 ## Tanda 512 — pedidos de bebidas genéricas y elección con cantidad
 
 La reproducción inicial encuentra12 fallos en24 recorridos: «una limonada/jugo/gaseosa» abre lista aun con producto único, mientras cantidades plurales se añaden. La nueva ruta interpreta la petición cuantificada antes de explorar categorías, conserva carrito previo y delega al flujo existente de bebida. Si hay varias opciones, guarda selección pendiente con cantidad explícita. La categoría se busca por el sustantivo para que «dos» tampoco elija silenciosamente la primera presentación. Se rechaza cero y se mantienen consultas de catálogo como lectura.

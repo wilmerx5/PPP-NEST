@@ -11668,7 +11668,7 @@ export class WhatsappOrchestratorService {
   private async tryHandleQuantifiedGenericDrink(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
-    const request = text.trim().match(/^(?:(?:quiero|dame|agrega|me das|me regalas?)\s+)?(un[oa]?|dos|tres|\d{1,2})\s+([\p{L}]+)(?:\s+(?:por favor|porfa))?[.!]*$/iu);
+    const request = text.trim().match(/^(?:(?:quiero|dame|agrega|me das|me regalas?)\s+)?(un[oa]?|dos|tres|\d{1,2})\s+([\p{L}]+)(?:(?:\s+|,\s*)(?:por\s*fa(?:vor)?))?[.!]*$/iu);
     if (!request || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingAddOffer ||
         CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) ||
         !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
