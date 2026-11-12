@@ -80,7 +80,7 @@ test('several linked combos require a choice and do not add a second dish', asyn
   await h.sendQueued('2');
   if (h.conv.sessionData.pendingAttribute) await h.sendQueued('Manzana');
   expect(h.cartRows()).toEqual([
-    expect.objectContaining({ id: 705, qty: 2 }), expect.objectContaining({ id: 704, qty: 1 }),
+    expect.objectContaining({ id: 705, qty: 2, note: 'Sin sal', attrs: expect.arrayContaining(['Acompañamiento:Yuca', 'Bebida:Manzana']) }), expect.objectContaining({ id: 704, qty: 1 }),
   ]);
   await close(h, 705, 2, '65.000');
 });
@@ -221,3 +221,64 @@ for (const previousFood of [false, true]) {
     expect(h.conv.sessionData.cart).toHaveLength(previousFood ? 2 : 1);
   });
 }
+
+for (const correction of ['pásalo a combo con cola', 'pásalo a combo']) {
+  test(`ambiguous combo choice keeps original options and an explicit drink, ${correction}`, async () => {
+    const products = [...menu(), { ...menu()[1], id: 705, code: 15, name: 'Experiencia Festiva', price: 30000 }];
+    const h = setup(false, 2, products);
+    await h.sendQueued(correction);
+    expect(h.conv.sessionData.pendingMatch?.configuredComboBaseProductId).toBe(701);
+    await h.sendQueued('2');
+    if (h.conv.sessionData.pendingAttribute) await h.sendQueued(correction.includes('cola') ? 'Cola' : 'Manzana');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({id:705,qty:2,note:'Sin sal',attrs:expect.arrayContaining(['Acompañamiento:Yuca', correction.includes('cola') ? 'Bebida:Cola' : 'Bebida:Manzana'])}),
+      expect.objectContaining({id:704,qty:1}),
+    ]);
+    await close(h,705,2,'65.000');
+  });
+}
+test('a relinked combo invalidates its old offer without changing the cart', async () => {
+  const products = [...menu(), { ...menu()[1], id: 705, code: 15, name: 'Experiencia Festiva', price: 30000 }];
+  const h = setup(false, 2, products);
+  const before = structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued('pásalo a combo');
+  products[4].comboBaseProductId = 704;
+  await h.sendQueued('2');
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.replies.at(-1)).toMatch(/ya no corresponde/i);
+});
+
+test('a required option after ambiguous conversion keeps source options and drink choice', async () => {
+  const products = [...menu(), { ...menu()[1], id: 705, code: 15, name: 'Experiencia Festiva', price: 30000 }];
+  products[4].attributes = [...products[4].attributes!, {attributeName:'Salsa',options:['Dulce','Picante']}];
+  const h = setup(false,2,products);
+  const before = structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued('pásalo a combo con cola');
+  await h.sendQueued('2');
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.conv.sessionData.pendingAttribute?.productId).toBe(705);
+  await h.sendQueued('Picante');
+  expect(h.cartRows()).toEqual([
+    expect.objectContaining({id:705,qty:2,note:'Sin sal',attrs:expect.arrayContaining(['Acompañamiento:Yuca','Bebida:Cola','Salsa:Picante'])}),
+    expect.objectContaining({id:704,qty:1}),
+  ]);
+  await close(h,705,2,'65.000');
+});
+
+test('a changed price is re-quoted before completing the configured conversion',async()=>{
+  const products = [...menu(), { ...menu()[1], id: 705, code: 15, name: 'Experiencia Festiva', price: 30000 }];
+  const h = setup(false,2,products);
+  const before=structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued('pásalo a combo con cola');
+  products[4].price=32000;
+  await h.sendQueued('2');
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.replies.at(-1)).toMatch(/precio.*cambi[oó]/i);
+  await h.sendQueued('2');
+  if(h.conv.sessionData.pendingAttribute) await h.sendQueued('Cola');
+  expect(h.cartRows()).toEqual([
+    expect.objectContaining({id:705,qty:2,attrs:expect.arrayContaining(['Acompañamiento:Yuca','Bebida:Cola'])}),
+    expect.objectContaining({id:704,qty:1}),
+  ]);
+  await close(h,705,2,'69.000');
+});

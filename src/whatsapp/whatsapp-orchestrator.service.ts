@@ -10349,6 +10349,9 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const pending = session.pendingMatch;
     if (!pending?.candidates?.length) return false;
+    if (pending.configuredComboBaseProductId !== undefined) {
+      products = await this.catalogService.getMenuProducts(true);
+    }
     if (this.catalogService.isProductDescriptionInquiry(text)) return false;
     if (await this.tryResolveSeveralPendingRows(conv, waId, session, text, products, cfg)) return true;
     // Older/fallback family lists retain the original request but may omit its
@@ -10533,6 +10536,20 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    if (pending.configuredComboBaseProductId !== undefined &&
+        (chosen.comboBaseProductId ?? chosen.id) !== pending.configuredComboBaseProductId) {
+      await this.reply(conv, waId, 'Esa presentación ya no corresponde a la relación ofrecida. Conservé tu pedido. Dime de nuevo el producto que quieres cambiar.');
+      return true;
+    }
+
+    if (pending.configuredComboBaseProductId !== undefined && pending.replacement) {
+      return this.tryApplyVariantPreferenceToProduct(
+        conv, waId, {...session, pendingMatch: undefined, pendingAddOffer: undefined},
+        `${pending.query}. ${chosen.name}`, products, cfg, chosen,
+        {fromPendingAttribute:false, focusedComboId:chosen.id, targetLine:pending.replacement.originalLine},
+      );
+    }
+
     if (pending.unitAttributeGroups) {
       return this.commitPairedCatalogPurchase(conv,waId,session,chosen,pending.unitAttributeGroups,cfg);
     }
@@ -10582,6 +10599,7 @@ export class WhatsappOrchestratorService {
       !!this.catalogService.extractExplicitAttributeChoice(pending.query || '', chosen)?.length
       ? `${pending.query}. ${followUp}`
       : followUp;
+    if (pending.configuredComboBaseProductId !== undefined) attrSourceText = `${pending.query}. ${followUp}`;
     const requestedOptions = pending.offeredAlternatives?.find(option => option.productId === chosen.id)?.attributes;
     if (!pending.replacement && requestedOptions?.length) {
       attrSourceText += ', ' + requestedOptions.map(option => `${option.attributeName}: ${option.attributeValue}`).join(', ');
@@ -14022,7 +14040,8 @@ export class WhatsappOrchestratorService {
           return true;
         }
         await this.conversationService.saveSession(conv, {...session, pendingMatch: {
-          query: product.name, intent: 'order', quantity: lines[0]?.quantity || this.resolveAddQuantity(session, product, {sourceText:text}),
+          configuredComboBaseProductId: product.comboBaseProductId ?? product.id,
+          query: text, intent: 'order', quantity: lines[0]?.quantity || this.resolveAddQuantity(session, product, {sourceText:text}),
           replacement: lines[0] ? {originalLine: structuredClone(lines[0])} : undefined, candidates: destinations,
         }});
         await this.reply(conv, waId, '¿Cuál presentación prefieres?\n\n' +
