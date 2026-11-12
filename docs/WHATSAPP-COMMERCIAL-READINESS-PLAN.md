@@ -1,3 +1,9 @@
+## Tanda 508 — cantidades en palabras e interrupción de precio
+
+120 regresiones nuevas cubren un/uno/una/dos/tres, quita/retira, retirada parcial/total, tres catálogos y agente off/mock. Después de retirar se consulta precio, se verifica conservación del pendiente/carrito y se termina el reparto hasta un único DTO con cantidades exactas. Relacionadas186/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. Global507 (49.956/579) permanece como evidencia previa.
+
+Cero inferencia pagada y órdenes externas. Publicación en rama staging. Evidencia whatsapp-batch-508-validation.json. Pendientes más formulaciones, grupos distintos con la misma opción y concurrencia. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
 ## Tanda 507 — retirar cantidades concretas del reparto pendiente
 
 Sobre97ee6213 se reproducen24 fallos al pedir «quita/retira 1/2 de los de mango». La retirada ahora reconoce cantidad explícita, reduce el total pendiente y conserva las unidades restantes del grupo con sus opciones. Reutiliza las guardas de coincidencia con carrito y rechaza cero, cantidad excesiva o varios grupos coincidentes, solicitando reparto completo antes de cambiar.
