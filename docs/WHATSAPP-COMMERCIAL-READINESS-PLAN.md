@@ -1,3 +1,9 @@
+## Actualización 514 — catálogo relacional y conversiones
+
+Se incorporan vínculos reales combo→producto normal, administrables mediante selector y API protegida. Backend staging desplegado y cinco pares guardados. Nuevos recorridos comprueban ambos sentidos, cantidades, opciones/notas compatibles, selección entre varios combos, opciones nuevas, precio y relación cambiados, compra de combo independiente y cierre exacto. La ficha del agente también transporta la relación. El cierre de elecciones ambiguas reutiliza el convertidor para conservar las opciones originales.
+
+39 pruebas nuevas y5900 relacionadas/112 suites finales aprobadas. Global base50.638/588 aprobada antes del último ajuste específico, sin atribuirla al ajuste final. Diez cierres simulados adicionales usan el catálogo y los vínculos leídos de staging real. FK/API reales, frontend compilado y navegador con API sintética verificados. Detalle y límites en whatsapp-batch-514-validation.json. El panel está publicado en la rama staging, pendiente de despliegue web. Kamppo requiere migración con su aislamiento de restaurantes. La aprobación de estas pruebas no certifica todo el piloto ni reemplaza la revisión de chats nuevos.
+
 ## Tanda 513 — cortesías y comas en bebidas genéricas
 
 La ampliación inicial144 reproduce12 fallos de «una limonada/jugo/gaseosa, porfa» en catálogos con varias opciones: la coma evita la ruta de aclaración y se elige la primera presentación. La gramática cuantificada admite coma con/sin espacio y porfa/por fa/porfavor/por favor. Se amplía a216 recorridos con nueve formas, tres etiquetas, agente off/mock, comida previa y catálogo único/múltiple. Cada recorrido termina en una orden DTO exacta.

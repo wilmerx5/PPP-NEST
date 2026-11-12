@@ -1,0 +1,98 @@
+{
+  "batch": 514,
+  "date": "2026-11-12T15:10:59.244824+00:00",
+  "codeCommit": "40018cfcaa5964ad3641c20b5bf49e45d6c052f7",
+  "adminCommit": "179dc12d906ec6ae02880b68d5083fe3b130bce0",
+  "adminBranch": "staging",
+  "adminWebDeployment": false,
+  "newTests": 39,
+  "newSuites": 2,
+  "newSimulatedClosures": 12,
+  "finalRelated": {
+    "numPassedTests": 5900,
+    "numFailedTests": 0,
+    "numPassedTestSuites": 112,
+    "numFailedTestSuites": 0
+  },
+  "baselineGlobal": {
+    "commit": "ef1f2b739f426570b7833a6e98206e33501f2432",
+    "passedTests": 50638,
+    "passedSuites": 588,
+    "failedTests": 0
+  },
+  "validationScope": "Full global on the feature baseline. Final scoped offer-selection fix validated with all 112 combo/variant/replacement/pending suites. The full global was not repeated after that scoped fix.",
+  "finalSourceFiles": 809,
+  "finalSourceUnchanged": true,
+  "finalSourceManifestSha256": "f2e783141d7d5e311254fd246eaaae98b59ec7f2f70f7545d8fa13f285871bba",
+  "checks": {
+    "typescript": 0,
+    "buildTypescript": 0,
+    "adminBuild": 0,
+    "dockerBuild": 0,
+    "offlineScriptsPassed": 92
+  },
+  "database": {
+    "localMariaDbMigration": true,
+    "invalidForeignKeyRejected": true,
+    "referencedBaseDeletionRejected": true,
+    "stagingAdminApi": {
+      "ok": true,
+      "authenticatedAdminEndpoint": true,
+      "relationPersisted": true,
+      "foreignKey": true,
+      "selfAndCycleRejected": true,
+      "missingFieldRejected": true,
+      "unlink": true,
+      "stagingConfiguredPairs": [
+        [
+          98,
+          4
+        ],
+        [
+          99,
+          1
+        ],
+        [
+          94,
+          35
+        ],
+        [
+          85,
+          84
+        ],
+        [
+          97,
+          36
+        ]
+      ],
+      "externalOrders": 0
+    }
+  },
+  "ui": {
+    "localSyntheticApi": true,
+    "saved": true,
+    "reloadRetained": true,
+    "unlinked": true,
+    "relinked": true
+  },
+  "postdeploymentCatalogProbes": {
+    "passedTests": 11,
+    "suites": 2,
+    "fullSimulatedClosures": 10,
+    "catalogAndLinksReadFromRealStagingApi": true,
+    "externalOrderServiceMocked": true
+  },
+  "deployment": {
+    "environment": "staging",
+    "apiUrl": "https://dev.prontopolloportal.com",
+    "runtimeCommit": "40018cfcaa5964ad3641c20b5bf49e45d6c052f7",
+    "image": "sha256:487c679950ab52bb584abf42546ecd0dc70476a639be7eea8cf177fd67f7ff25",
+    "health": "healthy",
+    "httpHealth": "ok",
+    "unauthenticatedMutationHttpStatus": 401
+  },
+  "paidInferenceCalls": 0,
+  "externalOrdersCreated": 0,
+  "kamppoMigrated": false,
+  "kamppoContract": "PRODUCT-COMBO-RELATIONS.md describes the nullable field and mandatory tenant-scoped API/FK adaptation."
+}
