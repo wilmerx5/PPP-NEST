@@ -550,6 +550,10 @@ export class WhatsappCatalogService {
             .join('\n');
           block += `\n  Opciones a elegir:\n${opts}`;
         }
+        if (p.comboBaseProductId != null) {
+          const base = byId.get(p.comboBaseProductId);
+          block += `\n  Producto normal vinculado: ${base ? `#${base.code} ${base.name}` : `ID ${p.comboBaseProductId}`}`;
+        }
         detailedParts.push(block);
       }
     }

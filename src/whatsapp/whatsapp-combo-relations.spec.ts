@@ -1,3 +1,4 @@
+import { WhatsappAgentService } from './whatsapp-agent.service';
 import { harness } from './whatsapp-accuracy.test-support';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { WhatsappCatalogService } from './whatsapp-catalog.service';
@@ -196,4 +197,13 @@ test('configured normal role takes precedence when the product name contains com
   const current = await catalog.getMenuProducts();
   expect(catalog.productImpliesCombo(current.find(product => product.id === 701)!)).toBe(false);
   expect(catalog.productImpliesCombo(current.find(product => product.id === 702)!)).toBe(true);
+});
+
+test('the agent tool card and detailed menu expose the actual database relationship', async () => {
+  const catalog = new WhatsappCatalogService({ findProductsGroupedByCategory: async () => [{ categoryName: 'Carta', products: menu() }] } as never);
+  const current = await catalog.getMenuProducts();
+  const agent = Object.create(WhatsappAgentService.prototype) as any;
+  expect(agent.productCard(current.find(product => product.id === 702))).toMatchObject({ comboBaseProductId: 701, comboRole: 'combo' });
+  expect(agent.productCard(current.find(product => product.id === 701))).toMatchObject({ comboBaseProductId: null, comboRole: 'normal' });
+  expect(await catalog.getMenuDetailedText()).toContain('Producto normal vinculado: #11 Bowl Andino');
 });
