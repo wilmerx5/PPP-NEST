@@ -110,8 +110,10 @@ export class ProductsService {
   private async replaceSchedules(
     productId: number,
     rows?: Array<{ dayOfWeek: number; startTime?: string | null; endTime?: string | null }>,
+    manager?: EntityManager,
   ) {
-    await this.scheduleRepo
+    const scheduleRepo = manager?.getRepository(ProductSchedule) || this.scheduleRepo;
+    await scheduleRepo
       .createQueryBuilder()
       .delete()
       .from(ProductSchedule)
@@ -121,14 +123,14 @@ export class ProductsService {
     const entities = rows
       .filter((r) => Number(r.dayOfWeek) >= 0 && Number(r.dayOfWeek) <= 6)
       .map((r) =>
-        this.scheduleRepo.create({
+        scheduleRepo.create({
           productId,
           dayOfWeek: Math.floor(Number(r.dayOfWeek)),
           startTime: r.startTime ? String(r.startTime).trim().slice(0, 5) : null,
           endTime: r.endTime ? String(r.endTime).trim().slice(0, 5) : null,
         }),
       );
-    if (entities.length) await this.scheduleRepo.save(entities);
+    if (entities.length) await scheduleRepo.save(entities);
   }
 
   private async safeClock(): Promise<ZonedClock> {
@@ -169,13 +171,66 @@ export class ProductsService {
   /**
    * Crea un producto con atributos, categorías y stock opcional.
    */
-  async create(createProductDto: CreateProductDto) {
+  async setComboBaseProduct(id: number, baseId: number | null) {
+    if (!Number.isInteger(id) || id < 1 || (baseId !== null && (!Number.isInteger(baseId) || baseId < 1))) {
+      throw new BadRequestException('Selecciona un producto válido');
+    }
+    if (baseId === id) throw new BadRequestException('Un combo debe vincularse a otro producto');
+    const result = await this.productRepo.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(Product);
+      // Lock both endpoints in ID order. Every link writer follows this protocol.
+      const ids = [...new Set([id, ...(baseId === null ? [] : [baseId])])].sort((a, b) => a - b);
+      const rows = await repo.find({ where: { id: In(ids) }, order: { id: 'ASC' }, lock: { mode: 'pessimistic_write' } });
+      const product = rows.find(row => row.id === id);
+      if (!product) throw new NotFoundException('No se encontró el combo');
+      if (baseId !== null) {
+        const base = rows.find(row => row.id === baseId);
+        if (!base) throw new NotFoundException('No se encontró el producto normal');
+        if (base.comboBaseProductId != null) throw new BadRequestException('El producto normal ya está configurado como combo');
+        const children = await repo.count({ where: { comboBaseProductId: id } });
+        if (children) throw new BadRequestException('Este producto ya tiene combos vinculados. Retira esos vínculos primero');
+      }
+      product.comboBaseProductId = baseId;
+      return repo.save(product);
+    });
+    this.cache.invalidate('products:');
+    return result;
+  }
+
+  async createCombo(baseId: number, dto: CreateProductDto) {
+    const result = await this.productRepo.manager.transaction(
+      async (manager) => {
+        const base = await manager.getRepository(Product).findOne({
+          where: { id: baseId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!base)
+          throw new NotFoundException('No se encontró el producto normal');
+        if (base.comboBaseProductId != null)
+          throw new BadRequestException(
+            'Selecciona el producto normal para añadir un combo',
+          );
+        return this.create(dto, manager, baseId);
+      },
+    );
+    this.cache.invalidate('products:');
+    return result;
+  }
+
+  async create(
+    createProductDto: CreateProductDto,
+    manager?: EntityManager,
+    comboBaseProductId?: number,
+  ) {
+    const productRepo = manager?.getRepository(Product) || this.productRepo;
+    const categoryRepo = manager?.getRepository(Category) || this.categoryRepo;
+    const attributeRepo = manager?.getRepository(ProductAttribute) || this.attributeRepo;
     const code = Math.floor(Number(createProductDto.code));
     if (!Number.isFinite(code) || code < 1) {
       throw new BadRequestException('El código del producto debe ser un entero ≥ 1');
     }
 
-    const existing = await this.productRepo.findOne({
+    const existing = await productRepo.findOne({
       where: { code },
       select: ['id', 'code'],
     });
@@ -193,7 +248,8 @@ export class ProductsService {
     const hasAttributes =
       createProductDto.hasAttributes === true || attrs.length > 0;
 
-    const product = this.productRepo.create({
+    const product = productRepo.create({
+      comboBaseProductId: comboBaseProductId ?? null,
       name: createProductDto.name.trim(),
       description: createProductDto.description?.trim() || undefined,
       price: Number(createProductDto.price),
@@ -207,14 +263,14 @@ export class ProductsService {
     });
 
     if (createProductDto.categoryIds?.length) {
-      product.categories = await this.categoryRepo.find({
+      product.categories = await categoryRepo.find({
         where: { id: In(createProductDto.categoryIds) },
       });
     } else {
       product.categories = [];
     }
 
-    const saved = await this.productRepo.save(product);
+    const saved = await productRepo.save(product);
 
     if (attrs.length) {
       const entities = attrs.map((a) => {
@@ -224,25 +280,25 @@ export class ProductsService {
         attr.product = saved;
         return attr;
       });
-      await this.attributeRepo.save(entities);
+      await attributeRepo.save(entities);
     }
 
     if (createProductDto.variantStocks?.length) {
       for (const vs of createProductDto.variantStocks) {
         if (vs.trackStock === false) continue;
         if (vs.stocks?.length) {
-          await this.setVariantStocks(saved.id, vs.attributeName, vs.stocks);
+          await this.setVariantStocks(saved.id, vs.attributeName, vs.stocks, manager);
         }
       }
     }
 
     if (createProductDto.hasSchedule || createProductDto.schedules?.length) {
-      await this.replaceSchedules(saved.id, createProductDto.schedules);
+      await this.replaceSchedules(saved.id, createProductDto.schedules, manager);
     }
 
     this.cache.invalidate('products:');
 
-    const created = await this.productRepo.findOne({
+    const created = await productRepo.findOne({
       where: { id: saved.id },
       relations: ['categories', 'attributes', 'variantStocks', 'schedules'],
     });
@@ -509,6 +565,7 @@ export class ProductsService {
                   description: product.description,
                   code: product.code,
                   price: product.price,
+                  comboBaseProductId: product.comboBaseProductId ?? null,
                   imageUrl: product.imageUrl,
                   hasAttributes: product.hasAttributes,
                   hasSchedule: !!product.hasSchedule,
@@ -1235,21 +1292,23 @@ export class ProductsService {
     productId: number,
     attributeName: string,
     stocks: Array<{ attributeValue: string; stock: number }>,
+    manager?: EntityManager,
   ): Promise<void> {
-    await this.variantStockRepo.delete({ productId, attributeName });
+    const variantStockRepo = manager?.getRepository(ProductVariantStock) || this.variantStockRepo;
+    await variantStockRepo.delete({ productId, attributeName });
     if (!stocks.length) {
       this.cache.invalidate('products:');
       return;
     }
     const entities = stocks.map((s) =>
-      this.variantStockRepo.create({
+      variantStockRepo.create({
         productId,
         attributeName,
         attributeValue: s.attributeValue.trim(),
         stock: Math.max(0, Math.floor(s.stock)),
       }),
     );
-    await this.variantStockRepo.save(entities);
+    await variantStockRepo.save(entities);
     this.cache.invalidate('products:');
   }
 

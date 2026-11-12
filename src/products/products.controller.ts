@@ -5,6 +5,7 @@ import {
   Get,
   NotFoundException,
   Param,
+  ParseIntPipe,
   Patch,
   Post
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ import {
 
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpdateComboRelationDto } from './dto/update-combo-relation.dto';
 import { ProductsService } from './products.service';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { ValidRoles } from '../auth/interfaces/valid.roles.interface';
@@ -27,6 +29,21 @@ import { ValidRoles } from '../auth/interfaces/valid.roles.interface';
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
+
+  @Post(':id/combos')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  createCombo(@Param('id', ParseIntPipe) id: number, @Body() dto: CreateProductDto) {
+    return this.productsService.createCombo(id, dto);
+  }
+
+  @Patch(':id/combo-relation')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Configure the normal product corresponding to a combo' })
+  setComboRelation(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateComboRelationDto) {
+    return this.productsService.setComboBaseProduct(id, dto.comboBaseProductId);
+  }
 
   // -------------------------------------------------------------
   // CREATE PRODUCT — admin

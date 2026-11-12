@@ -37,6 +37,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
     // Siempre: columnas críticas del código actual (evita caída si olvidan el flag)
     await this.ensureClientRequestIdColumn();
     await this.ensureProductScheduleSchema();
+    await this.ensureProductComboSchema();
     await this.ensureWhatsappSchema();
     await this.ensureUserAddressLocationColumns();
     await this.ensureWebDeliverySettingsColumns();
@@ -422,6 +423,20 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
   }
 
   /** Horarios por producto: la entidad ya usa has_schedule + ppp_product_schedules. */
+  private async ensureProductComboSchema() {
+    const columns = await this.dataSource.query(`SELECT COUNT(*) AS c FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ppp_products' AND COLUMN_NAME = 'combo_base_product_id'`);
+    if (!Number(columns[0]?.c)) {
+      await this.dataSource.query('ALTER TABLE ppp_products ADD COLUMN combo_base_product_id INT NULL');
+    }
+    const constraints = await this.dataSource.query(`SELECT COUNT(*) AS c FROM information_schema.TABLE_CONSTRAINTS
+      WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'ppp_products' AND CONSTRAINT_NAME = 'fk_product_combo_base'`);
+    if (!Number(constraints[0]?.c)) {
+      await this.dataSource.query(`ALTER TABLE ppp_products ADD CONSTRAINT fk_product_combo_base
+        FOREIGN KEY (combo_base_product_id) REFERENCES ppp_products(id) ON DELETE RESTRICT`);
+    }
+  }
+
   private async ensureProductScheduleSchema() {
     try {
       const col: { c: number }[] = await this.dataSource.query(

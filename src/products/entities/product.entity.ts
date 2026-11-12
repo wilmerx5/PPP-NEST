@@ -4,6 +4,8 @@ import {
   Column,
   Entity,
   JoinTable,
+  JoinColumn,
+  ManyToOne,
   ManyToMany,
   OneToMany,
   PrimaryGeneratedColumn
@@ -88,6 +90,14 @@ export class Product {
   })
   @Column({ type: 'int', default: 0 })
   stock: number;
+
+  @ApiProperty({ description: 'Producto normal correspondiente a este combo.', required: false, nullable: true })
+  @Column({ name: 'combo_base_product_id', type: 'int', nullable: true })
+  comboBaseProductId?: number | null;
+
+  @ManyToOne(() => Product, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'combo_base_product_id', foreignKeyConstraintName: 'fk_product_combo_base' })
+  comboBaseProduct?: Product | null;
 
   // ------------------------------------------------------------------------
   // Atributos configurables

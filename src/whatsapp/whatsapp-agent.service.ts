@@ -2049,6 +2049,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       code: p.code,
       name: p.name,
       price: p.price,
+      ...(p.comboBaseProductId !== undefined ? { comboBaseProductId: p.comboBaseProductId, comboRole: p.comboRole || null } : {}),
       category: p.categoryName || null,
       description: (p.description || '').trim().slice(0, 280) || null,
       hasAttributes: !!p.hasAttributes,

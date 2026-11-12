@@ -2737,6 +2737,16 @@ export class WhatsappOrchestratorService {
       originalText = originalText.slice(0, recipient.index).trim();
       text = text.replace(recipientTail, '').trim() || originalText;
     }
+    if (!session.cart.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+        this.catalogService.extractVariantPreferenceHint(originalText) && !/[¿?]/.test(originalText) &&
+        !this.catalogService.isPriceInquiryIntent(originalText) && !this.catalogService.isAvailabilityInquiry(originalText) &&
+        /^(?:quiero|quisiera|dame|deme|me das|me regalas|agrega|anade)\b/.test(this.normalizeForMatch(originalText))) {
+      const menu = await this.catalogService.getMenuProducts(true);
+      const normalized = ` ${this.normalizeForMatch(originalText)} `;
+      const named = menu.filter(product => normalized.includes(` ${this.normalizeForMatch(product.name)} `));
+      if (named.length === 1 && this.catalogService.getConfiguredVariantFamily(named[0], menu) &&
+          await this.tryApplyVariantPreferenceToProduct(conv,msg.waId,session,originalText,menu,cfg,named[0],{fromPendingAttribute:false})) return;
+    }
     if (await this.tryHandleExplicitComboPurchase(conv,msg.waId,session,originalText,cfg)) return;
     // A product replacement interrupts checkout; never feed it to field
     // handlers or remove the original before validating the replacement.
@@ -3688,7 +3698,7 @@ export class WhatsappOrchestratorService {
       !this.catalogService.isPriceInquiryIntent(originalText) && !this.catalogService.isAvailabilityInquiry(originalText) &&
       !/^(?:si\s+(?:lo|la|los|las)|puedo|podria|podr[ií]a|se puede)\b/i.test(originalText.trim()) &&
       this.catalogService.isVariantPreferenceIntent(originalText)) {
-      const menu = await this.catalogService.getMenuProducts();
+      const menu = await this.catalogService.getMenuProducts(true);
       if (await this.tryHandleVariantPreferenceChange(conv, msg.waId, session, originalText, menu, cfg)) return;
     }
     if (session.pendingCartAttributeEdit && !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state) && !/[¿?]/.test(originalText)) {
@@ -10316,6 +10326,9 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const pending = session.pendingMatch;
     if (!pending?.candidates?.length) return false;
+    if (pending.configuredComboBaseProductId !== undefined) {
+      products = await this.catalogService.getMenuProducts(true);
+    }
     if (this.catalogService.isProductDescriptionInquiry(text)) return false;
     if (await this.tryResolveSeveralPendingRows(conv, waId, session, text, products, cfg)) return true;
     // Older/fallback family lists retain the original request but may omit its
@@ -10500,6 +10513,20 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    if (pending.configuredComboBaseProductId !== undefined &&
+        (chosen.comboBaseProductId ?? chosen.id) !== pending.configuredComboBaseProductId) {
+      await this.reply(conv, waId, 'Esa presentación ya no corresponde a la relación ofrecida. Conservé tu pedido. Dime de nuevo el producto que quieres cambiar.');
+      return true;
+    }
+
+    if (pending.configuredComboBaseProductId !== undefined && pending.replacement) {
+      return this.tryApplyVariantPreferenceToProduct(
+        conv, waId, {...session, pendingMatch: undefined, pendingAddOffer: undefined},
+        `${pending.query}. ${chosen.name}`, products, cfg, chosen,
+        {fromPendingAttribute:false, focusedComboId:chosen.id, targetLine:pending.replacement.originalLine},
+      );
+    }
+
     if (pending.unitAttributeGroups) {
       return this.commitPairedCatalogPurchase(conv,waId,session,chosen,pending.unitAttributeGroups,cfg);
     }
@@ -10549,6 +10576,7 @@ export class WhatsappOrchestratorService {
       !!this.catalogService.extractExplicitAttributeChoice(pending.query || '', chosen)?.length
       ? `${pending.query}. ${followUp}`
       : followUp;
+    if (pending.configuredComboBaseProductId !== undefined) attrSourceText = `${pending.query}. ${followUp}`;
     const requestedOptions = pending.offeredAlternatives?.find(option => option.productId === chosen.id)?.attributes;
     if (!pending.replacement && requestedOptions?.length) {
       attrSourceText += ', ' + requestedOptions.map(option => `${option.attributeName}: ${option.attributeValue}`).join(', ');
@@ -13448,7 +13476,7 @@ export class WhatsappOrchestratorService {
       q.match(/^(?:pasa|cambia)(?:me)?\s+(?:(?:el|la)\s+)?(.+?)\s+(?:a|en)\s+combo\b/)?.[1] ||
       q.match(/^(?:el|la)\s+(.+?)\s+en\s+combo\b/)?.[1];
     if (reference) return reference;
-    return /^(?:(?:lo|la)\s+(?:quiero|quisiera|prefiero)\s+|(?:damelo|damela|ponlo|ponla)\s+)?(?:en\s+)?combo(?:\s+con\s+.+)?$/.test(q) ? '' : null;
+    return /^(?:(?:lo|la)\s+(?:quiero|quisiera|prefiero)\s+|(?:damelo|damela|ponlo|ponla|pasalo|pasala)\s+)?(?:(?:en|a)\s+)?combo(?:\s+con\s+.+)?$/.test(q) ? '' : null;
   }
 
   private comboTargetMatchesLine(line: WhatsappCartItem, reference: string): boolean {
@@ -13854,6 +13882,7 @@ export class WhatsappOrchestratorService {
     const cartContext = session.cart.length > 0 || opts.fromPendingAttribute;
     const namedOther = !opts.focusedComboId && this.catalogService.findProductEmbeddedInMessage(text, products);
     if (namedOther && namedOther.id !== product.id && /\bcombo\b/i.test(namedOther.name) &&
+        (!this.catalogService.getConfiguredVariantFamily(product, products) || this.normalizeForMatch(text).includes(this.normalizeForMatch(namedOther.name))) &&
         !this.catalogService.findProductVariantFamily(product.name, products, [product])?.variants.some(variant => variant.id === namedOther.id)) {
       return false;
     }
@@ -13904,6 +13933,19 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    const configuredFamily = this.catalogService.getConfiguredVariantFamily(product, products);
+    // Current database catalogs always expose this nullable field. Legacy adapters
+    // may omit it while upgrading, but an explicit null never authorizes guessing a link.
+    const directComboPurchase = hint === 'combo' && !opts.targetLine && !opts.fromPendingAttribute &&
+      this.catalogService.productImpliesCombo(product) &&
+      /^(?:quiero|quisiera|dame|deme|me das|me regalas|agrega|agregame|anade)\b/.test(this.normalizeForMatch(text)) &&
+      (` ${this.normalizeForMatch(text)} `).includes(` ${this.normalizeForMatch(product.name)} `);
+    if (!configuredFamily && directComboPurchase) return false;
+    if (!configuredFamily && product.comboBaseProductId !== undefined && hint) {
+      await this.reply(conv, waId, `*${product.name}* no tiene una relación de combo configurada. El restaurante debe configurar la presentación correspondiente. Tu pedido sigue igual.`);
+      return true;
+    }
+
     const family = this.catalogService.findProductVariantFamily(product.name, products, [
       product,
       ...(session.pendingMatch?.candidates || []),
@@ -13912,13 +13954,39 @@ export class WhatsappOrchestratorService {
         .filter((p): p is MenuProduct => !!p),
     ]);
 
-    if (family && family.variants.length >= 2) {
+    if (configuredFamily && hint) {
+      const destinations = configuredFamily.variants.filter(item => item.availableNow !== false &&
+        (hint === 'combo' ? item.comboBaseProductId != null : item.comboBaseProductId == null));
+      const chosen = this.catalogService.pickVariantFromFamilyText(text, configuredFamily);
+      if (!chosen) {
+        if (!destinations.length) {
+          await this.reply(conv, waId, `No hay una presentación ${hint === 'combo' ? 'en combo' : 'normal'} vinculada y disponible para *${product.name}*. Tu pedido sigue igual.`);
+          return true;
+        }
+        const lines = opts.targetLine ? [opts.targetLine] : session.cart.filter(line => line.productId === product.id);
+        if (lines.length > 1 || (cartContext && lines.length === 0)) {
+          await this.reply(conv, waId, 'Dime cuál línea del pedido quieres cambiar y sus opciones. Tu pedido sigue igual.');
+          return true;
+        }
+        await this.conversationService.saveSession(conv, {...session, pendingMatch: {
+          configuredComboBaseProductId: product.comboBaseProductId ?? product.id,
+          query: text, intent: 'order', quantity: lines[0]?.quantity || this.resolveAddQuantity(session, product, {sourceText:text}),
+          replacement: lines[0] ? {originalLine: structuredClone(lines[0])} : undefined, candidates: destinations,
+        }});
+        await this.reply(conv, waId, '¿Cuál presentación prefieres?\n\n' +
+          destinations.map((item, index) => `${index + 1}. *${item.name}* · ${Number(item.price).toLocaleString('es-CO')}`).join('\n'));
+        return true;
+      }
+    }
+
+    if (family && (family.variants.length >= 2 || configuredFamily)) {
       // A selected cart portion identifies the source line, not the destination SKU.
       const destinationFamily = opts.targetLine && hint === 'combo'
         ? {...family, variants:family.variants.filter(item=>this.catalogService.productImpliesCombo(item))}
         : family;
-      let picked =
-        this.catalogService.pickVariantFromFamilyText(text, destinationFamily) ||
+      let picked = configuredFamily
+        ? this.catalogService.pickVariantFromFamilyText(text, configuredFamily)
+        : this.catalogService.pickVariantFromFamilyText(text, destinationFamily) ||
         (hint === 'combo' && this.catalogService.productImpliesCombo(product) ? product : null) ||
         (hint === 'combo'
           ? family.variants.find((p) => /\bcombo\b/.test(p.name.toLowerCase())) || null
@@ -14087,7 +14155,7 @@ export class WhatsappOrchestratorService {
             code: picked.code,
             price: picked.price,
             attributes: picked.attributes || [],
-            selected: step.status === 'partial' ? step.attributes : [],
+            selected: step.status === 'partial' ? step.attributes : kept,
           },
         };
         await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
@@ -14097,7 +14165,7 @@ export class WhatsappOrchestratorService {
           `${cartContext ? 'Listo, vamos con *combo* 👍\n\n' : ''}` +
             this.catalogService.formatProductOptionsPrompt(
               picked,
-              step.status === 'partial' ? step.attributes : [],
+              step.status === 'partial' ? step.attributes : kept,
             ),
         );
         return true;

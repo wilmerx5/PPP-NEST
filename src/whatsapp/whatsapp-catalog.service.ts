@@ -509,6 +509,7 @@ export class WhatsappCatalogService {
           name: p.name,
           code: Number(p.code) || 0,
           price: Number(p.price) || 0,
+          comboBaseProductId: p.comboBaseProductId ?? null,
           description: p.description ? String(p.description).trim() : null,
           categoryName: catName || undefined,
           categoryNames: catName ? [catName] : [],
@@ -519,6 +520,12 @@ export class WhatsappCatalogService {
         byId.set(p.id, product);
         products.push(product);
       }
+    }
+
+    const linkedBases = new Set(products.flatMap(product => product.comboBaseProductId == null ? [] : [product.comboBaseProductId]));
+    for (const product of products) {
+      if (product.comboBaseProductId != null) product.comboRole = 'combo';
+      else if (linkedBases.has(product.id)) product.comboRole = 'normal';
     }
 
     const available = products.filter((p) => p.availableNow !== false);
@@ -542,6 +549,10 @@ export class WhatsappCatalogService {
             .map((a) => `  ${a.attributeName}: ${a.options.map((o, i) => `${i + 1}) ${o}`).join(', ')}`)
             .join('\n');
           block += `\n  Opciones a elegir:\n${opts}`;
+        }
+        if (p.comboBaseProductId != null) {
+          const base = byId.get(p.comboBaseProductId);
+          block += `\n  Producto normal vinculado: ${base ? `#${base.code} ${base.name}` : `ID ${p.comboBaseProductId}`}`;
         }
         detailedParts.push(block);
       }
@@ -7680,7 +7691,7 @@ export class WhatsappCatalogService {
     const q = normalizeText(text);
     if (!q || q.length < 4) return false;
     if (
-      /\b(en\s+combo|en\s+solo|sin\s+combo|con\s+combo|que\s+sea\s+combo|que\s+sea\s+solo|mejor\s+en\s+combo|mejor\s+en\s+solo|mejor\s+combo|mejor\s+solo|cambiar\s+a\s+combo|cambialo\s+a\s+combo|cambiar\s+a\s+solo)\b/.test(
+      /\b(en\s+combo|en\s+solo|sin\s+combo|con\s+combo|que\s+sea\s+combo|que\s+sea\s+solo|mejor\s+en\s+combo|mejor\s+en\s+solo|mejor\s+combo|mejor\s+solo|cambiar\s+a\s+combo|cambialo\s+a\s+combo|pasalo\s+a\s+combo|pasala\s+a\s+combo|cambiar\s+a\s+solo)\b/.test(
         q,
       )
     ) {
@@ -7717,6 +7728,7 @@ export class WhatsappCatalogService {
 
   extractVariantPreferenceHint(text: string): 'combo' | 'solo' | null {
     const q = normalizeText(text);
+    if (/\bsin\s+(?:el\s+)?combo\b/.test(q)) return 'solo';
     if (/\bcombo\b/.test(q) && !/\bsolo\b/.test(q)) return 'combo';
     if (/\bsolo\b/.test(q) && !/\bcombo\b/.test(q)) return 'solo';
     if (/\bcombo\b/.test(q)) return 'combo';
@@ -7823,6 +7835,15 @@ export class WhatsappCatalogService {
    * Detecta familia de productos: "arroz paisa" → solo vs con gaseosa/combo,
    * o "mojarra" → Mojarra vs Mojarra Frita.
    */
+  getConfiguredVariantFamily(product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[]): ProductVariantFamily | null {
+    const baseId = product.comboBaseProductId ?? product.id;
+    const combos = products.filter(item => item.comboBaseProductId === baseId);
+    if (product.comboBaseProductId == null && !combos.length) return null;
+    const base = products.find(item => item.id === baseId);
+    return { baseKey: `product:${baseId}`, baseLabel: base?.name || product.name,
+      variants: [...(base ? [base] : []), ...combos] };
+  }
+
   findProductVariantFamily(
     query: string,
     products: WhatsappCatalogProduct[],
@@ -7830,6 +7851,15 @@ export class WhatsappCatalogService {
   ): ProductVariantFamily | null {
     const rawQ = this.extractProductSearchQuery(query);
     const q = normalizeText(this.stripQuantityFromSearchQuery(rawQ) || rawQ);
+    const exact = products.find(product => normalizeText(product.name) === normalizeText(query));
+    const named = products.filter(product => (` ${normalizeText(query)} `).includes(` ${normalizeText(product.name)} `))
+      .sort((a, b) => b.name.length - a.name.length);
+    const namedProduct = named.length && (named.length === 1 || named[0].name.length > named[1].name.length) ? named[0] : undefined;
+    const configured = exact || namedProduct || (hints.length === 1 ? products.find(product => product.id === hints[0].id) : undefined);
+    if (configured) {
+      const family = this.getConfiguredVariantFamily(configured, products);
+      if (family) return family;
+    }
     if (q.length < 4) return null;
 
     const available = products.filter((p) => p.availableNow !== false);
@@ -8085,7 +8115,27 @@ export class WhatsappCatalogService {
     text: string,
     family: ProductVariantFamily,
   ): WhatsappCatalogProduct | null {
-    const q = normalizeText(text);
+    let q = normalizeText(text);
+    if (family.baseKey.startsWith('product:')) {
+      const hint = this.extractVariantPreferenceHint(text);
+      const available = family.variants.filter(product => product.availableNow !== false);
+      if (!hint) {
+        const named = available.filter(product => (` ${q} `).includes(` ${normalizeText(product.name)} `))
+          .sort((a, b) => b.name.length - a.name.length);
+        if (named.length && (named.length === 1 || named[0].name.length > named[1].name.length)) return named[0];
+      }
+      const candidates = available.filter(product =>
+        (hint === 'combo' ? product.comboBaseProductId != null : product.comboBaseProductId == null));
+      if (candidates.length === 1) return candidates[0];
+      const named = candidates.filter(product => q.includes(normalizeText(product.name)));
+      return named.length === 1 ? named[0] : null;
+    }
+    if (this.extractVariantPreferenceHint(text) === 'solo') {
+      family = {...family, variants:family.variants.filter(product => !this.productImpliesCombo(product))};
+      if (!family.variants.length) return null;
+      q = q.replace(/\bsin\s+(?:el\s+)?combo\b/g,'solo');
+    }
+
     // "arroz chino de 56 mil" → SKU a ese precio
     const mentionedPrice = this.extractMentionedPriceCop(text);
     if (mentionedPrice != null) {
@@ -8792,7 +8842,8 @@ export class WhatsappCatalogService {
 
   /** Producto que por nombre ya es combo (no hay que elegir “combo” aparte). */
   productImpliesCombo(product: WhatsappCatalogProduct): boolean {
-    return /\bcombo\b/.test(normalizeText(product.name));
+    if (product.comboRole) return product.comboRole === 'combo';
+    return product.comboBaseProductId != null || /\bcombo\b/.test(normalizeText(product.name));
   }
 
   private shouldShowComboOnlyAttributes(

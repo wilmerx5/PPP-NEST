@@ -14,6 +14,8 @@ export type WhatsappProductAttribute = {
 };
 
 export type WhatsappProductCandidate = {
+  comboBaseProductId?: number | null;
+  comboRole?: 'normal' | 'combo';
   id: number;
   name: string;
   code: number;
@@ -115,6 +117,8 @@ export type WhatsappSessionData = {
   /** A product list left without a pick; recalled once before the final summary. */
   droppedPick?: { query: string; candidates: WhatsappProductCandidate[]; shown?: boolean };
   pendingMatch?: {
+    /** Database family that owns this combo conversion offer. */
+    configuredComboBaseProductId?: number;
     /** Complete per-unit catalog options retained while the product preparation is chosen. */
     unitAttributeGroups?: Array<Array<{attributeName:string;attributeValue:string}>>;
     /** A retained browse list after its chosen item was already added. */
