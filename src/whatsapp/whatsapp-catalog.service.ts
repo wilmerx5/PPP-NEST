@@ -7717,6 +7717,7 @@ export class WhatsappCatalogService {
 
   extractVariantPreferenceHint(text: string): 'combo' | 'solo' | null {
     const q = normalizeText(text);
+    if (/\bsin\s+(?:el\s+)?combo\b/.test(q)) return 'solo';
     if (/\bcombo\b/.test(q) && !/\bsolo\b/.test(q)) return 'combo';
     if (/\bsolo\b/.test(q) && !/\bcombo\b/.test(q)) return 'solo';
     if (/\bcombo\b/.test(q)) return 'combo';
@@ -8085,7 +8086,12 @@ export class WhatsappCatalogService {
     text: string,
     family: ProductVariantFamily,
   ): WhatsappCatalogProduct | null {
-    const q = normalizeText(text);
+    let q = normalizeText(text);
+    if (this.extractVariantPreferenceHint(text) === 'solo') {
+      family = {...family, variants:family.variants.filter(product => !this.productImpliesCombo(product))};
+      if (!family.variants.length) return null;
+      q = q.replace(/\bsin\s+(?:el\s+)?combo\b/g,'solo');
+    }
     // "arroz chino de 56 mil" → SKU a ese precio
     const mentionedPrice = this.extractMentionedPriceCop(text);
     if (mentionedPrice != null) {

@@ -2112,6 +2112,7 @@ export class WhatsappOrchestratorService {
       // A courtesy or repeated affirmative is not a new purchase. Preserve the
       // completed state so a trailing WhatsApp bubble cannot reopen the cart.
       if (this.catalogService.isCourtesyOnlyMessage(originalText) ||
+          this.normalizeForMatch(originalText) === 'confirmar' ||
           /^(?:por favor|porfa)[.!]*$/.test(this.normalizeForMatch(originalText)) || isFinalConfirmAffirmation(originalText) ||
           isNothingElseOrderIntent(originalText)) {
         await this.reply(conv,msg.waId,'¡Con gusto!');

@@ -1,0 +1,33 @@
+{
+  "batch": 510,
+  "engineChanged": true,
+  "newTests": 114,
+  "confirmationTests": 72,
+  "noComboTests": 42,
+  "relatedTests": 132,
+  "relatedSuites": 3,
+  "baseline": {
+    "confirmationFailed": 36,
+    "noComboFailed": 36
+  },
+  "globalTests": 50226,
+  "globalSuites": 583,
+  "sourceFiles": 803,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "checks": {
+    "tsc": 0,
+    "build": 0,
+    "scripts": 0
+  },
+  "scriptsPassed": 92,
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "scope": "Respect sin combo/sin el combo in preference and family selection, including existing combo replacement and drink attribute removal. Preserve completed/closed session on repeated confirmar after concurrent confirmation bursts.",
+  "limits": [
+    "Concurrency coverage uses one mocked process and full inbound handler. Distributed workers and real Meta retries are unverified.",
+    "Contradictory mixed combo preferences and live model inference are outside new fixtures."
+  ],
+  "execution": "Initial confirm-only global superseded at87 suites/17680pass to include user chat. Combined final global uses fresh journal/frozen hashes and exact inventory."
+}

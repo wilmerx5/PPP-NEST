@@ -1,3 +1,13 @@
+## Tanda 510 — «sin combo» y confirmaciones repetidas
+
+El chat aportado por el usuario reproduce36 fallos de selección/corrección con «sin combo», «sin el combo» y mayúsculas. El catálogo ahora trata esa negación como preferencia sola y la aplica antes de elegir entre variantes. Conserva la familia original para identificar el combo del carrito. Se prueban pollo broaster y dos familias sintéticas, pedido inicial/corrección y seis sustituciones con bebida/acompañamiento guardados que retiran la bebida incluida.
+
+Las pruebas de ráfagas de confirmación también detectan que otro «confirmar» tras completar reabría un carrito vacío. Se conserva la sesión completed/closed al repetir ese comando.72 recorridos prueban dos/tres mensajes concurrentes, cortesía, IDs iguales/distintos y confirmación posterior. La simulación corresponde a un proceso con servicios externos aislados.
+
+114 pruebas nuevas:72 confirmación y42 sin combo. Relacionadas finales132/3 aprobadas. Global50.226/583 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Una global previa de solo confirmación se detuvo a87 suites/17.680 aprobadas para incluir el chat del usuario. La global conjunta usa un registro nuevo. Evidencia whatsapp-batch-510-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Pendientes catálogos sin producto base disponible, otras cantidades y formulaciones, preferencias contradictorias, concurrencia distribuida y proveedor real. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
 ## Tanda 509 — recuperación de grupos ambiguos con reparto completo
 
 36 regresiones nuevas prueban Mango en Vaso y Mango en Botella como grupos pendientes diferentes. «Quita 1»/«retira uno» requiere aclaración, se consulta precio y después se reemplaza el reparto completo en tres formas: conservar ambos grupos, unificar Mango en Botella o cambiar todas las unidades a Lulo en Botella. Tres catálogos y agente off/mock. Se verifica sesión intacta al rechazar, cantidades y presentaciones exactas al terminar, sopa conservada y una única orden.
