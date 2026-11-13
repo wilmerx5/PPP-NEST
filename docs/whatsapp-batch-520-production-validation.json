@@ -1,0 +1,273 @@
+{
+  "batch": 520,
+  "sourceCommit": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+  "runtimeChanges": [
+    "Persist a catalog-based missing option choice when the cart identifies the product, including when the model correctly asks with no action.",
+    "Preserve existing offers, explicit targets and subset quantity boundaries.",
+    "Observe complete queued WhatsApp turns and actual provider HTTP attempts across agent, classification, assist, audio and vision."
+  ],
+  "newRegressionTests": 32,
+  "relatedTestsPassed": 397,
+  "relatedSuitesPassed": 4,
+  "isolatedDatabaseTestsPassed": 11,
+  "typescriptGeneralPassed": true,
+  "candidateImage": "sha256:ad5ac41f040210093807993b4cca26102b4ae9defedd13cbc81e31ee23350f19",
+  "candidateCompiledControls": 469,
+  "sourceFiles": 834,
+  "sourceManifestSha256": "0516fd3d226672f8666c381c7371f77529ccdd8704746a8b33df07b53041751c",
+  "liveReport": "docs/whatsapp-pilot-live-520.json",
+  "liveRequestsIncludingDevelopment": 4,
+  "successfulLiveResponses": 4,
+  "finalLiveCaseTurns": 5,
+  "finalLiveRequests": 2,
+  "finalLiveSimulatedClosures": 1,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "budgetUsed": 267,
+  "budgetRemaining": 0,
+  "developmentFindings": [
+    "The first live 520 run asked a valid drink question without a persisted pending selector. Free router regressions reproduce this and the final five-turn real-model retest accepts numeric Pepsi selection.",
+    "An early local runner launcher had invalid JavaScript before any HTTP request. Corrected before live execution.",
+    "One focused command referred to a nonexistent 517 test path. It is excluded from validation claims, and the correct four-suite invocation passes.",
+    "The first staging deployment command passed a short commit ID and was rejected by the 40-character precondition before mutation. The retry with the full SHA completed successfully."
+  ],
+  "telemetrySemantics": {
+    "route": "Determined by actual HTTP attempts, with separate agent invocation count. Rules can invoke a mocked agent in isolated tests without provider traffic.",
+    "deliveryPipeline": "Measures backend outbound-hold completion. Recipient delivery requires Meta receipts. Direct rehearsal marks transport not_observed.",
+    "ordersRegistered": "Counts successful returns from ordersService.create. Unique persisted-order counts require deduplication.",
+    "guardRejections": "Counts missing explicit option choices and rejected grouped unit-option plans. Remaining guard filtering needs further instrumentation.",
+    "inferenceRequestFailures": "Counts unsuccessful HTTP responses and transport exceptions. Agent errors have a separate counter.",
+    "privacy": "Summary includes internal numeric conversation ID and aggregate counters. Message text, name, phone, address, cart values and keys are excluded.",
+    "latencyMs": "Elapsed processing-wrapper time including outbound hold. Queue waiting and recipient delivery need separate measurements.",
+    "failed": "An exception escaped the processing wrapper. Handled agent errors have a separate counter. Answer correctness still requires conversation review."
+  },
+  "limits": [
+    "Real-model run is a repeated development case. Pilot traffic measurement remains pending. Model asked a valid question with no action in both 520 runs. Invented-option rejection is exercised by mocked regressions and the earlier 519 real-model run.",
+    "Rehearsal persistence, Meta, maps, payments and order creation are simulated.",
+    "Kamppo migration and tool rejection feedback to the model remain pending."
+  ],
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51137,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 596,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "database": {
+      "success": true,
+      "numPassedTests": 11,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 51164,
+    "totalPassedSuites": 600
+  },
+  "globalElapsedMinutes": 57.0,
+  "isolatedDatabaseRemoved": true,
+  "stagingDeployment": {
+    "compiledControls": 469,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+    "image": "sha256:8baa1162b9d00b59c240801d007da65e464757311986ec4f457c8955ea733b35",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.53,
+        "heapTotal": 65.29,
+        "rss": 127.15
+      },
+      "timestamp": "2026-11-13T04:55:43.752Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.75,
+        "heapTotal": 65.29,
+        "rss": 127.53
+      },
+      "timestamp": "2026-11-13T04:55:43.968Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-13T04:56:23.533478+00:00",
+    "backup": "/root/ppp-manual-release/20261113T045426Z-staging-520"
+  },
+  "stagingCatalogProbe": {
+    "passed": 33,
+    "mockedClosures": 29,
+    "externalOrders": 0,
+    "metaMessages": 0,
+    "realCatalogRead": true
+  },
+  "productionDeployment": {
+    "environment": "production",
+    "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+    "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+    "running": true,
+    "restarts": 0,
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 61.14,
+        "heapTotal": 89.16,
+        "rss": 149.07
+      },
+      "timestamp": "2026-11-13T04:58:06.597Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 61.49,
+        "heapTotal": 89.16,
+        "rss": 149.45
+      },
+      "timestamp": "2026-11-13T04:58:06.955Z"
+    },
+    "models": {
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledControls": 469,
+    "smokes": {
+      "candidate-520": {
+        "ok": true,
+        "compiledPilot520Cases": 24,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "running-520": {
+        "ok": true,
+        "compiledPilot520Cases": 24,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "candidate-518": {
+        "ok": true,
+        "compiledInquiryOptionTests": 66,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "running-518": {
+        "ok": true,
+        "compiledInquiryOptionTests": 66,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "candidate-517": {
+        "ok": true,
+        "compiledMultiPurchaseTests": 136,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "running-517": {
+        "ok": true,
+        "compiledMultiPurchaseTests": 136,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "candidate-516": {
+        "ok": true,
+        "compiledMixedReplacementTests": 163,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "running-516": {
+        "ok": true,
+        "compiledMixedReplacementTests": 163,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "candidate-515": {
+        "ok": true,
+        "compiledReplacementJourneys": 80,
+        "mockedClosures": 80,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "running-515": {
+        "ok": true,
+        "compiledReplacementJourneys": 80,
+        "mockedClosures": 80,
+        "externalOrders": 0,
+        "paidInference": 0
+      }
+    },
+    "stagingRuntimePreserved": true,
+    "backup": "/root/ppp-manual-release/20261113T045645Z-production-520",
+    "checkedAt": "2026-11-13T04:58:41.519429+00:00"
+  },
+  "productionCatalogProbe": {
+    "passed": 33,
+    "mockedClosures": 29,
+    "externalOrders": 0,
+    "metaMessages": 0,
+    "realCatalogRead": true
+  }
+}
