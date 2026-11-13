@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { observeWhatsappGuardRejection } from './whatsapp-turn-observation';
 import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
 import { isFailedAdditionQuestion } from './whatsapp-session-intents';
 import {splitIntensityPreference} from './whatsapp-kitchen-description';
@@ -49,6 +50,9 @@ export type AgentV1TurnInput = {
 };
 
 type AttributeEdit = NonNullable<AiOrderAction['updateAttributes']>[number];
+type RejectedAttributeChoice = AttributeEdit & {
+  reason?: 'unknown_attribute' | 'unknown_option' | 'ambiguous_cart_line';
+};
 
 export type AgentV1TurnResult = {
   reply: string;
@@ -61,7 +65,7 @@ export type AgentV1TurnResult = {
   lookupDeliveryTime?: boolean;
   toolCalls: string[];
   /** Unresolved tool rejections remain visible to the final router guard. */
-  rejectedAttributeChoices?: AttributeEdit[];
+  rejectedAttributeChoices?: RejectedAttributeChoice[];
   /** Per-turn tool outcomes. Rejected lines may name the missing token, never the customer message. */
   purchaseAttempts?: Array<{productId:number;accepted:boolean;reason?:string;uncoveredWords?:string[];requestedOption?:string}>;
   error?: string;
@@ -559,7 +563,7 @@ export class WhatsappAgentService {
     }
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
-    const rejectedAttributeChoices = new Map<string, AttributeEdit>();
+    const rejectedAttributeChoices = new Map<string, RejectedAttributeChoice>();
     const purchaseAttempts: NonNullable<AgentV1TurnResult['purchaseAttempts']> = [];
     let retriedUnappliedOrder = false;
     let retriedIncompleteOrder = false;
@@ -814,8 +818,29 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             diagnosticOrigin:'model_call',
             onAttributeChoice: (edit, accepted) => {
               const key = `${edit.productId}:${edit.cartLineIndex}:${edit.attributeName.toLowerCase()}`;
-              if (accepted) rejectedAttributeChoices.delete(key);
-              else rejectedAttributeChoices.set(key, edit);
+              if (!accepted) {
+                const previous = rejectedAttributeChoices.get(key);
+                if (edit.reason || !previous?.reason) rejectedAttributeChoices.set(key, edit);
+                return;
+              }
+              for (const [rejectedKey, rejected] of rejectedAttributeChoices) {
+                const sameOwner = rejected.productId === edit.productId &&
+                  (rejected.cartLineIndex === undefined || rejected.cartLineIndex === edit.cartLineIndex);
+                const sameField = rejected.attributeName.toLowerCase() === edit.attributeName.toLowerCase();
+                const correctedField = rejected.reason === 'unknown_attribute' &&
+                  this.catalogService.matchAttributeOptionValue(rejected.attributeValue, [edit.attributeValue]) === edit.attributeValue;
+                if (!sameOwner || (!sameField && !correctedField)) continue;
+                if (rejected.reason === 'ambiguous_cart_line') {
+                  const snapshot = (input.cart || []).map(line => ({ ...line,
+                    quantity: line.quantity || 1, code: byId.get(line.productId)?.code || 0,
+                    unitPrice: byId.get(line.productId)?.price || 0 }));
+                  if (edit.cartLineIndex === undefined || !hasExplicitUnitOptionSource(input.userMessage, snapshot, {
+                    productId: edit.productId, cartLineIndex: edit.cartLineIndex, affectedQuantity: 1,
+                    attributes: [{ attributeName: edit.attributeName, attributeValue: edit.attributeValue }],
+                  })) continue;
+                }
+                rejectedAttributeChoices.delete(rejectedKey);
+              }
             },
             products: input.products,
             byId,
@@ -962,7 +987,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       byId: Map<number, WhatsappCatalogProduct>;
       actions: AiOrderAction;
       diagnosticOrigin?: 'model_call' | 'validation_probe';
-      onAttributeChoice?: (edit: AttributeEdit, accepted: boolean) => void;
+      onAttributeChoice?: (edit: RejectedAttributeChoice, accepted: boolean) => void;
       /** Replacement inherits the old line's units unless the caller explicitly changed them. */
       preserveReplacementQuantity?: boolean;
       verifiedDistributedProductId?: number;
@@ -1959,11 +1984,22 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         if (!product) {
           return JSON.stringify({ ok: false, error: `productId ${productId} no existe` });
         }
+        const reject = (reason: NonNullable<RejectedAttributeChoice['reason']>,
+          receipt: Record<string, unknown>, field = attributeName): string => {
+          if (ctx.diagnosticOrigin === 'model_call' && ctx.cart?.some(line => line.productId === productId)) {
+            observeWhatsappGuardRejection();
+            ctx.onAttributeChoice?.({ productId, attributeName: field, attributeValue, reason,
+              ...(reason !== 'ambiguous_cart_line' && Number.isInteger(args.cartLineIndex)
+                ? { cartLineIndex: Number(args.cartLineIndex) } : {}),
+            }, false);
+          }
+          return JSON.stringify(receipt);
+        };
         const attr = (product.attributes || []).find(
           (a) => a.attributeName.toLowerCase() === attributeName.toLowerCase(),
         );
         if (!attr) {
-          return JSON.stringify({
+          return reject('unknown_attribute', {
             ok: false,
             error: 'ese producto no tiene ese atributo',
             attributes: (product.attributes || []).map((a) => ({
@@ -1977,17 +2013,17 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           attr.options,
         );
         if (!matched || (/\b(?:agua|leche)\b/i.test(attributeValue) && !/\b(?:agua|leche)\b/i.test(matched))) {
-          return JSON.stringify({
+          return reject('unknown_option', {
             ok: false,
             error: 'opción no existe en ese atributo',
             options: attr.options,
-          });
+          }, attr.attributeName);
         }
         const matches = this.toolCartView(ctx).filter(line=>line.productId===productId &&
           (args.cartLineIndex === undefined || line.cartLineIndex===args.cartLineIndex));
         const line = matches.length===1 ? matches[0] : undefined;
         if (!line) {
-          return JSON.stringify({ ok: false, error: 'missing_or_ambiguous_cart_line', hint: 'Usa get_cart y el cartLineIndex de la línea solicitada' });
+          return reject('ambiguous_cart_line', { ok: false, error: 'missing_or_ambiguous_cart_line', hint: 'Usa get_cart y el cartLineIndex de la línea solicitada' }, attr.attributeName);
         }
         const cartLineIndex = line.cartLineIndex;
         const update = {productId,cartLineIndex,attributeName:attr.attributeName,attributeValue:matched};

@@ -17792,11 +17792,18 @@ export class WhatsappOrchestratorService {
     text: string,
     cfg: EffectiveWhatsappConfig,
     requestedAttributeName?: string,
+    request?: { intro?: string; productId?: number; includeAllAttributes?: boolean },
   ): Promise<boolean> {
     if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
     const said=this.normalizeForMatch(text);
+    const { intro, productId: requestedProductId, includeAllAttributes } = request || {};
+    if (request && (session.pendingAddOffer || session.pendingCategoryBrowse)) return false;
     const pending=session.pendingCartOptionChoice;
-    const asksOptions=!!requestedAttributeName || /^(?:y )?(?:(?:que|q|cuales)(?: otros?| otras?)? (?:sabor(?:es)?|bebidas?|gaseosas?|opciones)(?: de (?:bebida|gaseosa))?(?: tienes| tienen| hay| manejan)?|(?:cambio|cambiar|cambia|cambiame)(?: de| la| el)? (?:bebida|gaseosa|sabor))$/.test(said);
+    if (request && pending && (requestedProductId === undefined || requestedAttributeName === undefined)) return false;
+    if (pending && requestedProductId !== undefined && pending.candidates.some(option =>
+      session.cart[option.cartIndex]?.productId !== requestedProductId ||
+      requestedAttributeName !== undefined && option.attributeName.toLowerCase() !== requestedAttributeName.toLowerCase())) return false;
+    const asksOptions=!!requestedAttributeName || !!includeAllAttributes || requestedProductId !== undefined || /^(?:y )?(?:(?:que|q|cuales)(?: otros?| otras?)? (?:sabor(?:es)?|bebidas?|gaseosas?|opciones)(?: de (?:bebida|gaseosa))?(?: tienes| tienen| hay| manejan)?|(?:cambio|cambiar|cambia|cambiame)(?: de| la| el)? (?:bebida|gaseosa|sabor))$/.test(said);
     if (!pending && !asksOptions) {
       if (/^(?:no )?(?:arreglar|arreglalo|corregir|corrige|corrigelo)$/.test(said)) {
         await this.reply(conv,waId,'¿Qué plato y qué opción o cantidad quieres corregir? El pedido sigue igual.');return true;
@@ -17813,10 +17820,11 @@ export class WhatsappOrchestratorService {
       await this.conversationService.saveSession(conv,{...session,pendingCartOptionChoice:undefined});await this.reply(conv,waId,'La selección cambió o venció. Indica otra vez la bebida que quieres cambiar. El pedido sigue igual.');return true;
     }
     const options=pending?.candidates || session.cart.flatMap((line,cartIndex)=>{
+      if (requestedProductId !== undefined && line.productId !== requestedProductId) return [];
       const product=products.find(p=>p.id===line.productId);
       return (product?.attributes || []).filter(attribute => requestedAttributeName
         ? attribute.attributeName.toLowerCase() === requestedAttributeName.toLowerCase()
-        : this.catalogService.isComboOnlyAttribute(attribute)).map(attribute => ({cartIndex, attributeName: attribute.attributeName}));
+        : !!includeAllAttributes || this.catalogService.isComboOnlyAttribute(attribute)).map(attribute => ({cartIndex, attributeName: attribute.attributeName}));
     });
     if (!options.length) return false;
     let selected=pending?.selected;
@@ -17830,7 +17838,14 @@ export class WhatsappOrchestratorService {
     if (selected===undefined) {
       const facts=this.mixedCatalogFacts(text,products,options.flatMap(option=>products.find(p=>p.id===session.cart[option.cartIndex].productId) || []));
       await this.conversationService.saveSession(conv,next);
-      await this.reply(conv,waId,(facts?facts.body+'\n\n':'')+'¿De cuál plato o bebida quieres cambiar esa opción?\n'+options.map((option,i)=>`${i+1}. ${this.formatCartLineLabel(session.cart[option.cartIndex])}`).join('\n')+'\nEl pedido sigue igual.');return true;
+      const question = new Set(options.map(option => option.cartIndex)).size === 1
+        ? '¿Qué opción quieres cambiar?' : '¿De cuál plato o bebida quieres cambiar esa opción?';
+      const choices = options.map((option, i) => {
+        const line = session.cart[option.cartIndex];
+        return `${i+1}. ${this.formatCartLineLabel(line)} · ${option.attributeName}` +
+          (line.note ? ` · 📝 ${line.note}` : '');
+      });
+      await this.reply(conv,waId,(intro?intro+'\n\n':'')+(facts?facts.body+'\n\n':'')+question+'\n'+choices.join('\n')+'\nEl pedido sigue igual.');return true;
     }
     const option=options[selected],line=session.cart[option.cartIndex],product=products.find(p=>p.id===line.productId);
     const attr=product?.attributes?.find(a=>a.attributeName===option.attributeName);
@@ -17853,7 +17868,7 @@ export class WhatsappOrchestratorService {
       await this.conversationService.saveSession(conv,added.session);await this.reply(conv,waId,`Listo, *${product.name}* queda con *${attr.attributeName}: ${value}*.\n\n`+this.formatCartOnly(added.session,this.deliveryFeeFor(added.session,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,added.session)||this.formatContinueShoppingPrompt(added.session)));return true;
     }
     await this.conversationService.saveSession(conv,next);
-    await this.reply(conv,waId,(facts?facts.body+'\n\n':'')+`¿Qué *${attr.attributeName}* prefieres para *${product.name}*?\n`+attr.options.map((value,i)=>`${i+1}. ${value}`).join('\n')+'\nEl pedido sigue igual.');return true;
+    await this.reply(conv,waId,(intro?intro+'\n\n':'')+(facts?facts.body+'\n\n':'')+`¿Qué *${attr.attributeName}* prefieres para *${product.name}*?\n`+attr.options.map((value,i)=>`${i+1}. ${value}`).join('\n')+'\nEl pedido sigue igual.');return true;
   }
 
   private mixedPurchasePrompt(purchase:{product:MenuProduct;quantity:number;candidates?:MenuProduct[]}):string {
@@ -27333,6 +27348,27 @@ export class WhatsappOrchestratorService {
     if (agent.error) observeWhatsappAgentError();
 
     if (businessOpenForBot && agent.rejectedAttributeChoices?.length) {
+      const failure = agent.rejectedAttributeChoices.find(choice => choice.reason);
+      if (failure) {
+        const owners = products.filter(product => session.cart.some(line => line.productId === product.id));
+        const named = owners.filter(product => this.catalogService.productFullyNamedIn(originalText || text, [product]));
+        const product = named.length === 1 ? named[0] : owners.length === 1 ? owners[0] : undefined;
+        const field = product?.attributes?.find(attribute => attribute.attributeName.toLowerCase() === failure.attributeName.toLowerCase());
+        if (product && !product.attributes?.length) {
+          await this.reply(conv, msg.waId,
+            `La carta no incluye opciones configuradas para *${product.name}*. ¿Qué cambio necesitas?`);
+          return true;
+        }
+        const intro = !product
+          ? 'Necesito identificar qué opción de tu pedido quieres cambiar.'
+          : !field
+            ? `Estas son las opciones que puedes modificar de *${product.name}*.`
+            : failure.reason === 'unknown_option'
+              ? `Solo puedo cambiar *${field.attributeName}* por una opción configurada para *${product.name}*.`
+              : `Necesito identificar la línea de *${product.name}* que quieres cambiar.`;
+        if (await this.tryHandleUnspecifiedCartOption(conv, msg.waId, session, originalText || text,
+          cfg, field?.attributeName, { intro, productId: product?.id, includeAllAttributes: !field })) return true;
+      }
       const rejected = { updateAttributes: agent.rejectedAttributeChoices };
       if (await this.tryClarifyUnchosenAttribute(conv, msg.waId, session,
         originalText || text, rejected, products, cfg)) return true;
