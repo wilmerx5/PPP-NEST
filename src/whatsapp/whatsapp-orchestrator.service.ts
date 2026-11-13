@@ -27530,6 +27530,29 @@ export class WhatsappOrchestratorService {
     });
     if (agent.error) observeWhatsappAgentError();
 
+    if (businessOpenForBot && agent.rejectedReplacements?.length) {
+      await this.conversationService.saveSession(conv, {
+        ...session,
+        pendingReplacementClarification: {
+          cartSignature: JSON.stringify(session.cart),
+        },
+      });
+      const explanations: Record<string, string> = {
+        missing_explicit_option_choice: 'Falta elegir una opción del reemplazo.',
+        invalid_quantity: 'No pude validar la cantidad del cambio.',
+        invalid_attribute_option: 'Las opciones del reemplazo no coinciden con la carta.',
+        missing_or_ambiguous_cart_line: 'No pude identificar una única línea para reemplazar.',
+      };
+      const explanation = explanations[agent.rejectedReplacements[0].reason] ||
+        'No pude validar el producto de reemplazo con la carta actual.';
+      await this.reply(
+        conv,
+        msg.waId,
+        explanation + ' ¿Cómo debe quedar el pedido completo, con cantidades y opciones?',
+      );
+      return true;
+    }
+
     if (businessOpenForBot && agent.rejectedAttributeChoices?.length) {
       const failure = agent.rejectedAttributeChoices.find(choice => choice.reason);
       if (failure) {
@@ -27557,20 +27580,6 @@ export class WhatsappOrchestratorService {
         originalText || text, rejected, products, cfg)) return true;
       await this.reply(conv, msg.waId,
         '¿Qué cambio quieres hacer en tu pedido?');
-      return true;
-    }
-
-    if (businessOpenForBot && agent.rejectedReplacements?.length) {
-      await this.conversationService.saveSession(conv,{...session,
-        pendingReplacementClarification:{cartSignature:JSON.stringify(session.cart)}});
-      const explanations: Record<string,string> = {
-        invalid_quantity: 'No pude validar la cantidad del cambio.',
-        invalid_attribute_option: 'Las opciones del reemplazo no coinciden con la carta.',
-        missing_or_ambiguous_cart_line: 'No pude identificar una única línea para reemplazar.',
-      };
-      const explanation = explanations[agent.rejectedReplacements[0].reason] ||
-        'No pude validar el producto de reemplazo con la carta actual.';
-      await this.reply(conv, msg.waId, explanation+' ¿Cómo debe quedar el pedido completo, con cantidades y opciones?');
       return true;
     }
 

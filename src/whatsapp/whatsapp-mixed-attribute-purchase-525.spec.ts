@@ -565,3 +565,78 @@ for (const state of ['building_cart', 'awaiting_final_confirm'])
       quantity: 1,
     });
   });
+
+it('a rejected replacement owns its nested attribute rejection and new purchase', async () => {
+  const { h, products } = setup('awaiting_final_confirm');
+  h.conv.sessionData.paymentMethod = 'cash';
+  const before = structuredClone(h.conv.sessionData.cart);
+  h.agent.runTurn.mockResolvedValue({
+    reply: '',
+    actions: { addItems: [{ productId: 5252, quantity: 1 }] },
+    toolCalls: ['replace_item', 'add_item'],
+    rejectedReplacements: [
+      {
+        productId: 5251,
+        cartLineIndex: 0,
+        reason: 'missing_explicit_option_choice',
+      },
+    ],
+    rejectedAttributeChoices: [
+      {
+        productId: 5251,
+        cartLineIndex: 0,
+        attributeName: 'Bebida',
+        attributeValue: 'Pepsi',
+      },
+    ],
+  });
+  const text =
+    'Quisiera cambiar la bebida del Combo De Tofu y agregar una Porcion De Hummus';
+  await h.service.tryHandleAgentV1({
+    conv: h.conv,
+    msg: {
+      waId: 'customer',
+      phoneE164: h.conv.phoneE164,
+      messageId: 'parent',
+      messageType: 'text',
+      text,
+      raw: {},
+    },
+    session: h.conv.sessionData,
+    text: 'Quisiera cambiar la bebida del Combo De Tofu y agregar una Porcion De Hummus',
+    originalText:
+      'Quisiera cambiar la bebida del Combo De Tofu y agregar una Porcion De Hummus',
+    products,
+    cfg: h.cfg,
+    status: { isOpen: true, message: 'Abierto' },
+    businessOpenForBot: true,
+    placedOrderOnly: true,
+  });
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.conv.sessionData.pendingCartOptionChoice).toBeUndefined();
+
+  h.agent.runTurn.mockResolvedValue({ reply: '', actions: {}, toolCalls: [] });
+  await h.sendQueued('sí');
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  expect(h.conv.sessionData.pendingReplacementClarification).toBeDefined();
+  await h.sendQueued(
+    'cambia la bebida del Combo De Tofu a Pepsi y agrega una Porcion De Hummus',
+  );
+  expect(h.conv.sessionData.pendingReplacementClarification).toBeUndefined();
+  expect(h.conv.sessionData.cart).toHaveLength(2);
+  expect(h.conv.sessionData.cart[0]).toMatchObject({
+    quantity: 2,
+    note: 'Sin sal',
+    attributes: expect.arrayContaining([
+      { attributeName: 'Bebida', attributeValue: 'Pepsi' },
+    ]),
+  });
+  expect(h.conv.sessionData.cart[1]).toMatchObject({
+    productId: 5252,
+    quantity: 1,
+  });
+  await h.sendQueued('no más, recojo en el local');
+  await h.sendQueued('efectivo');
+  await h.sendQueued('confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+});
