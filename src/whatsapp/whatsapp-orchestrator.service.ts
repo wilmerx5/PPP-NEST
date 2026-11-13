@@ -18084,11 +18084,11 @@ export class WhatsappOrchestratorService {
       if (/\b(?:y|agrega|agregame|anade|anademe|ponme|dame)\s+(?:(?:ademas|tambien)\s+)?(?:(?:agrega|agregame|anade|anademe|ponme|dame)\s+)?(?:[+-]\s*\d+|\d+[.,]\d+)(?=\s)/.test(raw))
         return unchanged('Las compras necesitan cantidades enteras positivas; no apliqué ningún cambio.');
       const reference = replacement?.[1].replace(/^de /, '');
-      const exactOwner =
-        reference &&
-        session.cart.some((line) => this.normalizeForMatch(line.name) === reference);
+      const productReference =
+        reference && session.cart.some((line) =>
+          correctionMatchesLine({...line,attributes:[],note:undefined},reference));
       const fieldReferences =
-        !reference || exactOwner
+        !reference || productReference
           ? []
           : session.cart.flatMap((line, cartIndex) => {
               const product = products.find((item) => item.id === line.productId);

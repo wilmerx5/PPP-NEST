@@ -500,3 +500,68 @@ test('large-cart clarification keeps its question within the transport limit', a
   expect(h.conv.sessionData.cart).toEqual(before);
   expect(h.service.ordersService.create).not.toHaveBeenCalled();
 });
+
+for (const state of ['building_cart', 'awaiting_final_confirm'])
+  test(`a product reference takes precedence over an ingredient field ${state}`, async () => {
+    const { h, products } = setup(state);
+    const source = {
+      id: 5253,
+      code: 13,
+      name: 'Pollo Frito',
+      price: 22000,
+      availableNow: true,
+      hasAttributes: false,
+      attributes: [],
+    };
+    const target = {
+      ...source,
+      id: 5254,
+      code: 14,
+      name: 'Pollo Broaster',
+      price: 24000,
+    };
+    const rice = {
+      ...source,
+      id: 5255,
+      code: 15,
+      name: 'Arroz Con Medio Pollo',
+      hasAttributes: true,
+      attributes: [{ attributeName: 'Pollo', options: ['Frito', 'Broaster'] }],
+    };
+    products.push(source, target, rice);
+    h.conv.sessionData.cart = [
+      {
+        productId: source.id,
+        code: source.code,
+        name: source.name,
+        unitPrice: source.price,
+        quantity: 2,
+        note: 'Sin sal',
+        attributes: [],
+      },
+      {
+        productId: rice.id,
+        code: rice.code,
+        name: rice.name,
+        unitPrice: rice.price,
+        quantity: 1,
+        note: 'Salsa aparte',
+        attributes: [{ attributeName: 'Pollo', attributeValue: 'Frito' }],
+      },
+    ];
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued(
+      'cambia el pollo a broaster y agrega una Porcion De Hummus',
+    );
+    expect(h.conv.sessionData.cart).toHaveLength(3);
+    expect(h.conv.sessionData.cart[0]).toMatchObject({
+      productId: target.id,
+      quantity: 2,
+      note: 'Sin sal',
+    });
+    expect(h.conv.sessionData.cart[1]).toEqual(before[1]);
+    expect(h.conv.sessionData.cart[2]).toMatchObject({
+      productId: 5252,
+      quantity: 1,
+    });
+  });
