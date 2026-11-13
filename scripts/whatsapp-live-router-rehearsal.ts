@@ -11,6 +11,7 @@ import { WhatsappCatalogService } from '../src/whatsapp/whatsapp-catalog.service
 import { WhatsappActionGuardService } from '../src/whatsapp/whatsapp-action-guard.service';
 import { WhatsappPointsService } from '../src/whatsapp/whatsapp-points.service';
 import { WhatsappTurnTelemetryService } from '../src/whatsapp/whatsapp-turn-telemetry.service';
+import type { WhatsappTurnSummary } from '../src/whatsapp/whatsapp-turn-observation';
 import { DEFAULT_PAYMENT_METHODS } from '../src/whatsapp/whatsapp-payment-methods';
 import type { WhatsappSessionData } from '../src/whatsapp/types/whatsapp-session.types';
 import { BetaApiUsage, summarizeModelUsage } from './whatsapp-beta-api-usage';
@@ -116,19 +117,27 @@ function harness(scenario:Scenario) {
     return result;
   };
   const run=agent.runTurn.bind(agent);agent.runTurn=async input=>{agentTurns++;const result=await run(input);agentResults.push({reply:result.reply,actions:result.actions,toolCalls:result.toolCalls,purchaseAttempts:result.purchaseAttempts});if(result.error)agentErrors.push(result.error);return result;};
+  const summaries: WhatsappTurnSummary[] = [];
+  const telemetry = new WhatsappTurnTelemetryService();
+  const recordSummary = telemetry.recordSummary.bind(telemetry);
+  telemetry.recordSummary = summary => {
+    summaries.push(structuredClone(summary));
+    recordSummary(summary);
+  };
   const service=new WhatsappOrchestratorService(settings,{sendText:async()=>{throw Error('Meta must stay isolated');}} as never,
     catalog,new WhatsappAiService(settings),conversations,{getStatus:async()=>({isOpen:true,message:'Abierto',openTime:'00:00',closeTime:'23:59'})} as never,
     {findTodayOrdersByPhone:async()=>[],create:async(dto:any)=>{orders.push(structuredClone(dto));return {id:orders.length,dailyOrderNumber:orders.length};}} as never,
     {createPreference:async()=>{throw Error('Payments must stay isolated');}} as never,new WhatsappActionGuardService(catalog),
     new WhatsappPointsService({} as never),{quoteDeliveryFee:async()=>({ok:false,reason:'no_api_key',message:'Synthetic fixed delivery fee'})} as never,
-    agent,new WhatsappTurnTelemetryService()) as any;
+    agent,telemetry) as any;
   service.reply=async(_conv:any,_waId:string,body:string)=>{replies.push(body);history.push('Bot: '+body);};
   const send=async(text:string)=>{
     const beforeReplies=replies.length;
     const beforeTools=toolTrace.length;
+    const beforeSummaries=summaries.length;
     history.push('Cliente: '+text);
     await service.handleIncomingUnlocked({waId:conv.waId,phoneE164:conv.phoneE164,messageId:`synthetic-${count}`,messageType:'text',text,raw:{}});
-    return {toolTrace:structuredClone(toolTrace.slice(beforeTools)),session:structuredClone(conv.sessionData),state:conv.state,replies:replies.slice(beforeReplies),orders:structuredClone(orders),agentTurns,agentErrors:[...agentErrors],agentResults:structuredClone(agentResults),decisions:service.turnTelemetry.getRecentDecisions(1)};
+    return {summaries:structuredClone(summaries.slice(beforeSummaries)),toolTrace:structuredClone(toolTrace.slice(beforeTools)),session:structuredClone(conv.sessionData),state:conv.state,replies:replies.slice(beforeReplies),orders:structuredClone(orders),agentTurns,agentErrors:[...agentErrors],agentResults:structuredClone(agentResults),decisions:service.turnTelemetry.getRecentDecisions(1)};
   };
   return {send};
 }

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { observeWhatsappInference } from './whatsapp-turn-observation';
 import { readWhatsappInferenceUsage, type WhatsappInferenceAttempt, type WhatsappInferenceUsage } from './whatsapp-inference-usage';
 /** Non-streaming inference only. No output is applied and no cart tool runs here. */
 export async function requestWhatsappInference(body: string, apiKey: string, options: {
@@ -12,6 +13,8 @@ export async function requestWhatsappInference(body: string, apiKey: string, opt
 } = {}): Promise<Response> {
   const requestId = randomUUID();
   const api = options.api || 'chat/completions';
+  let model = 'unknown';
+  try { model = JSON.parse(body).model || model; } catch { /* Preserve the provider's request validation. */ }
   // Observability cannot interrupt ordering, even when its sink fails.
   const emit = (event: Omit<WhatsappInferenceAttempt, 'requestId' | 'api'>) => {
     try { options.onAttempt?.({requestId, api, ...event}); } catch { /* diagnostic only */ }
@@ -27,10 +30,10 @@ export async function requestWhatsappInference(body: string, apiKey: string, opt
     let usage: WhatsappInferenceUsage | null = null;
     const started = Date.now();
     try {
-      response = await fetcher(options.api === 'responses' ? 'https://api.openai.com/v1/responses' : 'https://api.openai.com/v1/chat/completions', {
+      response = await observeWhatsappInference('agent', model, () => fetcher(options.api === 'responses' ? 'https://api.openai.com/v1/responses' : 'https://api.openai.com/v1/chat/completions', {
         method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},
         body,signal:AbortSignal.timeout(Math.min(remaining,options.attemptTimeoutMs ?? 12000)),
-      });
+      }));
       // Finish the complete proposal inside the attempt's timeout. A partial
       // JSON body must never reach cart tools, even after headers succeeded.
       if(response.ok && typeof response.clone==='function') {

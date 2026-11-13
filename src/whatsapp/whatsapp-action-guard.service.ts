@@ -1,3 +1,4 @@
+import { observeWhatsappGuardRejection } from './whatsapp-turn-observation';
 import { Injectable, Logger } from '@nestjs/common';
 import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
 import type { WhatsappCartItem } from './types/whatsapp-session.types';
@@ -69,13 +70,17 @@ export class WhatsappActionGuardService {
       const flat=params.actions.updateAttributes || [];
       const groups=params.actions.updateUnitOptions || [];
       const unsupported=flat.some(edit=>!edit || !explicit(edit.productId,edit.attributeName,edit.attributeValue,edit.cartLineIndex)) ||
-        groups.some(edit=>!edit || !Array.isArray(edit.attributes) || edit.attributes.some(attr=>!explicit(edit.productId,attr.attributeName,attr.attributeValue,edit.cartLineIndex)));
-      if (looksLikeAddressOnlyMessage(text) || /\bmanzana\s*\d+\b.*\b(?:casa|apto|apartamento|torre|bloque|interior)\s*\d+\b/.test(normalized) && !explicitChange || asks && !explicitChange || unsupported) return {actions:undefined,warnings:['No se cambió ninguna opción: falta una elección explícita del cliente. El pedido sigue igual.'],blockedClosed:false,requiresOptionChoice:true};
+        groups.some(edit=>!edit || !Array.isArray(edit.attributes) || edit.attributes.some(attr=>!attr || !explicit(edit.productId,attr.attributeName,attr.attributeValue,edit.cartLineIndex)));
+      if (looksLikeAddressOnlyMessage(text) || /\bmanzana\s*\d+\b.*\b(?:casa|apto|apartamento|torre|bloque|interior)\s*\d+\b/.test(normalized) && !explicitChange || asks && !explicitChange || unsupported) {
+        observeWhatsappGuardRejection(true);
+        return {actions:undefined,warnings:['No se cambió ninguna opción: falta una elección explícita del cliente. El pedido sigue igual.'],blockedClosed:false,requiresOptionChoice:true};
+      }
     }
 
     // Never keep valid fragments of a rejected grouped edit, including purchases.
     if (params.actions.updateUnitOptions !== undefined) {
       const plan = prepareUnitOptionActions(params.cart || [], params.actions, params.products, this.catalogService);
+      if (!plan.ok) observeWhatsappGuardRejection();
       return plan.ok
         ? { actions: { updateUnitOptions: plan.edits }, warnings, blockedClosed: false }
         : { actions: undefined, warnings: [`No se aplicó el cambio por unidades: ${plan.reason}. El pedido sigue igual.`], blockedClosed: false };

@@ -1,3 +1,4 @@
+import { observeWhatsappTurn, observeWhatsappState, observeWhatsappProcessingStep, observeWhatsappClaim, observeWhatsappIgnored, observeWhatsappAgentInvocation, observeWhatsappAgentError, observeWhatsappOrderRegistered } from './whatsapp-turn-observation';
 import {parseCountedPurchaseList} from './whatsapp-counted-purchase-list';
 import { isForeignSalesPitch, isForeignSalesFollowup } from './whatsapp-foreign-sales';
 import { canonicalCompoundDishRequest } from './whatsapp-compound-dish-request';
@@ -208,6 +209,7 @@ const NEGATED_CART_CORRECTION = /^no[,\s]+(?:era\s+|es\s+)?(?!quiero\b)(.+?)(?:\
 const CART_EDIT_SELECTION_KEYS = ['pendingCartReplacement', 'pendingCartQuantity', 'pendingCartAttributeEdit', 'pendingCartRemoval', 'pendingCartNoteEdit', 'pendingCartOptionChoice'] as const;
 
 type InboundTurnContext = {
+  observationConversation?: WhatsappConversation;
   conv?: WhatsappConversation;
   initialCart?: string;
   initialAddOffer?: string;
@@ -560,50 +562,55 @@ export class WhatsappOrchestratorService {
     key: string,
     msg: IncomingWhatsappMessage,
   ): Promise<void> {
-    this.beginOutboundHold(key);
-    let succeeded = false;
-    try {
-      const continuation = await this.handleIncomingUnlocked(msg);
-      if (continuation) {
-        const answered = this.outboundHoldByWaId.get(key)?.length ?? 0;
-        await this.handleIncomingUnlocked({ ...msg, text: continuation.text, raw: { burstContinuation: continuation } });
-        const held = this.outboundHoldByWaId.get(key);
-        if (held && held.length > answered) {
-          for (let index = 0; index < answered; index++) held[index] = held[index].replace(/\n+¿\*Algo más\*\?\s*$/u, '').trimEnd();
+    return observeWhatsappTurn(msg.messageType, async () => {
+      this.beginOutboundHold(key);
+      let succeeded = false;
+      try {
+        const continuation = await this.handleIncomingUnlocked(msg);
+        if (continuation) {
+          const answered = this.outboundHoldByWaId.get(key)?.length ?? 0;
+          await this.handleIncomingUnlocked({ ...msg, text: continuation.text, raw: { burstContinuation: continuation } });
+          const held = this.outboundHoldByWaId.get(key);
+          if (held && held.length > answered) {
+            for (let index = 0; index < answered; index++) held[index] = held[index].replace(/\n+¿\*Algo más\*\?\s*$/u, '').trimEnd();
+          }
+        }
+        const conv = await this.conversationService.findOrCreateConversation(
+          msg.waId,
+          msg.phoneE164,
+        );
+        await this.collapseBurstReplies(key, msg, conv);
+        // Un turno no está completado hasta finalizar también sus respuestas.
+        // Si Meta falla al enviarlas, dejar failed para revisión y NO reejecutar
+        // ciegamente las mutaciones del carrito o la creación de la orden.
+        // A completed photo must reply without waiting for another text bubble.
+        await this.flushOrDiscardOutboundHold(key, conv, msg.waId, msg.messageType === 'image');
+        succeeded = true;
+      } finally {
+        this.orderCoverageNoticesByWaId.delete(key);
+        if (!succeeded) {
+          // No enviar respuestas parciales de un turno que falló.
+          this.outboundHoldByWaId.delete(key);
+        }
+        const claimedIds = this.claimedInboundIdsByWaId.get(key) || [];
+        this.claimedInboundIdsByWaId.delete(key);
+        if (claimedIds.length) {
+          await this.conversationService.setInboundProcessingOutcome(
+            claimedIds,
+            succeeded ? 'completed' : 'failed',
+          );
         }
       }
-      const conv = await this.conversationService.findOrCreateConversation(
-        msg.waId,
-        msg.phoneE164,
-      );
-      await this.collapseBurstReplies(key, msg, conv);
-      // Un turno no está completado hasta finalizar también sus respuestas.
-      // Si Meta falla al enviarlas, dejar failed para revisión y NO reejecutar
-      // ciegamente las mutaciones del carrito o la creación de la orden.
-      // A completed photo must reply without waiting for another text bubble.
-      await this.flushOrDiscardOutboundHold(key, conv, msg.waId, msg.messageType === 'image');
-      succeeded = true;
-    } finally {
-      this.orderCoverageNoticesByWaId.delete(key);
-      if (!succeeded) {
-        // No enviar respuestas parciales de un turno que falló.
-        this.outboundHoldByWaId.delete(key);
-      }
-      const claimedIds = this.claimedInboundIdsByWaId.get(key) || [];
-      this.claimedInboundIdsByWaId.delete(key);
-      if (claimedIds.length) {
-        await this.conversationService.setInboundProcessingOutcome(
-          claimedIds,
-          succeeded ? 'completed' : 'failed',
-        );
-      }
-    }
+    }, summary => this.turnTelemetry.recordSummary(summary), true);
   }
 
   private async handleIncomingUnlocked(msg: IncomingWhatsappMessage): Promise<BurstContinuation | undefined> {
-    const turn: InboundTurnContext = {};
-    await this.runIncomingTurn(msg, turn);
-    return turn.burstContinuation;
+    return observeWhatsappTurn(msg.messageType, async () => {
+      observeWhatsappProcessingStep();
+      const turn: InboundTurnContext = {};
+      await this.runIncomingTurn(msg, turn);
+      return turn.burstContinuation;
+    }, summary => this.turnTelemetry.recordSummary(summary));
   }
 
   private async runIncomingTurn(msg: IncomingWhatsappMessage, turn: InboundTurnContext): Promise<void> {
@@ -708,6 +715,13 @@ export class WhatsappOrchestratorService {
       failed = true;
       throw error;
     } finally {
+      const observedConversation = turn.observationConversation;
+      if (observedConversation) {
+        try {
+          observeWhatsappState(observedConversation.id, observedConversation.state,
+            this.conversationService.getSession(observedConversation));
+        } catch { /* Observation cannot replace a business or transport error. */ }
+      }
       if (!failed && turn.conv && turn.purchaseTransferAnswer) {
         await this.reply(turn.conv, msg.waId, turn.purchaseTransferAnswer);
       }
@@ -988,6 +1002,9 @@ export class WhatsappOrchestratorService {
     this.orderCoverageNoticesByWaId.delete(msg.waId);
     const cfg = await this.settingsService.getEffectiveConfig();
     const conv = await this.conversationService.findOrCreateConversation(msg.waId, msg.phoneE164);
+    turn.observationConversation = conv;
+    try { observeWhatsappState(conv.id, conv.state, this.conversationService.getSession(conv)); }
+    catch { /* Observation cannot block routing. */ }
     const previousInboundAt = conv.lastInboundAt ? new Date(conv.lastInboundAt).getTime() : undefined;
     await this.conversationService.touchInbound(conv);
 
@@ -1055,17 +1072,25 @@ export class WhatsappOrchestratorService {
     // Otro worker/instancia ya reclamó este messageId mediante UNIQUE.
     // No tocar sesión ni crear pedidos a partir del webhook duplicado.
     if (!logged && !continuation) {
+      observeWhatsappIgnored('duplicate');
       this.logger.debug(`Skip duplicate inbound waMessageId=${msg.messageId}`);
       return;
     }
     const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
     // Nunca cambiar el estado de IDs duplicados reclamados por otro worker.
-    if (!continuation) this.claimedInboundIdsByWaId.set(key, newlyClaimedIds);
+    if (!continuation) {
+      this.claimedInboundIdsByWaId.set(key, newlyClaimedIds);
+      observeWhatsappClaim(newlyClaimedIds.length || 1);
+    }
 
     // Reactions acknowledge an existing message; they are not an unsupported order input.
-    if (msg.messageType === 'other' && msg.raw?.type === 'reaction') return;
+    if (msg.messageType === 'other' && msg.raw?.type === 'reaction') {
+      observeWhatsappIgnored('reaction');
+      return;
+    }
 
     if (!cfg.enabled) {
+      observeWhatsappIgnored('disabled');
       await this.reply(conv, msg.waId, 'Por ahora WhatsApp no está activo. Puedes pedir por la web o llamar al local.');
       return;
     }
@@ -1107,6 +1132,7 @@ export class WhatsappOrchestratorService {
       }
     }
     if (conv.humanTakeover) {
+      observeWhatsappIgnored('human_takeover');
       return;
     }
     // Only fill a missing recipient after claiming the message and reloading state.
@@ -12413,6 +12439,7 @@ export class WhatsappOrchestratorService {
       }
 
       const order = await this.ordersService.create(orderDto);
+      observeWhatsappOrderRegistered();
       const snapshot = { ...session };
       await this.conversationService.resetOrderSession(conv, 'completed', {
         ignorePriorHistory: true,
@@ -17728,11 +17755,49 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
-  private async tryHandleUnspecifiedCartOption(conv:WhatsappConversation,waId:string,session:WhatsappSessionData,text:string,cfg:EffectiveWhatsappConfig):Promise<boolean> {
+  private async tryClarifyUnchosenAttribute(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    actions: AiOrderAction | undefined,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!actions?.updateAttributes?.length || Object.keys(actions).some(key => key !== 'updateAttributes')) return false;
+    if (session.pendingAddOffer || session.pendingCategoryBrowse) return false;
+    if (this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isProductDescriptionInquiry(text)) return false;
+    const source = this.normalizeForMatch(text);
+    if (!/\bcambi\w*\b/.test(source)) return false;
+    const requestedFields = new Set<string>();
+    for (const edit of actions.updateAttributes) {
+      if (!edit || typeof edit.attributeName !== 'string') return false;
+      const product = products.find(item => item.id === edit.productId);
+      if (!product || !session.cart.some(line => line.productId === product.id)) return false;
+      const field = product.attributes?.find(attribute =>
+        attribute.attributeName.toLowerCase() === edit.attributeName.toLowerCase());
+      if (!field) return false;
+      const namesField = (` ${source} `).includes(` ${this.normalizeForMatch(field.attributeName)} `);
+      const namesDrink = this.catalogService.isComboOnlyAttribute(field) && /\b(?:bebida|gaseosa|sabor)\b/.test(source);
+      if (!namesField && !namesDrink) return false;
+      requestedFields.add(field.attributeName.toLowerCase());
+    }
+    if (requestedFields.size !== 1) return false;
+    return this.tryHandleUnspecifiedCartOption(conv, waId, session, text, cfg, [...requestedFields][0]);
+  }
+
+  private async tryHandleUnspecifiedCartOption(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+    requestedAttributeName?: string,
+  ): Promise<boolean> {
     if (!session.cart.length || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
     const said=this.normalizeForMatch(text);
     const pending=session.pendingCartOptionChoice;
-    const asksOptions=/^(?:y )?(?:(?:que|q|cuales)(?: otros?| otras?)? (?:sabor(?:es)?|bebidas?|gaseosas?|opciones)(?: de (?:bebida|gaseosa))?(?: tienes| tienen| hay| manejan)?|(?:cambio|cambiar|cambia|cambiame)(?: de| la| el)? (?:bebida|gaseosa|sabor))$/.test(said);
+    const asksOptions=!!requestedAttributeName || /^(?:y )?(?:(?:que|q|cuales)(?: otros?| otras?)? (?:sabor(?:es)?|bebidas?|gaseosas?|opciones)(?: de (?:bebida|gaseosa))?(?: tienes| tienen| hay| manejan)?|(?:cambio|cambiar|cambia|cambiame)(?: de| la| el)? (?:bebida|gaseosa|sabor))$/.test(said);
     if (!pending && !asksOptions) {
       if (/^(?:no )?(?:arreglar|arreglalo|corregir|corrige|corrigelo)$/.test(said)) {
         await this.reply(conv,waId,'¿Qué plato y qué opción o cantidad quieres corregir? El pedido sigue igual.');return true;
@@ -17750,7 +17815,9 @@ export class WhatsappOrchestratorService {
     }
     const options=pending?.candidates || session.cart.flatMap((line,cartIndex)=>{
       const product=products.find(p=>p.id===line.productId);
-      return (product?.attributes || []).filter(a=>this.catalogService.isComboOnlyAttribute(a)).map(a=>({cartIndex,attributeName:a.attributeName}));
+      return (product?.attributes || []).filter(attribute => requestedAttributeName
+        ? attribute.attributeName.toLowerCase() === requestedAttributeName.toLowerCase()
+        : this.catalogService.isComboOnlyAttribute(attribute)).map(attribute => ({cartIndex, attributeName: attribute.attributeName}));
     });
     if (!options.length) return false;
     let selected=pending?.selected;
@@ -27238,6 +27305,7 @@ export class WhatsappOrchestratorService {
       paymentMethods: cfg.paymentMethods,
     });
 
+    observeWhatsappAgentInvocation();
     const agent = await this.agentService.runTurn({
       conversationId: conv.id,
       userMessage: params.placedOrderOnly ? originalText || text : text,
@@ -27263,6 +27331,7 @@ export class WhatsappOrchestratorService {
       humanPhone: cfg.localContext?.publicPhone || WHATSAPP_HUMAN_CONTACT_PHONE,
       menuConceptGroups: cfg.menuConceptGroups,
     });
+    if (agent.error) observeWhatsappAgentError();
 
     if (params.distributedPurchase) {
       const contract = params.distributedPurchase;
@@ -27446,6 +27515,8 @@ export class WhatsappOrchestratorService {
       const guarded = this.actionGuard.sanitize({actions:agent.actions,products,cart:session.cart,sourceText:originalText || text,
         businessOpen:businessOpenForBot,allowMercadoPago:!!cfg.allowMercadoPago,paymentMethods:cfg.paymentMethods});
       if (guarded.blockedClosed) return false;
+      if (guarded.requiresOptionChoice && await this.tryClarifyUnchosenAttribute(conv, msg.waId, session,
+        originalText || text, agent.actions, products, cfg)) return true;
       const before = JSON.stringify(session.cart);
       const applied = await this.applyActions(conv,session,guarded.actions,products,cfg,originalText || text,params.decision);
       if (applied.limitBlocked) {
@@ -27557,6 +27628,8 @@ export class WhatsappOrchestratorService {
 
     captureActionDecision(params.decision,'catalog_validated',guarded.actions);
     if (guarded.requiresOptionChoice) {
+      if (await this.tryClarifyUnchosenAttribute(conv, msg.waId, session, originalText || text,
+        agent.actions, products, cfg)) return true;
       await this.reply(conv,msg.waId,'Falta que elijas la opción nueva. ¿Qué plato y qué opción prefieres cambiar? El pedido sigue igual.');return true;
     }
 

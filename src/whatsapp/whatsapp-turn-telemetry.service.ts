@@ -1,3 +1,4 @@
+import type { WhatsappTurnSummary } from './whatsapp-turn-observation';
 import type { TurnDecision } from './whatsapp-turn-decision';
 import { Injectable, Logger } from '@nestjs/common';
 
@@ -56,6 +57,10 @@ export class WhatsappTurnTelemetryService {
     this.recent.push(full);
     if (this.recent.length > this.maxRecent) this.recent.shift();
     this.logger.log(JSON.stringify(full));
+  }
+
+  recordSummary(summary: WhatsappTurnSummary): void {
+    this.logger.log(JSON.stringify(summary));
   }
 
   getRecent(limit = 30): WhatsappTurnTelemetryEvent[] {

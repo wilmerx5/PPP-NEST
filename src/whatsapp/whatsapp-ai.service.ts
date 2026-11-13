@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { observeWhatsappInference } from './whatsapp-turn-observation';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import type { AiTurnResult } from './types/whatsapp-session.types';
 import { WHATSAPP_AI_JSON_SCHEMA } from './whatsapp-business-rules';
@@ -79,15 +80,17 @@ Responde SOLO JSON:
     );
 
     try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${cfg.openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(12_000),
-      });
+      const res = await observeWhatsappInference('classification', model, () =>
+        fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${cfg.openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(12_000),
+        }),
+      );
       if (!res.ok) {
         const err = await res.text();
         this.logger.warn(`classifyMessage OpenAI ${res.status}: ${err.slice(0, 200)}`);
@@ -170,15 +173,17 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
         { model, maxOutputTokens: 1200, temperature: temp },
       );
 
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${cfg.openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(12_000),
-      });
+      const res = await observeWhatsappInference('assist', model, () =>
+        fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${cfg.openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(12_000),
+        }),
+      );
 
       if (!res.ok) {
         const err = await res.text();
@@ -255,12 +260,14 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
     }
 
     try {
-      const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${cfg.openaiApiKey}` },
-        body: form,
-        signal: AbortSignal.timeout(45_000),
-      });
+      const res = await observeWhatsappInference('audio', model, () =>
+        fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${cfg.openaiApiKey}` },
+          body: form,
+          signal: AbortSignal.timeout(45_000),
+        }),
+      );
       if (!res.ok) {
         this.logger.error(`Audio transcription HTTP ${res.status}: model=${model}`);
         return null;
@@ -370,15 +377,17 @@ ${input.menuSummary.slice(0, 6000)}`;
         body.reasoning_effort = 'minimal';
       }
 
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${cfg.openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(45_000),
-      });
+      const res = await observeWhatsappInference('vision', model, () =>
+        fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${cfg.openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(45_000),
+        }),
+      );
 
       if (!res.ok) {
         const err = await res.text();

@@ -1,0 +1,145 @@
+[
+  {
+    "id": "pilot-known-drink-choice-and-observation-520",
+    "initialCart": [
+      {
+        "id": 97,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Colombiana"
+          },
+          {
+            "attributeName": "Pollo",
+            "attributeValue": "Frito"
+          }
+        ]
+      }
+    ],
+    "messages": [
+      {
+        "text": "¿Podemos cambiar la bebida?",
+        "expect": {
+          "lines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Colombiana"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ],
+          "orderCount": 0,
+          "replyAny": [
+            "qué",
+            "cuál",
+            "prefieres"
+          ],
+          "replyForbid": [
+            "No entendí",
+            "qué plato",
+            "cuál plato",
+            "Algo más"
+          ]
+        }
+      },
+      {
+        "text": "Pepsi",
+        "expect": {
+          "lines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Pepsi"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Eso es todo, paso a recogerlo en el local",
+        "expect": {
+          "lines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Pepsi"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "efectivo",
+        "expect": {
+          "lines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Pepsi"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ],
+          "payment": "cash",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "confirmar",
+        "expect": {
+          "orderCount": 1,
+          "orderLines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Pepsi"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+]
