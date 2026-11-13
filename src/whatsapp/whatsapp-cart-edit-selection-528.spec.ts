@@ -729,3 +729,180 @@ for (const rejectedPurchase of [true, false]) {
     expect(h.conv.sessionData.cart).toHaveLength(2);
   });
 }
+
+for (const state of ['building_cart', 'awaiting_final_confirm']) {
+  for (const complete of [true, false]) {
+    test(`a new full request resolves a stale plan atomically ${state} ${complete}`, async () => {
+      const s = await openChoice(state);
+      s.products[0].price += 1000;
+      s.h.service.catalogService.getMenuProducts.mockResolvedValue(s.products);
+      await s.h.sendQueued('2');
+      expect(
+        s.h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+          ?.invalidated,
+      ).toBe(true);
+      const before = structuredClone(s.h.conv.sessionData.cart);
+      s.h.agent.runTurn.mockImplementation((request) =>
+        s.agent.runTurn(request),
+      );
+      let requests = 0;
+      jest.spyOn(global, 'fetch').mockImplementation(async () =>
+        ++requests === 1
+          ? response({
+              content: null,
+              tool_calls: [
+                call('update_item', {
+                  productId: 5281,
+                  cartLineIndex: 1,
+                  quantity: 4,
+                }),
+                ...(complete
+                  ? [
+                      call(
+                        'add_item',
+                        { productId: 5282, quantity: 2 },
+                        'new-purchase',
+                      ),
+                    ]
+                  : []),
+              ],
+            })
+          : response({ content: 'Listo.' }),
+      );
+      await s.h.sendQueued(
+        'Ayúdame a dejar cuatro Combo De Tofu de Manzana' +
+          (complete ? ' y agrega dos Porcion De Hummus' : ''),
+      );
+      if (!complete) {
+        expect(s.h.conv.sessionData.cart).toEqual(before);
+        expect(
+          s.h.conv.sessionData.pendingReplacementClarification,
+        ).toBeDefined();
+        expect(s.h.replies.at(-1)).toMatch(/todas las compras/i);
+        return;
+      }
+      expect(s.h.conv.sessionData.cart[0]).toEqual(before[0]);
+      expect(s.h.conv.sessionData.cart[1]).toMatchObject({
+        ...before[1],
+        quantity: 4,
+      });
+      expect(
+        s.h.conv.sessionData.cart.find((line) => line.productId === 5282)
+          ?.quantity,
+      ).toBe(2);
+      expect(
+        s.h.conv.sessionData.pendingReplacementClarification,
+      ).toBeUndefined();
+      expect(s.h.conv.state).toBe(state);
+      s.h.agent.runTurn.mockResolvedValue({
+        reply: '',
+        actions: {},
+        toolCalls: [],
+      });
+      await s.h.sendQueued('no más, recojo en el local');
+      await s.h.sendQueued('efectivo');
+      await s.h.sendQueued('confirmar');
+      if (!s.h.service.ordersService.create.mock.calls.length)
+        await s.h.sendQueued('confirmar');
+      expect(s.h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      expect(
+        s.h.service.ordersService.create.mock.calls[0][0].items,
+      ).toHaveLength(8);
+    });
+  }
+}
+
+test('a delivery-place selection keeps its own numeric reply', async () => {
+  const { h } = await openChoice();
+  Object.assign(h.conv.sessionData, {
+    pendingDeliveryCandidates: [
+      { placeId: 'one', name: 'Conjunto Uno' },
+      { placeId: 'two', name: 'Conjunto Dos' },
+    ],
+  });
+  const before = structuredClone(h.conv.sessionData.cart);
+  expect(
+    await h.service.tryHandleRejectedReplacementFollowup(
+      h.conv,
+      'customer',
+      h.conv.sessionData,
+      '2',
+      h.cfg,
+    ),
+  ).toBe(false);
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(
+    h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+      ?.invalidated,
+  ).toBe(true);
+});
+
+test('collecting a contact phone preserves the pending cart change', async () => {
+  const { h } = await openChoice(
+    'awaiting_phone',
+    'update_item',
+    { quantity: 3 },
+    (s) => {
+      s.h.conv.sessionData.contactPhone = undefined;
+      s.h.conv.sessionData.phoneConfirmed = false;
+    },
+  );
+  const before = structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued('321 555 7788');
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.conv.sessionData.contactPhone?.replace(/\D/g, '')).toMatch(
+    /3215557788$/,
+  );
+  expect(
+    h.conv.sessionData.pendingReplacementClarification?.ownerChoice,
+  ).toBeDefined();
+});
+
+test('a full reformulation cannot authorize a forged wrong-owner action', async () => {
+  const s = await openChoice();
+  s.h.agent.runTurn.mockResolvedValue({
+    reply: 'Listo.',
+    actions: {
+      updateCartLines: [{ productId: 5281, cartLineIndex: 0, quantity: 4 }],
+      addItems: [{ productId: 5282, quantity: 2 }],
+    },
+    toolCalls: ['update_item', 'add_item'],
+    purchaseAttempts: [{ productId: 5282, accepted: true }],
+  });
+  const before = structuredClone(s.h.conv.sessionData.cart);
+  await s.h.sendQueued(
+    'Ayúdame a dejar cuatro Combo De Tofu de Manzana y agrega dos Porcion De Hummus',
+  );
+  expect(s.h.conv.sessionData.cart).toEqual(before);
+  expect(s.h.conv.sessionData.pendingReplacementClarification).toBeDefined();
+});
+
+test('closed hours prevent a fresh reformulation from invoking the model', async () => {
+  const { h } = await openChoice();
+  h.cfg.ignoreBusinessHours = false;
+  h.service.businessService.getStatus = jest
+    .fn()
+    .mockResolvedValue({ isOpen: false, message: 'Cerrado' });
+  const before = structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued(
+    'Ayúdame a dejar cuatro Combo De Tofu de Manzana y agrega dos Porcion De Hummus',
+  );
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.agent.runTurn).toHaveBeenCalledTimes(1);
+});
+
+test('a known product conversion retains its existing entry point', async () => {
+  const { h } = await openChoice();
+  const before = structuredClone(h.conv.sessionData.cart);
+  expect(
+    await h.service.tryHandleCartEditOwnerChoice(
+      h.conv,
+      'customer',
+      h.conv.sessionData,
+      'Cambia el Combo De Tofu de Manzana por Porcion De Hummus',
+      h.cfg,
+    ),
+  ).toBe(false);
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.agent.runTurn).toHaveBeenCalledTimes(1);
+});

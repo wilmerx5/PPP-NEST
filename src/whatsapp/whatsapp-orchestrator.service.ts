@@ -48,6 +48,7 @@ import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
 import { WhatsappPointsService, whatsappPrizeDiscount } from './whatsapp-points.service';
 import { WhatsappDeliveryRoutingService } from './whatsapp-delivery-routing.service';
 import { WhatsappAgentService, type AgentV1TurnResult } from './whatsapp-agent.service';
+import { hasExplicitCartEditOwner } from './whatsapp-cart-edit-owner';
 import { WhatsappTurnTelemetryService } from './whatsapp-turn-telemetry.service';
 import {
   formatCartNeedsHalfChickenForPremio,
@@ -17919,6 +17920,9 @@ export class WhatsappOrchestratorService {
 
   private hasCartEditOwnerConflict(session: WhatsappSessionData): boolean {
     return !!(
+      session.pendingDeliveryCandidates?.length ||
+      session.pendingAddressConflict ||
+      session.pendingRecipientOrPlace ||
       session.pendingAddOffer ||
       session.pendingPriceInquiry ||
       session.pendingCatalogInquiry ||
@@ -18292,8 +18296,60 @@ export class WhatsappOrchestratorService {
         );
         return true;
       }
-      return false;
     }
+    const freshChange = this.normalizeForMatch(text).replace(
+      /\bno (?:me )?(?:agregues|anadas|sumes) (?:otr[oa]|mas|ningun[oa])\b.*$/,
+      '',
+    );
+    if (
+      !number &&
+      !direction &&
+      !acknowledgement &&
+      !signedChoice &&
+      /\b(?:cambia(?:me)?|cambiar|ajusta(?:me)?|ajustar|modifica(?:me)?|modificar|deja(?:r)?|quita(?:r)?|retira(?:r)?|elimina(?:r)?)\b/.test(
+        freshChange,
+      ) &&
+      !/\bno\b/.test(freshChange) &&
+      !this.catalogService.isPriceInquiryIntent(text) &&
+      !isCostConditionalRequest(text) &&
+      !this.catalogNamedCartSwap(text, session, products) &&
+      this.catalogService.productFullyNamedIn(
+        text,
+        products.filter((product) => product.id === choice.productId),
+      )
+    ) {
+      const status = await this.businessService.getStatus();
+      if (!cfg.ignoreBusinessHours && !status.isOpen) {
+        await this.reply(
+          conv,
+          waId,
+          cfg.closedMessage ||
+            'Estamos cerrados en este momento. Puedes retomar el cambio cuando abramos.',
+        );
+        return true;
+      }
+      return this.tryHandleAgentV1({
+        conv,
+        msg: {
+          waId,
+          messageType: 'text',
+          text,
+          raw: {},
+          phoneE164: conv.phoneE164,
+          messageId: 'cart-edit-recovery',
+          timestamp: Date.now(),
+        },
+        session: this.conversationService.getSession(conv),
+        text,
+        originalText: text,
+        products,
+        cfg,
+        status,
+        businessOpenForBot: true,
+        cartEditOwnerRecovery: true,
+      });
+    }
+    if (invalid) return false;
     if (
       isCartChargeQuestion(text) ||
       isOrderBillRequest(text) ||
@@ -18380,11 +18436,112 @@ export class WhatsappOrchestratorService {
         ? { addItems: structuredClone(choice.addItems) }
         : {}),
     };
+    return this.commitCartEditOwnerPlan(
+      conv,
+      waId,
+      session,
+      actions,
+      choice.sourceText,
+      products,
+      cfg,
+    );
+  }
+
+  private async applyCartEditOwnerReformulation(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    agent: AgentV1TurnResult,
+    sourceText: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+    businessOpen: boolean,
+  ): Promise<boolean> {
+    const choice = session.pendingReplacementClarification?.ownerChoice;
+    const key =
+      choice?.tool === 'remove_item' ? 'removeCartLines' : 'updateCartLines';
+    const edits = agent.actions?.[key] || [];
+    const additions = agent.actions?.addItems || [];
+    const source =
+      edits.length === 1 ? session.cart[edits[0].cartLineIndex] : undefined;
+    const complete =
+      businessOpen &&
+      !!choice &&
+      !this.hasCartEditOwnerConflict(session) &&
+      [
+        'building_cart',
+        'awaiting_name',
+        'awaiting_address',
+        'awaiting_phone',
+        'awaiting_payment',
+        'awaiting_final_confirm',
+      ].includes(conv.state) &&
+      !agent.rejectedAttributeChoices?.length &&
+      !agent.rejectedCartEdits?.length &&
+      !agent.rejectedReplacements?.length &&
+      !agent.needsAttributeProductId &&
+      agent.toolCalls.includes(choice.tool) &&
+      edits.length === 1 &&
+      edits[0].productId === choice.productId &&
+      source?.productId === choice.productId &&
+      hasExplicitCartEditOwner(
+        sourceText,
+        session.cart.map((line, cartLineIndex) => ({ ...line, cartLineIndex })),
+        choice.productId,
+        edits[0].cartLineIndex,
+      ) &&
+      !Object.entries(agent.actions || {}).some(
+        ([action, value]) =>
+          ![key, 'addItems'].includes(action) &&
+          (Array.isArray(value) ? value.length > 0 : !!value),
+      ) &&
+      choice.addItems.every((item) =>
+        additions.some((proposed) => proposed.productId === item.productId),
+      ) &&
+      (!additions.length ||
+        hasCompleteToolPurchaseEvidence(agent.purchaseAttempts, additions)) &&
+      [choice.productId, ...additions.map((item) => item.productId)].every(
+        (id) =>
+          this.catalogService.productFullyNamedIn(
+            sourceText,
+            products.filter((product) => product.id === id),
+          ),
+      );
+    if (!complete) {
+      await this.reply(
+        conv,
+        waId,
+        'Falta aclarar el cambio junto con todas las compras pendientes. ¿Cómo debe quedar el pedido completo?',
+      );
+      return true;
+    }
+    return this.commitCartEditOwnerPlan(
+      conv,
+      waId,
+      session,
+      agent.actions,
+      sourceText,
+      products,
+      cfg,
+    );
+  }
+
+  private async commitCartEditOwnerPlan(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    actions: AiOrderAction,
+    sourceText: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const pending = session.pendingReplacementClarification!;
+    const choice = pending.ownerChoice!;
     const guarded = this.actionGuard.sanitize({
       actions,
       products,
       cart: session.cart,
-      sourceText: choice.sourceText,
+      sourceText,
       businessOpen: true,
       allowMercadoPago: !!cfg.allowMercadoPago,
       paymentMethods: cfg.paymentMethods,
@@ -18398,10 +18555,10 @@ export class WhatsappOrchestratorService {
             guarded.actions,
             products,
             cfg,
-            choice.sourceText,
+            sourceText,
             undefined,
             true,
-            choice.addItems.map((item) => item.productId),
+            (actions.addItems || []).map((item) => item.productId),
           );
     if (!applied || applied.cartChangeError || applied.limitBlocked) {
       await this.conversationService.saveSession(conv, {
@@ -18424,7 +18581,7 @@ export class WhatsappOrchestratorService {
       conv,
       waId,
       'Listo, apliqué el cambio' +
-        (choice.addItems.length ? ' y las compras pendientes' : '') +
+        (actions.addItems?.length ? ' y las compras pendientes' : '') +
         ' ✅\n\n' +
         this.formatCartOnly(
           applied.session,
@@ -27980,12 +28137,14 @@ export class WhatsappOrchestratorService {
     placedOrderOnly?: boolean;
     /** Answer an unrelated inquiry while preserving checkout and every cart field. */
     readOnlyAside?: boolean;
+    /** Backend-owned recovery of one rejected edit and all its pending purchases. */
+    cartEditOwnerRecovery?: boolean;
   }): Promise<boolean> {
     const { conv, msg, text, originalText, products, cfg, status, businessOpenForBot } =
       params;
     let session = params.session;
 
-    if (!params.placedOrderOnly && !params.readOnlyAside) {
+    if (!params.placedOrderOnly && !params.readOnlyAside && !params.cartEditOwnerRecovery) {
       if (conv.state !== 'building_cart' && conv.state !== 'awaiting_attribute') {
         return false;
       }
@@ -28088,6 +28247,11 @@ export class WhatsappOrchestratorService {
         explanation + ' ¿Cómo debe quedar el pedido completo, con cantidades y opciones?',
       );
       return true;
+    }
+
+    if (params.cartEditOwnerRecovery) {
+      return this.applyCartEditOwnerReformulation(conv,msg.waId,session,agent,
+        originalText || text,products,cfg,businessOpenForBot);
     }
 
     if (businessOpenForBot && agent.rejectedAttributeChoices?.length) {
