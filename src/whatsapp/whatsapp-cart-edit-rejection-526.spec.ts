@@ -268,7 +268,7 @@ test('a rejected quantity remains visible when another owner is edited', async (
       : response({ content: 'Listo.' }),
   );
   const result = await s.agent.runTurn(
-    input(s, 'Ajusta las cantidades de mis combos'),
+    input(s, 'Ajusta la cantidad del que tiene Con sal'),
   );
   expect(result.rejectedCartEdits).toEqual([
     {
@@ -501,7 +501,7 @@ test('editing a new copy does not clear a rejected edit of the original owner', 
       : response({ content: 'Listo.' }),
   );
   const result = await s.agent.runTurn(
-    input(s, 'Agrega otro Combo De Tofu y ajusta las cantidades de mi pedido'),
+    input(s, 'Agrega otro Combo De Tofu y ajusta la cantidad de la línea 2'),
   );
   expect(result.actions.addItems).toHaveLength(1);
   expect(result.actions.addItems![0].quantity).toBe(3);

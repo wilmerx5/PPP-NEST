@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { hasExplicitCartEditOwner } from './whatsapp-cart-edit-owner';
 import { hasExplicitCartAttributeOwner } from './whatsapp-cart-attribute-owner';
 import { observeWhatsappGuardRejection } from './whatsapp-turn-observation';
 import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
@@ -903,6 +904,10 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             const key = `${name}:${productId}:${ownerKey}`;
             if (outcome.ok) {
               rejectedCartEdits.delete(key);
+              for (const [rejectedKey, rejected] of rejectedCartEdits) {
+                if (rejected.tool === name && rejected.productId === productId &&
+                  rejected.reason === 'ambiguous_cart_owner') rejectedCartEdits.delete(rejectedKey);
+              }
               acceptedCartEditKeys.add(key);
             } else if (outcome.error !== 'unit_option_turn_locked' &&
               !(name === 'remove_item' && outcome.error === 'missing_or_ambiguous_cart_line' &&
@@ -1963,7 +1968,19 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           if (pendingAddIndex >= 0) ctx.actions.addItems!.splice(pendingAddIndex,1);
           else (ctx.actions.removeCartLines ||= []).push({productId,cartLineIndex});
         };
+        const ownershipLines = [
+          ...(ctx.cart || []).map((item, cartLineIndex) => ({ ...item, cartLineIndex })),
+          ...this.toolCartView(ctx).filter(item => item.pendingAddIndex >= 0),
+        ];
+        const ownerRejection = ctx.diagnosticOrigin === 'model_call' &&
+          name !== 'replace_item' &&
+          !hasExplicitCartEditOwner(ctx.userMessage || '', ownershipLines, productId,
+            cartLineIndex, typeof args.note === 'string' ? args.note : undefined)
+          ? JSON.stringify({ ok: false, error: 'ambiguous_cart_owner',
+            hint: 'Pregunta qué línea o variante actual quiere modificar el cliente. Un índice propuesto por el modelo no identifica esa variante.' })
+          : undefined;
         if (name === 'remove_item') {
+          if (ownerRejection) return ownerRejection;
           const normalize = (value:string) => value.toLowerCase().normalize('NFD')
             .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
           const preserved = (ctx.userMessage || '').split(/[;,.]|\s+y\s+(?=(?:deja|conserva|mant[eé]n|no quites|no cambies)\b)/i).some(clause=> {
@@ -1997,7 +2014,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               const result = this.executeTool('set_attribute', {productId,cartLineIndex,...choice}, ctx);
               if (!(JSON.parse(result) as {ok?:boolean}).ok) return result;
             }
-            if (args.quantity !== undefined || typeof args.note==='string') {
+            if ((args.quantity !== undefined && args.quantity !== line.quantity) ||
+              (typeof args.note === 'string' && args.note.trim().slice(0,200) !== (line.note || ''))) {
               const edit=JSON.parse(this.executeTool('update_item',{productId,cartLineIndex,quantity:args.quantity,note:args.note},ctx));
               if(!edit.ok)return JSON.stringify(edit);
             }
@@ -2018,6 +2036,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             return JSON.stringify({ok:false,error:'invalid_quantity'});
           }
           if (args.quantity === undefined && typeof args.note !== 'string') return JSON.stringify({ok:false,error:'missing_change'});
+          if (ownerRejection) return ownerRejection;
           const update = {productId,cartLineIndex,
             ...(args.quantity !== undefined ? {quantity:Number(args.quantity)} : {}),
             ...(typeof args.note === 'string' ? {note:args.note.trim().slice(0,200)} : {}),

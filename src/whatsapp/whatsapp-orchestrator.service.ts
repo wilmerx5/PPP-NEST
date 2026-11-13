@@ -27545,6 +27545,7 @@ export class WhatsappOrchestratorService {
         missing_explicit_option_choice: 'Falta elegir una opción del reemplazo.',
         invalid_quantity: 'No pude validar la cantidad del cambio.',
         missing_change: 'Falta indicar la cantidad o la nota que quieres cambiar.',
+        ambiguous_cart_owner: 'Tienes varias variantes de ese producto y falta identificar cuál quieres cambiar.',
         customer_requested_preserve_line: 'El cambio propuesto retiraba una línea que pediste conservar.',
         invalid_attribute_option: 'Las opciones del reemplazo no coinciden con la carta.',
         missing_or_ambiguous_cart_line: 'No pude identificar una única línea para hacer ese cambio.',
