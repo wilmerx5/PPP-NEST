@@ -80,8 +80,9 @@ export class WhatsappActionGuardService {
     }
 
     if (params.sourceText !== undefined && (params.cart?.length || 0) > 0 &&
-      Array.isArray(params.actions.updateAttributes) && params.actions.updateAttributes.some(edit => !hasExplicitCartAttributeOwner(params.sourceText!,
-        params.cart!, edit, params.products, this.catalogService))) {
+      Array.isArray(params.actions.updateAttributes) && params.actions.updateAttributes.some(edit =>
+        edit.cartLineIndex !== undefined && params.cart?.[edit.cartLineIndex]?.productId === edit.productId &&
+        !hasExplicitCartAttributeOwner(params.sourceText!, params.cart!, edit, params.products, this.catalogService))) {
       observeWhatsappGuardRejection();
       return { actions: undefined, warnings: ['Falta identificar la línea que el cliente quiere cambiar.'],
         blockedClosed: false, requiresOptionChoice: true, requiresCartOwnerChoice: true };

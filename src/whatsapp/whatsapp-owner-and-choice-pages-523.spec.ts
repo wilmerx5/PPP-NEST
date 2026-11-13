@@ -686,3 +686,33 @@ for (const owner of [false, true])
     expect(h.replies.at(-1)).toMatch(/¿/);
     expect(h.conv.sessionData.cart).toEqual(before);
   });
+
+test('an out-of-range model row keeps the existing invalid-action feedback', async () => {
+  const { h } = setup();
+  h.conv.sessionData.cart.splice(1, 1);
+  h.conv.state = 'awaiting_payment';
+  h.agent.runTurn.mockResolvedValue({
+    reply: 'Ya lo cambié.',
+    actions: {
+      updateAttributes: [
+        {
+          productId: 5231,
+          cartLineIndex: 3,
+          attributeName: 'Bebida',
+          attributeValue: 'Pepsi',
+        },
+      ],
+    },
+    toolCalls: ['get_cart', 'set_attribute'],
+  });
+  const before = structuredClone(h.conv.sessionData.cart);
+  const reply = await h.sendQueued(
+    'Cámbiame la bebida de los dos combos por Pepsi, no agregues otra bebida',
+  );
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.conv.state).toBe('awaiting_payment');
+  expect(reply).toMatch(/no pude aplicar/i);
+  expect(reply).not.toMatch(/Ya lo cambié/);
+  expect(h.conv.sessionData.pendingCartOptionChoice).toBeUndefined();
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+});
