@@ -1,0 +1,212 @@
+{
+  "batch": 523,
+  "sourceCommit": "8ba3a5ff38b7df44782f27c7d0bc6d6adfc47336",
+  "newRegressionTests": 55,
+  "relatedTestsPassed": 320,
+  "relatedSuitesPassed": 9,
+  "typescriptGeneralPassed": true,
+  "candidateImage": "sha256:7f2768e4763e224bb23d1a160d340f13f1c740789f6a3076ba7af88b8781ec83",
+  "candidateCompiledControls": 580,
+  "sourceFiles": 840,
+  "sourceManifestSha256": "b304add49b7322ff1cba97501f4474ffb1720e1f2b003e407730bd0d1d5acceb",
+  "predeploymentRealCatalogCases": 47,
+  "predeploymentSimulatedClosures": 43,
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "budgetUsed": 267,
+  "budgetRemaining": 0,
+  "runtimeScope": [
+    "Validate source evidence for valid initial model-supplied existing-cart attribute indexes through the shared action guard and tool receipts. Preserve the existing invalid-index and omitted-index validation paths.",
+    "Use cart product names, a sole compatible line, an explicit row, a unique current option/note, or an explicit all-items request to identify the owner.",
+    "Exclude delivery numbering from owner evidence and preserve valid changes accompanied by a request to avoid an extra purchase.",
+    "Paginate existing-cart owner and value selectors using stable global indexes, optional legacy-compatible page fields and existing expiration/cart/catalog/price checks.",
+    "Split long readonly context into separate messages before the active question and handle configured fields with no available options."
+  ],
+  "developmentFindings": [
+    "Four initial model-index cases reproduced missing owner validation. Three previous-runtime full-router cases produced5980,5980 and8623-character selector replies, exceeding the3800 assertion and the4096 transport limit.",
+    "The first global run was interrupted after one existing valid Falafel beverage change failed. Ownership validation treated the no-extra-beverage clause as an owner negation. The original test remains unchanged and passes after scoping that clause.",
+    "A direct shared-guard experiment accepted an address number as a cart row. Delivery street/building numbering is now excluded from source ownership evidence. Two new tool-boundary regressions cover street and house numbering, and a valid explicit row before the address remains supported.",
+    "One initial new address fixture expected an ownership rejection although the preceding explicit-option guard had already blocked it. It was replaced with house numbering to reproduce the distinct ownership hole.",
+    "A targeted command named two nonexistent test files and was rerun with verified paths. It is excluded from final validation.",
+    "Four new catalog probe fixtures initially assumed title-case Sabor and provider execution through a deterministic preemption. They now use the configured canonical field name and explicitly exercise the real tool loop before router recovery. All47 probes pass.",
+    "The second global run was interrupted after an existing invalid-index checkout test received a selector instead of its established rejection. The owner guard now applies only to a valid supplied index matching its product. The original five caller tests pass unchanged.",
+    "A third development global was interrupted while its new invalid-index fixture was corrected to use the original single-line cart shape. Its initial two-line cart had correctly taken the existing deterministic owner clarification. No runtime change was made for that fixture.",
+    "The final related run uses its own log after an older targeted process wrote to a reused log path. Only the clean320-test/9-suite run is credited."
+  ],
+  "limits": [
+    "Provider responses, Meta, persistence, map quotes and order creation are simulated. Real-model wording and representative pilot outcomes require further measurement.",
+    "Paging applies to pendingCartOptionChoice existing-cart attribute selectors. Other large menu lists retain their existing rendering.",
+    "Display rows longer than1200 characters and questions longer than600 are abbreviated with an ellipsis. Stored cart values remain complete. Readonly context longer than600 is delivered losslessly in separate chunks up to3300 characters.",
+    "Ambiguous ownership clarification can ask for the value again after the customer identifies the owner. Complex negated-owner requests may require clarification.",
+    "Other tool rejections, newly purchased product options, mixed purchases and corrections require additional batches.",
+    "Production promotion and generic Kamppo adaptation remain pending."
+  ],
+  "globalElapsedMinutes": 29.93,
+  "isolatedDatabaseTestsPassed": 11,
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51248,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 600,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "database": {
+      "success": true,
+      "numPassedTests": 11,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 51275,
+    "totalPassedSuites": 604
+  },
+  "isolatedDatabaseRemoved": true,
+  "stagingDeployment": {
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 580,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "8ba3a5ff38b7df44782f27c7d0bc6d6adfc47336",
+    "image": "sha256:f782e5d5bb100c49c978a8b247b33696af826a4be9a946c822ece2375804547b",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.23,
+        "heapTotal": 65.56,
+        "rss": 127.59
+      },
+      "timestamp": "2026-11-13T15:16:34.407Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.36,
+        "heapTotal": 65.56,
+        "rss": 127.84
+      },
+      "timestamp": "2026-11-13T15:16:34.567Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-13T15:17:28.422906+00:00",
+    "backup": "/root/ppp-manual-release/20261113T151510Z-staging-523"
+  },
+  "postDeploymentCatalogProbe": {
+    "passed": 47,
+    "simulatedClosures": 43,
+    "realCatalogRead": true,
+    "externalOrders": 0,
+    "metaMessages": 0
+  },
+  "environmentVerification": {
+    "staging": {
+      "head": "8ba3a5ff38b7df44782f27c7d0bc6d6adfc47336",
+      "branch": "staging",
+      "image": "sha256:f782e5d5bb100c49c978a8b247b33696af826a4be9a946c822ece2375804547b",
+      "started": "2026-11-13T15:16:24.814535682Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    }
+  },
+  "catalogSnapshots": {
+    "before": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+    "after": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa"
+  }
+}
