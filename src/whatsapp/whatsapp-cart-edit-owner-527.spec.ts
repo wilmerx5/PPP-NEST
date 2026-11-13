@@ -138,6 +138,7 @@ for (const tool of ['update_item', 'remove_item']) {
           productId: 5271,
           cartLineIndex: index,
           reason: 'ambiguous_cart_owner',
+          ...(tool === 'update_item' ? { quantity: 3 } : {}),
         },
       ]);
     });

@@ -1,3 +1,17 @@
+export type PendingCartEditOwnerChoice = {
+  tool: 'update_item' | 'remove_item';
+  productId: number;
+  quantity?: number;
+  note?: string;
+  addItems: NonNullable<AiOrderAction['addItems']>;
+  sourceText: string;
+  cartLineIndices: number[];
+  catalogFingerprint: string;
+  createdAt: number;
+  pageStart?: number;
+  invalidated?: boolean;
+};
+
 export type WhatsappCartItem = {
   productId: number;
   name: string;
@@ -242,7 +256,10 @@ export type WhatsappSessionData = {
     note: string;
   };
   /** A rejected replacement still needs a complete request or an explicit decline. */
-  pendingReplacementClarification?: { cartSignature: string };
+  pendingReplacementClarification?: {
+    cartSignature: string;
+    ownerChoice?: PendingCartEditOwnerChoice;
+  };
   pendingCartReplacement?: {
     /** Cart-line selection for an existing dish conversion, not a new purchase. */
     variantRequest?: string;

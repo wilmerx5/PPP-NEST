@@ -58,6 +58,8 @@ type RejectedAttributeChoice = AttributeEdit & {
 
 type RejectedCartEdit = RejectedReplacement & {
   tool: 'update_item' | 'remove_item';
+  quantity?: number;
+  note?: string;
 };
 
 type RejectedReplacement = {
@@ -906,7 +908,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               rejectedCartEdits.delete(key);
               for (const [rejectedKey, rejected] of rejectedCartEdits) {
                 if (rejected.tool === name && rejected.productId === productId &&
-                  rejected.reason === 'ambiguous_cart_owner') rejectedCartEdits.delete(rejectedKey);
+                  (rejected.reason === 'ambiguous_cart_owner' ||
+                    rejected.reason === 'missing_or_ambiguous_cart_line' && cartEditOwners.length>1)) rejectedCartEdits.delete(rejectedKey);
               }
               acceptedCartEditKeys.add(key);
             } else if (outcome.error !== 'unit_option_turn_locked' &&
@@ -916,6 +919,15 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 tool: name,
                 productId,
                 cartLineIndex,
+                ...((outcome.error === 'ambiguous_cart_owner' ||
+                  outcome.error === 'missing_or_ambiguous_cart_line' && cartEditOwners.length>1) &&
+                  name === 'update_item' &&
+                  (args.quantity===undefined || Number.isInteger(args.quantity) && Number(args.quantity)>=1 && Number(args.quantity)<=10) &&
+                  (args.note===undefined || typeof args.note==='string') ? {
+                  ...(Number.isInteger(args.quantity) && Number(args.quantity) >= 1 && Number(args.quantity) <= 10
+                    ? { quantity: Number(args.quantity) } : {}),
+                  ...(typeof args.note === 'string' ? { note: args.note.trim().slice(0,200) } : {}),
+                } : {}),
                 reason: typeof outcome.error === 'string' && /^[a-z_]+$/.test(outcome.error)
                   ? outcome.error : 'cart_edit_rejected',
               });

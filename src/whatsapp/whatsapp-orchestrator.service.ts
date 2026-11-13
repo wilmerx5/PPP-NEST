@@ -47,7 +47,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
 import { WhatsappPointsService, whatsappPrizeDiscount } from './whatsapp-points.service';
 import { WhatsappDeliveryRoutingService } from './whatsapp-delivery-routing.service';
-import { WhatsappAgentService } from './whatsapp-agent.service';
+import { WhatsappAgentService, type AgentV1TurnResult } from './whatsapp-agent.service';
 import { WhatsappTurnTelemetryService } from './whatsapp-turn-telemetry.service';
 import {
   formatCartNeedsHalfChickenForPremio,
@@ -17917,6 +17917,526 @@ export class WhatsappOrchestratorService {
       '\nEscribe el número de la lista o el nombre completo. El pedido sigue igual.';
   }
 
+  private hasCartEditOwnerConflict(session: WhatsappSessionData): boolean {
+    return !!(
+      session.pendingAddOffer ||
+      session.pendingPriceInquiry ||
+      session.pendingCatalogInquiry ||
+      session.pendingCategoryBrowse ||
+      session.pendingSideSwap ||
+      session.mpPreferenceId ||
+      session.pendingAttribute ||
+      session.pendingMatch ||
+      session.pendingMultiOrder ||
+      session.pendingUnitDistribution ||
+      session.pendingSubsetKitchenNote ||
+      CART_EDIT_SELECTION_KEYS.some((key) => !!session[key])
+    );
+  }
+
+  private cartEditOwnerFingerprint(
+    products: MenuProduct[],
+    ids: number[],
+  ): string {
+    return JSON.stringify(
+      [...new Set(ids)]
+        .sort((a, b) => a - b)
+        .map((id) => {
+          const product = products.find((item) => item.id === id);
+          return (
+            product && [
+              product.id,
+              product.name,
+              product.price,
+              product.availableNow,
+              product.hasAttributes,
+              product.attributes || [],
+            ]
+          );
+        }),
+    );
+  }
+
+  private async showCartEditOwnerChoice(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    products: MenuProduct[],
+    direction?: 'next' | 'previous',
+  ): Promise<void> {
+    const pending = session.pendingReplacementClarification!;
+    const choice = pending.ownerChoice!;
+    const product = products.find((item) => item.id === choice.productId)!;
+    const context =
+      choice.tool === 'remove_item'
+        ? ['Retiraré la línea que elijas, con todas sus unidades.']
+        : [
+            choice.quantity !== undefined
+              ? `Dejaré la cantidad final en *${choice.quantity}*.`
+              : '',
+            choice.note !== undefined
+              ? choice.note
+                ? `La nota completa quedará *${choice.note}*.`
+                : 'Quitaré la nota de la línea que elijas.'
+              : '',
+          ].filter(Boolean);
+    for (const item of choice.addItems) {
+      const purchase = products.find(
+        (product) => product.id === item.productId,
+      )!;
+      context.push(
+        `También añadiré *${item.quantity} × ${purchase.name}* · ${this.catalogService.formatMoney(purchase.price)} c/u` +
+          (item.attributes?.length
+            ? '\n' +
+              item.attributes
+                .map((attr) => `${attr.attributeName} ${attr.attributeValue}`)
+                .join(' · ')
+            : '') +
+          (item.note ? `\nNota ${item.note}` : ''),
+      );
+    }
+    const page = formatWhatsappChoicePage({
+      question: `Tienes varias variantes de *${product.name}*. ¿Cuál quieres ${choice.tool === 'remove_item' ? 'retirar' : 'modificar'}?`,
+      context: context.join('\n'),
+      startIndex: choice.pageStart,
+      direction,
+      rows: choice.cartLineIndices.map((cartIndex, index) => {
+        const line = session.cart[cartIndex];
+        return (
+          `${index + 1}. ${line.name} ×${line.quantity}` +
+          (line.attributes?.length
+            ? ' · ' +
+              line.attributes
+                .map((attr) => `${attr.attributeName} ${attr.attributeValue}`)
+                .join(' · ')
+            : '') +
+          (line.note ? ` · Nota ${line.note}` : '')
+        );
+      }),
+    });
+    await this.conversationService.saveSession(conv, {
+      ...session,
+      pendingReplacementClarification: {
+        ...pending,
+        ownerChoice: { ...choice, pageStart: page.startIndex },
+      },
+    });
+    for (const context of page.contextMessages)
+      await this.reply(conv, waId, context);
+    await this.reply(conv, waId, page.text);
+  }
+
+  private async tryStartCartEditOwnerChoice(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    agent: AgentV1TurnResult,
+    sourceText: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const rejected = agent.rejectedCartEdits || [];
+    const edit = rejected[0];
+    if (
+      !edit ||
+      ![
+        'building_cart',
+        'awaiting_name',
+        'awaiting_address',
+        'awaiting_phone',
+        'awaiting_payment',
+        'awaiting_final_confirm',
+      ].includes(conv.state) ||
+      agent.rejectedReplacements?.length ||
+      agent.rejectedAttributeChoices?.length ||
+      agent.purchaseAttempts?.some((attempt) => !attempt.accepted) ||
+      agent.needsAttributeProductId ||
+      this.hasCartEditOwnerConflict(session) ||
+      rejected.some(
+        (item) =>
+          !['ambiguous_cart_owner', 'missing_or_ambiguous_cart_line'].includes(
+            item.reason,
+          ) ||
+          item.tool !== edit.tool ||
+          item.productId !== edit.productId ||
+          item.quantity !== edit.quantity ||
+          item.note !== edit.note,
+      ) ||
+      Object.entries(agent.actions || {}).some(
+        ([key, value]) =>
+          key !== 'addItems' &&
+          (Array.isArray(value) ? value.length > 0 : !!value),
+      )
+    )
+      return false;
+    if (
+      edit.tool === 'update_item' &&
+      edit.quantity === undefined &&
+      edit.note === undefined
+    )
+      return false;
+    if (
+      (edit.quantity !== undefined &&
+        (!Number.isInteger(edit.quantity) ||
+          edit.quantity < 1 ||
+          edit.quantity > 10)) ||
+      (edit.note !== undefined &&
+        (typeof edit.note !== 'string' || edit.note.length > 200))
+    )
+      return false;
+    const additions = agent.actions.addItems || [];
+    if (
+      !additions.length &&
+      /\b(?:y|ademas|tambien) (?:agrega|anade|adiciona)\b/.test(
+        this.normalizeForMatch(sourceText),
+      )
+    )
+      return false;
+    if (
+      additions.length &&
+      !hasCompleteToolPurchaseEvidence(agent.purchaseAttempts, additions)
+    )
+      return false;
+    const otherProducts = this.catalogService
+      .findAllProductsEmbeddedInMessage(sourceText, products)
+      .filter((product) => product.id !== edit.productId);
+    if (
+      otherProducts.some(
+        (product) => !additions.some((item) => item.productId === product.id),
+      )
+    )
+      return false;
+    if (
+      additions.some(
+        (item) =>
+          item.productId === edit.productId ||
+          !this.catalogService.productFullyNamedIn(
+            sourceText,
+            products.filter((product) => product.id === item.productId),
+          ),
+      )
+    )
+      return false;
+    const ids = [edit.productId, ...additions.map((item) => item.productId)];
+    if (
+      ids.some(
+        (id) =>
+          !products.some(
+            (product) => product.id === id && product.availableNow !== false,
+          ),
+      )
+    )
+      return false;
+    if (
+      additions.some(
+        (item) =>
+          this.catalogService.getRemainingAttributes(
+            products.find((product) => product.id === item.productId)!,
+            item.attributes,
+          ).length,
+      )
+    )
+      return false;
+    const guarded = this.actionGuard.sanitize({
+      actions: { addItems: additions },
+      products,
+      cart: session.cart,
+      sourceText,
+      businessOpen: true,
+      allowMercadoPago: !!cfg.allowMercadoPago,
+      paymentMethods: cfg.paymentMethods,
+    });
+    if (
+      JSON.stringify(guarded.actions?.addItems || []) !==
+      JSON.stringify(additions)
+    )
+      return false;
+    const cartLineIndices = session.cart.flatMap((line, index) =>
+      line.productId === edit.productId ? [index] : [],
+    );
+    if (cartLineIndices.length < 2) return false;
+    const next = {
+      ...session,
+      pendingReplacementClarification: {
+        cartSignature: JSON.stringify(session.cart),
+        ownerChoice: {
+          tool: edit.tool,
+          productId: edit.productId,
+          quantity: edit.quantity,
+          note: edit.note,
+          addItems: structuredClone(additions),
+          sourceText,
+          cartLineIndices,
+          catalogFingerprint: this.cartEditOwnerFingerprint(products, ids),
+          createdAt: Date.now(),
+        },
+      },
+    };
+    await this.showCartEditOwnerChoice(conv, waId, next, products);
+    return true;
+  }
+
+  private async tryHandleCartEditOwnerChoice(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const pending = session.pendingReplacementClarification!;
+    const choice = pending.ownerChoice!;
+    const products = await this.catalogService.getMenuProducts();
+    const said = this.normalizeForMatch(text)
+      .replace(/[.!]+$/, '')
+      .trim();
+    if (/^\s*#/.test(text)) return false;
+    const signedChoice =
+      /^\s*(?:(?:opci[oó]n|la|el)\s+)?[¿?¡!().\s]*[-−–—]\s*\d/iu.test(text);
+    const choiceText = said
+      .replace(/[¿?]/g, '')
+      .replace(/\s+(?:por favor|porfa|gracias)$/, '')
+      .trim();
+    const numeric = choiceText.match(/^(?:(?:opcion|la|el) )?([1-9]\d*)$/);
+    const spoken =
+      /^(?:uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)$/.test(
+        choiceText,
+      )
+        ? this.catalogService.extractQuantityFromSegment(
+            `${choiceText} unidades`,
+          )
+        : undefined;
+    const sourceLabel = choiceText.replace(
+      /^(?:(?:el|la|los|las) )?(?:de|del|que tiene|que lleva|que va) /,
+      '',
+    );
+    const matchingOwners = choice.cartLineIndices.flatMap(
+      (cartIndex, index) => {
+        const line = session.cart[cartIndex];
+        const labels = [
+          ...(line?.attributes || []).flatMap((attr) => [
+            attr.attributeValue,
+            `${attr.attributeName} ${attr.attributeValue}`,
+          ]),
+          line?.note || '',
+        ];
+        return labels.some(
+          (label) => label && this.normalizeForMatch(label) === sourceLabel,
+        )
+          ? [index + 1]
+          : [];
+      },
+    );
+    const knownOption = products
+      .find((product) => product.id === choice.productId)
+      ?.attributes?.some((attr) =>
+        attr.options.some((value) =>
+          [value, `${attr.attributeName} ${value}`].some(
+            (label) => this.normalizeForMatch(label) === sourceLabel,
+          ),
+        ),
+      );
+    const number = signedChoice
+      ? undefined
+      : numeric
+        ? Number(numeric[1])
+        : (spoken ??
+          (matchingOwners.length === 1 ? matchingOwners[0] : undefined));
+    const direction = /^(?:siguientes|mas opciones)$/.test(said)
+      ? 'next'
+      : /^(?:anteriores|opciones anteriores)$/.test(said)
+        ? 'previous'
+        : undefined;
+    const acknowledgement =
+      isFinalConfirmAffirmation(text) || this.isConfirmKeyword(text);
+    const ids = [
+      choice.productId,
+      ...choice.addItems.map((item) => item.productId),
+    ];
+    const anotherSelection = this.hasCartEditOwnerConflict(session);
+    const invalid =
+      anotherSelection ||
+      choice.invalidated ||
+      !Number.isFinite(choice.createdAt) ||
+      Date.now() - choice.createdAt > 15 * 60 * 1000 ||
+      pending.cartSignature !== JSON.stringify(session.cart) ||
+      choice.catalogFingerprint !==
+        this.cartEditOwnerFingerprint(products, ids) ||
+      ids.some(
+        (id) =>
+          !products.some(
+            (product) => product.id === id && product.availableNow !== false,
+          ),
+      );
+    if (invalid) {
+      if (!choice.invalidated)
+        await this.conversationService.saveSession(conv, {
+          ...session,
+          pendingReplacementClarification: {
+            ...pending,
+            ownerChoice: { ...choice, invalidated: true },
+          },
+        });
+      if (anotherSelection) return false;
+      if (
+        number ||
+        direction ||
+        acknowledgement ||
+        signedChoice ||
+        matchingOwners.length ||
+        knownOption
+      ) {
+        await this.reply(
+          conv,
+          waId,
+          'Esa selección venció o cambió el carrito o la carta. ¿Cómo debe quedar el cambio completo y las compras?',
+        );
+        return true;
+      }
+      return false;
+    }
+    if (
+      isCartChargeQuestion(text) ||
+      isOrderBillRequest(text) ||
+      this.looksLikeCartRecapQuestion(text)
+    ) {
+      await this.reply(
+        conv,
+        waId,
+        this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)),
+      );
+      await this.showCartEditOwnerChoice(conv, waId, session, products);
+      return true;
+    }
+    const facts = this.mixedCatalogFacts(
+      text,
+      products,
+      products.filter((product) => ids.includes(product.id)),
+    );
+    if (
+      !number &&
+      !matchingOwners.length &&
+      facts?.products.length &&
+      !/\b(?:cambia|cambiame|quita|elimina|agrega|anade|ponme)\b/.test(said)
+    ) {
+      await this.reply(conv, waId, facts.body);
+      await this.showCartEditOwnerChoice(conv, waId, session, products);
+      return true;
+    }
+    if (!number) {
+      if (
+        direction ||
+        acknowledgement ||
+        signedChoice ||
+        matchingOwners.length ||
+        knownOption ||
+        /^-?\d+$/.test(choiceText)
+      ) {
+        await this.showCartEditOwnerChoice(
+          conv,
+          waId,
+          session,
+          products,
+          direction,
+        );
+        return true;
+      }
+      return false;
+    }
+    if (/[¿?]/.test(text)) {
+      await this.showCartEditOwnerChoice(conv, waId, session, products);
+      return true;
+    }
+    const cartLineIndex = choice.cartLineIndices[number - 1];
+    if (cartLineIndex === undefined) {
+      await this.showCartEditOwnerChoice(conv, waId, session, products);
+      return true;
+    }
+    const status = await this.businessService.getStatus();
+    if (!cfg.ignoreBusinessHours && !status.isOpen) {
+      await this.reply(
+        conv,
+        waId,
+        cfg.closedMessage ||
+          'Estamos cerrados en este momento. Puedes retomar la selección cuando abramos.',
+      );
+      return true;
+    }
+    const actions: AiOrderAction = {
+      ...(choice.tool === 'remove_item'
+        ? { removeCartLines: [{ productId: choice.productId, cartLineIndex }] }
+        : {
+            updateCartLines: [
+              {
+                productId: choice.productId,
+                cartLineIndex,
+                ...(choice.quantity !== undefined
+                  ? { quantity: choice.quantity }
+                  : {}),
+                ...(choice.note !== undefined ? { note: choice.note } : {}),
+              },
+            ],
+          }),
+      ...(choice.addItems.length
+        ? { addItems: structuredClone(choice.addItems) }
+        : {}),
+    };
+    const guarded = this.actionGuard.sanitize({
+      actions,
+      products,
+      cart: session.cart,
+      sourceText: choice.sourceText,
+      businessOpen: true,
+      allowMercadoPago: !!cfg.allowMercadoPago,
+      paymentMethods: cfg.paymentMethods,
+    });
+    const applied =
+      JSON.stringify(guarded.actions) !== JSON.stringify(actions)
+        ? undefined
+        : await this.applyActions(
+            conv,
+            { ...session, pendingReplacementClarification: undefined },
+            guarded.actions,
+            products,
+            cfg,
+            choice.sourceText,
+            undefined,
+            true,
+            choice.addItems.map((item) => item.productId),
+          );
+    if (!applied || applied.cartChangeError || applied.limitBlocked) {
+      await this.conversationService.saveSession(conv, {
+        ...session,
+        pendingReplacementClarification: {
+          ...pending,
+          ownerChoice: { ...choice, invalidated: true },
+        },
+      });
+      await this.reply(
+        conv,
+        waId,
+        'Falta revisar las opciones, disponibilidad o límites de ese cambio. ¿Cómo debe quedar el pedido completo?',
+      );
+      return true;
+    }
+    const state = applied.session.cart.length ? conv.state : 'building_cart';
+    await this.conversationService.saveSession(conv, applied.session, state);
+    await this.reply(
+      conv,
+      waId,
+      'Listo, apliqué el cambio' +
+        (choice.addItems.length ? ' y las compras pendientes' : '') +
+        ' ✅\n\n' +
+        this.formatCartOnly(
+          applied.session,
+          this.deliveryFeeFor(applied.session, cfg),
+        ) +
+        '\n\n' +
+        (this.formatInterruptedStepReminder(conv, applied.session) ||
+          this.formatContinueShoppingPrompt(applied.session)),
+    );
+    return true;
+  }
+
   private async tryHandleRejectedReplacementFollowup(
     conv: WhatsappConversation,
     waId: string,
@@ -17934,15 +18454,11 @@ export class WhatsappOrchestratorService {
       await this.conversationService.saveSession(conv, cleared);
       return false;
     }
-    const signature = JSON.stringify(session.cart);
-    if (pending.cartSignature !== signature)
-      await this.conversationService.saveSession(conv, {
-        ...session,
-        pendingReplacementClarification: { cartSignature: signature },
-      });
     const said = this.normalizeForMatch(text)
       .replace(/[.!]+$/, '')
       .trim();
+    if (pending.ownerChoice && this.hasCartEditOwnerConflict(session))
+      return this.tryHandleCartEditOwnerChoice(conv,waId,session,text,cfg);
     if (
       /^(?:no(?: gracias)?|mejor no|(?:cancela|cancelar|olvida) (?:ese|el) cambio|dejalo (?:igual|como estaba))$/.test(
         said,
@@ -17961,6 +18477,14 @@ export class WhatsappOrchestratorService {
       );
       return true;
     }
+    if (pending.ownerChoice)
+      return this.tryHandleCartEditOwnerChoice(conv, waId, session, text, cfg);
+    const signature = JSON.stringify(session.cart);
+    if (pending.cartSignature !== signature)
+      await this.conversationService.saveSession(conv, {
+        ...session,
+        pendingReplacementClarification: { cartSignature: signature },
+      });
     if (
       session.pendingCartReplacement?.mixedPurchase ||
       session.pendingCartReplacement?.mixedSourceRequest
@@ -20831,6 +21355,10 @@ export class WhatsappOrchestratorService {
   }
 
   private formatPendingCartEditReminder(session: WhatsappSessionData): string {
+    if (session.pendingReplacementClarification?.ownerChoice)
+      return session.pendingReplacementClarification.ownerChoice.invalidated
+        ? 'Reformula el cambio completo para continuar.'
+        : 'Elige el número de la variante pendiente para aplicar el cambio y las compras.';
     if (session.pendingReplacementClarification)
       return 'El cambio anterior sigue pendiente. Puedes escribir «cancela ese cambio» para conservar el carrito actual. ¿Cómo debe quedar el pedido completo, con cantidades y opciones?';
     const keys = CART_EDIT_SELECTION_KEYS.filter(key => !!session[key]);
@@ -27535,6 +28063,8 @@ export class WhatsappOrchestratorService {
       ...(agent.rejectedCartEdits || []),
     ];
     if (businessOpenForBot && rejectedCartChanges.length) {
+      if (await this.tryStartCartEditOwnerChoice(conv, msg.waId, session, agent,
+        originalText || text, products, cfg)) return true;
       await this.conversationService.saveSession(conv, {
         ...session,
         pendingReplacementClarification: {
