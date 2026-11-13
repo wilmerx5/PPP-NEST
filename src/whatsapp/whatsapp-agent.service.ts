@@ -55,6 +55,12 @@ type RejectedAttributeChoice = AttributeEdit & {
   reason?: 'unknown_attribute' | 'unknown_option' | 'ambiguous_cart_line';
 };
 
+type RejectedReplacement = {
+  productId: number;
+  cartLineIndex?: number;
+  reason: string;
+};
+
 export type AgentV1TurnResult = {
   reply: string;
   actions: AiOrderAction;
@@ -67,6 +73,7 @@ export type AgentV1TurnResult = {
   toolCalls: string[];
   /** Unresolved tool rejections remain visible to the final router guard. */
   rejectedAttributeChoices?: RejectedAttributeChoice[];
+  rejectedReplacements?: RejectedReplacement[];
   /** Per-turn tool outcomes. Rejected lines may name the missing token, never the customer message. */
   purchaseAttempts?: Array<{productId:number;accepted:boolean;reason?:string;uncoveredWords?:string[];requestedOption?:string}>;
   error?: string;
@@ -565,6 +572,8 @@ export class WhatsappAgentService {
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
     const rejectedAttributeChoices = new Map<string, RejectedAttributeChoice>();
+    const rejectedReplacements = new Map<string, RejectedReplacement>();
+    const acceptedReplacementKeys = new Set<string>();
     const purchaseAttempts: NonNullable<AgentV1TurnResult['purchaseAttempts']> = [];
     let retriedUnappliedOrder = false;
     let retriedIncompleteOrder = false;
@@ -607,6 +616,7 @@ Reglas:
 - "Tres en total, no tres más" modifica la cantidad existente con update_item; no suma tres unidades. "Arepas aparte" es una nota de empaque: conserva las arepas incluidas, no significa sin arepas ni una porción adicional.
 - Solo afirma que agregaste productos después de add_item exitoso. Una búsqueda no modifica el carrito. Ejecuta lo pedido antes de contestar.
 - Si una herramienta rechaza una llamada, lee el motivo y cambia la acción. No repitas la misma llamada rechazada. Conserva las acciones exitosas y pregunta solo lo que falta aclarar.
+- Si queda un replace_item rechazado, pide aclarar el pedido completo. Nest resolverá el reemplazo y las compras del turno como un conjunto antes de guardarlos.
 - "sí", "si por favor", "dale", "ok" y "listo" confirman solo cuando el mensaje no dice nada más. No son el nombre del cliente.
 - Si la frase trae otra intención (quitar, cambiar, agregar, corregir, preguntar), aunque empiece con "listo" o "ok" y aunque tenga typos: haz esa intención con el carrito y la carta. No confirmes el pedido y no pidas la dirección.
 - Ediciones del carrito: usa get_cart. cartLineIndex es el índice de esa línea (empieza en 0), estable durante este turno. Las líneas con el mismo SKU pueden tener distintos sabores/notas. Modifica SOLO la línea nombrada. No llames herramientas para las líneas que el cliente quiere conservar.
@@ -717,6 +727,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             toolCalls,
             purchaseAttempts,
             ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
+            ...(rejectedReplacements.size ? { rejectedReplacements: [...rejectedReplacements.values()] } : {}),
             error: `openai_${res.status}`,
           };
         }
@@ -736,6 +747,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             toolCalls,
             purchaseAttempts,
             ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
+            ...(rejectedReplacements.size ? { rejectedReplacements: [...rejectedReplacements.values()] } : {}),
             error: 'empty_message',
           };
         }
@@ -777,6 +789,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             return {reply:'Falta revisar '+missing.map(item=>item.product.name).join(', ')+'. Te ayudo a completar el pedido.',
               actions,toolCalls,purchaseAttempts,
               ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
+              ...(rejectedReplacements.size ? { rejectedReplacements: [...rejectedReplacements.values()] } : {}),
               error:'incomplete_multi_order'};
           }
           const claimsOrderAdded = /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)(?![\p{L}\p{N}_])/iu.test(reply);
@@ -798,6 +811,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             toolCalls,
             purchaseAttempts,
             ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
+            ...(rejectedReplacements.size ? { rejectedReplacements: [...rejectedReplacements.values()] } : {}),
             needsAttributeProductId,
             lookupPlacedOrder,
             lookupDeliveryTime,
@@ -858,6 +872,26 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               lookupDeliveryTime = true;
             },
           });
+          if (name === 'replace_item') {
+            const outcome = JSON.parse(toolResult) as { ok?: boolean; error?: string };
+            const productId = Number(args.productId);
+            const originalOwners = (input.cart || []).flatMap((line, index) => line.productId === productId ? [index] : []);
+            const cartLineIndex = typeof args.cartLineIndex === 'number' ? args.cartLineIndex
+              : originalOwners.length === 1 ? originalOwners[0] : undefined;
+            const key = `${productId}:${cartLineIndex}`;
+            if (!outcome.ok && outcome.error !== 'unit_option_turn_locked') {
+              // A repeated call after a successful removal uses a stale source index.
+              if (!(outcome.error === 'missing_or_ambiguous_cart_line' && acceptedReplacementKeys.has(key))) {
+                rejectedReplacements.set(key, { productId, cartLineIndex,
+                  reason: typeof outcome.error === 'string' && /^[a-z_]+$/.test(outcome.error)
+                    ? outcome.error : 'replacement_rejected' });
+              }
+            } else if (outcome.ok && (Number(args.newProductId) !== productId || args.quantity !== undefined ||
+              typeof args.note === 'string' || Array.isArray(args.attributes) && args.attributes.length > 0)) {
+              rejectedReplacements.delete(key);
+              acceptedReplacementKeys.add(key);
+            }
+          }
           if (name === 'add_item' && purchaseAttempts.length < 100) {
             const outcome = JSON.parse(toolResult) as {ok?:boolean;error?:string;uncoveredWords?:unknown;requestedOption?:unknown};
             const uncoveredWords = Array.isArray(outcome.uncoveredWords)
@@ -886,6 +920,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         toolCalls,
         purchaseAttempts,
         ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
+        ...(rejectedReplacements.size ? { rejectedReplacements: [...rejectedReplacements.values()] } : {}),
         needsAttributeProductId,
         lookupPlacedOrder,
         lookupDeliveryTime,
@@ -902,6 +937,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         toolCalls,
         purchaseAttempts,
         ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
+        ...(rejectedReplacements.size ? { rejectedReplacements: [...rejectedReplacements.values()] } : {}),
         error: name==='TimeoutError' ? 'openai_timeout' : 'exception',
       };
     }
@@ -986,6 +1022,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       byId: Map<number, WhatsappCatalogProduct>;
       actions: AiOrderAction;
       diagnosticOrigin?: 'model_call' | 'validation_probe';
+      stagedReplacement?: boolean;
       onAttributeChoice?: (edit: RejectedAttributeChoice, accepted: boolean) => void;
       /** Replacement inherits the old line's units unless the caller explicitly changed them. */
       preserveReplacementQuantity?: boolean;
@@ -1002,6 +1039,21 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
     if (name !== 'set_unit_attributes' && !readOnly.includes(name) && this.unitOptionAttempts.has(ctx.actions)) {
       return JSON.stringify({ ok: false, error: 'unit_option_turn_locked',
         hint: 'No amplíes el cambio a toda la línea ni mezcles otra mutación. Consulta get_cart y explica lo aplicado o pide aclaración.' });
+    }
+    if (name === 'replace_item' && !ctx.stagedReplacement) {
+      const stagedActions = structuredClone(ctx.actions);
+      const acceptedChoices: RejectedAttributeChoice[] = [];
+      const result = this.executeTool(name, args, { ...ctx, actions: stagedActions, stagedReplacement: true,
+        onAttributeChoice: (edit, accepted) => {
+          if (accepted) acceptedChoices.push(edit);
+          else ctx.onAttributeChoice?.(edit, false);
+        } });
+      if ((JSON.parse(result) as { ok?: boolean }).ok) {
+        for (const key of Object.keys(ctx.actions) as Array<keyof AiOrderAction>) delete ctx.actions[key];
+        Object.assign(ctx.actions, stagedActions);
+        for (const edit of acceptedChoices) ctx.onAttributeChoice?.(edit, true);
+      }
+      return result;
     }
     switch (name) {
       case 'search_menu': {
@@ -1890,11 +1942,15 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           if (Number(args.newProductId) === productId) {
             const choices = Array.isArray(args.attributes) ? args.attributes as Array<{attributeName:string;attributeValue:string}> : [];
             const product = ctx.byId.get(productId)!;
-            if (choices.some(choice=> {
+            if (!product || choices.some(choice=> {
+              if (!choice || typeof choice.attributeName !== 'string' || typeof choice.attributeValue !== 'string') return true;
               const attr=product.attributes?.find(a=>a.attributeName.toLowerCase()===String(choice.attributeName).toLowerCase());
               return !attr || !this.catalogService.matchAttributeOptionValue(String(choice.attributeValue),attr.options);
             })) return JSON.stringify({ok:false,error:'invalid_attribute_option'});
-            for (const choice of choices) this.executeTool('set_attribute',{productId,cartLineIndex,...choice},ctx);
+            for (const choice of choices) {
+              const result = this.executeTool('set_attribute', {productId,cartLineIndex,...choice}, ctx);
+              if (!(JSON.parse(result) as {ok?:boolean}).ok) return result;
+            }
             if (args.quantity !== undefined || typeof args.note==='string') {
               const edit=JSON.parse(this.executeTool('update_item',{productId,cartLineIndex,quantity:args.quantity,note:args.note},ctx));
               if(!edit.ok)return JSON.stringify(edit);

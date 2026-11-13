@@ -8289,7 +8289,16 @@ export class WhatsappOrchestratorService {
     sourceText = '',
     decision?:TurnDecisionFrame,
     validatedToolActions = false,
-  ): Promise<{ session: WhatsappSessionData; limitBlocked?: CartLimitCheck; unitOptionError?: string }> {
+    replacementProductIds: number[] = [],
+  ): Promise<{ session: WhatsappSessionData; limitBlocked?: CartLimitCheck; unitOptionError?: string; cartChangeError?: string }> {
+    if (replacementProductIds.length) {
+      const plan = prepareValidatedPurchases({ additions: actions?.addItems || [], products, sourceText,
+        forcedQty: sourceText ? this.resolveOrderQuantity(session,sourceText) : 1, validatedToolActions,
+        catalog: this.catalogService, resolveQuantity: evidence => this.resolveAddItemQuantity(evidence) });
+      if (replacementProductIds.some(id => !plan.lines.some(line => line.product.id === id))) {
+        return { session, cartChangeError: 'replacement_purchase_rejected' };
+      }
+    }
     if (!actions) return { session };
     if (actions.updateUnitOptions !== undefined) {
       const plan = prepareUnitOptionActions(session.cart, actions, products, this.catalogService);
@@ -8420,6 +8429,7 @@ export class WhatsappOrchestratorService {
           { sourceText: itemSource },
         );
         if (attempt.missingAttributes) {
+          if (replacementProductIds.length) return {session, cartChangeError: 'replacement_options_incomplete'};
           deferredNeedsAttrs.push({
             segment: sourceText || product.name,
             ...this.toPendingMultiProduct(product),
@@ -8434,7 +8444,7 @@ export class WhatsappOrchestratorService {
           continue;
         }
         if (attempt.blocked) {
-          return { session: next, limitBlocked: attempt.blocked };
+          return { session: replacementProductIds.length ? session : next, limitBlocked: attempt.blocked };
         }
         next = this.clearQuantityHint(attempt.session);
       }
@@ -18022,12 +18032,16 @@ export class WhatsappOrchestratorService {
       if (!source) return unchanged('No encontré el plato original en la carta actual.');
       const destination=(replacement?.[2] || pronoun![1]).replace(/^(?:el|la|los|las) /,'');
       const exact=products.filter(p=>this.normalizeForMatch(p.name)===destination);
+      const configured = !exact.length ? this.parseMixedPurchaseList('un '+destination,products) : null;
+      const targetWithOptions = configured?.length===1 && !configured[0].candidates &&
+        configured[0].attributes.length && !configured[0].note ? configured[0] : undefined;
       const style=this.catalogService.extractRequestedProteinStyle(destination);
       const hint=this.catalogService.extractVariantPreferenceHint(destination) || (/\bnormal\b/.test(destination) ? 'solo' : null);
       if (exact.length>1) return unchanged('Hay varios productos con ese nombre de reemplazo. Indica su código y repite ambos cambios.');
       const attributeChange=!exact.length && !hint && style
         ? this.catalogService.applyCookingStyleToAttributes(source,original.attributes || [],style) : null;
       if (exact.length===1) target=exact[0];
+      else if (targetWithOptions) target=targetWithOptions.product;
       else if (hint) {
         const family=this.catalogService.getConfiguredVariantFamily(source,products);
         const candidates=family?.variants.filter(p=>(hint==='combo' ? p.comboBaseProductId!=null : p.comboBaseProductId==null) &&
@@ -18036,7 +18050,8 @@ export class WhatsappOrchestratorService {
       } else if (style) target=attributeChange ? source : this.catalogService.findCookingStyleSibling(source,products,style) || undefined;
       if (!target || target.availableNow===false) return unchanged('No encontré un único reemplazo disponible para ese plato.');
       if (!exact.length) {
-        const words=this.normalizeForMatch([target.name,attributeChange?.attributeValue].filter(Boolean).join(' ')).split(' ');
+        const words=this.normalizeForMatch([target.name,attributeChange?.attributeValue,
+          ...(targetWithOptions?.attributes || []).map(choice=>choice.attributeName+' '+choice.attributeValue)].filter(Boolean).join(' ')).split(' ');
         const requestedPortion=this.catalogService.detectPortionHint(destination);
         const matchingPortion=requestedPortion && requestedPortion===this.catalogService.detectProductPortionSize(target.name);
         if (!destination.split(' ').every(word=>['el','la','a','por','con','en','normal','solo'].includes(word) || words.includes(word) ||
@@ -18045,6 +18060,10 @@ export class WhatsappOrchestratorService {
       }
       selectedTarget=attributeChange?.attributes || (original.attributes || []).filter(choice=>target!.attributes?.some(attr=>
         attr.attributeName===choice.attributeName && attr.options.includes(choice.attributeValue)));
+      if (targetWithOptions) selectedTarget=[
+        ...selectedTarget.filter(old=>!targetWithOptions.attributes.some(choice=>choice.attributeName===old.attributeName)),
+        ...targetWithOptions.attributes,
+      ];
       purchases=this.parseMixedPurchaseList(request![2],products) || [];
       if (!purchases.length) return unchanged('No identifiqué todas las compras. Repite los cambios con cantidades enteras entre 1 y 30 y los nombres completos de los productos y sus opciones.');
     }
@@ -27404,6 +27423,18 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    if (businessOpenForBot && agent.rejectedReplacements?.length) {
+      const explanations: Record<string,string> = {
+        invalid_quantity: 'No pude validar la cantidad del cambio.',
+        invalid_attribute_option: 'Las opciones del reemplazo no coinciden con la carta.',
+        missing_or_ambiguous_cart_line: 'No pude identificar una única línea para reemplazar.',
+      };
+      const explanation = explanations[agent.rejectedReplacements[0].reason] ||
+        'No pude validar el producto de reemplazo con la carta actual.';
+      await this.reply(conv, msg.waId, explanation+' ¿Cómo debe quedar el pedido completo, con cantidades y opciones?');
+      return true;
+    }
+
     if (params.distributedPurchase) {
       const contract = params.distributedPurchase;
       const additions = agent.actions?.addItems || [];
@@ -27985,7 +28016,13 @@ export class WhatsappOrchestratorService {
       text,
       params.decision,
       validatedToolActions,
+      agent.toolCalls?.includes('replace_item') && agent.actions.removeCartLines?.length
+        ? (agent.actions.addItems || []).map(item => item.productId) : [],
     );
+    if (applied.cartChangeError) {
+      await this.reply(conv,msg.waId,'Necesito aclarar el cambio y las compras antes de aplicarlos. ¿Cómo debe quedar el pedido completo?');
+      return true;
+    }
     session = applied.session;
     if (sameSkuRejections.length) {
       session = {...session, recentUnavailableOrder: {
