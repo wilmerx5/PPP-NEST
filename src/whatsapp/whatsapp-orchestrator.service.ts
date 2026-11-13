@@ -27332,6 +27332,15 @@ export class WhatsappOrchestratorService {
     });
     if (agent.error) observeWhatsappAgentError();
 
+    if (businessOpenForBot && agent.rejectedAttributeChoices?.length) {
+      const rejected = { updateAttributes: agent.rejectedAttributeChoices };
+      if (await this.tryClarifyUnchosenAttribute(conv, msg.waId, session,
+        originalText || text, rejected, products, cfg)) return true;
+      await this.reply(conv, msg.waId,
+        '¿Qué cambio quieres hacer en tu pedido?');
+      return true;
+    }
+
     if (params.distributedPurchase) {
       const contract = params.distributedPurchase;
       const additions = agent.actions?.addItems || [];

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
 import { isFailedAdditionQuestion } from './whatsapp-session-intents';
 import {splitIntensityPreference} from './whatsapp-kitchen-description';
 import { hasExplicitUnitOptionSource } from './whatsapp-unit-option-source';
@@ -47,6 +48,8 @@ export type AgentV1TurnInput = {
   }>;
 };
 
+type AttributeEdit = NonNullable<AiOrderAction['updateAttributes']>[number];
+
 export type AgentV1TurnResult = {
   reply: string;
   actions: AiOrderAction;
@@ -57,6 +60,8 @@ export type AgentV1TurnResult = {
   /** Pregunta cuánto tarda un domicilio en general. Nest usa el tiempo de la config. */
   lookupDeliveryTime?: boolean;
   toolCalls: string[];
+  /** Unresolved tool rejections remain visible to the final router guard. */
+  rejectedAttributeChoices?: AttributeEdit[];
   /** Per-turn tool outcomes. Rejected lines may name the missing token, never the customer message. */
   purchaseAttempts?: Array<{productId:number;accepted:boolean;reason?:string;uncoveredWords?:string[];requestedOption?:string}>;
   error?: string;
@@ -303,6 +308,7 @@ export class WhatsappAgentService {
   constructor(
     private readonly settingsService: WhatsappSettingsService,
     private readonly catalogService: WhatsappCatalogService,
+    private readonly actionGuard: WhatsappActionGuardService = new WhatsappActionGuardService(catalogService),
   ) {}
 
   async runTurn(input: AgentV1TurnInput): Promise<AgentV1TurnResult> {
@@ -553,6 +559,7 @@ export class WhatsappAgentService {
     }
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
+    const rejectedAttributeChoices = new Map<string, AttributeEdit>();
     const purchaseAttempts: NonNullable<AgentV1TurnResult['purchaseAttempts']> = [];
     let retriedUnappliedOrder = false;
     let retriedIncompleteOrder = false;
@@ -564,6 +571,7 @@ export class WhatsappAgentService {
 
 Eres el agente de pedidos por WhatsApp de *${input.brandName}*.
 NO inventes productos ni precios. Usa tools para buscar y modificar el carrito.
+Si una herramienta devuelve ok=false, explica brevemente el motivo y usa sus opciones para pedir una sola aclaración. Confirma únicamente los cambios aceptados. Una opción rechazada requiere que el cliente elija antes de volver a intentarla.
 Reglas:
 - Siempre search_menu antes de add_item si no tienes el productId. Nunca deduzcas IDs sumando uno ni por el orden de los productos. Antes de replace_item busca SIEMPRE el producto nuevo: productId es el anterior y newProductId es el resultado de esa búsqueda.
 - Pedido con VARIOS platos ("3 mojarras, 2 costillas y 3 pollos fritos" / "arroz chino con medio pollo y ajiaco"):
@@ -703,6 +711,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             actions,
             toolCalls,
             purchaseAttempts,
+            ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
             error: `openai_${res.status}`,
           };
         }
@@ -721,6 +730,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             actions,
             toolCalls,
             purchaseAttempts,
+            ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
             error: 'empty_message',
           };
         }
@@ -760,7 +770,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               continue;
             }
             return {reply:'Falta revisar '+missing.map(item=>item.product.name).join(', ')+'. Te ayudo a completar el pedido.',
-              actions,toolCalls,purchaseAttempts,error:'incomplete_multi_order'};
+              actions,toolCalls,purchaseAttempts,
+              ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
+              error:'incomplete_multi_order'};
           }
           const claimsOrderAdded = /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)(?![\p{L}\p{N}_])/iu.test(reply);
           if (!retriedUnappliedOrder && !actions.addItems?.length && claimsOrderAdded &&
@@ -780,6 +792,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             actions,
             toolCalls,
             purchaseAttempts,
+            ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
             needsAttributeProductId,
             lookupPlacedOrder,
             lookupDeliveryTime,
@@ -799,6 +812,11 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           }
           const toolResult = this.executeTool(name, args, {
             diagnosticOrigin:'model_call',
+            onAttributeChoice: (edit, accepted) => {
+              const key = `${edit.productId}:${edit.cartLineIndex}:${edit.attributeName.toLowerCase()}`;
+              if (accepted) rejectedAttributeChoices.delete(key);
+              else rejectedAttributeChoices.set(key, edit);
+            },
             products: input.products,
             byId,
             actions,
@@ -843,6 +861,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         actions,
         toolCalls,
         purchaseAttempts,
+        ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
         needsAttributeProductId,
         lookupPlacedOrder,
         lookupDeliveryTime,
@@ -858,6 +877,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         actions,
         toolCalls,
         purchaseAttempts,
+        ...(rejectedAttributeChoices.size ? { rejectedAttributeChoices: [...rejectedAttributeChoices.values()] } : {}),
         error: name==='TimeoutError' ? 'openai_timeout' : 'exception',
       };
     }
@@ -942,6 +962,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       byId: Map<number, WhatsappCatalogProduct>;
       actions: AiOrderAction;
       diagnosticOrigin?: 'model_call' | 'validation_probe';
+      onAttributeChoice?: (edit: AttributeEdit, accepted: boolean) => void;
       /** Replacement inherits the old line's units unless the caller explicitly changed them. */
       preserveReplacementQuantity?: boolean;
       verifiedDistributedProductId?: number;
@@ -1968,11 +1989,42 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         if (!line) {
           return JSON.stringify({ ok: false, error: 'missing_or_ambiguous_cart_line', hint: 'Usa get_cart y el cartLineIndex de la línea solicitada' });
         }
+        const cartLineIndex = line.cartLineIndex;
+        const update = {productId,cartLineIndex,attributeName:attr.attributeName,attributeValue:matched};
+        if (ctx.diagnosticOrigin === 'model_call' && line.pendingAddIndex < 0) {
+          const guarded = this.actionGuard.sanitize({
+            actions: { updateAttributes: [{
+              productId, cartLineIndex: line.cartLineIndex,
+              attributeName: attr.attributeName, attributeValue: matched,
+            }] },
+            products: ctx.products,
+            cart: (ctx.cart || []).map(item => ({
+              ...item, quantity: item.quantity || 1,
+              code: ctx.byId.get(item.productId)?.code || 0,
+              unitPrice: ctx.byId.get(item.productId)?.price || 0,
+            })),
+            sourceText: ctx.userMessage,
+            businessOpen: true,
+            allowMercadoPago: false,
+          });
+          if (guarded.requiresOptionChoice) {
+            ctx.onAttributeChoice?.(update, false);
+            return JSON.stringify({
+              ok: false,
+              error: 'missing_explicit_option_choice',
+              productId,
+              cartLineIndex: line.cartLineIndex,
+              attributeName: attr.attributeName,
+              options: attr.options,
+              hint: 'Falta que el cliente elija la opción. Pregunta cuál prefiere de esta lista y conserva la línea actual.',
+            });
+          }
+        }
+        ctx.onAttributeChoice?.(update, true);
         if (line.attributes?.some(a => a.attributeName.toLowerCase() === attr.attributeName.toLowerCase() && a.attributeValue.toLowerCase() === matched.toLowerCase())) {
           return JSON.stringify({ok:true,unchanged:true,hint:'La línea ya tiene esa opción. No hay ningún cambio.'});
         }
-        const cartLineIndex = line.cartLineIndex;
-        const update = {productId,cartLineIndex,attributeName:attr.attributeName,attributeValue:matched};
+
         if (line.pendingAddIndex >= 0) {
           const pending = ctx.actions.addItems![line.pendingAddIndex];
           const attributes = pending.attributes || [];
