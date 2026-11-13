@@ -25,7 +25,16 @@ export function hasExplicitCartAttributeOwner(
   const source =
     edit.cartLineIndex === undefined ? undefined : cart[edit.cartLineIndex];
   if (!source || source.productId !== edit.productId) return false;
-  const message = normalize(text);
+  // Delivery numbering and requests to avoid an extra purchase do not select a cart row.
+  const message = normalize(text)
+    .replace(
+      /\bno (?:me )?(?:agregues|anadas|sumes) (?:otra?|mas|ninguna?)\b.*$/,
+      '',
+    )
+    .split(
+      /\b(?:direccion|calle|cll|carrera|cra|diagonal|dg|transversal|tv|casa|manzana|bloque|torre|apto|apartamento)\s+(?:numero\s+)?(?=\d)|\bdireccion\b/,
+    )[0]
+    .trim();
   if (
     cart.length > 1 &&
     /\b(?:no|excepto|deja|dejes|conserva|conserves)\b/.test(message)
@@ -34,7 +43,7 @@ export function hasExplicitCartAttributeOwner(
   const named = new Set(
     cart
       .filter((line) =>
-        catalog.productFullyNamedIn(text, [
+        catalog.productFullyNamedIn(message, [
           {
             id: line.productId,
             code: line.code,

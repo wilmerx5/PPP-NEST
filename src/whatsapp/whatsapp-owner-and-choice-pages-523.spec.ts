@@ -139,6 +139,13 @@ for (const distinct of [false, true])
     });
 
 for (const [distinct, index, source] of [
+  [false, 0, 'Cambia la bebida de la fila 1 a Pepsi, no agregues otra bebida'],
+  [
+    true,
+    0,
+    'Cambia la bebida del Combo De Tofu a Pepsi, no agregues otra bebida',
+  ],
+  [false, 0, 'Cambia la bebida de la fila 1 a Pepsi para la calle 6 número 2'],
   [
     false,
     1,
@@ -364,6 +371,8 @@ for (const distinct of [false, true])
 
 for (const source of [
   'Necesito ajustar la bebida a Pepsi para este pedido',
+  'Necesito cambiar la bebida a Pepsi para la casa número 2',
+  'Necesito cambiar la bebida a Pepsi para la calle 6 número 2',
   'Cambia la bebida del de Pepsi a Pepsi para este pedido',
   'No cambies la fila 1, deja las bebidas Pepsi para este pedido',
 ])
@@ -386,7 +395,9 @@ for (const source of [
                   name: 'set_attribute',
                   arguments: JSON.stringify({
                     productId: 5231,
-                    cartLineIndex: 0,
+                    cartLineIndex: /para la (?:calle|casa)/.test(source)
+                      ? 1
+                      : 0,
                     attributeName: 'Bebida',
                     attributeValue: 'Pepsi',
                   }),
