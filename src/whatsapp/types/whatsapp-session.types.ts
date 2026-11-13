@@ -241,6 +241,8 @@ export type WhatsappSessionData = {
     createdAt: number;
     note: string;
   };
+  /** A rejected replacement still needs a complete request or an explicit decline. */
+  pendingReplacementClarification?: { cartSignature: string };
   pendingCartReplacement?: {
     /** Cart-line selection for an existing dish conversion, not a new purchase. */
     variantRequest?: string;
