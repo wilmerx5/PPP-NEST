@@ -1,0 +1,238 @@
+{
+  "batch": 519,
+  "sourceCommit": "29286dcc96bc9cfdb13d06b78798180f4a3c03c0",
+  "baseProductionCommit": "9a0bc664f7ce75b4ebc146c8ec929049117aadad",
+  "stageParent": "ad6cf702",
+  "runtimeChanges": "Promote pending WhatsApp corrections from tested staging while preserving all production integrations. No new WhatsApp runtime code relative to staging.",
+  "relatedTestsPassed": 394,
+  "relatedSuitesPassed": 9,
+  "isolatedDatabaseTestsPassed": 11,
+  "isolatedDatabaseSuitesPassed": 2,
+  "typescriptGeneralPassed": true,
+  "candidateCompiledControls": 445,
+  "realAgentDevelopmentConversation": "docs/whatsapp-pilot-live-519.json",
+  "liveRequests": 7,
+  "successfulLiveResponses": 7,
+  "mockedLiveClosures": 1,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "budgetRemaining": 4,
+  "sourceFiles": 832,
+  "sourceManifestSha256": "b6bd43ee7d512f1d30370c1b4de49b503d350566847d5d96ce6024ee2cf53a5e",
+  "candidateImage": "sha256:b467238558ca576d0f40946b0e427bc60ab29926e407737ad8457bf5262663be",
+  "developmentFindings": [
+    "The first local rehearsal preparation used an absolute fixture path with a relative-path runner. It stopped before inference, and the runner invocation was corrected.",
+    "The first disposable database setup raced startup and the following invocation skipped gated tests. No skip is credited. Explicit schema setup and the eleven passing database tests precede this final global run.",
+    "Production catalog smoke initially failed before router execution in 29 cases because its fixture selected Porcion with an accent-sensitive regex. Product is Porción De Papa Francesa. Normalizing accents in the temporary probe resolved preparation and all 31 production-catalog scenarios passed. Runtime sources were unchanged."
+  ],
+  "limits": [
+    "One real-agent development conversation with the production catalog. This is not a traffic success-rate estimate.",
+    "The fallback clarification asks for the product even when only one cart line identifies it.",
+    "Meta, persistence, route quoting, and order creation are simulated in live-model rehearsal."
+  ],
+  "integrationChecks": {
+    "whatsappSourcesEqualValidatedStaging": true,
+    "productionBoldCodePreserved": true,
+    "productionMigrationsPreserved": true
+  },
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51105,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 595,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "database": {
+      "success": true,
+      "numPassedTests": 11,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 51132,
+    "totalPassedSuites": 599
+  },
+  "stagingDeployment": {
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "29286dcc96bc9cfdb13d06b78798180f4a3c03c0",
+    "image": "sha256:02e320c4832be39ba1a3db41c6e738565b2c1ea85ea0c76d5d6246c05aa1e30b",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.57,
+        "heapTotal": 65.03,
+        "rss": 126.86
+      },
+      "timestamp": "2026-11-13T01:58:36.473Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.78,
+        "heapTotal": 65.03,
+        "rss": 127.24
+      },
+      "timestamp": "2026-11-13T01:58:36.721Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-13T01:59:13.444446+00:00",
+    "backup": "/root/ppp-manual-release/20261113T015715Z-staging-519"
+  },
+  "stageCatalogJourneysPassed": 31,
+  "productionDeployment": {
+    "environment": "production",
+    "head": "29286dcc96bc9cfdb13d06b78798180f4a3c03c0",
+    "image": "sha256:92841b9afafea6e18901b3ec3c3555c1d35a134f9351a7f2be946495ce483bfa",
+    "running": true,
+    "restarts": 0,
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 65.15,
+        "heapTotal": 89.15,
+        "rss": 149.77
+      },
+      "timestamp": "2026-11-13T02:01:19.894Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 59.36,
+        "heapTotal": 90.15,
+        "rss": 150.99
+      },
+      "timestamp": "2026-11-13T02:01:20.145Z"
+    },
+    "models": {
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledControls": 445,
+    "smokes": {
+      "candidate-518": {
+        "ok": true,
+        "compiledInquiryOptionTests": 66,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "running-518": {
+        "ok": true,
+        "compiledInquiryOptionTests": 66,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "candidate-517": {
+        "ok": true,
+        "compiledMultiPurchaseTests": 136,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "running-517": {
+        "ok": true,
+        "compiledMultiPurchaseTests": 136,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "candidate-516": {
+        "ok": true,
+        "compiledMixedReplacementTests": 163,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "running-516": {
+        "ok": true,
+        "compiledMixedReplacementTests": 163,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "candidate-515": {
+        "ok": true,
+        "compiledReplacementJourneys": 80,
+        "mockedClosures": 80,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "running-515": {
+        "ok": true,
+        "compiledReplacementJourneys": 80,
+        "mockedClosures": 80,
+        "externalOrders": 0,
+        "paidInference": 0
+      }
+    },
+    "stagingRuntimePreserved": true,
+    "backup": "/root/ppp-manual-release/20261113T015940Z-production-519",
+    "checkedAt": "2026-11-13T02:01:50.074718+00:00"
+  },
+  "productionCatalogJourneysPassed": 31,
+  "productionCatalogSnapshotSha256": "84a98535d23b5d1113ab25b3648b4fbdcdd9fb326464ffb6cb1ad59474df0124",
+  "validationConfigSha256": "5e90235a8a1e7e7c999e9ac9ffe940c98c9328aaa7aece482ab435f3c06f4cf7",
+  "date": "2026-11-13T02:04:00.063972+00:00",
+  "kamppoMigrationPending": true,
+  "nextPriorities": [
+    "Clarify the missing attribute value directly when a single existing cart line already identifies the product.",
+    "Return source-selection validation failures to the agent tool loop so the model receives actual rejection feedback.",
+    "Record route, model invocation, guarded mutation and pending decision for every inbound turn to measure failures and completion rates."
+  ]
+}
