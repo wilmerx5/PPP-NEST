@@ -59,7 +59,15 @@ export type WhatsappPendingAttribute = {
 
 export type WhatsappSessionData = {
   pendingCatalogInquiry?: {productIds:number[];createdAt:number};
-  pendingCartOptionChoice?: {cartSignature:string;createdAt:number;candidates:Array<{cartIndex:number;attributeName:string}>;selected?:number;catalogFingerprint?:string};
+  pendingCartOptionChoice?: {
+    cartSignature: string;
+    createdAt: number;
+    candidates: Array<{cartIndex:number;attributeName:string}>;
+    selected?: number;
+    catalogFingerprint?: string;
+    ownerPageStart?: number;
+    optionPageStart?: number;
+  };
   /** Verified named destination still needs its internal delivery point. */
   pendingMappedDeliveryPoint?: boolean;
   /** Nearby matching map destinations; an explicit choice is required before checkout. */

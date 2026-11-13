@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { hasExplicitCartAttributeOwner } from './whatsapp-cart-attribute-owner';
 import { observeWhatsappGuardRejection } from './whatsapp-turn-observation';
 import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
 import { isFailedAdditionQuestion } from './whatsapp-session-intents';
@@ -834,10 +835,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                   const snapshot = (input.cart || []).map(line => ({ ...line,
                     quantity: line.quantity || 1, code: byId.get(line.productId)?.code || 0,
                     unitPrice: byId.get(line.productId)?.price || 0 }));
-                  if (edit.cartLineIndex === undefined || !hasExplicitUnitOptionSource(input.userMessage, snapshot, {
-                    productId: edit.productId, cartLineIndex: edit.cartLineIndex, affectedQuantity: 1,
-                    attributes: [{ attributeName: edit.attributeName, attributeValue: edit.attributeValue }],
-                  })) continue;
+                  if (!hasExplicitCartAttributeOwner(input.userMessage, snapshot, edit,
+                    input.products, this.catalogService)) continue;
                 }
                 rejectedAttributeChoices.delete(rejectedKey);
               }
@@ -1985,9 +1984,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           return JSON.stringify({ ok: false, error: `productId ${productId} no existe` });
         }
         const reject = (reason: NonNullable<RejectedAttributeChoice['reason']>,
-          receipt: Record<string, unknown>, field = attributeName): string => {
+          receipt: Record<string, unknown>, field = attributeName, recordGuard = true): string => {
           if (ctx.diagnosticOrigin === 'model_call' && ctx.cart?.some(line => line.productId === productId)) {
-            observeWhatsappGuardRejection();
+            if (recordGuard) observeWhatsappGuardRejection();
             ctx.onAttributeChoice?.({ productId, attributeName: field, attributeValue, reason,
               ...(reason !== 'ambiguous_cart_line' && Number.isInteger(args.cartLineIndex)
                 ? { cartLineIndex: Number(args.cartLineIndex) } : {}),
@@ -2028,21 +2027,26 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         const cartLineIndex = line.cartLineIndex;
         const update = {productId,cartLineIndex,attributeName:attr.attributeName,attributeValue:matched};
         if (ctx.diagnosticOrigin === 'model_call' && line.pendingAddIndex < 0) {
+          const snapshot = (ctx.cart || []).map(item => ({
+            ...item, quantity: item.quantity || 1,
+            code: ctx.byId.get(item.productId)?.code || 0,
+            unitPrice: ctx.byId.get(item.productId)?.price || 0,
+          }));
           const guarded = this.actionGuard.sanitize({
             actions: { updateAttributes: [{
               productId, cartLineIndex: line.cartLineIndex,
               attributeName: attr.attributeName, attributeValue: matched,
             }] },
             products: ctx.products,
-            cart: (ctx.cart || []).map(item => ({
-              ...item, quantity: item.quantity || 1,
-              code: ctx.byId.get(item.productId)?.code || 0,
-              unitPrice: ctx.byId.get(item.productId)?.price || 0,
-            })),
+            cart: snapshot,
             sourceText: ctx.userMessage,
             businessOpen: true,
             allowMercadoPago: false,
           });
+          if (guarded.requiresCartOwnerChoice) {
+            return reject('ambiguous_cart_line', { ok: false, error: 'missing_or_ambiguous_cart_line',
+              hint: 'El número de línea propuesto necesita una referencia del cliente. Pregunta cuál línea quiere cambiar.' }, attr.attributeName, false);
+          }
           if (guarded.requiresOptionChoice) {
             ctx.onAttributeChoice?.(update, false);
             return JSON.stringify({

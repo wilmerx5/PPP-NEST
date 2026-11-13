@@ -1,3 +1,4 @@
+import { hasExplicitCartAttributeOwner } from './whatsapp-cart-attribute-owner';
 import { observeWhatsappGuardRejection } from './whatsapp-turn-observation';
 import { Injectable, Logger } from '@nestjs/common';
 import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
@@ -17,6 +18,7 @@ export type GuardResult = {
   warnings: string[];
   blockedClosed: boolean;
   requiresOptionChoice?: boolean;
+  requiresCartOwnerChoice?: boolean;
 };
 
 @Injectable()
@@ -75,6 +77,14 @@ export class WhatsappActionGuardService {
         observeWhatsappGuardRejection(true);
         return {actions:undefined,warnings:['No se cambió ninguna opción: falta una elección explícita del cliente. El pedido sigue igual.'],blockedClosed:false,requiresOptionChoice:true};
       }
+    }
+
+    if (params.sourceText !== undefined && (params.cart?.length || 0) > 0 &&
+      Array.isArray(params.actions.updateAttributes) && params.actions.updateAttributes.some(edit => !hasExplicitCartAttributeOwner(params.sourceText!,
+        params.cart!, edit, params.products, this.catalogService))) {
+      observeWhatsappGuardRejection();
+      return { actions: undefined, warnings: ['Falta identificar la línea que el cliente quiere cambiar.'],
+        blockedClosed: false, requiresOptionChoice: true, requiresCartOwnerChoice: true };
     }
 
     // Never keep valid fragments of a rejected grouped edit, including purchases.
