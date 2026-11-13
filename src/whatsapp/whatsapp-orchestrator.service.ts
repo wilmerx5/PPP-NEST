@@ -27530,7 +27530,11 @@ export class WhatsappOrchestratorService {
     });
     if (agent.error) observeWhatsappAgentError();
 
-    if (businessOpenForBot && agent.rejectedReplacements?.length) {
+    const rejectedCartChanges = [
+      ...(agent.rejectedReplacements || []),
+      ...(agent.rejectedCartEdits || []),
+    ];
+    if (businessOpenForBot && rejectedCartChanges.length) {
       await this.conversationService.saveSession(conv, {
         ...session,
         pendingReplacementClarification: {
@@ -27540,10 +27544,12 @@ export class WhatsappOrchestratorService {
       const explanations: Record<string, string> = {
         missing_explicit_option_choice: 'Falta elegir una opción del reemplazo.',
         invalid_quantity: 'No pude validar la cantidad del cambio.',
+        missing_change: 'Falta indicar la cantidad o la nota que quieres cambiar.',
+        customer_requested_preserve_line: 'El cambio propuesto retiraba una línea que pediste conservar.',
         invalid_attribute_option: 'Las opciones del reemplazo no coinciden con la carta.',
-        missing_or_ambiguous_cart_line: 'No pude identificar una única línea para reemplazar.',
+        missing_or_ambiguous_cart_line: 'No pude identificar una única línea para hacer ese cambio.',
       };
-      const explanation = explanations[agent.rejectedReplacements[0].reason] ||
+      const explanation = explanations[rejectedCartChanges[0].reason] ||
         'No pude validar el producto de reemplazo con la carta actual.';
       await this.reply(
         conv,
