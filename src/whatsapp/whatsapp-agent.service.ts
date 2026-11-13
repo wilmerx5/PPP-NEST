@@ -2020,11 +2020,14 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             });
           }
         }
-        ctx.onAttributeChoice?.(update, true);
         if (line.attributes?.some(a => a.attributeName.toLowerCase() === attr.attributeName.toLowerCase() && a.attributeValue.toLowerCase() === matched.toLowerCase())) {
+          if (ctx.onAttributeChoice && this.catalogService.pickAttributeOptionFromText(ctx.userMessage || '', {
+            attributeName: attr.attributeName, options: [matched],
+          }) === matched) ctx.onAttributeChoice(update, true);
           return JSON.stringify({ok:true,unchanged:true,hint:'La línea ya tiene esa opción. No hay ningún cambio.'});
         }
 
+        ctx.onAttributeChoice?.(update, true);
         if (line.pendingAddIndex >= 0) {
           const pending = ctx.actions.addItems![line.pendingAddIndex];
           const attributes = pending.attributes || [];

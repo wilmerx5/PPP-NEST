@@ -516,3 +516,48 @@ test('a different accepted field leaves the drink rejection unresolved', async (
     },
   ]);
 });
+
+for (const explicit of [false, true])
+  test(`returning to the original value resolves rejection only with explicit choice ${explicit}`, async () => {
+    const agent = service();
+    let requests = 0;
+    jest.spyOn(global, 'fetch').mockImplementation(async () => {
+      requests++;
+      return requests < 3
+        ? response({
+            content: null,
+            tool_calls: [
+              call(
+                'set_attribute',
+                {
+                  productId: 5211,
+                  cartLineIndex: 0,
+                  attributeName: 'Bebida',
+                  attributeValue: requests === 1 ? 'Manzana' : 'Colombiana',
+                },
+                `choice-${requests}`,
+              ),
+            ],
+          })
+        : response({ content: '¿Cuál bebida prefieres?' });
+    });
+    const result = await agent.runTurn(
+      input(
+        explicit
+          ? 'Por favor cambia la bebida por Colombiana para acompañar el pedido'
+          : '¿Podemos cambiar la bebida?',
+      ),
+    );
+    expect(requests).toBe(3);
+    expect(result.actions).toEqual({});
+    if (explicit) expect(result.rejectedAttributeChoices).toBeUndefined();
+    else
+      expect(result.rejectedAttributeChoices).toEqual([
+        {
+          productId: 5211,
+          cartLineIndex: 0,
+          attributeName: 'Bebida',
+          attributeValue: 'Manzana',
+        },
+      ]);
+  });
