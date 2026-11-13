@@ -1,0 +1,181 @@
+{
+  "batch": 521,
+  "sourceCommit": "fc29bde1557c1ca8263ccd04d450f856335d44af",
+  "newRegressionTests": 25,
+  "relatedTestsPassed": 232,
+  "relatedSuitesPassed": 5,
+  "typescriptGeneralPassed": true,
+  "isolatedDatabasePreflightPassed": 11,
+  "candidateImage": "sha256:0183d905bc1b3e4d9bedfa435b617994b4589dea146ecc874e39ea1df7250775",
+  "candidateCompiledControls": 494,
+  "sourceFiles": 835,
+  "sourceManifestSha256": "c65d36c79f8e1d3b006d4993abc09a1021a43cd78f15c9277c5df814dfdc55db",
+  "runtimeScope": [
+    "Existing-cart set_attribute tools reuse the final action guard before accepting an unselected value.",
+    "Tool results provide missing_explicit_option_choice, canonical field, owner and real options to the next model request.",
+    "Unresolved rejection metadata reaches the router even when the model claims success, throws or exhausts iterations. The router preserves the full cart and clarifies.",
+    "A later source-supported choice clears only the matching owner/field rejection. Returning to the original value needs explicit source evidence to resolve an earlier rejection.",
+    "Both chat-completions and Responses tool transcripts are exercised with mocked HTTP."
+  ],
+  "predeploymentRealCatalogCases": 37,
+  "predeploymentSimulatedClosures": 33,
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "budgetUsed": 267,
+  "budgetRemaining": 0,
+  "developmentFindings": [
+    "Five initial tool-loop reproductions exposed successful unselected-option receipts. One initial address fixture used a deterministic early route and was replaced by a direct tool-origin control.",
+    "A tuple fixture needed explicit const typing and a repeated-tool check initially inspected the last get_cart receipt instead of the set_attribute receipt. Corrected assertions precede final validation.",
+    "Development global was stopped after review exposed a no-op clearing the unresolved choice. A focused reproduction failed. Source and two regressions now require explicit consent before clearing that marker. Partial global results are excluded from approval.",
+    "The compiled exception regression emits an expected AgentV1 failed log inside its isolated process. All25 compiled feedback assertions pass."
+  ],
+  "limits": [
+    "Provider responses, persistence, Meta, maps and order creation are simulated. Live-model wording and pilot traffic behavior need separate measurement.",
+    "This change targets existing-cart attribute tools. Newly added product options and grouped unit-option tools keep their existing validation paths.",
+    "A remaining unresolved option preserves the whole cart for clarification, including other prepared changes.",
+    "Production promotion and Kamppo adaptation remain pending for this batch."
+  ],
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51162,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 597,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "database": {
+      "success": true,
+      "numPassedTests": 11,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 51189,
+    "totalPassedSuites": 601
+  },
+  "globalElapsedMinutes": 29.7,
+  "isolatedDatabaseRemoved": true,
+  "stagingDeployment": {
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 494,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "fc29bde1557c1ca8263ccd04d450f856335d44af",
+    "image": "sha256:82d34e51c52dbabf412840560366923a8ce1747ed6a2cbc0b4539e73169ca7f7",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.56,
+        "heapTotal": 66.3,
+        "rss": 128.03
+      },
+      "timestamp": "2026-11-13T05:51:57.003Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.69,
+        "heapTotal": 66.3,
+        "rss": 128.53
+      },
+      "timestamp": "2026-11-13T05:51:57.208Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-13T05:52:42.324927+00:00",
+    "backup": "/root/ppp-manual-release/20261113T055112Z-staging-521"
+  },
+  "postDeploymentCatalogProbe": {
+    "passed": 37,
+    "simulatedClosures": 33,
+    "realCatalogRead": true,
+    "externalOrders": 0,
+    "metaMessages": 0
+  },
+  "environmentVerification": {
+    "staging": {
+      "image": "sha256:82d34e51c52dbabf412840560366923a8ce1747ed6a2cbc0b4539e73169ca7f7",
+      "restarts": 0,
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna"
+      },
+      "head": "fc29bde1557c1ca8263ccd04d450f856335d44af"
+    },
+    "production": {
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "restarts": 0,
+      "models": {
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna"
+      },
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761"
+    }
+  }
+}
