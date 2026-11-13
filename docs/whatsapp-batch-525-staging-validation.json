@@ -1,0 +1,341 @@
+{
+  "batch": 525,
+  "sourceCommit": "074197d400f0751e6accc426265e791869822871",
+  "newRegressionTests": 50,
+  "relatedTestsPassed": 704,
+  "relatedSuitesPassed": 13,
+  "typescriptGeneralPassed": true,
+  "candidateImage": "sha256:0ca46d1ed38f5bec9c6cf44fce1eb2b48c2b5d88d1debce14ae6e93551ce2e98",
+  "candidateCompiledControls": 665,
+  "sourceFiles": 842,
+  "sourceManifestSha256": "ba79fe3fdac5f367b8b07e7807fa7cde9fc57bab3d5547597d5feaed9cba4d67",
+  "predeploymentRealCatalogCases": 55,
+  "predeploymentSimulatedClosures": 51,
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "budgetUsed": 267,
+  "budgetRemaining": 0,
+  "runtimeScope": [
+    "Resolve explicit attribute changes followed by counted purchases using real catalog fields and exact normalized option values. Support reversed clause order, canonical multiword fields and unambiguous bebida/gaseosa aliases.",
+    "Reuse existing mixed owner selection, cart signatures, expiration, catalog fingerprints, purchase validation and atomic cart replacement. Product-name references take precedence over similarly named ingredient fields.",
+    "Persist a pendingReplacementClarification cart signature after unresolved tool replacements, host preflight failures and otherwise-ready deterministic mixed-plan rejections.",
+    "Block affirmations, confirmation keywords and the direct order confirmation entry while that clarification remains unresolved. A read-only query or an unrelated purchase preserves it. Declining the change displays the current cart, and a completed mixed reformulation clears it.",
+    "Retain clarification ownership through pending mixed selectors, including their expiration. Reset and whole-order cancellation remain supported. Reuse bounded context rendering for large-cart reminders.",
+    "Handle parent replacement rejections before nested attribute rejections, preserving the complete mixed request until a full reformulation or explicit decline."
+  ],
+  "developmentFindings": [
+    "All14 initial field-plus-purchase router cases failed on the previous source.",
+    "Three whole affirmations and a total-inquiry followup reproduced registration of the old cart after a rejected replacement. A fifth initial followup failure lacked an explicit change-decline response. All order creations in these reproductions were mocked.",
+    "Two additional cases reproduced the same stale confirmation through deterministic invalid-option and expired-owner rejections. Those rejections now persist the clarification when another selector does not already own the turn.",
+    "An unrelated-purchase fixture initially skipped the normal renewed checkout steps. Its closure now follows finish-shopping, payment and confirmation.",
+    "The first development global was interrupted to investigate a product/field collision. Two regressions reproduced pollo being treated as the Pollo field of an accompanying rice instead of the chicken product. Product-name-only ownership matching fixes the regression before deployment. The interrupted global is excluded from final approval.",
+    "A read-only external regression reproduced nested attribute clarification swallowing its rejected parent replacement and additional purchase. Selecting the child option and affirming registered the old cart with mocked orders. Prioritizing the parent rejection now holds checkout, and the regression verifies a complete recovery and mocked closure.",
+    "Two preliminary validation runs were interrupted for the product/field collision and parent/child ownership issue. An accidentally unfiltered development Jest command was stopped. These partial runs are excluded from final approval. The new parent regression fixture was corrected to use the harness return shape and normal checkout entry flags before passing.",
+    "The compiled test adapter initially lacked the Jest it alias used by the new regression. Adding global.it=global.test to the temporary adapter restored the compiled control without changing runtime code."
+  ],
+  "limits": [
+    "Provider responses, Meta, persistence, map quotes and order creation are simulated. Real-model wording and representative pilot outcomes require further measurement.",
+    "Attribute destinations in this path require a complete normalized configured value. Unsupported values and ambiguous field aliases require clarification.",
+    "A rejected replacement can still require a complete reformulation or an explicit decline. This batch does not implement automatic replay of partially corrected plans.",
+    "Additional field-change grammar, numeric replies after a rejection, cross-tool recovery and initial owner validation for update_item/remove_item need further cases.",
+    "Production promotion and generic Kamppo adaptation remain pending."
+  ],
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51333,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 602,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "database": {
+      "success": true,
+      "numPassedTests": 11,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 51360,
+    "totalPassedSuites": 606
+  },
+  "predeploymentCompiledResults": {
+    "525": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "524": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "523": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "522": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "521": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "520": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "518": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "517": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "516": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "515": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    }
+  },
+  "baselineComparison": {
+    "contractTests": 49,
+    "passed": 13,
+    "failed": 36,
+    "source": "48566fbf96a673c5f2801bdb2da19a1985ab8332",
+    "interpretation": "Includes response and state assertions. Separate parent/child rejection regression also reproduced a mocked old-cart confirmation."
+  },
+  "globalExecutionVerification": {
+    "phaseExitMarkers": {
+      "global": 0,
+      "timers": 0,
+      "database": 0
+    },
+    "verificationExitCode": 0,
+    "wrapperPollExitCode": 143,
+    "note": "The long-running shell wrapper poll returned143 after all three phase markers and complete JSON results were available. The independent verifier passed twice with exact inventory, zero failures or skips, and unchanged final source hashes."
+  },
+  "deployment": {
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 665,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "074197d400f0751e6accc426265e791869822871",
+    "image": "sha256:a20cdbe5eac1805d2bd415c6eb70c6d4f6b2217123081759d0668ebab3171aff",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.13,
+        "heapTotal": 64.84,
+        "rss": 126.69
+      },
+      "timestamp": "2026-11-13T19:10:52.271Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.58,
+        "heapTotal": 65.09,
+        "rss": 127.06
+      },
+      "timestamp": "2026-11-13T19:10:52.430Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-13T19:11:52.322815+00:00",
+    "backup": "/root/ppp-manual-release/20261113T190947Z-staging-525"
+  },
+  "runtimeBefore": {
+    "staging": {
+      "head": "48566fbf96a673c5f2801bdb2da19a1985ab8332",
+      "branch": "staging",
+      "image": "sha256:4b001f9bba8cbfb69f66a46152021d3c0dc51093d3eadd40bff7afbb1b4329c0",
+      "started": "2026-11-13T17:12:13.192646452Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    }
+  },
+  "runtimeAfter": {
+    "staging": {
+      "head": "074197d400f0751e6accc426265e791869822871",
+      "branch": "staging",
+      "image": "sha256:a20cdbe5eac1805d2bd415c6eb70c6d4f6b2217123081759d0668ebab3171aff",
+      "started": "2026-11-13T19:10:42.917945005Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    }
+  },
+  "postdeploymentRealCatalogCases": 55,
+  "postdeploymentSimulatedClosures": 51,
+  "disposableDatabaseRemoved": true,
+  "ownedBuildCacheRemoved": true,
+  "checkedAt": "2026-11-13T19:12:41.831164+00:00",
+  "realCatalogSnapshots": {
+    "beforeSha256": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+    "afterSha256": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+    "endpoint": "https://dev.prontopolloportal.com/api/products/categories"
+  }
+}
