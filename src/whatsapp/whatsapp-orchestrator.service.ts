@@ -17764,23 +17764,22 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
-    if (!actions?.updateAttributes?.length || Object.keys(actions).some(key => key !== 'updateAttributes')) return false;
+    if (Object.keys(actions || {}).some(key => key !== 'updateAttributes')) return false;
     if (session.pendingAddOffer || session.pendingCategoryBrowse) return false;
     if (this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isProductDescriptionInquiry(text)) return false;
-    const source = this.normalizeForMatch(text);
-    if (!/\bcambi\w*\b/.test(source)) return false;
+    const source = this.normalizeForMatch(text).replace(/\bpor favor\b/g, '').trim();
+    if (!/\bcambi\w*\b/.test(source) || /\b(?:por|a|con) \S+/.test(source)) return false;
+    if (/\b(?:un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b/.test(source)) return false;
     const requestedFields = new Set<string>();
-    for (const edit of actions.updateAttributes) {
-      if (!edit || typeof edit.attributeName !== 'string') return false;
-      const product = products.find(item => item.id === edit.productId);
-      if (!product || !session.cart.some(line => line.productId === product.id)) return false;
-      const field = product.attributes?.find(attribute =>
-        attribute.attributeName.toLowerCase() === edit.attributeName.toLowerCase());
-      if (!field) return false;
-      const namesField = (` ${source} `).includes(` ${this.normalizeForMatch(field.attributeName)} `);
-      const namesDrink = this.catalogService.isComboOnlyAttribute(field) && /\b(?:bebida|gaseosa|sabor)\b/.test(source);
-      if (!namesField && !namesDrink) return false;
-      requestedFields.add(field.attributeName.toLowerCase());
+    for (const line of session.cart) {
+      const product = products.find(item => item.id === line.productId);
+      for (const field of product?.attributes || []) {
+        const namesField = (` ${source} `).includes(` ${this.normalizeForMatch(field.attributeName)} `);
+        const namesDrink = this.catalogService.isComboOnlyAttribute(field) && /\b(?:bebida|gaseosa|sabor)\b/.test(source);
+        if (!namesField && !namesDrink) continue;
+        if (this.catalogService.pickAttributeOptionFromText(text, field)) return false;
+        requestedFields.add(field.attributeName.toLowerCase());
+      }
     }
     if (requestedFields.size !== 1) return false;
     return this.tryHandleUnspecifiedCartOption(conv, waId, session, text, cfg, [...requestedFields][0]);
@@ -27356,6 +27355,9 @@ export class WhatsappOrchestratorService {
     captureActionDecision(params.decision,'proposed',agent.actions);
     const agentReply = (agent.reply || '').trim();
     if (!/[\p{L}\p{N}]/u.test(agentReply) && !Object.values(agent.actions || {}).some(value => Array.isArray(value) ? value.length : !!value)) return false;
+    if (!agent.error && !Object.keys(agent.actions || {}).length && !agent.needsAttributeProductId &&
+        await this.tryClarifyUnchosenAttribute(conv, msg.waId, session, originalText || text,
+          agent.actions, products, cfg)) return true;
     const offMenuQuery = this.offMenuErrandQuery(originalText || text, products);
     const randomAside = offMenuQuery ? null : this.randomAsideLabel(originalText || text, products);
     if (offMenuQuery || randomAside) {

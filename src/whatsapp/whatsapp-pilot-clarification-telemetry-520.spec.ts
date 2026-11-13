@@ -696,3 +696,41 @@ test('a separately queued turn receives its own observation inside an active par
       ?.inferenceAttempts,
   ).toBe(1);
 });
+
+test('an agent question without actions still persists the known attribute choice', async () => {
+  const { h, summaries } = setup();
+  h.agent.runTurn.mockResolvedValue({
+    reply: 'Claro, ¿qué bebida prefieres?',
+    actions: {},
+    toolCalls: ['get_cart'],
+  });
+  const before = structuredClone(h.conv.sessionData.cart);
+  const reply = await h.sendQueued('¿Podemos cambiar la bebida?');
+  expect(reply).toMatch(/Pepsi/);
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.conv.sessionData.pendingCartOptionChoice?.selected).toBe(0);
+  expect(summaries[0].hasPendingChoice).toBe(true);
+  await h.sendQueued('3');
+  expect(h.conv.sessionData.cart).toHaveLength(1);
+  expect(h.conv.sessionData.cart[0]).toMatchObject({
+    productId: 5201,
+    quantity: 2,
+  });
+  expect(h.conv.sessionData.cart[0].attributes).toContainEqual({
+    attributeName: 'Bebida',
+    attributeValue: 'Pepsi',
+  });
+});
+
+test('a subset request never becomes a whole-line attribute selection', async () => {
+  const { h } = setup();
+  h.agent.runTurn.mockResolvedValue({
+    reply: '¿Qué bebida quieres para esa unidad?',
+    actions: {},
+    toolCalls: ['get_cart'],
+  });
+  const before = structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued('¿Podemos cambiar la bebida de uno de los combos?');
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.conv.sessionData.pendingCartOptionChoice).toBeUndefined();
+});

@@ -1,0 +1,725 @@
+{
+  "model": "gpt-6-luna",
+  "routingComplexModel": "gpt-6.1-sol",
+  "endpoint": "responses",
+  "requestTimings": [
+    1517,
+    1827
+  ],
+  "maxRequests": 2,
+  "budgetExhausted": false,
+  "planned": 1,
+  "results": [
+    {
+      "id": "pilot-known-drink-choice-and-observation-520",
+      "repetition": 1,
+      "accepted": true,
+      "problems": [],
+      "requests": 2,
+      "turns": [
+        {
+          "text": "¿Podemos cambiar la bebida?",
+          "latencyMs": 4015,
+          "summaries": [
+            {
+              "event": "whatsapp_turn_summary",
+              "version": 1,
+              "turnId": "6cd680c9-2327-430a-82b8-6006810316a6",
+              "at": "2026-11-13T03:54:39.587Z",
+              "messageType": "text",
+              "acceptedMessages": 1,
+              "processingSteps": 1,
+              "agentInvocations": 1,
+              "agentErrors": 0,
+              "route": "agent",
+              "inferenceAttempts": 2,
+              "inferenceRequestFailures": 0,
+              "inferenceByPurpose": {
+                "agent": 2
+              },
+              "inferenceByModel": {
+                "gpt-6-luna": 2
+              },
+              "guardRejections": 0,
+              "missingOptionChoices": 0,
+              "cartChanged": false,
+              "ordersRegistered": 0,
+              "failed": false,
+              "deliveryPipeline": "not_observed",
+              "latencyMs": 4015,
+              "conversationId": 1,
+              "stateBefore": "building_cart",
+              "stateAfter": "building_cart",
+              "hasPendingChoice": true
+            }
+          ],
+          "toolTrace": [
+            {
+              "origin": "model_call",
+              "name": "get_cart",
+              "args": {},
+              "result": {
+                "ok": true,
+                "lines": [
+                  {
+                    "productId": 97,
+                    "name": "Combo Arroz Chino Con Medio Pollo",
+                    "quantity": 1,
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "attributeValue": "Colombiana"
+                      },
+                      {
+                        "attributeName": "Pollo",
+                        "attributeValue": "Frito"
+                      }
+                    ],
+                    "cartLineIndex": 0
+                  }
+                ],
+                "hint": "Edita solo la línea solicitada. Los índices no cambian durante este turno."
+              }
+            }
+          ],
+          "session": {
+            "cart": [
+              {
+                "productId": 97,
+                "name": "Combo Arroz Chino Con Medio Pollo",
+                "code": 97,
+                "unitPrice": 54000,
+                "quantity": 1,
+                "attributes": [
+                  {
+                    "attributeName": "Bebida",
+                    "attributeValue": "Colombiana"
+                  },
+                  {
+                    "attributeName": "Pollo",
+                    "attributeValue": "Frito"
+                  }
+                ]
+              }
+            ],
+            "orderType": "delivery",
+            "pendingCartOptionChoice": {
+              "cartSignature": "[{\"productId\":97,\"name\":\"Combo Arroz Chino Con Medio Pollo\",\"code\":97,\"unitPrice\":54000,\"quantity\":1,\"attributes\":[{\"attributeName\":\"Bebida\",\"attributeValue\":\"Colombiana\"},{\"attributeName\":\"Pollo\",\"attributeValue\":\"Frito\"}]}]",
+              "createdAt": 1794542083598,
+              "candidates": [
+                {
+                  "cartIndex": 0,
+                  "attributeName": "Bebida"
+                }
+              ],
+              "selected": 0,
+              "catalogFingerprint": "[97,54000,{\"attributeName\":\"Bebida\",\"options\":[\"Colombiana\",\"Manzana\",\"Pepsi\",\"Ginger\",\"Uva\",\"7up\",\"Coca cola\",\"Coca cola Zero\"]}]"
+            }
+          },
+          "state": "building_cart",
+          "replies": [
+            "¿Qué *Bebida* prefieres para *Combo Arroz Chino Con Medio Pollo*?\n1. Colombiana\n2. Manzana\n3. Pepsi\n4. Ginger\n5. Uva\n6. 7up\n7. Coca cola\n8. Coca cola Zero\nEl pedido sigue igual."
+          ],
+          "orders": [],
+          "agentTurns": 1,
+          "agentErrors": [],
+          "agentResults": [
+            {
+              "reply": "Claro, ¿qué bebida prefieres para el combo? Puede ser Colombiana, Manzana, Pepsi, Ginger, Uva, 7up, Coca-Cola o Coca-Cola Zero.",
+              "actions": {},
+              "toolCalls": [
+                "get_cart"
+              ],
+              "purchaseAttempts": []
+            }
+          ],
+          "decisions": [
+            {
+              "version": 1,
+              "before": {
+                "state": "building_cart",
+                "cart": [
+                  {
+                    "productId": 97,
+                    "quantity": 1,
+                    "optionsFingerprint": "c49d9bbd86cb79ee26e08b6d3c99956c74a125024b799418abea25c1f5127d42",
+                    "hasNote": false,
+                    "noteFingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                ],
+                "productReferences": [
+                  97
+                ],
+                "pending": []
+              },
+              "stages": [
+                {
+                  "stage": "proposed",
+                  "additions": [],
+                  "operationKeys": [],
+                  "diagnostics": []
+                }
+              ],
+              "inquiries": [],
+              "after": {
+                "state": "building_cart",
+                "cart": [
+                  {
+                    "productId": 97,
+                    "quantity": 1,
+                    "optionsFingerprint": "c49d9bbd86cb79ee26e08b6d3c99956c74a125024b799418abea25c1f5127d42",
+                    "hasNote": false,
+                    "noteFingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                ],
+                "productReferences": [
+                  97
+                ],
+                "pending": [
+                  "pendingCartOptionChoice"
+                ]
+              },
+              "failed": false,
+              "observedUnitDelta": []
+            }
+          ]
+        },
+        {
+          "text": "3",
+          "latencyMs": 7,
+          "summaries": [
+            {
+              "event": "whatsapp_turn_summary",
+              "version": 1,
+              "turnId": "f4d14885-ca33-475b-b3c5-45e90a745a81",
+              "at": "2026-11-13T03:54:43.602Z",
+              "messageType": "text",
+              "acceptedMessages": 1,
+              "processingSteps": 1,
+              "agentInvocations": 0,
+              "agentErrors": 0,
+              "route": "rules",
+              "inferenceAttempts": 0,
+              "inferenceRequestFailures": 0,
+              "inferenceByPurpose": {},
+              "inferenceByModel": {},
+              "guardRejections": 0,
+              "missingOptionChoices": 0,
+              "cartChanged": true,
+              "ordersRegistered": 0,
+              "failed": false,
+              "deliveryPipeline": "not_observed",
+              "latencyMs": 7,
+              "conversationId": 1,
+              "stateBefore": "building_cart",
+              "stateAfter": "building_cart",
+              "hasPendingChoice": false
+            }
+          ],
+          "toolTrace": [],
+          "session": {
+            "cart": [
+              {
+                "productId": 97,
+                "name": "Combo Arroz Chino Con Medio Pollo",
+                "code": 97,
+                "unitPrice": 54000,
+                "quantity": 1,
+                "attributes": [
+                  {
+                    "attributeName": "Pollo",
+                    "attributeValue": "Frito"
+                  },
+                  {
+                    "attributeName": "Bebida",
+                    "attributeValue": "Pepsi"
+                  }
+                ]
+              }
+            ],
+            "orderType": "delivery",
+            "productFocus": {
+              "productId": 97,
+              "name": "Combo Arroz Chino Con Medio Pollo"
+            }
+          },
+          "state": "building_cart",
+          "replies": [
+            "Listo, *Combo Arroz Chino Con Medio Pollo* queda con *Bebida: Pepsi*.\n\n🛒 *Carrito*\n*1.* *Combo Arroz Chino Con Medio Pollo* · *$54.000*\n   _Pollo: Frito · Bebida: Pepsi_\n────────────\nSubtotal $54.000 · Dom. según dir.\n*Total $54.000* _(provisional; domicilio pendiente)_\n\n¿*Algo más*?"
+          ],
+          "orders": [],
+          "agentTurns": 1,
+          "agentErrors": [],
+          "agentResults": [
+            {
+              "reply": "Claro, ¿qué bebida prefieres para el combo? Puede ser Colombiana, Manzana, Pepsi, Ginger, Uva, 7up, Coca-Cola o Coca-Cola Zero.",
+              "actions": {},
+              "toolCalls": [
+                "get_cart"
+              ],
+              "purchaseAttempts": []
+            }
+          ],
+          "decisions": [
+            {
+              "version": 1,
+              "before": {
+                "state": "building_cart",
+                "cart": [
+                  {
+                    "productId": 97,
+                    "quantity": 1,
+                    "optionsFingerprint": "c49d9bbd86cb79ee26e08b6d3c99956c74a125024b799418abea25c1f5127d42",
+                    "hasNote": false,
+                    "noteFingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                ],
+                "productReferences": [
+                  97
+                ],
+                "pending": [
+                  "pendingCartOptionChoice"
+                ]
+              },
+              "stages": [],
+              "inquiries": [],
+              "after": {
+                "state": "building_cart",
+                "cart": [
+                  {
+                    "productId": 97,
+                    "quantity": 1,
+                    "optionsFingerprint": "2a63fb9d245c8a3cc9d2e913f0f9c06340b5f52ef51db86dced48a52fb7d9b9b",
+                    "hasNote": false,
+                    "noteFingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                ],
+                "productReferences": [
+                  97
+                ],
+                "pending": []
+              },
+              "failed": false,
+              "observedUnitDelta": []
+            }
+          ]
+        },
+        {
+          "text": "Eso es todo, paso a recogerlo en el local",
+          "latencyMs": 103,
+          "summaries": [
+            {
+              "event": "whatsapp_turn_summary",
+              "version": 1,
+              "turnId": "23c9babb-751e-42fa-8f72-7aefcdfe275b",
+              "at": "2026-11-13T03:54:43.609Z",
+              "messageType": "text",
+              "acceptedMessages": 1,
+              "processingSteps": 1,
+              "agentInvocations": 0,
+              "agentErrors": 0,
+              "route": "rules",
+              "inferenceAttempts": 0,
+              "inferenceRequestFailures": 0,
+              "inferenceByPurpose": {},
+              "inferenceByModel": {},
+              "guardRejections": 0,
+              "missingOptionChoices": 0,
+              "cartChanged": false,
+              "ordersRegistered": 0,
+              "failed": false,
+              "deliveryPipeline": "not_observed",
+              "latencyMs": 103,
+              "conversationId": 1,
+              "stateBefore": "building_cart",
+              "stateAfter": "awaiting_payment",
+              "hasPendingChoice": false
+            }
+          ],
+          "toolTrace": [],
+          "session": {
+            "cart": [
+              {
+                "productId": 97,
+                "name": "Combo Arroz Chino Con Medio Pollo",
+                "code": 97,
+                "unitPrice": 54000,
+                "quantity": 1,
+                "attributes": [
+                  {
+                    "attributeName": "Pollo",
+                    "attributeValue": "Frito"
+                  },
+                  {
+                    "attributeName": "Bebida",
+                    "attributeValue": "Pepsi"
+                  }
+                ]
+              }
+            ],
+            "orderType": "pickup",
+            "productFocus": {
+              "productId": 97,
+              "name": "Combo Arroz Chino Con Medio Pollo"
+            },
+            "address": "Recoge en el local",
+            "fulfillmentChosen": true,
+            "addressConfirmed": true,
+            "deliveryFeeCalculated": 0,
+            "deliveryDistanceKm": null,
+            "deliveryOutOfCoverage": false,
+            "deliveryLat": null,
+            "deliveryLng": null,
+            "phoneConfirmed": true,
+            "contactPhone": "+573000000001"
+          },
+          "state": "awaiting_payment",
+          "replies": [
+            "Queda para recoger en el local. El pedido sigue igual.\n\n🛒 *Carrito*\n*1.* *Combo Arroz Chino Con Medio Pollo* · *$54.000*\n   _Pollo: Frito · Bebida: Pepsi_\n────────────\nSubtotal $54.000\n*Total $54.000*\n\n🛵 Tipo: Recoger en el local\n👤 Nombre: Cliente Sintético\n📍: Recoge en el local\n📞 Teléfono: 300 000 0001\n💳 Pago: (pendiente)\n\n¿Cómo pagas?\n1. *contraentrega* (efectivo al recibir)\n2. *transferencia* (Nequi / llave / banco)"
+          ],
+          "orders": [],
+          "agentTurns": 1,
+          "agentErrors": [],
+          "agentResults": [
+            {
+              "reply": "Claro, ¿qué bebida prefieres para el combo? Puede ser Colombiana, Manzana, Pepsi, Ginger, Uva, 7up, Coca-Cola o Coca-Cola Zero.",
+              "actions": {},
+              "toolCalls": [
+                "get_cart"
+              ],
+              "purchaseAttempts": []
+            }
+          ],
+          "decisions": [
+            {
+              "version": 1,
+              "before": {
+                "state": "building_cart",
+                "cart": [
+                  {
+                    "productId": 97,
+                    "quantity": 1,
+                    "optionsFingerprint": "2a63fb9d245c8a3cc9d2e913f0f9c06340b5f52ef51db86dced48a52fb7d9b9b",
+                    "hasNote": false,
+                    "noteFingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                ],
+                "productReferences": [
+                  97
+                ],
+                "pending": []
+              },
+              "stages": [],
+              "inquiries": [],
+              "after": {
+                "state": "awaiting_payment",
+                "cart": [
+                  {
+                    "productId": 97,
+                    "quantity": 1,
+                    "optionsFingerprint": "2a63fb9d245c8a3cc9d2e913f0f9c06340b5f52ef51db86dced48a52fb7d9b9b",
+                    "hasNote": false,
+                    "noteFingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                ],
+                "productReferences": [
+                  97
+                ],
+                "pending": []
+              },
+              "failed": false,
+              "observedUnitDelta": []
+            }
+          ]
+        },
+        {
+          "text": "efectivo",
+          "latencyMs": 180,
+          "summaries": [
+            {
+              "event": "whatsapp_turn_summary",
+              "version": 1,
+              "turnId": "2e64fe0d-872b-4883-abdb-90ef27c1ca9c",
+              "at": "2026-11-13T03:54:43.712Z",
+              "messageType": "text",
+              "acceptedMessages": 1,
+              "processingSteps": 1,
+              "agentInvocations": 0,
+              "agentErrors": 0,
+              "route": "rules",
+              "inferenceAttempts": 0,
+              "inferenceRequestFailures": 0,
+              "inferenceByPurpose": {},
+              "inferenceByModel": {},
+              "guardRejections": 0,
+              "missingOptionChoices": 0,
+              "cartChanged": false,
+              "ordersRegistered": 0,
+              "failed": false,
+              "deliveryPipeline": "not_observed",
+              "latencyMs": 180,
+              "conversationId": 1,
+              "stateBefore": "awaiting_payment",
+              "stateAfter": "awaiting_final_confirm",
+              "hasPendingChoice": false
+            }
+          ],
+          "toolTrace": [],
+          "session": {
+            "cart": [
+              {
+                "productId": 97,
+                "name": "Combo Arroz Chino Con Medio Pollo",
+                "code": 97,
+                "unitPrice": 54000,
+                "quantity": 1,
+                "attributes": [
+                  {
+                    "attributeName": "Pollo",
+                    "attributeValue": "Frito"
+                  },
+                  {
+                    "attributeName": "Bebida",
+                    "attributeValue": "Pepsi"
+                  }
+                ]
+              }
+            ],
+            "orderType": "pickup",
+            "productFocus": {
+              "productId": 97,
+              "name": "Combo Arroz Chino Con Medio Pollo"
+            },
+            "address": "Recoge en el local",
+            "fulfillmentChosen": true,
+            "addressConfirmed": true,
+            "deliveryFeeCalculated": 0,
+            "deliveryDistanceKm": null,
+            "deliveryOutOfCoverage": false,
+            "deliveryLat": null,
+            "deliveryLng": null,
+            "phoneConfirmed": true,
+            "contactPhone": "+573000000001",
+            "paymentMethod": "cash",
+            "notesCollected": true
+          },
+          "state": "awaiting_final_confirm",
+          "replies": [
+            "🛒 *Carrito*\n*1.* *Combo Arroz Chino Con Medio Pollo* · *$54.000*\n   _Pollo: Frito · Bebida: Pepsi_\n────────────\nSubtotal $54.000\n*Total $54.000*\n\n🛵 Tipo: Recoger en el local\n👤 Nombre: Cliente Sintético\n📍: Recoge en el local\n📞 Teléfono: 300 000 0001\n💳 Pago: Contraentrega\n\nSi está bien, escribe *confirmar*."
+          ],
+          "orders": [],
+          "agentTurns": 1,
+          "agentErrors": [],
+          "agentResults": [
+            {
+              "reply": "Claro, ¿qué bebida prefieres para el combo? Puede ser Colombiana, Manzana, Pepsi, Ginger, Uva, 7up, Coca-Cola o Coca-Cola Zero.",
+              "actions": {},
+              "toolCalls": [
+                "get_cart"
+              ],
+              "purchaseAttempts": []
+            }
+          ],
+          "decisions": [
+            {
+              "version": 1,
+              "before": {
+                "state": "awaiting_payment",
+                "cart": [
+                  {
+                    "productId": 97,
+                    "quantity": 1,
+                    "optionsFingerprint": "2a63fb9d245c8a3cc9d2e913f0f9c06340b5f52ef51db86dced48a52fb7d9b9b",
+                    "hasNote": false,
+                    "noteFingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                ],
+                "productReferences": [
+                  97
+                ],
+                "pending": []
+              },
+              "stages": [],
+              "inquiries": [],
+              "after": {
+                "state": "awaiting_final_confirm",
+                "cart": [
+                  {
+                    "productId": 97,
+                    "quantity": 1,
+                    "optionsFingerprint": "2a63fb9d245c8a3cc9d2e913f0f9c06340b5f52ef51db86dced48a52fb7d9b9b",
+                    "hasNote": false,
+                    "noteFingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                ],
+                "productReferences": [
+                  97
+                ],
+                "pending": []
+              },
+              "failed": false,
+              "observedUnitDelta": []
+            }
+          ]
+        },
+        {
+          "text": "confirmar",
+          "latencyMs": 89,
+          "summaries": [
+            {
+              "event": "whatsapp_turn_summary",
+              "version": 1,
+              "turnId": "8d0ce1c1-ff1d-4f54-9b2c-3b11bb36e8f7",
+              "at": "2026-11-13T03:54:43.892Z",
+              "messageType": "text",
+              "acceptedMessages": 1,
+              "processingSteps": 1,
+              "agentInvocations": 0,
+              "agentErrors": 0,
+              "route": "rules",
+              "inferenceAttempts": 0,
+              "inferenceRequestFailures": 0,
+              "inferenceByPurpose": {},
+              "inferenceByModel": {},
+              "guardRejections": 0,
+              "missingOptionChoices": 0,
+              "cartChanged": true,
+              "ordersRegistered": 1,
+              "failed": false,
+              "deliveryPipeline": "not_observed",
+              "latencyMs": 89,
+              "conversationId": 1,
+              "stateBefore": "awaiting_final_confirm",
+              "stateAfter": "completed",
+              "hasPendingChoice": false
+            }
+          ],
+          "toolTrace": [],
+          "session": {
+            "cart": [],
+            "orderType": "delivery",
+            "ignorePriorOrderHistory": true
+          },
+          "state": "completed",
+          "replies": [
+            "✅ *¡Listo! Tu pedido quedó registrado*\n\n🧾 Orden *#01*\n🕐 12/11/2026, 10:54 p. m.\n\n*Detalle:*\n*1.* *Combo Arroz Chino Con Medio Pollo*\n   Cant: *1*  ·  $54.000\n   _Frito, Pepsi_\n\nSubtotal: $54.000\n*Total: $54.000*\n\n🛵 Recoges en el local\n👤 Cliente Sintético\n📍 Recoge en el local\n📞 300 000 0001\n💳 Contraentrega\n\nGracias por pedirnos 🍗 Enseguida lo preparamos."
+          ],
+          "orders": [
+            {
+              "customerName": "Cliente Sintético",
+              "phone": "+573000000001",
+              "address": "Recoge en el local / Contraentrega",
+              "orderType": "pickup",
+              "orderSource": "whatsapp",
+              "items": [
+                {
+                  "productId": 97,
+                  "attributes": [
+                    {
+                      "attributeName": "Pollo",
+                      "attributeValue": "Frito"
+                    },
+                    {
+                      "attributeName": "Bebida",
+                      "attributeValue": "Pepsi"
+                    }
+                  ]
+                }
+              ],
+              "clientRequestId": "wa-1-a5b2c5de-1931-440e-be57-1f122ec65a76"
+            }
+          ],
+          "agentTurns": 1,
+          "agentErrors": [],
+          "agentResults": [
+            {
+              "reply": "Claro, ¿qué bebida prefieres para el combo? Puede ser Colombiana, Manzana, Pepsi, Ginger, Uva, 7up, Coca-Cola o Coca-Cola Zero.",
+              "actions": {},
+              "toolCalls": [
+                "get_cart"
+              ],
+              "purchaseAttempts": []
+            }
+          ],
+          "decisions": [
+            {
+              "version": 1,
+              "before": {
+                "state": "awaiting_final_confirm",
+                "cart": [
+                  {
+                    "productId": 97,
+                    "quantity": 1,
+                    "optionsFingerprint": "2a63fb9d245c8a3cc9d2e913f0f9c06340b5f52ef51db86dced48a52fb7d9b9b",
+                    "hasNote": false,
+                    "noteFingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                ],
+                "productReferences": [
+                  97
+                ],
+                "pending": []
+              },
+              "stages": [],
+              "inquiries": [],
+              "after": {
+                "state": "completed",
+                "cart": [],
+                "productReferences": [],
+                "pending": []
+              },
+              "failed": false,
+              "observedUnitDelta": [
+                {
+                  "productId": 97,
+                  "quantity": -1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "apiUsage": {
+    "model": "gpt-6-luna",
+    "requests": 2,
+    "successfulResponses": 2,
+    "responsesWithUsage": 2,
+    "usageComplete": true,
+    "uncertainResponses": 0,
+    "transportErrors": {},
+    "promptTokens": 22043,
+    "cachedPromptTokens": 22037,
+    "completionTokens": 55,
+    "reasoningTokens": 0,
+    "httpErrors": {},
+    "providerErrorCodes": {}
+  },
+  "apiUsageByModel": {
+    "gpt-6-luna": {
+      "model": "gpt-6-luna",
+      "requests": 2,
+      "successfulResponses": 2,
+      "responsesWithUsage": 2,
+      "usageComplete": true,
+      "uncertainResponses": 0,
+      "transportErrors": {},
+      "promptTokens": 22043,
+      "cachedPromptTokens": 22037,
+      "completionTokens": 55,
+      "reasoningTokens": 0,
+      "httpErrors": {},
+      "providerErrorCodes": {}
+    }
+  },
+  "validationScope": {
+    "developmentRetest": true,
+    "externalOrders": 0,
+    "metaMessages": 0,
+    "persistenceAndDelivery": "simulated",
+    "developmentFinding": "First run asked a choice without persisted selector. Final run persists selector, accepts numeric Pepsi choice and closes one simulated order.",
+    "developmentRequests": 2,
+    "finalRequests": 2
+  }
+}
