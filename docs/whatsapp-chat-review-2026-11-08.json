@@ -291,13 +291,16 @@
       "evidence": "Tras añadir un combo por error, «es solo un combo» abre otra lista;1 produce«varias listas pendientes» y el nombre del plato se captura como dirección.",
       "expectedRegression": "Una corrección debe tener un único selector activo; la respuesta identifica el producto y retoma checkout sin modificar dirección. No eliminar líneas distintas por suposición.",
       "orderReferences": [],
-      "status": "partially_covered_price_quantity_journey_and_honest_noop_validated_deployed_production479",
-      "validation": "whatsapp-batch-477-validation.json",
-      "scope": "N08-15 historical competing-price/quantity list sequence now has one owner before this change. Current no-op quantity reply misleadingly says corrected; new reply states unchanged, other rows retained and asks for explicit removal instruction. No new deletion or ownership algorithm. Router journeys select a line and then explicitly remove another before closing.",
-      "remaining": "Other competing selector combinations and historical erroneous addition still need complete router reproduction. Automatic keep-only deletion is not implemented. Explicit named quantity from batch477 setup now has bounded coverage in478; implicit/conditional variants remain outside that scope.",
+      "status": "partially_fixed_location_menu_ownership_validated_not_deployed",
+      "validation": "whatsapp-batch-481-validation.json",
+      "scope": "Location choice guards category/composition owners. Named category after checkout advances may answer a retained category browse read-only, clears browse only and resumes current step without buying.3 dishes,2 off/mock modes,6 numeric/ordinals,2 query types,2 resolution orders,2 quantities; all router-derived, external ports mocked.",
+      "remaining": "Other selector/distribution combinations, mixed forms and the complete historical erroneous-addition replay remain. No automatic keep-only deletion or historical cleanup.",
       "explicitQuantityValidation": "whatsapp-batch-478-validation.json",
       "optionPriceValidation": "whatsapp-batch-479-validation.json",
-      "productionDeployment": "whatsapp-batch-479-production-deployment.json"
+      "previousValidation": "whatsapp-batch-477-validation.json",
+      "locationPriceValidation": "whatsapp-batch-480-validation.json",
+      "previousProductionDeployment": "whatsapp-batch-479-production-deployment.json",
+      "locationMenuValidation": "whatsapp-batch-481-validation.json"
     },
     {
       "id": "N08-16",
@@ -763,6 +766,177 @@
       "deployed": false,
       "deployedInProduction479": true,
       "productionDeployment": "whatsapp-batch-479-production-deployment.json"
+    },
+    {
+      "batch": 480,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-480-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 481,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-481-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "kamppo": {
+        "migrated": true,
+        "runtimeCommit": "a953858747c77c5c114a2795225e8a3b5e06a809",
+        "deploymentVerified": true,
+        "sourcePPPCommit": "258a2c71ce36acf1c3fc17cd6b12b16d0fd6760a"
+      }
+    },
+    {
+      "batch": 482,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-482-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 483,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-483-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 484,
+      "finding": "N08-15",
+      "validation": "whatsapp-batch-484-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false,
+      "remaining": "Non-beverage flavor selection: Helado Artesanal defaults instead of asking; not fixed in this beverage-only batch."
+    },
+    {
+      "batch": 485,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-485-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Bounded dessert flavor gap from484 fixed for helado/paleta/sorbete family or category. Other attribute families remain unverified."
+    },
+    {
+      "batch": 486,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-486-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 487,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-487-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Counted whole pending option lists validated before adding; preserve exact split and repeated-flavor quantity."
+    },
+    {
+      "batch": 488,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-488-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false
+    },
+    {
+      "batch": 489,
+      "relatedFinding": "N08-14",
+      "validation": "whatsapp-batch-489-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Generic word-boundary matching and explicit covered selection for nameless rooftop POIs. No place-specific runtime aliases."
+    },
+    {
+      "batch": 490,
+      "relatedFinding": "N08-14",
+      "validation": "whatsapp-batch-490-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "72 tentative place rejection/interruption and destination replacement journeys, no stale apartment/candidate in final DTO. Runtime already passes."
+    },
+    {
+      "batch": 491,
+      "relatedFinding": "N08-14",
+      "validation": "whatsapp-batch-491-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Fixed lost apartment after selected-candidate route failure then bare-pin recovery.48 new journeys covering pin, cancellation/new purchase and route failure; full49020/564pass."
+    },
+    {
+      "batch": 492,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-492-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "72 quantity correction journeys after partial flavor assignment. Preserve staged choices, reject unknown remaining flavor, finish exact counts and total. Equal/below assigned totals not yet covered."
+    },
+    {
+      "batch": 493,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-493-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Simple pending quantity reduction now commits an exactly covered staged distribution, or explicitly resets incompatible parts below assigned count.60 new journeys, global49152/566pass. Compound quantity/price route remains pending."
+    },
+    {
+      "batch": 494,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-494-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Compound quantity-plus-price requests now share staged distribution reconciliation with simple corrections; explicit unit price, preserved guards and correct final flavor counts.54 new journeys; global49206/567pass. Other compound forms and option-tail corrections remain pending."
+    },
+    {
+      "batch": 495,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-495-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Explicit que sean/mejor que sean quantity-and-option corrections now reach pending purchase resolver rather than cart correction.90 journeys including whole-order cancellation/restart; global49296/568pass. Selective staged-group removal and multi-attribute corrections remain pending."
+    },
+    {
+      "batch": 496,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-496-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "144 quantity/flavor/presentation replacement journeys with price interruption and exact closure. Related288/3pass, TypeScript pass. No new runtime defect; global495 remains previous evidence."
+    },
+    {
+      "batch": 497,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-497-validation.json",
+      "engineChanged": false,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "108 invalid remaining-option journeys, repetition/price/premature confirm and valid recovery with exact final allocation. Related342/3pass, TypeScript pass. No new runtime defect; global495 remains previous evidence."
+    },
+    {
+      "batch": 498,
+      "relatedFinding": "N08-15",
+      "validation": "whatsapp-batch-498-validation.json",
+      "engineChanged": true,
+      "stagingVerified": false,
+      "deployed": false,
+      "result": "Explicit staged-option removal now reduces pending total and preserves other groups/cart, refusing ambiguous cart overlap.54 journeys, global49602/571pass. Arbitrary partial-count removal and broader phrasing remain pending."
     }
   ],
   "subsequentLocationReports": [
@@ -786,6 +960,14 @@
       "mappingValidation": "whatsapp-batch-474-validation.json",
       "naturalChoiceScope": "Active nearby-place list only. Bounded first/second/third ordinals, uno/dos/tres, option/place/address labels and courtesy suffixes. Explicit road references match a full canonical street or a uniquely identifying road/number; no invented street numbers or fuzzy guessing. Questioning replies, alternative ordinals, absent positions and nonunique streets preserve the list. Ordinals use the existing competing-purchase-selector guard. Selection then follows batch474 fresh quote, access preservation and final review.",
       "remaining": "Bounded natural selection only; mandatory unit/access clarification, all competing selectors and longer copied descriptions remain pending."
+    },
+    {
+      "id": "N10-LOC-03",
+      "reportedDate": "2026-11-10",
+      "title": "Villagalante y lugares cuyo nombre no devuelve Geocoding",
+      "status": "bounded_recovery_validated_not_deployed",
+      "validation": "whatsapp-batch-489-validation.json",
+      "result": "Live Google returns precise street-only rooftop POI. Replayed provider shape rejected before fix, now offered for explicit covered selection. General synthetic building/complex controls, not a hardcoded place fix. No complete live router replay."
     }
   ]
 }

@@ -1,0 +1,171 @@
+[
+  {
+    "id": "pilot-included-drink-real-agent-519",
+    "initialCart": [
+      {
+        "id": 97,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Colombiana"
+          },
+          {
+            "attributeName": "Pollo",
+            "attributeValue": "Frito"
+          }
+        ]
+      }
+    ],
+    "messages": [
+      {
+        "text": "Veci, ¿qué otras gaseosas puedo escoger para este combo?",
+        "expect": {
+          "lines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Colombiana"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ],
+          "orderCount": 0,
+          "replyAll": [
+            "Pepsi",
+            "Manzana"
+          ],
+          "replyForbid": [
+            "No entendí"
+          ]
+        }
+      },
+      {
+        "text": "¿Podemos cambiar la bebida?",
+        "expect": {
+          "lines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Colombiana"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ],
+          "orderCount": 0,
+          "replyAny": [
+            "qué",
+            "cuál",
+            "prefieres"
+          ],
+          "replyForbid": [
+            "No entendí"
+          ]
+        }
+      },
+      {
+        "text": "Bueno, ponle Pepsi a la bebida del combo",
+        "expect": {
+          "lines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Pepsi"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Eso es todo, paso a recogerlo en el local",
+        "expect": {
+          "lines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Pepsi"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "efectivo",
+        "expect": {
+          "lines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Pepsi"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ],
+          "payment": "cash",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "confirmar",
+        "expect": {
+          "orderCount": 1,
+          "orderLines": [
+            {
+              "id": 97,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Pepsi"
+                },
+                {
+                  "key": "Pollo",
+                  "value": "Frito"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,122 @@
+{
+  "batch": 516,
+  "sourceCommit": "cfd66044ebfdcc5a965b4735748e01a5dbc89e9d",
+  "newRegressionTests": 163,
+  "relatedTestsPassed": 834,
+  "relatedSuitesPassed": 8,
+  "typescriptGeneralPassed": true,
+  "dockerBuildPassed": true,
+  "compiledNewScenariosPassed": 163,
+  "compiledPriorReplacementJourneysPassed": 80,
+  "catalogSnapshotJourneysPassed": 14,
+  "sourceFiles": 812,
+  "sourceManifestSha256": "56614298229d86f95969e6875087a1e1f9db4da60d2b989f54e55e7b97a16cca",
+  "scope": "One explicitly requested whole-line replacement plus one counted new purchase, in either clause order. Unique catalog identity or preparation sibling/configured combo relation, compatible attributes, independent kitchen notes, and sequential choices before a joint commit.",
+  "limits": [
+    "Multiple new purchases and a replacement in a single turn remain outside this bounded route.",
+    "Ambiguous original lines require restating both actions with an identifying product or option.",
+    "Subset-unit replacement is preserved for clarification, not executed by this route.",
+    "AI, Meta and order creation are simulated. No claim of live-model or channel certification."
+  ],
+  "developmentHistory": [
+    "Initial eight router reproductions failed before the change.",
+    "Reverse combo conversion expansion found eight failures for normal/sin combo, repaired and covered.",
+    "Real staging catalog probe exposed four portion-alias failures. Eight synthetic regressions reproduced both agents/directions and were repaired before final validation.",
+    "Interim full runs were interrupted during scheduling/coverage expansion. Only the final frozen-source run is accredited.",
+    "Two final negative-combo purchase regressions showed that omitting source context bypassed the shared explicit-purchase guard. The new addition now uses the existing purchase validator with an explicit addition context. Final 163 cases, 834 related cases and 14 live-catalog snapshot cases passed before final full run."
+  ],
+  "validationMode": "Private isolated ts-jest config, separate default ts-jest related suites and general TypeScript. Complete inventory scheduled by historical suite duration; no cases removed. Two timer suites run separately.",
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "modelChanges": false,
+  "productionPromoted": false,
+  "kamppoMigrated": false,
+  "globalStatus": "passed",
+  "stagingDeployment": {
+    "environment": "staging",
+    "head": "cfd66044ebfdcc5a965b4735748e01a5dbc89e9d",
+    "image": "sha256:b0e4d10ccbebb73738aac577e6991d38f8e23ec286d64b12c8a32ad84ced4c8e",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 52.92,
+        "heapTotal": 56.34,
+        "rss": 118.09
+      },
+      "timestamp": "2026-11-12T19:52:01.124Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 53.29,
+        "heapTotal": 56.59,
+        "rss": 118.46
+      },
+      "timestamp": "2026-11-12T19:52:01.385Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-12T19:52:28.747531+00:00",
+    "backup": "/root/ppp-manual-release/20261112T195111Z-staging-516"
+  },
+  "date": "2026-11-12T19:51:38.626629+00:00",
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 50890,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 589,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 50906,
+    "totalPassedSuites": 591
+  },
+  "candidateImage": "sha256:279c2802230598df648b10f377aa998806c87c1e6f89a2f5afb132a1ee5f6ffc",
+  "nextPriorities": [
+    "Several new purchases combined with one replacement, preserving all requested actions.",
+    "Ambiguous source-line selection that retains the complete mixed request while clarifying.",
+    "Independent information inquiries during the two-product option flow.",
+    "Continue auditing the remaining documented scope gaps from real chats; this batch does not close all findings."
+  ],
+  "postDeployCatalogJourneysPassed": 14,
+  "catalogSnapshotSha256": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+  "validationConfigSha256": "3465852cbcebbf582a7e80235485f77c57af37d8ab62db2f0d04d6d5a2c50c5b",
+  "sequencerSha256": "01a31a52ae5150da7cb71e3442745a6c1a3ca7a52ef99fc82a9e6c7298eac78d",
+  "productionSourceUnchanged": "aaca0c43ffaa87a81af2a3c716762b6e8b74738f"
+}

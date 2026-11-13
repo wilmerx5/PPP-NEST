@@ -1,0 +1,97 @@
+{
+  "batch": 489,
+  "baseCommit": "3bcee3222a0dd466ba94098a6b01c07cac454d1d",
+  "engineChanged": true,
+  "newTests": 34,
+  "simulatedClosures": 20,
+  "focus": {
+    "tests": 34,
+    "suites": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "baseline": [
+    {
+      "scope": "joined/split names",
+      "failed": 8,
+      "passed": 8
+    },
+    {
+      "scope": "nameless rooftop POI replay shape",
+      "failed": 8,
+      "passed": 20
+    }
+  ],
+  "preExpansionRelated": {
+    "tests": 653,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0,
+    "note": "Before nameless-POI change; final global must supersede this result."
+  },
+  "scope": "Generic contiguous word-boundary equivalence, and explicit candidate selection for precise local POIs whose geocoder omits the name. No runtime place aliases or fixed addresses. Covered candidates only, preserve access details and cart, block checkout until selection.",
+  "googleDiagnostic": {
+    "requests": 6,
+    "endpoint": "Google Geocoding",
+    "queries": [
+      "Conjunto Villagalante, Kennedy, Bogotá, Colombia",
+      "Conjunto Villa Galante, Kennedy, Bogotá, Colombia"
+    ],
+    "status": "OK",
+    "formattedAddress": "Cl. 6b #79c-81, Bogotá, Colombia",
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "locationType": "ROOFTOP",
+    "partialMatch": false,
+    "nameReturned": false,
+    "namedPremiseComponentReturned": false,
+    "notes": "Read-only from staging host using configured key; no key logged. Third request inspected result components. No directions, OpenAI, Meta or order calls. These queries used region/country/locality suffix, without runtime bounds; do not claim complete live bot replay. Three additional bounded geocoding requests; no full live router or directions test.",
+    "boundedFollowup": {
+      "bounds": "4.45,-74.33|4.81,-73.97",
+      "origin": "approximate local diagnostic center, not read from restaurant DB",
+      "Villagalante": "same rooftop POI with no name or named components",
+      "Plazuelas de San Esteban": "two rooftop partial POIs",
+      "Castilla La Nueva 1": "two rooftop partial POIs including Cl. 10B #81F-20"
+    }
+  },
+  "limits": [
+    "Geocoding success is not a complete live order replay. All directions/checkout in regressions mocked.",
+    "No fallback for ZERO_RESULTS, generic centroids or approximate points; no inferred place coordinates.",
+    "Bounded word-spacing equivalence; not arbitrary spelling corrections.",
+    "No deployment, Kamppo migration or historical order repair. N08-14/N08-15 remain partial."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 6,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "global": {
+    "tests": 48900,
+    "suites": 562,
+    "failed": 0,
+    "skipped": 0,
+    "sourceFiles": 782,
+    "sourceUnchanged": true,
+    "inventoryExact": true,
+    "checks": {
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "scripts": {
+        "exitCode": 0,
+        "passed": 92
+      }
+    },
+    "recovery": "Initial global stopped deliberately after live provider evidence expanded scope. Final-source full runner terminated143 after19 complete checkpoints; remaining543 suites completed in bounded chunks with unchanged source hashes. All562 suite checkpoints verified against exact inventory; no missing, duplicate, failing or skipped suites."
+  },
+  "testSha256": "7301a88ff4cb7fe879c585bb073a7c2c81aa900685e7ac567dc0e25d581710b5",
+  "runtimeSha256": "8cc925a02e9a58037c95c4b8a1eafc9ae1a8cb1beba75bd6a4ed1238a59888ce"
+}

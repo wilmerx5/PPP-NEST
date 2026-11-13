@@ -1,0 +1,150 @@
+{
+  "batch": 518,
+  "sourceCommit": "f3ce5aef90db96a23b58aa0f04230aa37e226820",
+  "newRegressionTests": 66,
+  "relatedTestsPassed": 2822,
+  "relatedSuitesPassed": 42,
+  "typescriptGeneralPassed": true,
+  "compiledNewScenariosPassed": 66,
+  "compiledPreviousMultiCasesPassed": 136,
+  "compiledPreviousMixedCasesPassed": 163,
+  "compiledPriorReplacementJourneysPassed": 80,
+  "catalogSnapshotJourneysPassed": 31,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "paidInference": 0,
+  "modelsChanged": false,
+  "scope": "Explicit user-option evidence before AI attribute edits; bounded ambiguous combo/one-person catalog inquiry context; pending included beverage value selection; generic purchase slots and read-only inquiries within a joint replacement/purchase plan.",
+  "baseline": {
+    "controlledCases": 7,
+    "productionPassed": 0,
+    "stagingPassed": 0,
+    "productionImage": "sha256:b8683c1f793cd90752de1e65eb77e0e49b336ebb14e91560052e5e6dd1044d53",
+    "stagingImage": "sha256:002109c308b7b487ac657c2a233d26ded8c5c585cb32906f57d0d4bc6427cd16",
+    "method": "Offline isolated image runs with injected agent actions / deterministic full-router scenarios. No live model equivalence or historical deployment timing inferred."
+  },
+  "limits": [
+    "Normal inquiry entry is bounded to ambiguous combo and serving-size questions; not a replacement for every legacy catalog route.",
+    "Mixed generic purchases use available full-token catalog prefixes/categories, maximum eight choices; uncertain requests still clarify.",
+    "Subset-unit product replacement and broader natural owner references retain previous scope.",
+    "No paid model/channel evaluation or real orders. Passing mocked tests does not certify the pilot.",
+    "Production promotion and Kamppo migration are pending."
+  ],
+  "developmentFindings": [
+    "Seven initial controlled failures were present in both current production and staging images.",
+    "Catalog validity did not establish customer selection; arbitrary allowed option edits are now rejected.",
+    "Generic purchase terms did not resolve within mixed plans; presentation and flavor are now separate pending choices.",
+    "Singular sabor failed an early new regex; covered and fixed before final validation.",
+    "Explicit #code must precede numeric list-position parsing.",
+    "One initial acceptance oracle incorrectly expected defaults instead of the existing required Pollo choice; corrected without runtime change.",
+    "Two added cross-restaurant tests lacked an orders mock; fixed fixture setup without runtime change.",
+    "Interrupted first global attempt after an existing accompaniment inquiry was incorrectly routed into the new ambiguous selector. Entry now requires an actual matching catalog prefix; original full continuation and two new boundaries pass before the final frozen-source run.",
+    "A subsequent development global exposed six existing side-swap acceptance failures: a general bare affirmative clarification intercepted valid pending offers. Removed that general interceptor and retained source-grounding at the action guard. Ten original side-swap cases and 2822 related cases pass on final sources.",
+    "A development related run used an unsupported plural Jest 29 flag, selected the full inventory and was stopped. The singular --testPathPattern selected exactly 42 suites; only that successful run is credited."
+  ],
+  "nextPriorities": [
+    "Broader rephrasing and explicit abandonment of an information thread without losing checkout.",
+    "Natural owner references and subset-unit product replacement mixed with new purchases.",
+    "Controlled live-model evaluation under the shared remaining budget before claiming production equivalence."
+  ],
+  "catalogSnapshotSha256": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+  "sourceManifestSha256": "a6965935959bd5f0f30f14daa6b6bdabb61fbdc80c7029387ee156fb67455865",
+  "validationConfigSha256": "6884cce1b9bdd073a7bf6f22a812d2b9cd72c2668ca18da32b00348491d77e5c",
+  "sequencerSha256": "2b20a4aa8a8b6f82455b575893d8da5637254daab3da8b62b3a3ab1257209cdd",
+  "sourceFiles": 815,
+  "candidateImage": "sha256:ac0516e2f47273813c797a3e800b342f338812320b03c714e75c9ae471ef2b43",
+  "additionalExistingTargetedTestsPassed": 11,
+  "globalDevelopmentAttempts": "Two interrupted frozen development attempts, neither credited as global approval. Final source run is recorded separately.",
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51092,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 591,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 51108,
+    "totalPassedSuites": 593
+  },
+  "deployment": {
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "f3ce5aef90db96a23b58aa0f04230aa37e226820",
+    "image": "sha256:dbf165333a02cf5d02d0ff25b240a7d934e41a68106151e4318c886fa6345c08",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 1,
+      "memory": {
+        "heapUsed": 56.01,
+        "heapTotal": 66.14,
+        "rss": 128.57
+      },
+      "timestamp": "2026-11-12T23:50:59.833Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 1,
+      "memory": {
+        "heapUsed": 56.4,
+        "heapTotal": 66.39,
+        "rss": 128.57
+      },
+      "timestamp": "2026-11-12T23:51:00.074Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-12T23:51:34.471830+00:00",
+    "backup": "/root/ppp-manual-release/20261112T234942Z-staging-518"
+  },
+  "dockerBuildPassed": true,
+  "postDeployCatalogJourneysPassed": 31,
+  "postDeployCatalogSnapshotSha256": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+  "date": "2026-11-12T23:52:15.576713+00:00",
+  "productionChanged": false,
+  "kamppoMigrated": false,
+  "globalWorkers": 10
+}

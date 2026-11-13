@@ -1,0 +1,16 @@
+{
+  "batch": 499,
+  "engineChanged": false,
+  "newTests": 36,
+  "relatedTests": 132,
+  "relatedSuites": 2,
+  "failed": 0,
+  "typeScriptExitCode": 0,
+  "scope": "Post-order destination inquiries preserve customer street, map reference and apartment across completed/closed states and agent off/mock.",
+  "limits": [
+    "New coverage is destination inquiries with access details. Consecutive access corrections and pin changes remain pending."
+  ],
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false
+}

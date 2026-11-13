@@ -1,0 +1,13 @@
+{
+  "batch": 502,
+  "engineChanged": false,
+  "newTests": 36,
+  "typeScriptExitCode": 0,
+  "scope": "Mixed retrospective correction and purchase request preserves completed/closed order. Explicit subsequent purchase creates second independent order with two units. Three catalogs, agent off/mock, three phrases.",
+  "limits": [
+    "Mixed turn does not process new purchase automatically. Customer must explicitly request it again. Registered correction requires restaurant review."
+  ],
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false
+}

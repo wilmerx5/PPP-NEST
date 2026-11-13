@@ -1,0 +1,56 @@
+{
+  "batch": 491,
+  "baseCommit": "832e0f0523bcb36fa58337890e5f0f5d4119011d",
+  "engineChanged": true,
+  "newTests": 48,
+  "simulatedClosures": 48,
+  "related": {
+    "tests": 154,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "scope": "3 places x agent off/mock:18 bare-pin journeys after tentative place with no/rejection/payment;18 cancel-and-new-pickup journeys;12 failed route/out-of-coverage revalidation followed by bare-pin recovery. Assert pending removal, cart, exact pin, tariff, preserved access and single final order DTO.",
+  "iterations": [
+    "Initial36 pass. Added12 route-revalidation cases. First failure was null-versus-undefined fee assertion; corrected to nullish missing fee.",
+    "12 actual failures reproduced: final DTO lost apartment502 after failed candidate route then bare pin. Failed route left fee undefined, so pin handler did not recognize unresolved destination.",
+    "Narrow fix: failed candidate quote saves deliveryFeeCalculated:null with addressConfirmed:false; existing bare-pin recovery now preserves access details. Final154/3pass."
+  ],
+  "limits": [
+    "All provider, Directions, AI and order integrations mocked. No live regression replay.",
+    "No concurrent webhook or post-confirm location changes in this batch.",
+    "N08-14/N08-15 remain partial."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "global": {
+    "tests": 49020,
+    "suites": 564,
+    "failed": 0,
+    "skipped": 0,
+    "sourceFiles": 784,
+    "sourceUnchanged": true,
+    "inventoryExact": true,
+    "checks": {
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "scripts": {
+        "exitCode": 0,
+        "passed": 92
+      }
+    },
+    "execution": "All suites completed in supervised bounded chunks against frozen source hashes; timer suites isolated. Every suite checkpoint reconciled with exact Jest inventory."
+  },
+  "testSha256": "c98bde18b640b9cdbef486d6cc640ef283fb00b5703ba78aa4e0b0ba1fadfd8c",
+  "runtimeSha256": "bc7adfc0e707a27adf8d68728f415151c116db50f91b015f6f023548585d1a6e"
+}

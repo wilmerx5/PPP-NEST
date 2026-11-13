@@ -1,0 +1,33 @@
+{
+  "batch": 513,
+  "engineChanged": true,
+  "newTests": 216,
+  "simulatedClosures": 216,
+  "relatedTests": 306,
+  "relatedSuites": 2,
+  "baseline": {
+    "tests": 144,
+    "failed": 12,
+    "passed": 132
+  },
+  "globalTests": 50604,
+  "globalSuites": 586,
+  "sourceFiles": 806,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "checks": {
+    "tsc": 0,
+    "build": 0,
+    "scripts": 0
+  },
+  "scriptsPassed": 92,
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "scope": "Colloquial generic drinks with nine request forms, commas and porfa/por fa/porfavor, three drink labels, agent off/mock, existing food and unique/ambiguous menus. Quantity and exact final total/DTO verified.",
+  "execution": "Interrupted global recovered from51 completed suites/17584 passing tests using identical source hashes. Final full inventory reconciled with timers isolated.",
+  "limits": [
+    "No live model/provider calls or distributed concurrency.",
+    "Explicit product/combo catalog relation discussed with user remains an architectural proposal."
+  ]
+}

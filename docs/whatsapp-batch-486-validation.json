@@ -1,0 +1,33 @@
+{
+  "batch": 486,
+  "baseCommit": "9db713e30c830536ecd51bfa2b543a3029598bc0",
+  "engineChanged": false,
+  "newTests": 42,
+  "simulatedClosures": 42,
+  "related": {
+    "tests": 117,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit --incremental false",
+    "exitCode": 0
+  },
+  "testSha256": "cbe46fc0eaac42bfd49ed1df7b211ad06121d7273791ad92e8ed531d0ab3d6fd",
+  "scope": "36 real-router journeys: name/main category/secondary category recognition, agent off/mock, quantities1/2, price/invalid number/recipient interruption; preserve existing soup and pending flavor, resolve option2 and close.6 cancellation journeys reset pending and cart, buy soup anew and close without dessert.",
+  "limits": [
+    "Test-only batch; runtime already passes.",
+    "No concurrency, delivery-provider or live model validation.",
+    "Global485 remains prior runtime evidence, not a newly executed full suite.",
+    "N08-14/N08-15 and other option families remain partial."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false
+}

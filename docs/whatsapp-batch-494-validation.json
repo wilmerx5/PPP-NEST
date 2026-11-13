@@ -1,0 +1,59 @@
+{
+  "batch": 494,
+  "baseCommit": "b91a3e9c2a80f061052098aaf231d5bec2e6b898",
+  "engineChanged": true,
+  "newTests": 54,
+  "simulatedClosures": 54,
+  "related": {
+    "tests": 186,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "scope": "Unify simple quantity and compound quantity-plus-price staged distribution reconciliation. Three dessert catalogs, agent off/mock, total1/2/3 after two Mango assigned, both clause orders, explicit unit price and correct final split/total. Guards for cart-versus-pending ambiguity and quantities0/31 preserve pending/cart then recover.",
+  "baseline": {
+    "tests": 36,
+    "failed": 24,
+    "passed": 12
+  },
+  "iterations": [
+    "24 compound reductions failed while12 totals above assigned already passed. Shared reconciliation helper now handles simple and compound paths, retaining existing guards and answering price.",
+    "Initial related168/3pass; expanded54 focalpass and final related186/3pass."
+  ],
+  "limits": [
+    "Bounded comma/semicolon-separated quantity and unit-price clauses with explicit product name. Other compound forms and option-tail corrections remain pending.",
+    "No live inference or concurrent events; N08-14/N08-15 remain partial."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "global": {
+    "tests": 49206,
+    "suites": 567,
+    "failed": 0,
+    "skipped": 0,
+    "sourceFiles": 787,
+    "sourceUnchanged": true,
+    "inventoryExact": true,
+    "checks": {
+      "tsc": {
+        "exitCode": 0
+      },
+      "tsc-build": {
+        "exitCode": 0
+      },
+      "scripts": {
+        "exitCode": 0,
+        "passed": 92
+      }
+    },
+    "execution": "Supervised bounded chunks against frozen source hashes; timers isolated. All suite checkpoints reconciled with exact Jest inventory."
+  },
+  "testSha256": "0dc6dbbd2bdecc6265cf520bc88682e1f491959b3a164d7a78fc598575cac4c6",
+  "runtimeSha256": "a244c8c1427a6c01da7dda1aac2e9e03986f75f504f5a4a75f7c8b34bc7f5bdc"
+}

@@ -1,0 +1,32 @@
+{
+  "batch": 507,
+  "baseCommit": "97ee6213bee0422c4647bbd03e277489e33f7eb2",
+  "engineChanged": true,
+  "newTests": 66,
+  "relatedTests": 228,
+  "relatedSuites": 3,
+  "baseline": {
+    "passed": 0,
+    "failed": 24
+  },
+  "globalTests": 49956,
+  "globalSuites": 579,
+  "sourceFiles": 799,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "checks": {
+    "tsc": 0,
+    "build": 0,
+    "scripts": 0
+  },
+  "scriptsPassed": 92,
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "execution": "Global interrupted with exit143 after37 checkpoints, resumed, then user interruption/restart. Final recovery from465 completed suites with identical source hashes; exact final inventory reconciled.",
+  "scope": "Counted removal of staged option units, preserving remaining units and options. Three catalogs, agent off/mock, two verbs, partial/full group removal and invalid amount/ambiguous group guards.",
+  "limits": [
+    "Bounded numeric or un/uno/una/dos/tres de los/las de [exact option] syntax. Counted removal requires one matching staged group.",
+    "Concurrent events and broader regional phrasing remain pending."
+  ]
+}

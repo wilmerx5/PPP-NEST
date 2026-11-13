@@ -1,0 +1,38 @@
+{
+  "batch": 497,
+  "baseCommit": "019dc3b17691fbf0fa56d3bae31fe246b546774c",
+  "engineChanged": false,
+  "newTests": 108,
+  "simulatedClosures": 108,
+  "related": {
+    "tests": 342,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScriptExitCode": 0,
+  "scope": "Invalid remaining flavor, presentation or both after one/two staged Mango/Vaso units. Three synthetic desserts, agent off/mock, repeated invalid request, price question or premature confirmation, then valid Lulo/Botella recovery. Cart unchanged until valid allocation, no premature order and exact final attributes/total.",
+  "iterations": [
+    "Initial12pass without runtime edits. Expanded108new and related342/3pass."
+  ],
+  "previousGlobal": {
+    "batch": 495,
+    "tests": 49296,
+    "suites": 568,
+    "repeated": false
+  },
+  "limits": [
+    "Covers invalid options for remaining units, not invalid simultaneous total-quantity replacement.",
+    "Selective removal of staged groups, concurrency and location follow-ups remain pending; N08-14/N08-15 partial.",
+    "No live model or provider calls."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "testSha256": "1724151b22a4ae29bff0da2fe24d41280d7ed4ffa25435f3d42ad60f6d3a0489"
+}

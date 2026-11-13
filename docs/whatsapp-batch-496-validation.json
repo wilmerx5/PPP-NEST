@@ -1,0 +1,38 @@
+{
+  "batch": 496,
+  "baseCommit": "c2ddd405f508e1215d60acbd5979c10de7bdb4b0",
+  "engineChanged": false,
+  "newTests": 144,
+  "simulatedClosures": 144,
+  "related": {
+    "tests": 288,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScriptExitCode": 0,
+  "scope": "Replace quantity and two attributes after partial allocation: three synthetic desserts, agent off/mock, quantities1/2/3, four phrases and two attribute orders. Preserve existing soup; query price without cart mutation; exact Lulo/Botella quantities and total through a single order DTO.",
+  "iterations": [
+    "Initial36 failed due to stale fixture assertion expecting only flavor; router correctly retained presentation too. Assertion corrected to full staged text. No runtime defect inferred.",
+    "Corrected36pass; expanded144 new and related288/3pass."
+  ],
+  "previousGlobal": {
+    "batch": 495,
+    "tests": 49296,
+    "suites": 568,
+    "repeated": false
+  },
+  "limits": [
+    "Known flavor and presentation options only. Invalid options, selective removal of staged groups and concurrency remain pending.",
+    "No live inference or providers. N08-14/N08-15 remain partial."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false,
+  "testSha256": "51fc6c2abcd7a7a146519147def6bdb1fb1d65c952ccc06b99e38e1f2a4dcd15"
+}

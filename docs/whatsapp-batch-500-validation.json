@@ -1,0 +1,28 @@
+{
+  "batch": 500,
+  "engineChanged": true,
+  "newTests": 36,
+  "baseline": {
+    "passed": 24,
+    "failed": 12
+  },
+  "related": {
+    "tests": 168,
+    "suites": 3,
+    "failed": 0
+  },
+  "globalTests": 49674,
+  "globalSuites": 573,
+  "sourceFiles": 793,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "typeScriptPassed": true,
+  "buildPassed": true,
+  "scriptsPassed": 92,
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "limits": [
+    "Corrections to registered orders require restaurant review. New guard preserves completed session on native WhatsApp pin. Full chat backlog remains partial."
+  ]
+}

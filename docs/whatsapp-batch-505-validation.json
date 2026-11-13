@@ -1,0 +1,30 @@
+{
+  "batch": 505,
+  "engineChanged": true,
+  "newTests": 72,
+  "relatedTests": 144,
+  "relatedSuites": 3,
+  "baseline": {
+    "passed": 8,
+    "failed": 28
+  },
+  "globalTests": 49854,
+  "globalSuites": 577,
+  "sourceFiles": 797,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "checks": {
+    "tsc": 0,
+    "build": 0,
+    "scripts": 0
+  },
+  "scriptsPassed": 92,
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "scope": "Registered address correction plus separate explicit purchase. Reuse bounded purchase extraction across product/address corrections, recognize la direccion correcta es, and preserve conditional/question/negation guards.",
+  "limits": [
+    "Bounded comma/semicolon plus aparte/para otro pedido/ademas quiero grammar. Actual registered-order address changes require restaurant review.",
+    "Retiring specific quantities inside staged groups and concurrency remain pending."
+  ]
+}

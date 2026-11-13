@@ -1,0 +1,37 @@
+{
+  "batch": 490,
+  "baseCommit": "40ace52c997a0871025c30c30a5f3a1fda5f4d7d",
+  "engineChanged": false,
+  "newTests": 72,
+  "simulatedClosures": 72,
+  "related": {
+    "tests": 456,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typescript": {
+    "command": "node node_modules/typescript/bin/tsc --noEmit --incremental false",
+    "exitCode": 0
+  },
+  "testSha256": "d4a840e332798bf17fae53e6af074078b3cbb408517434a9fcd0b326842555e8",
+  "scope": "3 initial places x agent off/mock x6 interruptions (no, esa no es, ninguna de esas,9,por nequi,confirmar) x2 recovery destinations (new street,new named complex). Real router and delivery routing with provider and route mocked. Pending candidate blocks order, no premature fee; corrected destination replaces obsolete candidate and apartment, cart preserved, one final DTO with two dishes and correct access.",
+  "iterations": [
+    "Initial48 assertions incorrectly assumed addressConfirmed meant geocoding complete. In current session this flag may reflect supplied address while pendingDeliveryCandidates blocks checkout. Replaced assertion with observable pending candidate, null fee and no external order. All48 passed; expanded explicit rejection phrases to72.",
+    "Final related456/3passed. No production defect reproduced and no runtime changes."
+  ],
+  "limits": [
+    "No live provider or inference replay.",
+    "No unprompted pin, stale concurrent webhook, cancellation or post-confirm correction in this batch.",
+    "Global489 (48900/562) remains prior runtime evidence, not rerun for test-only change.",
+    "N08-14/N08-15 remain partial."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false
+}

@@ -8135,7 +8135,6 @@ export class WhatsappCatalogService {
       if (!family.variants.length) return null;
       q = q.replace(/\bsin\s+(?:el\s+)?combo\b/g,'solo');
     }
-
     // "arroz chino de 56 mil" → SKU a ese precio
     const mentionedPrice = this.extractMentionedPriceCop(text);
     if (mentionedPrice != null) {
@@ -8449,10 +8448,10 @@ export class WhatsappCatalogService {
 
   /** Estilo pedido en la nota (“broaster”, “frito”…) para anotar en el plato base. */
   extractRequestedProteinStyle(text: string): string | null {
-    const q = normalizeText(text || '');
+    const q = normalizeText(fixCommonOrderTypos(text || ''));
     if (/\bbroaster\b/.test(q)) return 'broaster';
-    if (/\bfrito\b/.test(q)) return 'frito';
-    if (/\basado\b/.test(q)) return 'asado';
+    if (/\bfrit[oa]\b/.test(q)) return 'frito';
+    if (/\basad[oa]\b/.test(q)) return 'asado';
     if (/\bsudad[oa]\b/.test(q)) return 'sudado';
     if (/\bplancha\b/.test(q)) return 'plancha';
     if (/\bapanad[oa]\b/.test(q)) return 'apanado';

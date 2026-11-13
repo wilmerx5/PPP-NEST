@@ -1,0 +1,27 @@
+{
+  "batch": 504,
+  "engineChanged": true,
+  "newTests": 0,
+  "updatedTests": 36,
+  "relatedTests": 72,
+  "relatedSuites": 2,
+  "scope": "Continue a separate explicit purchase after a retrospective product correction, using existing reopen and purchase router. Preserve first order DTO, second order quantities and conditional/question/negation guards.",
+  "limits": [
+    "Bounded comma/semicolon plus aparte/para otro pedido/ademas quiero syntax, with conservative condition/negation guard.",
+    "Retrospective address correction and purchase mixed together remain pending."
+  ],
+  "paidInferenceRequests": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "globalTests": 49782,
+  "globalSuites": 576,
+  "sourceFiles": 796,
+  "sourceUnchanged": true,
+  "inventoryExact": true,
+  "checks": {
+    "tsc": 0,
+    "build": 0,
+    "scripts": 0
+  },
+  "scriptsPassed": 92
+}

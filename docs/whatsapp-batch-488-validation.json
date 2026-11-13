@@ -1,0 +1,36 @@
+{
+  "batch": 488,
+  "baseCommit": "e1bc7dfef29a7734ce5ac71ed0fca535421be7a5",
+  "engineChanged": false,
+  "newTests": 48,
+  "simulatedClosures": 48,
+  "related": {
+    "tests": 146,
+    "suites": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit --incremental false",
+    "exitCode": 0
+  },
+  "testSha256": "e735894f20a3ec28ad56de264365a34ee0294f0b3683131f48b3e28f687b1746",
+  "scope": "48 router journeys:3 desserts, agent off/mock, initial3 corrected to2/4 using4 phrases. Preserve existing soup, pending quantity across price inquiry, reject obsolete total3 and resolve new exact flavor split, check final total and single DTO with exact flavor counts.",
+  "iterations": [
+    "Initial36pass. Added mejor solo phrasing: final related146/3pass including48 new journeys."
+  ],
+  "limits": [
+    "Runtime already passes; no new fix.",
+    "No partially assigned distribution before quantity correction, mixed contact envelope or live inference.",
+    "Global487 remains prior runtime evidence; not rerun in this test-only batch.",
+    "N08-14/N08-15 remain partial."
+  ],
+  "paidInferenceRequests": 0,
+  "googleRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "modelsChanged": false,
+  "configurationChanged": false,
+  "budgetChanged": false
+}

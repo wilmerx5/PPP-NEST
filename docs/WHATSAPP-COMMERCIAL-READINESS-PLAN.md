@@ -1,3 +1,359 @@
+## Tanda 518 — consultas y elecciones antes de modificar el carrito
+
+El chat nuevo reveló cotización arbitraria de un combo, pérdida del producto consultado y cambios de bebida/preparación sin elección. Siete reproducciones controladas fallan tanto en la imagen actual de producción como en staging: la evidencia apunta a un hueco previo y no acredita una regresión de la última tanda. La comparación usa router real con acciones del agente simuladas, no inferencia real. Producción conserva la entrega selectiva de relaciones sobre Main498 y no incluye todas las tandas posteriores de staging.
+
+La guardia exige ahora evidencia del valor elegido en el mensaje, además de validez en el catálogo, antes de aceptar updateAttributes/updateUnitOptions. Una pregunta de sabores, un cambio sin destino, una dirección con «Manzana» o un «sí» sin elección no autoriza otra bebida/preparación. El router muestra las opciones incluidas, primero propietario si hay varios y después valor. Carrito/cantidad/notas permanecen hasta una elección explícita. Vencimiento, firma de carrito y catálogo/precio/opciones protegen listas obsoletas.
+
+Las consultas iniciales ambiguas de combos conservan las presentaciones y las continuaciones informativas, sin elegir la primera ni reactivar ofertas anteriores. Preguntar por una persona usa rendimiento real y prefiere una presentación individual explícita si existe. Aceptar una oferta única conserva la elección requerida de Pollo del flujo previo; no se acreditó un cambio de valores por defecto para esa aceptación.
+
+Se mantiene el objetivo de517: compras genéricas dentro de un reemplazo conjunto eligen presentación y luego opciones, una a la vez. Las consultas de precio/descripción durante selección de línea, producto o sabor no consumen la decisión ni aplican parte del plan. Se usan prefijos de tokens completos/categorías y códigos explícitos antes de posiciones numéricas, hasta ocho candidatos disponibles. Dos compras genéricas consecutivas permanecen independientes. Las opciones de cada compra se resuelven antes de guardar el conjunto. Runtime sin IDs, precios o nombres de PPP como excepciones.
+
+Validación focalizada:66 regresiones nuevas,2.822 relacionadas/42 suites, TypeScript general y build aprobados. Imagen candidata:66 nuevos+136 de517+163 de516+80 anteriores aprobados con red deshabilitada.31 recorridos con catálogo real leído de staging; persistencia/modelo/canal/órdenes simulados. Cero inferencia pagada, mensajes Meta y órdenes externas; modelos y presupuesto sin cambios. La expansión encontró y corrigió antes del cierre singular «sabor», precedencia de #código y resolución de consultas a otro producto durante una elección. Dos fallos de fixture por mock de órdenes ausente y una expectativa inicial de aceptación sin elegir Pollo se corrigieron sin cambiar runtime por esos oráculos.
+
+Alcance pendiente: más formas de abandonar/reformular consultas sin bloquear checkout, identificación natural de propietario y reemplazo de parte de una línea mezclado con nuevas compras. La nueva entrada informativa normal está acotada a combos ambiguos y consultas de rendimiento; no sustituye todas las rutas previas. Las pruebas simuladas no certifican modelo/canal real ni el piloto completo. Producción y migración Kamppo no forman parte de esta tanda.
+
+La primera pasada global de desarrollo se interrumpió al detectar una consulta de acompañamientos desviada al selector nuevo. Se acotó la entrada a prefijos reales de catálogo y se preservó la prueba anterior completa, sin cambiar su expectativa; dos controles nuevos y las14 suites relacionadas pasan antes de congelar las fuentes finales.
+
+La segunda pasada de desarrollo detectó seis fallos de aceptación de ofertas de acompañamiento. La aclaración general de afirmaciones cortas interceptaba ofertas válidas; se retiró esa interceptación y se mantuvo la verificación del valor elegido en la guardia de acciones. Los diez casos anteriores de sustitución y las42 suites relacionadas pasan sobre las fuentes finales. Un comando de desarrollo con flag plural no admitido por Jest29 seleccionó el inventario completo y se interrumpió; solo se acredita el pase de42 suites con --testPathPattern singular. Ninguno de los pases globales interrumpidos se acredita como aprobación.
+
+Global final51.108 pruebas/593 suites aprobada, cero fallos y omitidas. Inventario exacto y815 fuentes congeladas verificados. Configuración Jest privada aislada, diez trabajadores y dos suites de temporizadores separadas; TypeScript general y2.822 relacionadas con transformación predeterminada acreditan tipos por separado. Código f3ce5aef publicado y desplegado en staging, imagen dbf165333a02cf5d02d0ff25b240a7d934e41a68106151e4318c886fa6345c08, saludable y cero reinicios. API local/pública y DB correctas, configuración privada preservada. Los445 controles compilados pasan en el contenedor activo y31 recorridos usan catálogo leído después del arranque. Producción mantiene imagen/arranque y Kamppo permanece sin cambios. Evidencia: whatsapp-batch-518-validation.json.
+
+## Tanda 517 — varias compras y selección de la línea original
+
+Se reprodujeron 16 fallos: dos compras nuevas junto al reemplazo no se aplicaban y la aclaración de la línea original exigía repetir la petición. Ahora se conserva el texto completo en pendingCartReplacement.mixedSourceRequest, con firma del carrito y vencimiento. El número o una opción identificadora selecciona solo la línea mostrada, conservando las compras. Si faltan opciones, mixedPurchase.purchases conserva la lista y purchaseIndex identifica el producto activo. Se pregunta una opción a la vez y se construye todo el carrito en memoria antes de guardar. Las sesiones anteriores de una sola compra sin la lista nueva siguen funcionando.
+
+El separador de compras respeta el prefijo completo más largo del catálogo, incluso si es un producto ambiguo o agotado; no convierte nombres compuestos en compras diferentes. Las notas/opciones de un SKU repetido permanecen independientes y se rechaza una adición truncada por el límite de unidades. Las cantidades se validan antes de perder signos o decimales al normalizar; los tamaños de botella 1.5L/2.5L siguen siendo nombres válidos.
+
+136 regresiones nuevas,970 relacionadas/9 suites y TypeScript general aprobados. Imagen candidata:136 escenarios nuevos+163 de516+80 anteriores pasan con red deshabilitada.29 recorridos con catálogo real de staging verifican enteros, medios, cuartos, combos, arroz, elección entre dos líneas y sabor de Coca-Cola antes del cierre simulado. Desarrollo:32 fallos de orden inverso de varias compras,2 de cantidad negativa y4 de identidad compuesta se repararon. Ocho expectativas iniciales conservaban erróneamente el código del SKU original y una expectativa temporal exigía Sabor con mayúscula; se corrigieron los oráculos, sin cambios de runtime por ellos. Cero inferencia pagada, mensajes Meta y órdenes externas. Modelos y presupuesto sin cambios.
+
+Global final 51.042 pruebas en 592 suites aprobada, sin fallos ni omitidas. Inventario completo y 814 fuentes congeladas verificados. Configuración Jest privada aislada con orden por duración anterior y dos suites de temporizadores separadas; TypeScript general y las 970 relacionadas con ts-jest predeterminado aprobados. Una sola pasada global final sobre estas fuentes, después de cerrar las verificaciones focalizadas y compiladas. Código c5254f9b publicado y desplegado en staging, imagen 002109c308b7b487ac657c2a233d26ded8c5c585cb32906f57d0d4bc6427cd16, saludable y cero reinicios. API local/pública, DB y configuración privada verificadas. Los 136 escenarios compilados nuevos, 163 de516 y 80 anteriores pasan también sobre el contenedor activo. Los 29 recorridos con catálogo leído después del despliegue vuelven a pasar. Producción y Kamppo no se modificaron. Evidencia: whatsapp-batch-517-validation.json.
+
+Alcance: reemplazar una línea completa y aplicar una lista contada de compras identificadas por catálogo, en ambos órdenes de cláusulas. Selección del propietario por número u opción identificadora sin repetir la petición completa. Siguen pendientes productos nuevos genéricos/ambiguos dentro de la lista, consultas informativas durante las elecciones y más formas naturales de identificar el propietario; la sustitución de parte de una línea conserva su alcance anterior. No atribuirles cierre a esta tanda. La simulación no certifica modelo/canal real ni cierra todos los errores de los chats. No promover a producción ni migrar a Kamppo sin la solicitud correspondiente.
+
+## Tanda 516 — reemplazo de producto con compra adicional
+
+Se reprodujeron ocho fallos de cambio de preparación mezclado con una compra nueva. La nueva operación conjunta conserva cantidad, nota y opciones compatibles de la línea original y aplica la adición contada por separado. Admite ambos órdenes de las cláusulas, destino por nombre completo o preparación y conversiones usando los vínculos reales de combos. Las notas y opciones de la compra nueva permanecen en su producto. Si falta elegir opciones, pregunta una a la vez y conserva el carrito hasta resolver ambos productos. Cancelación del cambio, selección vencida, carrito modificado, catálogo/precio/opciones cambiados y límites mantienen el pedido sin cambios parciales.
+
+163 regresiones nuevas,834 relacionadas/8 suites y TypeScript general aprobados. La imagen candidata supera los163 escenarios nuevos con adaptador de aserciones y los80 recorridos compilados anteriores, con red deshabilitada. Catorce recorridos adicionales usan catálogo leído de staging y cierres simulados. Desarrollo encontró ocho fallos de combo→normal, cuatro fallos de alias de porción en el catálogo real (ocho regresiones sintéticas) y dos fallos de negación en la compra adicional. Se corrigieron antes de la validación final. La adición reutiliza el validador existente de compra explícita. Cero inferencia pagada, mensajes Meta y órdenes externas; modelos sin cambios.
+
+Global final50.906/591 aprobada, cero fallos y omitidas, inventario completo y812 fuentes congeladas. Configuración Jest privada aislada y orden por duración histórica, con dos suites de temporizadores separadas; TypeScript general y834 relacionadas con ts-jest predeterminado aprobados. Los pases interrumpidos de desarrollo no se acreditan como global aprobada. Código cfd66044 publicado y desplegado en staging, imagenb0e4d10ccbebb73738aac577e6991d38f8e23ec286d64b12c8a32ad84ced4c8e, saludable y cero reinicios. API local/pública, DB y configuración privada verificadas. Los163 escenarios compilados nuevos y80 anteriores pasan también en el contenedor activo; los14 cierres simulados con catálogo leído después del despliegue vuelven a pasar. Producciónaaca0c43 y Kamppo sin cambios. Evidencia: whatsapp-batch-516-validation.json.
+
+Alcance acotado: una línea completa y una compra nueva contada. Varias compras nuevas, sustitución de parte de una línea y selección numérica de un propietario ambiguo siguen pendientes; en esta ruta se conserva el carrito para aclarar y se requiere repetir ambos cambios con identificación suficiente. La siguiente tanda debe conservar toda la petición mientras se aclara el propietario, admitir varias compras y revisar consultas independientes durante las dos elecciones. La aprobación simulada no acredita modelo/canal real ni cierra todos los hallazgos de los chats. No promover a producción ni migrar a Kamppo sin la solicitud correspondiente.
+
+## Tanda 515 — cambios de preparación sobre la línea existente
+
+Se reprodujo «cambia el pollo a frito/broaster» añadiendo otro SKU. El router identifica ahora el propietario en el carrito y reutiliza el reemplazo atómico, conservando cantidad, notas y opciones compatibles. Un título de catálogo como «1 Pollo» no reduce a una las unidades existentes. Los medios/cuartos y las preparaciones como atributo mantienen su identidad. Las conversiones de combo usan las relaciones configuradas y conservan el propietario explícito. Ambigüedades, selección pendiente, destino agotado y pago con enlace dejan el carrito para aclarar.
+
+93 regresiones nuevas y615 relacionadas/5 suites aprobadas con dependencias externas simuladas, TypeScript general limpio. 80 recorridos del código compilado pasan con red deshabilitada y80 cierres simulados. Diez recorridos adicionales leen el catálogo real de staging y simulan el cierre completo. No se han creado órdenes externas ni enviado mensajes Meta; cero inferencia pagada y modelos sin cambios.
+
+Global final50.743/590 aprobada, cero fallos y omitidas, inventario exacto y811 fuentes congeladas. Configuración Jest privada con transformación aislada; TypeScript general y615 relacionadas con ts-jest predeterminado acreditan tipos por separado. Los intentos rojos e interrumpidos de desarrollo se conservan en la evidencia, sin atribuirles aprobación. Código33362327 publicado en staging y desplegado, imagened27b15f0847fc2d94375c1818ff36ad2e5c776df9fe64c2e8de013fb291bc91, saludable y cero reinicios. Salud local/pública y DB correctas, configuración privada preservada. Los80 controles compilados pasan también sobre el contenedor activo y diez recorridos con catálogo leído después del despliegue vuelven a pasar. Producciónaaca0c43 y Kamppo permanecen sin cambios. Evidencia: whatsapp-batch-515-validation.json.
+
+Pendientes: revisar chats nuevos y compras mezcladas con correcciones por identidad de línea. La migración a Kamppo y promoción de esta tanda a producción no forman parte de esta entrega. Estas pruebas simuladas no acreditan modelo/canal real ni cierre comercial de todo el piloto.
+
+## Actualización 514 — catálogo relacional y conversiones
+
+Se incorporan vínculos reales combo→producto normal, administrables mediante selector y API protegida. Backend staging desplegado y cinco pares guardados. Nuevos recorridos comprueban ambos sentidos, cantidades, opciones/notas compatibles, selección entre varios combos, opciones nuevas, precio y relación cambiados, compra de combo independiente y cierre exacto. La ficha del agente también transporta la relación. El cierre de elecciones ambiguas reutiliza el convertidor para conservar las opciones originales.
+
+39 pruebas nuevas y5900 relacionadas/112 suites finales aprobadas. Global base50.638/588 aprobada antes del último ajuste específico, sin atribuirla al ajuste final. Diez cierres simulados adicionales usan el catálogo y los vínculos leídos de staging real. FK/API reales, frontend compilado y navegador con API sintética verificados. Detalle y límites en whatsapp-batch-514-validation.json. El panel está publicado en la rama staging, pendiente de despliegue web. Kamppo requiere migración con su aislamiento de restaurantes. La aprobación de estas pruebas no certifica todo el piloto ni reemplaza la revisión de chats nuevos.
+
+## Tanda 513 — cortesías y comas en bebidas genéricas
+
+La ampliación inicial144 reproduce12 fallos de «una limonada/jugo/gaseosa, porfa» en catálogos con varias opciones: la coma evita la ruta de aclaración y se elige la primera presentación. La gramática cuantificada admite coma con/sin espacio y porfa/por fa/porfavor/por favor. Se amplía a216 recorridos con nueve formas, tres etiquetas, agente off/mock, comida previa y catálogo único/múltiple. Cada recorrido termina en una orden DTO exacta.
+
+Relacionadas306/2 y TypeScript general/build/92 scripts aprobados. Global50.604/586 aprobada, fuentes congeladas e inventario exacto. Tras interrupción se retoma desde51 suites/17.584 aprobadas con fuentes idénticas. Evidencia whatsapp-batch-513-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+El usuario plantea revisar el modelado de productos y combos. Se confirma que la familia comercial se infiere de nombres y la entidad Product carece de vínculo explícito producto normal/combo. Se propone evaluar relación comercial explícita y validación de operaciones, junto con cobertura de chats reales por comportamiento. Esa propuesta sigue en discusión. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
+## Tanda 512 — pedidos de bebidas genéricas y elección con cantidad
+
+La reproducción inicial encuentra12 fallos en24 recorridos: «una limonada/jugo/gaseosa» abre lista aun con producto único, mientras cantidades plurales se añaden. La nueva ruta interpreta la petición cuantificada antes de explorar categorías, conserva carrito previo y delega al flujo existente de bebida. Si hay varias opciones, guarda selección pendiente con cantidad explícita. La categoría se busca por el sustantivo para que «dos» tampoco elija silenciosamente la primera presentación. Se rechaza cero y se mantienen consultas de catálogo como lectura.
+
+90 regresiones nuevas,66 cierres DTO simulados: tres etiquetas, agente off/mock, cantidades1/2/3, comida previa, preguntas, agotados, elecciones1/2 entre dos SKU, cero y sabor obligatorio. Relacionadas162/2 aprobadas. Global50.388/585 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-512-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Comprobación aislada del catálogo con dependencias simuladas confirma «una limonada» para Limonada Natural y «una gaseosa» para Gaseosa400ml únicos. «Un jugo» frente a Jugo Natural En Agua conserva la selección existente para precisar presentación. El primer intento del probe carecía de inicialización de la clase y se corrigió usando su constructor. No acredita proveedores reales. Pendientes otras formulaciones coloquiales y concurrencia distribuida. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
+## Tanda 511 — exclusión de combo ante falta de presentación sola
+
+La ampliación del chat «sin combo» reproduce10 fallos en12 casos de plato normal agotado/ausente. El intento de añadir un SKU combo ahora devuelve una explicación y conserva el carrito cuando el texto fuente pide presentación sola. Reutiliza el resultado de bloqueo existente con su razón visible. Las pruebas también conservan una sopa previa, verifican cantidades2/3, corrección, bebida aparte nombrada explícitamente y otro combo independiente en el mismo pedido.
+
+72 pruebas nuevas,54 cierres DTO simulados. Relacionadas114/2 aprobadas. La primera ampliación usaba «una Limonada», que abre selección de categoría en12 casos. Para probar adición explícita se usa el nombre completo «Limonada Natural» y se mantiene el flujo genérico como pendiente. Global50.298/584 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-511-validation.json. Servicios externos simulados, cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Pendientes peticiones genéricas de bebida, preferencias contradictorias, más expresiones de negación, concurrencia distribuida y proveedores reales. El chat original está cubierto desde510. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
+## Tanda 510 — «sin combo» y confirmaciones repetidas
+
+El chat aportado por el usuario reproduce36 fallos de selección/corrección con «sin combo», «sin el combo» y mayúsculas. El catálogo ahora trata esa negación como preferencia sola y la aplica antes de elegir entre variantes. Conserva la familia original para identificar el combo del carrito. Se prueban pollo broaster y dos familias sintéticas, pedido inicial/corrección y seis sustituciones con bebida/acompañamiento guardados que retiran la bebida incluida.
+
+Las pruebas de ráfagas de confirmación también detectan que otro «confirmar» tras completar reabría un carrito vacío. Se conserva la sesión completed/closed al repetir ese comando.72 recorridos prueban dos/tres mensajes concurrentes, cortesía, IDs iguales/distintos y confirmación posterior. La simulación corresponde a un proceso con servicios externos aislados.
+
+114 pruebas nuevas:72 confirmación y42 sin combo. Relacionadas finales132/3 aprobadas. Global50.226/583 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Una global previa de solo confirmación se detuvo a87 suites/17.680 aprobadas para incluir el chat del usuario. La global conjunta usa un registro nuevo. Evidencia whatsapp-batch-510-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Pendientes catálogos sin producto base disponible, otras cantidades y formulaciones, preferencias contradictorias, concurrencia distribuida y proveedor real. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
+## Tanda 509 — recuperación de grupos ambiguos con reparto completo
+
+36 regresiones nuevas prueban Mango en Vaso y Mango en Botella como grupos pendientes diferentes. «Quita 1»/«retira uno» requiere aclaración, se consulta precio y después se reemplaza el reparto completo en tres formas: conservar ambos grupos, unificar Mango en Botella o cambiar todas las unidades a Lulo en Botella. Tres catálogos y agente off/mock. Se verifica sesión intacta al rechazar, cantidades y presentaciones exactas al terminar, sopa conservada y una única orden.
+
+Relacionadas102/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. Global507 (49.956/579) permanece como evidencia previa. Cero inferencia pagada y órdenes externas. Publicación en rama staging. Evidencia whatsapp-batch-509-validation.json.
+
+Pendientes concurrencia y más formulaciones de retirada/corrección. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
+## Tanda 508 — cantidades en palabras e interrupción de precio
+
+120 regresiones nuevas cubren un/uno/una/dos/tres, quita/retira, retirada parcial/total, tres catálogos y agente off/mock. Después de retirar se consulta precio, se verifica conservación del pendiente/carrito y se termina el reparto hasta un único DTO con cantidades exactas. Relacionadas186/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. Global507 (49.956/579) permanece como evidencia previa.
+
+Cero inferencia pagada y órdenes externas. Publicación en rama staging. Evidencia whatsapp-batch-508-validation.json. Pendientes más formulaciones, grupos distintos con la misma opción y concurrencia. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
+## Tanda 507 — retirar cantidades concretas del reparto pendiente
+
+Sobre97ee6213 se reproducen24 fallos al pedir «quita/retira 1/2 de los de mango». La retirada ahora reconoce cantidad explícita, reduce el total pendiente y conserva las unidades restantes del grupo con sus opciones. Reutiliza las guardas de coincidencia con carrito y rechaza cero, cantidad excesiva o varios grupos coincidentes, solicitando reparto completo antes de cambiar.
+
+66 pruebas nuevas y cierres DTO simulados, tres catálogos, agente off/mock, dos verbos, retirada parcial/total y guardas. Relacionadas228/3 aprobadas. Global49.956/579 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. La ejecución global tuvo interrupción143 tras37 checkpoints, recuperación posterior e interrupción del usuario/reinicio. Se completan únicamente suites pendientes desde465 checkpoints con fuentes idénticas. Evidencia whatsapp-batch-507-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Alcance «quita/retira [cantidad] de los/las de [opción exacta]» para un único grupo elegido. Se conservan otras partes del reparto y productos. Pendientes concurrencia, más formulaciones y casos de varios grupos con opciones diferentes. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
+## Tanda 506 — mensajes posteriores a compra aparte
+
+36 regresiones nuevas verifican «por favor», «gracias» y consulta de precio, cada una repetida dos veces después de corregir la dirección del pedido registrado y pedir dos unidades aparte. Tres catálogos, agente off/mock, completed/closed. Se verifica carrito de dos unidades, primera orden intacta, una sola reapertura y segunda orden exacta.
+
+Relacionadas108/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. Global505 (49.854/577) permanece como evidencia previa. Cero inferencia pagada y órdenes externas. Publicación en rama staging. Evidencia whatsapp-batch-506-validation.json.
+
+Pendientes concurrencia, retirada de cantidades específicas de grupos y otras formulaciones mixtas. La revisión efectiva de órdenes registradas corresponde al restaurante. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
+## Tanda 505 — dirección retrospectiva y compra aparte
+
+72 recorridos nuevos cubren cambio de dirección de orden registrada mezclado con compra aparte explícita, condicional, pregunta o negación. Tres catálogos, agente off/mock y completed/closed. La ruta de dirección reutiliza la extracción acotada de compra aparte, informa cómo revisar el cambio y continúa la compra mediante reapertura normal. «La dirección correcta es» se reconoce como corrección del cliente. La extracción se comparte con las correcciones retrospectivas de producto.
+
+Inicial36:28 fallan y8 pasan. Primera corrección deja4 desvíos hacia ubicación del local, corregidos mediante el prefijo explícito. Ampliación72 y relacionadas144/3 aprobadas. Se verifica conservación del primer DTO y segundo pedido con cantidades exactas. Global49.854/577 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-505-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+El cambio efectivo de dirección de una orden registrada requiere revisión del restaurante. Alcance de compra aparte delimitado por coma/punto y coma y «aparte/para otro pedido/además quiero». Pendientes otras formulaciones, cantidades específicas dentro de grupos y concurrencia. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
+## Tanda 504 — continuar compra aparte desde una corrección retrospectiva
+
+La ruta pospedido ahora reconoce una petición explícita separada por coma/punto y coma con «aparte», «para otro pedido» o «además quiero». Responde cómo revisar la corrección de la orden registrada y pasa la compra adicional al flujo existente de reapertura y compra. Mantiene la protección ante preguntas, condiciones y negaciones. La detección conserva puntuación porque la normalización general la elimina.
+
+Se actualizan36 recorridos de502 para exigir continuidad directa y segunda orden exacta, conservando el primer DTO. Relacionadas72/2 aprobadas con las guardas de503. Global49.782/576 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-504-validation.json. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Alcance acotado a corrección retrospectiva de producto con una compra aparte explícita. Pendientes dirección retrospectiva mezclada con compra, otras construcciones lingüísticas, cantidades específicas dentro de grupos y concurrencia. La corrección efectiva de una orden registrada requiere revisión del restaurante. Últimos despliegues verificados producción498 y servidor staging498, Kamppo481.
+
+## Tanda 503 — condiciones, preguntas y negación de nueva compra
+
+36 regresiones nuevas cubren corrección retrospectiva acompañada de compra condicional, pregunta de compra o negación de otro pedido. Se comprueba conservación de la orden/sesión, cortesía posterior sin reapertura y compra explícita posterior que crea un segundo pedido exacto. Tres catálogos, agente off/mock, completed/closed. Relacionadas72/2 y TypeScript general aprobados. Solo cambian pruebas y documentación.
+
+Sigue pendiente implementar continuidad de la compra adicional explícita en el mismo mensaje mixto. Esta tanda protege los casos que requieren esperar una instrucción clara. Global500 permanece como evidencia previa. Cero inferencia pagada y órdenes externas. Publicación en rama staging. Evidencia whatsapp-batch-503-validation.json.
+
+## Tanda 502 — corrección retrospectiva y recuperación de nueva compra
+
+36 regresiones nuevas prueban tres frases que mezclan corrección del pedido confirmado y compra adicional, tres catálogos, agente off/mock y estados completed/closed. Se verifica la respuesta de revisión, conservación de la sesión/primera orden y posterior petición explícita de dos unidades que termina en una segunda orden independiente. TypeScript general aprobado. Solo cambian pruebas y documentación. Evidencia whatsapp-batch-502-validation.json.
+
+Límite identificado: la compra mencionada dentro del mensaje mixto requiere que el cliente la solicite explícitamente otra vez. Esta tanda verifica la recuperación actual. Queda pendiente mejorar la aclaración y continuidad de esa compra en el mismo turno. La corrección efectiva de la orden confirmada requiere revisión del restaurante. Otros pendientes incluyen cantidades específicas dentro de grupos y concurrencia. Global500 permanece como evidencia previa. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+## Tanda 501 — pins repetidos y acceso después de confirmar
+
+36 regresiones nuevas cubren dos pins consecutivos, coordenadas solas, nombre de conjunto o dirección adjunta, seguidos de torre/apartamento y consulta del destino. Tres direcciones, agente off/mock y estados completed/closed. Se verifica sesión y destino originales, respuesta de revisión del pedido registrado y ausencia de reapertura u orden nueva.
+
+Relacionadas72/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. La global500 (49.674/573) permanece como evidencia previa. Cero inferencia pagada y órdenes externas. Publicación en rama staging.
+
+Pendiente corrección retrospectiva mezclada con una compra nueva, retirada de cantidades específicas de grupos y concurrencia. Cambiar efectivamente el destino de la orden registrada requiere revisión del restaurante. N08-14/N08-15 siguen parciales. Producción498 f720ede1 y servidor staging49875ca2f52 son los últimos despliegues verificados. Kamppo481.
+
+## Tanda 500 — dirección y pin después de confirmar
+
+36 regresiones nuevas cubren secuencias de calle, torre/apartamento y consulta del destino, más pins nativos de WhatsApp después de completed/closed, tres direcciones y agente off/mock. Inicial24 mensajes de texto pasan y12 pins fallan: la ruta de ubicación sobrescribía la sesión antes de alcanzar la protección pospedido. Se añade una guarda antes de procesar el pin que conserva la sesión y solicita revisión del restaurante para el pedido registrado.
+
+Relacionadas168/3 aprobadas. Global49.674/573 aprobada, inventario exacto y fuentes congeladas verificadas. TypeScript general/build y92 scripts aprobados. Servicios externos simulados, cero inferencia pagada y órdenes externas. Evidencia whatsapp-batch-500-validation.json. Publicación en rama staging.
+
+La modificación efectiva de dirección/tarifa de una orden registrada sigue requiriendo revisión del restaurante. Pendientes del análisis de chats incluyen acceso y pin combinados con nuevas compras, retirada de cantidades específicas de grupos y concurrencia. N08-14/N08-15 siguen parciales. Último despliegue verificado producción498 f720ede1 y servidor staging49875ca2f52, Kamppo481.
+
+## Tanda 499 — consultas del destino confirmado con datos de acceso
+
+36 regresiones nuevas verifican tres direcciones con torre/apartamento o referencias de mapa diferentes, agente off/mock y estados completed/closed. Las respuestas conservan el destino del cliente y la sesión completa. Relacionadas132/2 y TypeScript general aprobados. Solo cambian pruebas y documentación. La global498 (49.602/571) sigue como evidencia previa.
+
+Estado actualizado de despliegue verificado en el turno anterior: PPP producción ejecuta f720ede123b98f6212789a0b6633b375e7a15b31 con correcciones hasta498, API/DB correctas y744 controles aislados antes/después. Servidor staging ejecuta75ca2f529b289f9ee2a3621ef70c084dbb8af236. Evidencia de producción en Main: docs/whatsapp-batch-498-production-deployment.json. Kamppo permanece481.
+
+Pendiente cubrir modificaciones consecutivas de acceso/pin después de confirmar, retirada de cantidades específicas dentro de grupos y el resto del análisis de chats. N08-14/N08-15 siguen parciales. Cero inferencia pagada y órdenes externas en esta tanda. Publicación de499 en rama staging.
+
+## Tanda 498 — retirar un grupo del reparto pendiente (rama staging)
+
+Sobre a05ce7fc se reproducen12 fallos: «quita los de mango» y «retira los de mango» buscan una línea en el carrito aunque esas unidades están elegidas dentro de una compra pendiente. La nueva ruta acotada reconoce una opción única del catálogo, retira los grupos que la eligieron explícitamente, reduce el total pendiente y conserva otros grupos y el carrito. Si la opción también aparece en el carrito, no modifica nada y solicita cantidad total/opciones para corregir explícitamente la compra pendiente.
+
+54 pruebas nuevas/54 cierres DTO simulados: tres postres sintéticos, agente off/mock, una/dos unidades retiradas, dos verbos, con/sin otro grupo ya elegido y seis ambigüedades entre carrito y pendiente con recuperación. Se verifican cantidad y partes pendientes, sopa y grupos conservados, ausencia de Mango retirado, reparto final exacto y una única orden con total correcto. Inicial12 fallos; corregidas12 aprobadas; ampliación y relacionadas252/3 aprobadas.
+
+Global49.602/571 aprobada,0 fallos/omitidas,791 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Ejecución por bloques supervisados y temporizadores separados. Evidencia whatsapp-batch-498-validation.json. Cero inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos.
+
+Alcance: «quita/retira los/las de [opción exacta]», retirando todos los grupos pendientes que coincidan. No cubre quitar una cantidad arbitraria dentro de un grupo, opciones desconocidas/ambiguas, varios borradores simultáneos ni concurrencia. Pendiente ampliar esas retiradas y retomar ubicaciones posconfirmación/acceso/pin. N08-14/N08-15 siguen parciales. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
+## Tanda 497 — opciones inválidas en las unidades restantes (rama staging)
+
+108 recorridos nuevos sobre019dc3b1: tres postres sintéticos, agente off/mock, una/dos unidades Mango en Vaso ya repartidas, sabor inexistente, presentación inexistente o ambos. Tras la solicitud inválida se repite, se pregunta precio o se intenta confirmar; después «los otros con lulo en botella» recupera el pedido. Se verifican respuesta de opciones, carrito intacto, cantidad pendiente, ausencia de orden prematura y cierre único con reparto exacto, sopa previa y total correcto.
+
+Inicial12 aprobadas; ampliación108 nuevas y relacionadas342/3 aprobadas sin fallos/omitidas. TypeScript general aprobado. No se reproduce defecto nuevo ni se cambia runtime. Global495 (49.296/568) permanece como evidencia previa, no repetida. Evidencia whatsapp-batch-497-validation.json.
+
+Alcance: opciones de las unidades restantes; no cubre reemplazo simultáneo de cantidad total con opciones inválidas. Pendiente retirada de un grupo parcial, concurrencia y ubicaciones posconfirmación/acceso/pin. N08-14/N08-15 siguen parciales. Cero inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
+## Tanda 496 — cambiar cantidad, sabor y presentación juntos (rama staging)
+
+144 recorridos nuevos sobre c2ddd405: tres postres sintéticos, agente off/mock, cantidades1/2/3 tras elegir dos Mango en Vaso, cuatro frases de corrección y dos órdenes de opciones («con lulo en botella» / «con botella de lulo»). Se verifica que el cambio sustituye ambos atributos, conserva la sopa existente, no duplica tras preguntar precio y llega a una única orden DTO con cantidades, opciones y total correctos.
+
+Primera ejecución36 falla por una aserción heredada que esperaba solo sabor; el router conservaba correctamente también la presentación. Ajustada la expectativa al texto completo del reparto:36 pasan. Ampliación144 y relacionadas288/3 aprobadas, sin fallos/omitidas. TypeScript general aprobado. No se reproduce defecto nuevo ni se modifica runtime. Global495 (49.296/568) permanece como evidencia previa, no repetida. Evidencia whatsapp-batch-496-validation.json.
+
+Pendiente: opciones inválidas, retirada de un grupo parcial, atributos adicionales, concurrencia y ubicaciones posconfirmación/acceso/pin. N08-14/N08-15 siguen parciales. Cero inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
+## Tanda 495 — cambiar cantidad y sabor después de reparto parcial (rama staging)
+
+Sobre a4fec1f9 se reproducen18 fallos iniciales: «que sean 2 con lulo» intenta corregir una línea del carrito en vez de la compra pendiente. «Mejor solo» y cancelar todo el pedido pasan. La guardia del corrector de carrito ahora cede al resolvedor pendiente cuando «que sean»/«mejor que sean» incluye una opción explícita del catálogo, sin aclaración de cantidad de carrito ni pedido múltiple pendiente. No cambia cantidades por sí misma ni añade excepciones de productos.
+
+90 pruebas nuevas/90 cierres DTO simulados: tres postres sintéticos, agente off/mock, cantidades1/2/3 tras elegir dos Mango, cuatro frases de reemplazo de cantidad+sabor y18 cancelaciones completas con reinicio limpio. Se verifica sopa existente, ausencia de Mango anterior, cantidades finales de Lulo, total y una única orden. Inicial54:36 pasan/18 fallan. Primera corrección54 aprobadas; ampliación reproduce18 fallos equivalentes con «mejor que sean», corregidos. Relacionadas finales204/3 aprobadas.
+
+Global49.296/568 aprobada,0 fallos/omitidas,788 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Global por bloques supervisados con temporizadores separados. Evidencia whatsapp-batch-495-validation.json. Cero inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos.
+
+Pendiente: retirar solo un grupo del reparto, opciones inválidas o múltiples atributos en correcciones compuestas, concurrencia y ubicaciones posconfirmación/acceso/pin. N08-14/N08-15 siguen parciales. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
+## Tanda 494 — corregir cantidad y consultar precio con reparto parcial (rama staging)
+
+Sobre b91a3e9c se reproducen 24 fallos de 36 casos iniciales: «deja 2 Helado Artesanal, cuanto cuesta» cambia la cantidad pendiente sin reconciliar los sabores ya elegidos. La ruta compuesta ahora comparte la reconciliación de la tanda493: si coincide con lo asignado, aplica las opciones guardadas; si queda por debajo, explica el reparto incompatible y solicita uno nuevo. Responde el precio por unidad y conserva las guardas de ambigüedad y límites de cantidad.
+
+54 pruebas nuevas y 54 cierres DTO simulados: tres postres sintéticos, agente off/mock, cantidades1/2/3 después de elegir dos Mango, consulta antes/después de la corrección, carrito existente, cantidades0/31 y producto tanto en carrito como pendiente. Relacionadas186/3 aprobadas. Global49.206/567 aprobada,0 fallos/omitidas,787 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Ejecución por bloques supervisados, temporizadores separados. Evidencia whatsapp-batch-494-validation.json.
+
+Alcance acotado a cláusulas separadas de cantidad y precio con nombre explícito del producto. Pendiente: otras formas compuestas, cambio simultáneo de opción, reemplazos/cancelación del reparto y concurrencia. N08-14/N08-15 siguen parciales; quedan ubicaciones posconfirmación y mensajes consecutivos de acceso/pin. Cero inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
+## Tanda 493 — reducir cantidad hasta o por debajo del reparto parcial (rama staging)
+
+Sobre318d2209 se reproducen24 fallos: reducir al número de unidades ya elegidas vuelve a preguntar sabor, y reducir por debajo conserva partes incompatibles sin explicar la necesidad de repartir otra vez. La corrección de cantidad simple ahora compara el nuevo total con lo asignado. Si coincide, aplica el planificador atómico existente con las opciones guardadas; consolida grupos de texto idéntico antes de añadir para evitar deduplicación de unidades. Si es menor, informa del reparto anterior, limpia solo las partes incompatibles y pide uno nuevo sin mutar el carrito.
+
+60 pruebas nuevas/60 cierres DTO simulados:3 postres sintéticos, agente off/mock, reducción1/2,1/2 unidades elegidas, dos frases de corrección, grupos guardados en uno o varios mensajes, sabores iguales/distintos, sopa existente y consulta de precio después de reiniciar reparto. Se verifican cantidades/sabores/total final y una única orden. Inicial24 fallos; corrección144/3 aprobadas; ampliación48 focales y luego igualdad de1 unidad:60 nuevas, relacionadas180/3 aprobadas.
+
+Global49.152/566 aprobada,0 fallos/omitidas,786 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Global por bloques supervisados con temporizadores separados, sin recuperación de interrupciones. Evidencia whatsapp-batch-493-validation.json.0 inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos.
+
+Alcance: correcciones simples pendientes sin opción nueva explícita en la misma frase. Pendiente cubrir reducción y precio en un mismo mensaje (ruta separada), cambio simultáneo de opción, reemplazos de productos, cancelación de reparto y concurrencia. N08-14/N08-15 siguen parciales; siguen pendientes ubicaciones posconfirmación y mensajes consecutivos de acceso/pin. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
+## Tanda 492 — corregir cantidad con sabores parcialmente elegidos (rama staging)
+
+72 recorridos nuevos sobre414da18a:3 postres sintéticos, agente off/mock,1/2 unidades ya asignadas a Mango, cantidad inicial3/4 corregida a2/4 o3/5 y3 frases («mejor que sean», «cambia la cantidad a», «mejor solo»). Se crea el reparto parcial por mensajes reales del router, sin sembrar pendientes. La sopa existente permanece intacta; se conservan partes elegidas tras corregir cantidad y consultar precio, se rechaza Mora sin mutaciones y «los otros con lulo» completa cantidades exactas hasta una única orden DTO y total correcto.
+
+Los36 iniciales pasan; ampliación a72 con2 unidades asignadas también pasa. Relacionadas176/3,0 fallos/omitidas; TypeScript general aprobado. No se reproduce defecto nuevo ni se modifica runtime. Global491 (49.020/564) sigue como evidencia previa, no repetida. Evidencia whatsapp-batch-492-validation.json.
+
+0 inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos. Pendiente: total corregido igual o menor que lo ya asignado, cancelar/cambiar reparto parcial, mensajes consecutivos de acceso/pin y posconfirmación. N08-14/N08-15 siguen parciales. Solo publicación en rama staging, sin despliegue ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
+## Tanda 491 — conservar acceso tras fallo de ruta y recuperación por pin (rama staging)
+
+Sobre832e0f05:36 recorridos iniciales pasan (pin tras propuesta de lugar, interrupción por no/Nequi y cancelación seguida de nueva compra). Al añadir12 casos de ruta no disponible/fuera de cobertura al seleccionar el candidato, primero se corrige una aserción demasiado estricta null/undefined. Luego se reproduce el defecto real: la orden final pierde el apartamento tras enviar un pin para recuperar la ruta fallida.
+
+La selección fallida guardaba tarifa undefined al reemplazar la dirección; el handler de pin conserva acceso de destinos sin resolver identificados por tarifa null. Corrección acotada: guardar deliveryFeeCalculated:null junto a addressConfirmed:false cuando falla la recotización del candidato. No amplía la reutilización de direcciones antiguas ni cambia precios/cobertura. Funciona sin nombres/IDs/direcciones PPP en runtime.
+
+48 pruebas nuevas/48 cierres DTO simulados:3 lugares, agente off/mock,18 recorridos de pin,18 cancelaciones/reinicio y12 fallos de ruta con recuperación. Relacionadas154/3 aprobadas. Global49.020/564 aprobada,0 fallos/omitidas,784 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Global ejecutada por bloques supervisados, temporizadores separados, checkpoints conciliados. Evidencia whatsapp-batch-491-validation.json.
+
+0 inferencia pagada, Google, Meta u órdenes externas. Modelos/configuración/presupuesto intactos. N08-14/N08-15 siguen parciales; no se prueba concurrencia, corrección posconfirmación ni proveedor real. Pendiente: mensajes consecutivos de acceso/pin y cambios de destino tras una confirmación; retomar también cantidades parcialmente repartidas. Solo publicación en rama staging, sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
+## Tanda 490 — corregir el destino después de una propuesta (rama staging)
+
+72 recorridos nuevos sobre40ace52c:3 lugares iniciales, agente off/mock,6 interrupciones («no», «esa no es», «ninguna de esas», opción9, Nequi y confirmar) y2 recuperaciones (calle completa o nuevo conjunto). El router genera el pendiente desde un POI sin nombre realista; no se siembra la lista. Se verifica candidato pendiente/tarifa sin resolver/orden bloqueada, carrito intacto, reemplazo del destino y apartamento anteriores, cierre único con2 platos y acceso correcto.
+
+Primera versión48 fallos de aserción: addressConfirmed no acredita por sí solo geocodificación; la lista pendiente y la tarifa aún sin resolver bloquean checkout. Corregida la aserción a esas invariantes observables:48 aprobadas. Ampliación de rechazo natural:72 aprobadas. Relacionadas456/3,0 fallos/omitidas; TypeScript general aprobado. No se reproduce un defecto nuevo ni cambia runtime. Global489 (48.900/562) es evidencia previa y no se repite. Evidencia whatsapp-batch-490-validation.json.
+
+0 inferencia pagada, Google, Meta u órdenes externas. Modelos/configuración/presupuesto intactos. N08-14/N08-15 siguen parciales; pendiente pin en vez de candidato, cancelación durante elección, concurrencia y revalidación de rutas. Solo publicación en rama staging; sin deploy ni migración. Últimos runtimes verificados PPPprod479, servidor staging462 y Kamppo481.
+
+## Tanda 489 — nombres de lugares y POI sin nombre (rama staging)
+
+Sobre3bcee322 se reproduce que «Villagalante»/«Villa Galante» y otros nombres unidos/separados se rechazan pese a recibir el lugar preciso:8 fallos iniciales. La comparación admite equivalencia de palabras contiguas completas dentro de un mismo campo/segmento del proveedor, sin subcadenas ni unir componentes distintos. Sin nombres, IDs o direcciones locales codificados en runtime.
+
+Diagnóstico acotado:6 consultas reales a Google Geocoding desde staging, sin exponer claves ni modificar órdenes. Villagalante devuelve un POI ROOFTOP sin partial_match, con dirección física pero sin nombre ni componente de establecimiento; no es ausencia de resultados. Plazuelas de San Esteban y Castilla La Nueva1 devuelven dos POI parciales. El replay de la forma sin nombre reproduce8 fallos adicionales. Ahora un POI preciso identificado por el proveedor, con dirección numerada pero sin nombre, se ofrece como posible destino con elección explícita y cobertura por ruta; nunca se acepta automáticamente. Se conserva la protección para calles contradictorias, centroides, resultados aproximados, países y distancias.
+
+34 pruebas nuevas,20 cierres DTO simulados: nombres unidos/separados, nombres sintéticos, selección entre destinos cubiertos, exclusión por ruta, conservación de torre/apartamento/carrito e interrupción por pago/confirmación sin cerrar prematuramente. Focal34 aprobadas. Relacionadas653/3 previas a la ampliación sin nombre; la global final las sustituye como evidencia actual. Global48.900/562 aprobada,0 fallos/omitidas,782 fuentes sin cambios e inventario exacto. TypeScript general/build y92 scripts aprobados. Primera global detenida para ampliar alcance tras diagnóstico real; ejecución final interrumpida143 tras19 checkpoints y completada por bloques verificados. No se presenta como ejecución ininterrumpida. Evidencia whatsapp-batch-489-validation.json.
+
+0 inferencia pagada, Meta u órdenes externas;6 consultas Google, sin Directions real. No es un replay completo del bot contra proveedores reales. No soluciona ZERO_RESULTS ni todo error de escritura; N08-14/N08-15 siguen parciales. Modelos/configuración/presupuesto intactos. Publicación en rama staging, sin desplegar servidor, producción ni migrar a Kamppo. Últimos runtimes verificados: PPPprod479, servidor staging462 y Kamppo481. Pendiente: más proveedores/replays reales acotados y retomar cantidades después de repartir parcialmente opciones.
+
+## Tanda 488 — corregir cantidad antes de repartir sabores (rama staging)
+
+48 recorridos nuevos por router sobre e1bc7dfe:3 postres sintéticos, agente off/mock, cantidad inicial3 corregida a2/4 con «mejor que sean», «cambia la cantidad a», «en vez de tres quiero» y «mejor solo». Se preserva la sopa ya comprada, la cantidad pendiente durante consulta de precio, el rechazo del reparto antiguo de3 unidades y el nuevo reparto exacto hasta una única orden DTO con cantidades/sabores/total correctos. No se siembran pendientes.
+
+Los36 iniciales pasan; se amplía la cuarta frase. Relacionadas146/3 aprobadas,0 fallos/omitidas,48 cierres simulados. TypeScript general aprobado. No cambia runtime; global487 es evidencia previa y no se repite. Evidencia whatsapp-batch-488-validation.json.0 inferencia pagada, Google, Meta u órdenes reales; modelos/configuración/presupuesto intactos.
+
+Pendiente: cantidad corregida después de asignar parcialmente sabores, reparto escalonado y sobres mixtos. N08-14/N08-15 siguen parciales. Publicación solo en rama staging; últimos runtimes verificados PPP479, servidor staging462 y Kamppo481. Sin despliegue ni migración nuevos.
+
+## Tanda 487 — reparto explícito de opciones pendientes (rama staging)
+
+Sobre53e6b928 se reproducen36 fallos: «dos de mango y uno de lulo» asigna el primer sabor a las tres unidades; un reparto que suma4 también modifica el carrito. Un helper anterior a la selección individual reconoce listas completas contadas con «de» o valor directo cuando queda un solo atributo. Usa parseOptionDistribution para validar opciones exactas y suma, y delega al planificador atómico existente. Preguntas, condiciones, opciones desconocidas y totales incorrectos conservan carrito/pendiente en los casos probados. Sin nombres/IDs/precios PPP en runtime.
+
+56 pruebas nuevas/56 cierres DTO simulados:36 recorridos de3 unidades (3 postres, off/mock,3 expresiones, precio/reparto incorrecto) y20 controles de2 unidades (12 rechazos con recuperación,8 repartos válidos incluyendo sabor repetido). Primera corrección36 aprobadas; ampliación127 aprobadas/4 fallos porque separar un sabor idéntico en dos adiciones activaba deduplicación. Ahora se conserva el grupo verificado con cantidad total y el planificador admite internamente ese único grupo. Relacionadas131/3 aprobadas.
+
+Global48.818/560 aprobada,0 fallos/omitidas,780 fuentes congeladas e inventario exacto. TypeScript general/build y92 scripts aprobados. Lanzador background inicial no inició pruebas; sesión supervisada completó todas las fases y reporte final. La herramienta de terminal devolvió143 después; se verifican reporte final, salidas0 de cada fase y hashes intactos, sin recuperar ni repetir resultados. Evidencia whatsapp-batch-487-validation.json.
+
+Alcance acotado: mantiene la ruta existente de «con» y múltiples atributos; no toda gramática, decimales/negativos, reparto escalonado ni corrección de cantidad pendiente.0 inferencia pagada, Google, Meta u órdenes reales; modelos/configuración/presupuesto intactos. N08-14/N08-15 siguen parciales. Próximo: corregir la cantidad solicitada mientras faltan opciones y ampliar reparto escalonado. Solo rama staging; últimos runtimes verificados PPP479, servidor staging462 y Kamppo481. Sin despliegue ni migración nuevos.
+
+## Tanda 486 — interrupciones y cancelación con sabor pendiente (rama staging)
+
+42 recorridos nuevos sobre9db713e3.36 combinan reconocimiento por nombre/categoría principal/categoría secundaria, agente off/mock, cantidades1/2 y consulta de precio/opción inválida/nombre del destinatario. Verifican pregunta visible, sopa existente intacta, postre sin añadir antes de elegir, pendiente conservado y resolución numérica al sabor Lulo hasta un único DTO.6 recorridos cancelan el pedido pendiente, comprueban carrito/lista vacíos y cierran una nueva compra de sopa sin arrastrar postre.
+
+Todos ya pasan; no cambio de runtime. Relacionadas117/3 aprobadas,0 fallos/omitidas; TypeScript general aprobado.42 cierres DTO simulados. Evidencia whatsapp-batch-486-validation.json. La global485 es evidencia previa del mismo runtime, no una ejecución nueva.0 inferencia pagada, Google, Meta u órdenes reales; modelos/configuración/presupuesto intactos.
+
+N08-14/N08-15 siguen parciales: no concurrencia, todas las opciones/familias ni proveedores reales. Próximo: reparto de sabores por unidades y corrección explícita mientras faltan opciones. Publicación solo en rama staging; últimos runtimes verificados PPP479, servidor staging462, Kamppo481. Sin despliegue, migración nueva ni reparación histórica.
+
+## Tanda 485 — elegir sabor en helados, paletas y sorbetes (rama staging)
+
+Sobre fe240bc4 se reproducen24 fallos: un postre con varios sabores toma la primera opción sin preguntar. La regla de elección explícita ahora incluye las familias helado/paleta/sorbete por nombre o categoría, también secundaria. No depende de IDs, precios ni productos PPP. Conserva valores ya seleccionados y atributos con una sola opción. Una mención incidental como «Bowl con helado» no activa la regla por nombre. No cambia la clasificación comida/bebida ni los valores predeterminados de otros atributos.
+
+33 pruebas nuevas:24 recorridos por router (3 familias, off/mock,2 sabores, corrección de cantidad antes/después de dirección),24 cierres DTO simulados y9 controles de catálogo para categorías/selección previa/opción única/menciones incidentales. Consulta de precio mientras falta sabor, sopa adicional, reducción2→1, apartamento y revisión42000 permanecen correctos. Relacionadas99/3 aprobadas.
+
+Global48.720/558 aprobada,0 fallos/omitidas;778 fuentes congeladas e inventario exacto. TypeScript general/build y92 scripts aprobados. El runner terminó143 después de completar las dos fases Jest y TypeScript general: se verificaron hashes/checkpoints y se completaron build y scripts por separado; no se presenta como ejecución ininterrumpida. Evidencia whatsapp-batch-485-validation.json.
+
+0 inferencia pagada, Google, Meta u órdenes reales; modelos/configuración/presupuesto intactos. Alcance acotado a Sabor singular y familias españolas; PPP no tiene metadato separado de default configurado. Kamppo y su adaptador required/optional no se modifican aquí. N08-14/N08-15 siguen parciales. Próximo: opciones explícitas en otros tipos de producto y recuperación de selectores mixtos. Publicación en rama staging únicamente; últimos runtimes verificados PPP479, servidor staging462 y Kamppo481. Sin reparación histórica ni despliegue nuevo.
+
+## Tanda 484 — sabor, cantidad y dirección (rama staging)
+
+24 recorridos nuevos por router con Jugo Natural/Batido Frutal/Refresco Natural, agente off/mock, Mango/Lulo y dirección antes/después de corregir cantidad. La consulta de precio interrumpe una elección de sabor real; después se selecciona, se añade sopa, se reduce bebida de2 a1 y se cierra a domicilio. Se verifica sabor/cantidad, sopa intacta, apartamento, revisión de42000 y una única creación DTO con sabor y dirección. Todos los servicios externos son simulados.
+
+Relacionadas350/3 aprobadas,0 fallos/omitidas; TypeScript general aprobado. No se cambia runtime ni se repite global;481 es evidencia previa. Primera exploración24 fallos por asumir pendiente para bebida incluida, que tiene valor predeterminado. Segunda16 aprobadas/8 fallos: Helado Artesanal no exige sabor explícito. Se acota esta tanda a bebidas; NO se considera corregido el sabor fuera de bebidas. Evidencia whatsapp-batch-484-validation.json.
+
+Próximo prioritario: reproducir y revisar la elección obligatoria de sabores fuera de bebidas con catálogos genéricos, respetando opciones predeterminadas configuradas; luego retomar otros selectores mixtos N08-15. N08-14/N08-15 siguen parciales.0 inferencia pagada, Google, Meta u órdenes reales; configuración/modelos/presupuesto intactos. Solo publicación de rama staging; últimas verificaciones PPPprod479, servidor staging462 y Kamppo481, sin desplegar ni migrar esta tanda.
+
+## Tanda 483 — recuperación tras consulta y corrección de cantidad (rama staging)
+
+36 recorridos nuevos por router: compra de dos unidades en dos líneas, consulta de precio, «es solo un…», selección por número/nombre/ordinal, reducción efectiva a una unidad, retirada explícita de la otra línea, consulta de contenido/precio y cierre por recogida/efectivo. Tres familias sintéticas, agente off/mock y conservación alternativa de primera/segunda línea. Se comprueban carrito, pendientes, respuestas y una sola creación DTO. No se siembran pendientes; las dos líneas iniciales se compran deliberadamente y no representan una reproducción de la adición histórica errónea.
+
+Los36 casos ya pasan sobre a841a71e; no cambio de runtime. Relacionadas278/3 aprobadas,0 fallos/omitidas; TypeScript general aprobado. Evidencia whatsapp-batch-483-validation.json. Global481 sigue siendo evidencia previa del runtime, no una ejecución nueva.0 inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos.
+
+N08-15 sigue parcial para otros selectores, reparto y formularios mixtos; N08-14 conserva sus límites de ubicación. Próximo: recuperación con variantes/atributos pendientes y dirección durante correcciones. Publicación solo en rama staging; últimas verificaciones de despliegue PPP479, servidor staging462 y Kamppo481. No migración nueva ni reparación histórica.
+
+## Tanda 482 — consultas de contenido y precio sin añadir productos (staging)
+
+24 recorridos nuevos por router derivados del chat N08-15: compra de una línea, «Q trae / Que trae / Qué incluye / Cómo viene» por familia y «Y q precio», seguidos de recogida, efectivo y confirmación. Tres catálogos sintéticos (Combo/Wrap/Bowl), agente off/mock. Se comprueban descripción, precio, carrito intacto y una sola creación DTO por recorrido. Los24 ya pasan sobre d08e9110; no se modifica runtime ni se atribuye una corrección nueva.
+
+Relacionadas242/2 aprobadas,0 fallos/omitidas; TypeScript general aprobado. No se repite la global:481 conserva la evidencia del runtime sin cambios. Evidencia whatsapp-batch-482-validation.json.0 inferencia pagada, Google, Meta u órdenes externas. Modelos/configuración/presupuesto intactos.
+
+N08-15 sigue parcial: este replay preventivo no introduce el producto erróneo histórico ni cubre todas las listas/repartos/formularios. Próximo: ampliar la recuperación tras corrección explícita y las combinaciones pendientes de ubicación. PPP producción479, servidor staging462 y Kamppo481 son las últimas verificaciones; esta tanda solo se publica en la rama staging, sin despliegue ni migración nueva.
+
+## Kamppo sincronizado hasta 481 — despliegue verificado 10/11/2026
+
+PPP481 publicada en staging258a2c71. Se migran todas las tandas pendientes399–481 a Kamppo, preservando catálogo/UUID/opciones/recargos/sesiones y locks por restaurante. La cotización nativa usa origen, tarifas y cobertura propios; no añade Bogotá/Kennedy a las búsquedas. Se propagan candidatos de ubicación hasta el chat. No se copia entorno, DB ni módulos backend de PPP.
+
+Kamppo48578 pruebas/537 suites, inventario exacto y640 fuentes idénticas;225 suites/32417 casos recuperados antes de completar con6 workers, sin cambios de fuente. TypeScript general/build del motor y92 scripts aprobados. API740 aprobadas/15 optativas omitidas; recuperación36/2 tras completar datos de un fixture de caché, sin cambios de runtime.115 de aislamiento. Builds shared/motor/API aprobados. API general conserva95 diagnósticos de fixtures iguales a main; no se presenta como limpio.
+
+Runtime Kamppo a953858747c77c5c114a2795225e8a3b5e06a809, imagen sha256:20791a8c2c3c5d06b5e9e476f117dd196519200a5de3c9e4cded60bd0db15491. Vía SSH tras fallo de Actions42903851936 antes de ejecutar pasos. Contenedor healthy/0 reinicios; API pública api.kamppo.com y DB up; entorno/compose intactos y sin migraciones DB. Dos restaurantes/dos cierres simulados pasan en candidata sin red y activa. Evidencia en Kamppo docs/whatsapp-migration/ppp-batch-481-{validation,deployment}.json y manifest de origen.0 inferencia pagada, Google, Meta u órdenes externas.
+
+No se acredita modelo vivo ni toda dirección/selector. N08-14/N08-15 siguen parciales según límites de las tandas. Producción PPP permanece479 y servidor staging462; no desplegados aquí. Próximo: nuevas conversaciones y combinaciones aún no cubiertas, sin reparación histórica automática.
+
+## Tanda 481 — ubicación, categoría y composición (rama validada; sin desplegar)
+
+Sobre cfaef93d se reproducen4 fallos de elección de ubicación con categoría/composición pendientes. El guard numérico/ordinal conserva ambos propietarios. La ampliación detecta72 fallos de continuación por categoría después de completar dirección; ahora una categoría exacta retenida puede responderse de forma informativa durante checkout, sin abrir lista de compra ni consumir el número del pago. Se conserva carrito, dirección, coordenadas, tarifa y punto interno.
+
+296 pruebas nuevas/296 cierres DTO simulados:4 iniciales,288 de matriz (3 platos, agente off/mock,6 respuestas cortas, categoría/composición,2 órdenes de resolución y cantidades1/2) y4 controles de pago. Preámbulos por router, sin sembrar pendientes; dirección final opuesta al número ambiguo. Relacionadas824/4 aprobadas. Exploración inicial corrigió2 expectativas de composición antes del baseline confirmado; primer related748 aprobadas/72 fallos; foco de categoría1 aprobada/291 filtradas. Evidencia conserva esos intentos.
+
+Global48.603/554 sin fallos ni omitidas,774 fuentes congeladas e inventario exacto. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-481-validation.json.0 inferencia pagada, Google, Meta u órdenes externas; modelos/configuración/presupuesto intactos.
+
+N08-15 sigue parcial para otros selectores/repartos, formularios mixtos y replay de adición histórica. No reparación histórica ni prueba de modelo vivo. Publicar rama no equivale a desplegar: última producción verificada479 y servidor staging462. El usuario pide migrar todo lo pendiente399–481 a Kamppo, adaptado por restaurante; esa migración continúa en worktree aislado y requiere validación nativa antes de publicación.
+
+## Tanda 480 — ubicación y precio con listas competidoras (rama de staging validada; sin desplegar)
+
+Sobre4ab7b970,4 recorridos por router reproducen2 fallos y2 controles ya protegidos: con ubicaciones y consulta de precio pendientes, «2» elige silenciosamente la segunda dirección; con sabor pendiente ya se pedía dirección completa. Se incorpora pendingPriceInquiry al guard existente de selección numérica/ordinal de lugares. No cambia carrito, dirección ni rutas ante esa respuesta ambigua; la dirección completa ofrecida sigue siendo una elección explícita.
+
+Foco4/4 con cierres simulados. Primera ampliación932 aprobadas/144 fallos: al elegir primero dirección, «precio2» perdía la consulta porque checkout había cambiado de estado. Un diagnóstico por sesión y todas las respuestas confirma que solo sale pago, no un precio oculto. Ahora la respuesta marcada como precio puede retomar la consulta entre estados activos si el carrito conserva exactamente su firma. Se mantienen invalidación por carrito cambiado/estado inactivo y el cambio de propietario de números sin etiqueta cuando avanza checkout. Foco de recuperación2 aprobadas/434 filtradas; se retira el log diagnóstico y se añaden4 recorridos donde1/2 pertenecen al pago después de dirección.
+
+440 pruebas nuevas,440 cierres DTO simulados:4 iniciales,432 de matriz (3 platos, agente off/mock,6 números/ordinales, precio/sabor/ambos, dirección primero/otra elección primero y cantidades1/2) y4 de pago sin etiqueta. El preámbulo de compra, listas, consulta y cierre pasa por router; no se siembran pendientes. Dirección final se elige opuesta al número ambiguo para comprobar que no se consumió; conserva torre/apto, coordenadas, tarifa, productos y cantidades. Se verifica respuesta, ninguna orden prematura y una sola creación DTO. Relacionadas1.124/4 aprobadas.
+
+Global48.307/553 sin fallos ni omitidas, inventario exacto y773 fuentes congeladas. TypeScript general/build y92 scripts aprobados. Evidencia whatsapp-batch-480-validation.json.0 inferencia pagada, Google, Meta u órdenes externas; modelos, configuración y presupuesto intactos.
+
+N08-15 sigue parcial: no toda categoría/composición/reparto competidor, dirección coloquial, formulario mixto ni replay de adición histórica. Se prueban transiciones derivadas de completar ubicación, no cada par de estados activos. Mapas/órdenes simulados, sin reparación histórica. Próximo: recorridos de categoría/composición junto a ubicación y revisión de nuevos chats. Publicación de rama no equivale a despliegue: producción479 sigue como última verificación, staging servidor462 yKamppo398; no inspeccionados ni actualizados aquí.
+
 ## Producción 479 verificada — 10/11/2026, 13:35 Bogotá
 
 El usuario pidió continuar y desplegar al terminar. Tanda479 añade290 recorridos/290 cierres simulados de precio+sabor, sin modificar runtime; relacionadas640/4 aprobadas. Se fusiona staging1eae2889 con Main451a5bc5 conservando21 archivos de funciones propias de producción. Los conflictos del orquestador eran añadidos de staging y una firma repetida; se preservan. El código WhatsApp resultante es idéntico a staging. Merge publicado y desplegado:862b985b8d2ad5f8fa52fb93240c6fac16d403e7, incluye tandas447–479.

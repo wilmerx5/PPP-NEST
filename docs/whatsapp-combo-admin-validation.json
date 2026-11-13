@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-12",
+  "backend": "1e496fd0c4e4b73142131f64deaf64f7e8b0b0aa",
+  "admin": "5ef0741",
+  "productTests": {
+    "passed": 24,
+    "suites": 4
+  },
+  "typescript": true,
+  "builds": [
+    "backend",
+    "admin"
+  ],
+  "ui": {
+    "api": "synthetic",
+    "create": true,
+    "link": true,
+    "unlink": true
+  },
+  "staging": {
+    "image": "sha256:ec577037a9584aaae2cfb848e006572dc794b5169966b01c9f2afb18215379cb",
+    "healthy": true,
+    "adminApi": true,
+    "createLinkedCombo": true,
+    "attributes": true,
+    "variantStocks": true,
+    "schedules": true,
+    "duplicateRejected": true,
+    "nestedComboRejected": true,
+    "unauthenticated401": true,
+    "fixturesCleaned": true
+  },
+  "externalOrders": 0,
+  "paidInferenceCalls": 0,
+  "adminWebDeployment": "pending",
+  "kamppoBranch": "codex/product-combo-relations",
+  "kamppoCommit": "07e254e6cb27c3e45d3491c3eb8654c5df9388eb"
+}

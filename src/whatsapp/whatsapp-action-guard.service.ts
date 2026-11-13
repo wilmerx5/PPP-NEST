@@ -15,6 +15,7 @@ export type GuardResult = {
   actions: AiOrderAction | undefined;
   warnings: string[];
   blockedClosed: boolean;
+  requiresOptionChoice?: boolean;
 };
 
 @Injectable()
@@ -30,6 +31,7 @@ export class WhatsappActionGuardService {
     allowMercadoPago: boolean;
     paymentMethods?: WhatsappPaymentMethodConfig[];
     cart?: WhatsappCartItem[];
+    sourceText?: string;
   }): GuardResult {
     const warnings: string[] = [];
     if (!params.actions) {
@@ -43,6 +45,32 @@ export class WhatsappActionGuardService {
         warnings: ['Pedido no procesado: restaurante cerrado.'],
         blockedClosed: true,
       };
+    }
+
+    // A legal catalog value is not evidence that the customer selected it.
+    if (params.sourceText !== undefined && (params.actions.updateAttributes?.length || params.actions.updateUnitOptions?.length)) {
+      const text=params.sourceText;
+      const normalized=text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const asks=this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isProductDescriptionInquiry(text) ||
+        this.catalogService.isAvailabilityInquiry(text) || /\b(?:que|q|cuales)\b.*\b(?:sabor(?:es)?|opciones)\b/.test(normalized);
+      const explicitChange=/\b(?:cambia|cambiame|cambialo|cambiala|ponme|ponle|ponlo|dejalo|dejala)\b/.test(normalized);
+      const explicit=(productId:number,attributeName:string,value:string,index?:number)=>{
+        if (typeof attributeName!=='string' || typeof value!=='string') return false;
+        const product=params.products.find(p=>p.id===productId);
+        if (!product) return false;
+        const lines=index!==undefined ? [params.cart?.[index]].filter((line):line is WhatsappCartItem=>!!line && line.productId===productId)
+          : (params.cart || []).filter(line=>line.productId===productId);
+        const same=lines.length>0 && lines.every(line=>line.attributes?.some(attr=>attr.attributeName.toLowerCase()===attributeName.toLowerCase() && attr.attributeValue.toLowerCase()===value.toLowerCase()));
+        if (same) return true;
+        const definition=product.attributes?.find(attr=>attr.attributeName.toLowerCase()===attributeName.toLowerCase());
+        const canonical=definition && this.catalogService.matchAttributeOptionValue(value,definition.options);
+        return !!canonical && this.catalogService.pickAttributeOptionFromText(text,{attributeName:definition!.attributeName,options:[canonical]})===canonical;
+      };
+      const flat=params.actions.updateAttributes || [];
+      const groups=params.actions.updateUnitOptions || [];
+      const unsupported=flat.some(edit=>!edit || !explicit(edit.productId,edit.attributeName,edit.attributeValue,edit.cartLineIndex)) ||
+        groups.some(edit=>!edit || !Array.isArray(edit.attributes) || edit.attributes.some(attr=>!explicit(edit.productId,attr.attributeName,attr.attributeValue,edit.cartLineIndex)));
+      if (looksLikeAddressOnlyMessage(text) || /\bmanzana\s*\d+\b.*\b(?:casa|apto|apartamento|torre|bloque|interior)\s*\d+\b/.test(normalized) && !explicitChange || asks && !explicitChange || unsupported) return {actions:undefined,warnings:['No se cambió ninguna opción: falta una elección explícita del cliente. El pedido sigue igual.'],blockedClosed:false,requiresOptionChoice:true};
     }
 
     // Never keep valid fragments of a rejected grouped edit, including purchases.
