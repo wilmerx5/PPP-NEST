@@ -84,10 +84,20 @@ for(const names of families)for(const agent of [false,true])for(const scenario o
       const text=scenario==='question'?'¿El combo con Coca-Cola?':scenario==='unknown'?'El combo con Tamarindo':'El combo con Coca-Cola por fa';
       await burst([['change',text]]);
       const reply=h.replies.slice(start).join('\n');
-      if(scenario==='repeat-value'){
+      if(scenario==='repeat-value'||scenario==='two-units'){
         expect(reply).toMatch(/cambi[eé] la bebida incluida/i);expect(reply).not.toMatch(/no manejamos|no entend[ií]/i);
         const changed=structuredClone(h.conv.sessionData.cart);await burst([['repeat','El combo con Coca-Cola por fa']]);expect(h.conv.sessionData.cart).toEqual(changed);
         expect(changed.find(p=>p.productId===46002)!.attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Coca cola'});
+      }else if(scenario==='two-combos'){
+        expect(h.conv.sessionData.cart).toEqual(before);
+        expect(h.conv.sessionData.pendingCartAttributeEdit?.candidates).toHaveLength(2);
+        expect(h.conv.sessionData.pendingCartAttributeEdit?.sourceText).toMatch(/Coca cola/i);
+        await h.sendQueued('1');
+        expect(h.conv.sessionData.pendingCartAttributeEdit).toBeUndefined();
+        const selected=h.conv.sessionData.cart.find(row=>row.productId===46002)!;
+        expect(selected).toEqual({...before.find(row=>row.productId===46002),attributes:selected.attributes});
+        expect(selected.attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Coca cola'});
+        expect(h.conv.sessionData.cart.find(row=>row.productId===46004)).toEqual(before.find(row=>row.productId===46004));
       }else{
         expect(h.conv.sessionData.cart).toEqual(before);
         expect(reply).toMatch(scenario==='question'?/pedido sigue igual/i:/cu[aá]l plato|bebida incluida/i);

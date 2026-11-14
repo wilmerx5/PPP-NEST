@@ -256,6 +256,22 @@ for (const agent of [false, true])
         });
         if (scenario === 'explicit-extra')
           expect(h.conv.sessionData.cart[0]).toEqual(before.cart[0]);
+      } else if (scenario === 'quantity') {
+        expect(h.conv.sessionData.cart).toEqual([
+          { ...before.cart[0], attributes: [{ attributeName: 'Bebida', attributeValue: 'Pepsi' }] },
+        ]);
+        expect(h.conv.sessionData.pendingCartAttributeEdit).toBeUndefined();
+        expect(h.conv.sessionData.cart[0].quantity).toBe(2);
+      } else if (scenario === 'rows') {
+        expect(h.conv.sessionData.cart).toEqual(before.cart);
+        expect(h.conv.sessionData.pendingCartAttributeEdit?.candidates).toHaveLength(2);
+        expect(h.conv.sessionData.pendingCartAttributeEdit?.sourceText).toMatch(/Pepsi/);
+        await h.sendQueued('1');
+        expect(h.conv.sessionData.pendingCartAttributeEdit).toBeUndefined();
+        expect(h.conv.sessionData.cart).toEqual([
+          { ...before.cart[0], attributes: [{ attributeName: 'Bebida', attributeValue: 'Pepsi' }] },
+          before.cart[1],
+        ]);
       } else {
         expect(h.conv.sessionData).toEqual(before);
         if (scenario === 'selection')
