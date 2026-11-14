@@ -1,0 +1,367 @@
+{
+  "batch": 537,
+  "changes": [
+    "Mixed list row choices with additional purchases and quantities",
+    "Atomic complete bullet corrections with catalogue-backed options",
+    "Active checkout new-order boundary including audio, cancellation and expiry",
+    "Clear full product labels and unavailable preparation alternatives",
+    "Post-cancel criticism uses actual cart state",
+    "Warm receipt acknowledgement without phone invitation; unfinished checkout reminder retained"
+  ],
+  "newTests": 148,
+  "globalValidation": {
+    "batch": 537,
+    "passedTests": 51903,
+    "suites": 619,
+    "failed": 0,
+    "skipped": 0,
+    "rawFullRun": {
+      "passed": 51861,
+      "failed": 15,
+      "retained": true
+    },
+    "frozenSourceCommit": "f26cca76d4fb9ff2206e9b35d79cf22f43045355",
+    "approvedCodeCommit": "2b6d92a79018a88cd50a4de61c8d951f357a5fd9",
+    "frozenSourceFiles": 856,
+    "runtimeSourcesUnchanged": true,
+    "changedFixtures": [
+      "src/whatsapp/whatsapp-general-accuracy-part-02.spec.ts",
+      "src/whatsapp/whatsapp-general-accuracy-part-10.spec.ts",
+      "src/whatsapp/whatsapp-named-order-intro-464.spec.ts"
+    ],
+    "recheckedAssertions": 154,
+    "replacedFailedAssertions": 15,
+    "inventoryExact": true,
+    "assertionIdentity": "relative suite path, full name, occurrence ordinal; existing generated suites reuse names",
+    "method": "Complete frozen source run plus isolated reruns of updated receipt and active-draft expectations. Original raw results retained; all original passing assertions and every inventory entry accounted for.",
+    "paidInference": 0,
+    "externalOrders": 0,
+    "metaMessages": 0
+  },
+  "staging": {
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "totalCompiledTests": 473,
+      "compiledPilotIncidentTests": 148,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 1208,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "2b6d92a79018a88cd50a4de61c8d951f357a5fd9",
+    "image": "sha256:49907e5adcfba144e3fc1485214c4b107d283fcf4601fdbb4d91cca2fea8a06e",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.36,
+        "heapTotal": 66.74,
+        "rss": 128.6
+      },
+      "timestamp": "2026-11-14T21:27:11.927Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.56,
+        "heapTotal": 66.74,
+        "rss": 128.97
+      },
+      "timestamp": "2026-11-14T21:27:12.159Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-14T21:28:47.812182+00:00",
+    "backup": "/root/ppp-manual-release/20261114T212628Z-staging-537"
+  },
+  "production": {
+    "environment": "production",
+    "head": "2b6d92a79018a88cd50a4de61c8d951f357a5fd9",
+    "image": "sha256:49907e5adcfba144e3fc1485214c4b107d283fcf4601fdbb4d91cca2fea8a06e",
+    "previousImage": "sha256:2ca45db81ac5d21ffd5b1312df278b0c993fcbe5ba5fcf69cd9845f20e6e689e",
+    "rollbackImage": "ppp-rollback:production-before-537-20261114T212940Z",
+    "running": true,
+    "restarts": 0,
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 61.18,
+        "heapTotal": 89.62,
+        "rss": 149.74
+      },
+      "timestamp": "2026-11-14T21:30:00.606Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 63.76,
+        "heapTotal": 90.12,
+        "rss": 150.99
+      },
+      "timestamp": "2026-11-14T21:30:01.041Z"
+    },
+    "publicHealthUrl": "https://api.prontopolloportal.com/api/health",
+    "compiledControls": 1208,
+    "compiledResults": {
+      "537": {
+        "ok": true,
+        "totalCompiledTests": 473,
+        "compiledPilotIncidentTests": 148,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "527": {
+        "ok": true,
+        "compiledCartEditOwnerTests": 38,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "526": {
+        "ok": true,
+        "compiledCartEditRejectionTests": 32,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "525": {
+        "ok": true,
+        "compiledMixedAttributeTests": 50,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "524": {
+        "ok": true,
+        "compiledReplacementTransactionTests": 35,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "523": {
+        "ok": true,
+        "compiledOwnerPaginationTests": 55,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "522": {
+        "ok": true,
+        "compiledAttributeRecoveryTests": 31,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "521": {
+        "ok": true,
+        "compiledToolFeedbackTests": 25,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "520": {
+        "ok": true,
+        "compiledPilot520Cases": 24,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "518": {
+        "ok": true,
+        "compiledInquiryOptionTests": 66,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "517": {
+        "ok": true,
+        "compiledMultiPurchaseTests": 136,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "516": {
+        "ok": true,
+        "compiledMixedReplacementTests": 163,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "515": {
+        "ok": true,
+        "compiledReplacementJourneys": 80,
+        "mockedClosures": 80,
+        "externalOrders": 0,
+        "paidInference": 0
+      }
+    },
+    "privateConfigurationPreserved": true,
+    "effectiveBusinessEnvironmentPreserved": true,
+    "effectiveBusinessEnvironmentSha256": "ad2ae7b58c28f9eec655b4be7cd0599cb166a450b460352ddd6dcd4ae6b5711b",
+    "models": {
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+    },
+    "stagingRuntimePreserved": true,
+    "kamppoRuntimePreserved": true,
+    "backup": "/root/ppp-manual-release/20261114T212940Z-production-537",
+    "checkedAt": "2026-11-14T21:31:31.489518+00:00"
+  },
+  "kamppo": {
+    "sourceCommit": "4cda5429a6cded7abb5d8a78308d7f75577dea42",
+    "sourcePppBatch": 537,
+    "image": "sha256:75151b2d05da57929b9afeefe8eb871d1ff61bb2208ec88e33d5d53e6874bc97",
+    "previousImage": "sha256:f90d6254abc15236cce1e44cea0ae8b8e17104639d364967ea95cfa22b7b3e2f",
+    "configuredImageAlias": "kamppo-api:customer-history-20261113",
+    "rollbackImage": "kamppo-api:rollback-before-ppp537-20261114T213140Z",
+    "backup": "/root/kamppo-manual-release/20261114T213140Z-ppp537",
+    "localHealth": {
+      "status": "ok",
+      "service": "kamppo-api",
+      "name": "sapita",
+      "db": "up",
+      "ts": "2026-11-14T21:31:55.675Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "service": "kamppo-api",
+      "name": "sapita",
+      "db": "up",
+      "ts": "2026-11-14T21:31:55.795Z"
+    },
+    "privateConfigurationPreserved": true,
+    "effectiveEnvironmentPreserved": true,
+    "mountsPreserved": true,
+    "pppRuntimePreserved": true,
+    "running": true,
+    "restarts": 0,
+    "compiledSmoke": [
+      {
+        "ok": true,
+        "restaurants": 2,
+        "simulatedClosures": 2,
+        "externalRequests": 0
+      },
+      {
+        "ok": true,
+        "compiledNativeContracts": 18,
+        "syntheticCatalogs": 2,
+        "externalOrders": 0,
+        "paidInference": 0
+      }
+    ],
+    "migrationsRun": false,
+    "externalOrders": 0,
+    "paidInference": 0,
+    "checkedAt": "2026-11-14T21:32:06.889330+00:00"
+  },
+  "productionCatalogReplayTests": 2,
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "limitations": [
+    "Unknown or ambiguous correction clause preserves the whole cart and requests the complete corrected list again.",
+    "Single list choice with extras or existing queued sibling purchases may require clarification.",
+    "PPP does not offer asado, user confirmed it differs from frito on 2026-11-14. No alias between them.",
+    "Model providers and delivery maps are simulated in tests; live closure performance still requires pilot observation."
+  ]
+}
