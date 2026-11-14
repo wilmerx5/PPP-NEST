@@ -1779,7 +1779,7 @@ export class WhatsappCatalogService {
   stripProductDescriptionInquiryNoise(text: string): string {
     let cleaned = (text || '')
       .replace(
-        /\b(?:con\s+qu[eé]|de\s+qu[eé]|qu[eé])\s+(?:viene|vienen|va|van|trae|traen|lleva|llava|incluye|incluyen|contiene|contienen|tiene|tienen|acompa[nñ]a)\s+(?:el|la|los|las|una|un|unos|unas)?\s*/gi,
+        /\b(?:con\s+qu[eé]|de\s+qu[eé]|qu[eé])\s+(?:viene|vienen|vendr[ií]a|vendr[ií]an|va|van|trae|traen|lleva|llava|incluye|incluyen|contiene|contienen|tiene|tienen|acompa[nñ]a)\s+(?:el|la|los|las|una|un|unos|unas)?\s*/gi,
         ' ',
       )
       .replace(
@@ -8416,6 +8416,7 @@ export class WhatsappCatalogService {
     if (/^(quiero|dame|ponme|agrega|me\s+regalas|me\s+das|vendeme)\b/i.test(raw)) return false;
     const q = normalizeText(raw);
     const asksMixto = /\b(?:combo\s+)?(?:de\s+)?(?:pollo\s+)?mixto\b/.test(q);
+    if (!asksMixto && /\b(?:es para|con que|que trae|que incluye|que lleva|como viene|como vendria)\b/.test(q)) return false;
     const halfAndHalf =
       /\b(?:medio|mitad)\s+(?:pollo\s+)?(?:broaster|frito|asado)\b/.test(q) &&
       /\b(?:medio|mitad)\s+(?:pollo\s+)?(?:broaster|frito|asado)\b/.test(
@@ -8987,7 +8988,7 @@ export class WhatsappCatalogService {
     if (sizeOrYieldAsk) return true;
 
     if (/^(quiero|dame|ponme|agrega|agregame|me regalas|me das|voy a pedir)\s/i.test(raw)) {
-      const asksContents = /[¿?]/.test(raw) && /\bcon que (?:viene|va|trae|acompana)\b/.test(q);
+      const asksContents = /[¿?]/.test(raw) && /\bcon que (?:viene|vendria|va|trae|acompana)\b/.test(q);
       if (!asksContents) return false;
     }
 
@@ -9002,7 +9003,7 @@ export class WhatsappCatalogService {
       /\bque lleva\b/,
       /\bque llava\b/,
       /\bque trae\b/,
-      /\bcon que viene\b/,
+      /\bcon que (?:viene|vendria)\b/,
       /\bcon que va\b/,
       /\bcon que trae\b/,
       /\bcon que acompana\b/,

@@ -16183,7 +16183,7 @@ export class WhatsappOrchestratorService {
   /** Tras pedido cerrado o pago por transferencia: la foto suele ser comprobante. */
   private paymentProofAcknowledgement(conv?: WhatsappConversation): string {
     const acknowledgement =
-      'Recibí tu comprobante. El equipo debe verificar la transferencia; recibir la imagen no confirma el pago.';
+      'Recibí el comprobante. El equipo lo validará y te enviaremos el pedido lo más pronto posible.';
     if (
       conv &&
       !conv.humanTakeover &&
@@ -16207,7 +16207,7 @@ export class WhatsappOrchestratorService {
         if (reminder) return `${acknowledgement}\n\n${reminder}`;
       }
     }
-    return `${acknowledgement} ${this.humanPhoneHint()}`;
+    return acknowledgement;
   }
 
   private isLikelyPaymentProofContext(conv: WhatsappConversation): boolean {
@@ -16873,7 +16873,9 @@ export class WhatsappOrchestratorService {
     }
     const isQuestion = /[¿?]/.test(text);
     const asksMutation = /\b(?:cambi\w*|agrega\w*|anade\w*|quita\w*|elimina\w*|borra\w*|envia\w*|manda\w*|regala\w*|confirm\w*|cancel\w*|pagar\w*|pago|direccion|telefono|nombre)\b/.test(said);
-    const foodContext = /\b(?:sopas?|arroz|papas?|pollo|bebida|gaseosa|acompan\w*|ingrediente\w*|alerg\w*|mani)\b/.test(said);
+    const foodContext = FOOD_ORDER_SIGNAL_RE.test(said) ||
+      products.some(product => this.catalogService.productFullyNamedIn(text, [product])) ||
+      /\b(?:acompan\w*|ingrediente\w*|alerg\w*|mani)\b/.test(said);
     if (isQuestion && !asksMutation && !foodContext && !this.pointsHandler.isPointsTopic(text) &&
       !this.catalogService.isAvailabilityInquiry(text) && !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text,products)) return 'esa consulta';

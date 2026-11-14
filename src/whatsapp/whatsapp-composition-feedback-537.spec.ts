@@ -21,8 +21,8 @@ const menu = [
     attributes: [],
   },
 ];
-function setup(products = menu) {
-  const h = harness(products, true);
+function setup(products = menu, agent = true) {
+  const h = harness(products, agent);
   h.service.aiService.classifyMessage = jest.fn().mockResolvedValue(null);
   h.service.ordersService.findTodayOrdersByPhone = jest
     .fn()
@@ -78,4 +78,16 @@ for (const feedback of [
     expect(h.replies.at(-1)).toMatch(/carrito.*vacío/i);
     expect(h.replies.at(-1)).not.toMatch(/sin hacerlo|no deb[ií]/i);
     expect(h.agent.runTurn).not.toHaveBeenCalled();
+  });
+
+for (const agent of [false, true])
+  test(`a sized preparation question remains in the menu route ${agent}`, async () => {
+    const h = setup(menu, agent);
+    await h.sendQueued(
+      'Buenas tardes, hazme un favor, sí, mira, es para medio broster y medio asado, ¿y ese con qué vendría?',
+    );
+    expect(h.replies.at(-1)).not.toMatch(/no lo resuelvo|fuera de la carta/i);
+    expect(h.replies.at(-1)).toMatch(/no tenemos.*asado/i);
+    expect(h.conv.sessionData.pendingMatch?.candidates).toHaveLength(2);
+    expect(h.conv.sessionData.cart).toEqual([]);
   });

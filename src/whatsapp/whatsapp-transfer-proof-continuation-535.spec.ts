@@ -68,7 +68,7 @@ for (const kind of ['payment_proof', 'unclear']) {
     const cart = structuredClone(h.conv.sessionData.cart);
     await h.sendQueued('', { messageType: 'image', mediaId: 'synthetic' });
     expect(h.replies.at(-1)).toMatch(/confirmar/);
-    expect(h.replies.at(-1)).toMatch(/equipo debe verificar/);
+    expect(h.replies.at(-1)).toMatch(/equipo lo validará/);
     expect(h.replies.at(-1)).not.toContain('Pago aprobado');
     expect(h.conv.state).toBe('awaiting_final_confirm');
     expect(h.conv.sessionData.cart).toEqual(cart);
@@ -113,7 +113,7 @@ for (const state of ['completed', 'closed', 'human_takeover'])
       h.conv,
       h.cfg,
     );
-    expect(h.replies.at(-1)).toMatch(/equipo debe verificar/);
+    expect(h.replies.at(-1)).toMatch(/equipo lo validará/);
     expect(h.replies.at(-1)).not.toMatch(/escribe confirmar/);
     expect(h.conv.sessionData.cart).toEqual(cart);
     expect(h.conv.state).toBe(state);
