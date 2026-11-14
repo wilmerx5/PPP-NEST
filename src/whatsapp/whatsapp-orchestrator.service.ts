@@ -18271,6 +18271,50 @@ export class WhatsappOrchestratorService {
             (product) => product.id === id && product.availableNow !== false,
           ),
       );
+    const purchaseWithdrawal = said.match(
+      /^(?:por favor )?no (?:me )?(?:agregues|anadas|incluyas|sumes|pongas|adiciones) (.+)$/,
+    );
+    if (purchaseWithdrawal && !invalid) {
+      const subject = purchaseWithdrawal[1]
+        .replace(/ (?:por favor|porfa|gracias)$/, '')
+        .replace(/^(?:el|la|los|las|un|una|unos|unas) /, '');
+      const named = products.filter(
+        (product) => this.normalizeForMatch(product.name) === subject,
+      );
+      const product = named.length === 1 ? named[0] : undefined;
+      if (
+        product &&
+        !/[¿?]/.test(text) &&
+        choice.addItems.some((item) => item.productId === product.id)
+      ) {
+        const addItems = choice.addItems.filter(
+          (item) => item.productId !== product.id,
+        );
+        const next = {
+          ...session,
+          pendingReplacementClarification: {
+            ...pending,
+            ownerChoice: {
+              ...choice,
+              addItems,
+              catalogFingerprint: this.cartEditOwnerFingerprint(products, [
+                choice.productId,
+                ...addItems.map((item) => item.productId),
+              ]),
+            },
+          },
+        };
+        await this.reply(
+          conv,
+          waId,
+          `Retiré *${product.name}* de las compras pendientes.`,
+        );
+        await this.showCartEditOwnerChoice(conv, waId, next, products);
+        return true;
+      }
+      await this.showCartEditOwnerChoice(conv, waId, session, products);
+      return true;
+    }
     if (invalid) {
       if (!choice.invalidated)
         await this.conversationService.saveSession(conv, {
@@ -18286,6 +18330,7 @@ export class WhatsappOrchestratorService {
         direction ||
         acknowledgement ||
         signedChoice ||
+        purchaseWithdrawal ||
         matchingOwners.length ||
         knownOption
       ) {

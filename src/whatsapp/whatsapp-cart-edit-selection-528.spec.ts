@@ -906,3 +906,181 @@ test('a known product conversion retains its existing entry point', async () => 
   expect(h.conv.sessionData.cart).toEqual(before);
   expect(h.agent.runTurn).toHaveBeenCalledTimes(1);
 });
+
+for (const state of ['building_cart', 'awaiting_final_confirm']) {
+  for (const text of [
+    'No agregues la Porcion De Hummus',
+    'No me añadas una Porcion De Hummus, por favor',
+    'Por favor no incluyas Porcion De Hummus',
+  ]) {
+    test(`partial purchase withdrawal preserves the held edit ${state} ${text}`, async () => {
+      const { h } = await openChoice(state);
+      const before = structuredClone(h.conv.sessionData.cart);
+      const agentCalls = h.agent.runTurn.mock.calls.length;
+      await h.sendQueued(text);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(
+        h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+          ?.addItems,
+      ).toEqual([]);
+      expect(h.replies.at(-1)).toMatch(/varias variantes/i);
+      await h.sendQueued('2');
+      expect(
+        h.conv.sessionData.pendingReplacementClarification,
+      ).toBeUndefined();
+      expect(h.conv.sessionData.cart).toEqual([
+        before[0],
+        { ...before[1], quantity: 3 },
+      ]);
+      expect(h.agent.runTurn).toHaveBeenCalledTimes(agentCalls);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+}
+
+for (const text of [
+  'No agregues la Porcion De Hummus?',
+  'No agregues la Porcion De Hummus y cambia el combo',
+  'No agregues la Porcion De Hummus mejor una pizza',
+  'No agregues dos Porcion De Hummus',
+  'No agregues nada',
+  'No agregues la pizza',
+]) {
+  test(`an incomplete withdrawal stays within the pending choice ${text}`, async () => {
+    const { h } = await openChoice();
+    const cart = structuredClone(h.conv.sessionData.cart);
+    const pending = structuredClone(
+      h.conv.sessionData.pendingReplacementClarification,
+    );
+    await h.sendQueued(text);
+    expect(h.conv.sessionData.cart).toEqual(cart);
+    expect(h.conv.sessionData.pendingReplacementClarification).toEqual(pending);
+    expect(h.replies.at(-1)).toMatch(/varias variantes/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+}
+
+for (const state of ['building_cart', 'awaiting_final_confirm']) {
+  test(`withdrawal preserves an existing purchase of the same product ${state}`, async () => {
+    const { h } = await openChoice(
+      state,
+      'update_item',
+      { quantity: 3 },
+      (s) => {
+        s.h.conv.sessionData.cart.push({
+          productId: 5282,
+          code: 12,
+          name: s.products[1].name,
+          unitPrice: 7000,
+          quantity: 4,
+          note: 'Sin sal',
+          attributes: [],
+        });
+      },
+    );
+    const existing = structuredClone(h.conv.sessionData.cart[2]);
+    await h.sendQueued('No agregues la Porcion De Hummus');
+    await h.sendQueued('1');
+    expect(h.conv.sessionData.cart[0].quantity).toBe(3);
+    expect(h.conv.sessionData.cart[2]).toEqual(existing);
+    expect(h.conv.sessionData.cart).toHaveLength(3);
+    expect(h.conv.state).toBe(state);
+    expect(h.conv.sessionData.pendingReplacementClarification).toBeUndefined();
+  });
+}
+
+for (const invalidation of ['expiry', 'catalog', 'cart']) {
+  test(`a stale withdrawal cannot fall through to a purchase ${invalidation}`, async () => {
+    const s = await openChoice();
+    if (invalidation === 'expiry')
+      s.h.conv.sessionData.pendingReplacementClarification!.ownerChoice!.createdAt = 0;
+    if (invalidation === 'catalog') s.products[1].price += 1000;
+    if (invalidation === 'cart') s.h.conv.sessionData.cart[0].quantity += 1;
+    const cart = structuredClone(s.h.conv.sessionData.cart);
+    await s.h.sendQueued('No agregues la Porcion De Hummus');
+    expect(s.h.conv.sessionData.cart).toEqual(cart);
+    expect(
+      s.h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+        ?.invalidated,
+    ).toBe(true);
+    expect(s.h.replies.at(-1)).toMatch(/selección venció/i);
+  });
+}
+
+test('an ambiguous catalog name cannot withdraw a pending purchase', async () => {
+  const s = await openChoice();
+  s.products.push({ ...s.products[1], id: 5283, code: 13 });
+  const cart = structuredClone(s.h.conv.sessionData.cart);
+  await s.h.sendQueued('No agregues la Porcion De Hummus');
+  expect(s.h.conv.sessionData.cart).toEqual(cart);
+  expect(
+    s.h.conv.sessionData.pendingReplacementClarification?.ownerChoice?.addItems,
+  ).toHaveLength(1);
+});
+
+test('withdrawing one purchase preserves other proposed purchases', async () => {
+  const s = await openChoice();
+  s.products.push({
+    ...s.products[1],
+    id: 5283,
+    code: 13,
+    name: 'Pan De Ajo',
+    price: 3000,
+  });
+  const choice =
+    s.h.conv.sessionData.pendingReplacementClarification!.ownerChoice!;
+  choice.addItems.push({ productId: 5283, quantity: 2 });
+  choice.sourceText += ' y agrega dos Pan De Ajo';
+  choice.catalogFingerprint = s.h.service.cartEditOwnerFingerprint(
+    s.products,
+    [5281, 5282, 5283],
+  );
+  await s.h.sendQueued('No agregues la Porcion De Hummus');
+  expect(
+    s.h.conv.sessionData.pendingReplacementClarification?.ownerChoice?.addItems,
+  ).toEqual([{ productId: 5283, quantity: 2 }]);
+  await s.h.sendQueued('2');
+  expect(s.h.conv.sessionData.cart.map((line) => line.productId)).toEqual([
+    5281, 5281, 5283,
+  ]);
+  expect(s.h.conv.sessionData.cart[2].quantity).toBe(2);
+  expect(s.h.conv.sessionData.pendingReplacementClarification).toBeUndefined();
+});
+
+for (const state of ['building_cart', 'awaiting_final_confirm']) {
+  test(`withdrawing a purchase retains an ambiguous removal ${state}`, async () => {
+    const { h } = await openChoice(state, 'remove_item');
+    const first = structuredClone(h.conv.sessionData.cart[0]);
+    await h.sendQueued('No agregues la Porcion De Hummus');
+    await h.sendQueued('2');
+    expect(h.conv.sessionData.cart).toEqual([first]);
+    expect(h.conv.sessionData.pendingReplacementClarification).toBeUndefined();
+    expect(h.conv.state).toBe(state);
+  });
+}
+
+test('a repeated purchase withdrawal cannot add the removed proposal', async () => {
+  const { h } = await openChoice();
+  const cart = structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued('No agregues la Porcion De Hummus');
+  await h.sendQueued('No agregues la Porcion De Hummus');
+  expect(h.conv.sessionData.cart).toEqual(cart);
+  expect(
+    h.conv.sessionData.pendingReplacementClarification?.ownerChoice?.addItems,
+  ).toEqual([]);
+  expect(h.replies.at(-1)).toMatch(/varias variantes/i);
+});
+
+test('checkout registers only the retained plan after a purchase withdrawal', async () => {
+  const { h } = await openChoice('awaiting_final_confirm');
+  await h.sendQueued('No agregues la Porcion De Hummus');
+  await h.sendQueued('2');
+  await h.sendQueued('no más, recojo en el local');
+  await h.sendQueued('efectivo');
+  await h.sendQueued('confirmar');
+  if (!h.service.ordersService.create.mock.calls.length)
+    await h.sendQueued('confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(5);
+  expect(h.conv.state).toBe('completed');
+});
