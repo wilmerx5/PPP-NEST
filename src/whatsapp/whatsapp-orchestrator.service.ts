@@ -1158,9 +1158,24 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    const boundary = await this.resolveOrderBoundary(conv, msg.waId, msg.text || '', cfg, msg.messageType === 'text');
+    let boundaryTranscript: string | undefined;
+    const boundarySession = this.conversationService.getSession(conv);
+    if (msg.messageType === 'audio' && msg.mediaId && (boundarySession.pendingOrderBoundary ||
+        boundarySession.cart.length && ['awaiting_name', 'awaiting_address', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state))) {
+      const resolved = await this.resolveAudioToText(msg, logged!.id, conv);
+      if (!resolved) {
+        await this.reply(conv, msg.waId, 'No pude escuchar el audio. Escríbelo por texto.\n' + this.humanPhoneHint());
+        return;
+      }
+      boundaryTranscript = resolved;
+    }
+    const boundary = await this.resolveOrderBoundary(conv, msg.waId, boundaryTranscript ?? msg.text ?? '', cfg,
+      msg.messageType === 'text' || boundaryTranscript !== undefined);
     if (boundary === null) return;
-    if (boundary !== undefined) msg = { ...msg, text: boundary };
+    if (boundary !== undefined) {
+      msg = { ...msg, text: boundary };
+      if (boundaryTranscript !== undefined) boundaryTranscript = boundary;
+    }
 
     const oldOfferSession = this.conversationService.getSession(conv);
     const offerExpired = oldOfferSession.pendingAddOffer?.createdAt && Date.now() - oldOfferSession.pendingAddOffer.createdAt > 30 * 60_000;
@@ -1193,7 +1208,7 @@ export class WhatsappOrchestratorService {
       if (parts.length && isUsableWhatsappCustomerName(parts.join(' '))) text = parts.join(' ');
     }
     if (msg.messageType === 'audio' && msg.mediaId) {
-      const resolved = await this.resolveAudioToText(msg, logged!.id, conv);
+      const resolved = boundaryTranscript ?? await this.resolveAudioToText(msg, logged!.id, conv);
       if (!resolved) {
         await this.reply(
           conv,
@@ -22004,7 +22019,7 @@ export class WhatsappOrchestratorService {
     waId: string,
     text: string,
     cfg: EffectiveWhatsappConfig,
-    isText: boolean,
+    hasText: boolean,
   ): Promise<string | null | undefined> {
     const session = this.conversationService.getSession(conv);
     const pending = session.pendingOrderBoundary;
@@ -22014,12 +22029,23 @@ export class WhatsappOrchestratorService {
     const prompt = 'Tienes un pedido pendiente.\n\n' + this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) +
       '\n\n¿Agrego lo que acabas de pedir a este pedido o empezamos uno nuevo? Escribe *continuar pedido* para agregarlo o *nuevo pedido* para reemplazar el pedido pendiente.';
     if (pending) {
+      if (hasText && said !== 'nuevo pedido' && !this.wholeOrderCancellationAside(text) &&
+          !this.splitWholeOrderCancellationAside(text) && (this.isCancelIntent(text) || this.isClearCartIntent(text))) {
+        await this.conversationService.saveSession(conv, { ...session, pendingOrderBoundary: undefined });
+        return undefined;
+      }
+      if (typeof pending.createdAt !== 'number' || !Number.isFinite(pending.createdAt) ||
+          pending.createdAt > Date.now() || Date.now() - pending.createdAt >= 30 * 60_000) {
+        await this.conversationService.saveSession(conv, { ...session, pendingOrderBoundary: undefined });
+        await this.reply(conv, waId, 'La pregunta sobre el pedido pendiente venció. Envíame de nuevo lo que quieres pedir para revisar si continuamos o empezamos otro.');
+        return null;
+      }
       if (pending.draftSignature !== this.orderBoundarySignature(conv, session)) {
         await this.conversationService.saveSession(conv, { ...session, pendingOrderBoundary: undefined });
         await this.reply(conv, waId, 'El pedido pendiente cambió. Envíame de nuevo lo que quieres pedir para revisar si continuamos o empezamos otro.');
         return null;
       }
-      if (!isText || !/^(?:continuar pedido|nuevo pedido)$/.test(said)) {
+      if (!hasText || !/^(?:continuar pedido|nuevo pedido)$/.test(said)) {
         await this.reply(conv, waId, prompt);
         return null;
       }
@@ -22035,14 +22061,15 @@ export class WhatsappOrchestratorService {
       }
       return pending.request;
     }
-    if (!isText || /[¿?]/.test(text) || this.isClearCartIntent(text)) return undefined;
+    if (!hasText || /[¿?]/.test(text) || this.isClearCartIntent(text)) return undefined;
     const explicit = /^(?:(?:quiero|quisiera|necesito)\s+(?:hacer\s+)?(?:un\s+)?(?:nuevo|otro)\s+pedido|(?:nuevo|otro)\s+pedido)\s*[,.:]?\s+(.+)$/i.exec(this.stripLeadingGreeting(text));
     const withoutGreeting = this.stripLeadingGreeting(text);
     const greeting = withoutGreeting !== text.trim() && /^(?:hola|hey|hi|buen[ao]s?)\b/i.test(text.trim());
     if (!explicit && !greeting) return undefined;
     if (/\b(?:agrega\w*|anade\w*|tambien|ademas|al pedido|quita\w*|cambia\w*|corrige\w*|reemplaza\w*|en vez|no quiero|todavia no)\b/.test(said)) return undefined;
     const request = explicit ? explicit[1] : text;
-    const products = await this.catalogService.getMenuProducts();
+    const menu = await this.catalogService.getMenuProducts();
+    const products = cfg.ignoreBusinessHours ? menu.map(product => ({ ...product, availableNow: true })) : menu;
     const productText = this.parseCompoundOrderMessage(this.stripLeadingGreeting(request)).productText;
     const query = this.catalogService.extractProductSearchQuery(productText).replace(/^(?:me\s+)?env[ií]a\s+/i, '');
     const multi = this.catalogService.resolveMultiProductOrder(query, products);
@@ -22054,7 +22081,7 @@ export class WhatsappOrchestratorService {
     if (!hasDish || (!explicit && matches.some(product => session.cart.some(line => line.productId === product.id)))) return undefined;
     if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) return undefined;
     await this.conversationService.saveSession(conv, { ...session, pendingOrderBoundary: {
-      request, draftSignature: this.orderBoundarySignature(conv, session),
+      request, draftSignature: this.orderBoundarySignature(conv, session), createdAt: Date.now(),
     } });
     await this.reply(conv, waId, prompt);
     return null;

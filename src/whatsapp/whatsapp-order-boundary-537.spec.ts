@@ -19,6 +19,28 @@ function draft(agent: boolean, state = 'awaiting_payment') {
 const request = 'Buenas tardes por favor me envía una Ensalada Campestre y una Sopa del Huerto';
 
 for (const agent of [false, true]) {
+  it(`uses the effective night-test availability when deciding the boundary agent=${agent}`, async () => {
+    const h = draft(agent), before = structuredClone(h.conv.sessionData.cart);
+    h.service.catalogService.getMenuProducts = jest.fn().mockResolvedValue(menu.map(product => ({ ...product, availableNow: false })));
+    await h.sendQueued(request);
+    expect(h.conv.sessionData.pendingOrderBoundary?.request).toBe(request);
+    expect(h.conv.sessionData.cart).toEqual(before);
+  });
+  for (const timestamp of ['expired', 'missing', 'malformed'] as const) {
+    it(`retires a ${timestamp} boundary timestamp without applying its stored request agent=${agent}`, async () => {
+      const h = draft(agent);
+      await h.sendQueued(request);
+      if (timestamp === 'missing') delete h.conv.sessionData.pendingOrderBoundary!.createdAt;
+      else h.conv.sessionData.pendingOrderBoundary!.createdAt = timestamp === 'expired' ? Date.now() - 31 * 60_000 : NaN;
+      const beforeCart = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued('nuevo pedido');
+      expect(h.conv.sessionData.pendingOrderBoundary).toBeUndefined();
+      expect(h.conv.sessionData.cart).toEqual(beforeCart);
+      expect(h.conv.state).toBe('awaiting_payment');
+      expect(h.replies.at(-1)).toMatch(/pregunta.*venció.*Envíame de nuevo/s);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
   it(`keeps an explicitly separate purchase separate while a dish needs clarification agent=${agent}`, async () => {
     const h = draft(agent), before = structuredClone(h.conv.sessionData);
     await h.sendQueued('Quiero hacer otro pedido, una Ensalada Campestre y una pizza volcánica');
@@ -101,4 +123,78 @@ for (const agent of [false, true]) {
       expect(h.conv.sessionData.cart[0].productId).toBe(menu[0].id);
     });
   }
+}
+
+for (const agent of [false, true]) {
+  for (const choice of ['continuar pedido', 'nuevo pedido']) {
+    it(`transcribes each boundary audio once and replays its purchase ${choice} agent=${agent}`, async () => {
+      const h = draft(agent), before = structuredClone(h.conv.sessionData);
+      const transcribe = jest.fn().mockResolvedValueOnce(request).mockResolvedValueOnce(choice);
+      h.service.resolveAudioToText = transcribe;
+      await h.sendQueued('', { messageType: 'audio', mediaId: 'boundary-request' });
+      expect(h.conv.sessionData.pendingOrderBoundary?.request).toBe(request);
+      const { pendingOrderBoundary, ...retained } = h.conv.sessionData;
+      expect(retained).toEqual(before);
+      expect(transcribe).toHaveBeenCalledTimes(1);
+      expect(transcribe.mock.calls[0][0].messageType).toBe('audio');
+      await h.sendQueued('', { messageType: 'audio', mediaId: 'boundary-choice' });
+      expect(transcribe).toHaveBeenCalledTimes(2);
+      expect(transcribe.mock.calls[1][0].messageType).toBe('audio');
+      expect(h.conv.sessionData.pendingOrderBoundary).toBeUndefined();
+      const expected = choice === 'nuevo pedido' ? menu.slice(1) : menu;
+      expect(h.conv.sessionData.cart.map(line => [line.productId, line.quantity])).toEqual(expected.map(product => [product.id, 1]));
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+  it(`preserves the question when audio transcription fails agent=${agent}`, async () => {
+    const h = draft(agent);
+    await h.sendQueued(request);
+    const before = structuredClone(h.conv.sessionData);
+    h.service.resolveAudioToText = jest.fn().mockResolvedValue(null);
+    await h.sendQueued('', { messageType: 'audio', mediaId: 'unreadable' });
+    expect(h.service.resolveAudioToText).toHaveBeenCalledTimes(1);
+    expect(h.replies.at(-1)).toMatch(/No pude escuchar el audio/i);
+    expect(h.conv.sessionData).toEqual(before);
+  });
+  it(`keeps a cancellation question from discarding the saved purchase agent=${agent}`, async () => {
+    const h = draft(agent);
+    await h.sendQueued(request);
+    const before = structuredClone(h.conv.sessionData);
+    await h.sendQueued('¿Puedo cancelar el pedido?');
+    expect(h.conv.sessionData).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/continuar pedido.*nuevo pedido/s);
+  });
+  for (const command of ['cancelar', 'reiniciar']) {
+    for (const closed of [false, true]) {
+      it(`lets ${command} discard the draft while the boundary is pending closed=${closed} agent=${agent}`, async () => {
+        const h = draft(agent);
+        h.service.ordersService.findTodayOrdersByPhone = jest.fn().mockResolvedValue([]);
+        await h.sendQueued(request);
+        if (closed) {
+          h.cfg.ignoreBusinessHours = false;
+          h.service.businessService.getStatus = jest.fn().mockResolvedValue({ isOpen: false });
+          const before = structuredClone(h.conv.sessionData);
+          await h.sendQueued('nuevo pedido');
+          expect(h.conv.sessionData).toEqual(before);
+          expect(h.replies.at(-1)).toMatch(/cerrad/i);
+        }
+        await h.sendQueued(command);
+        expect(h.conv.sessionData.pendingOrderBoundary).toBeUndefined();
+        expect(h.conv.sessionData.cart).toEqual([]);
+        expect(h.conv.state).toBe('building_cart');
+        expect(h.replies.at(-1)).toMatch(command === 'cancelar' ? /cancelado/i : /vaciamos/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+  it(`preserves the pending draft and skips audio work during human takeover agent=${agent}`, async () => {
+    const h = draft(agent);
+    await h.sendQueued(request);
+    const before = structuredClone(h.conv.sessionData);
+    Object.assign(h.conv, { humanTakeover: true });
+    h.service.resolveAudioToText = jest.fn().mockResolvedValue('nuevo pedido');
+    await h.sendQueued('', { messageType: 'audio', mediaId: 'human-turn' });
+    expect(h.service.resolveAudioToText).not.toHaveBeenCalled();
+    expect(h.conv.sessionData).toEqual(before);
+  });
 }
