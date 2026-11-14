@@ -361,7 +361,7 @@ describe('PDF cuarta tanda — contexto de fotos y recogida portable', () => {
     h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'payment_proof',textForBot:'Un bowl mediterraneo'});
     h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
     expect(await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-proof'},'1',h.conv,h.cfg)).toEqual({done:true});
-    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/no confirma el pago/i);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/equipo lo validará/i);
   });
 });
 
