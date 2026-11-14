@@ -223,7 +223,7 @@ describe('Aclaración de medios — sin repetir el fallback genérico',()=>{
     h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'payment_proof',textForBot:''});
     h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
     await h.sendQueued('',{messageType:'image',mediaId:'mock-proof'});
-    expect(h.cartRows()).toEqual([]);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/no confirma el pago/i);
+    expect(h.cartRows()).toEqual([]);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/equipo lo validará/i);
     expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
   });
   it('comprobante que no abre solicita reenvío sin aclaración genérica',async()=>{
