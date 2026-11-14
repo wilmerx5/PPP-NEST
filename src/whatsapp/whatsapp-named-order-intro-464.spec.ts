@@ -41,6 +41,12 @@ for(const family of families)for(const agent of [false,true])for(const prefix of
     if(phase==='first')h.service.conversationService.countInboundMessages=async()=>1;
     await h.sendQueued(`${prefix} ${family.name}`);
     h.service.conversationService.countInboundMessages=counter;
+    if (prefix.startsWith('Hola') && ['payment', 'final'].includes(phase)) {
+      expect(h.conv.sessionData.pendingOrderBoundary).toBeDefined();
+      expect(h.conv.sessionData.cart).toEqual(before);
+      await h.sendQueued('continuar pedido');
+      expect(h.conv.sessionData.pendingOrderBoundary).toBeUndefined();
+    }
     expect(h.conv.sessionData.cart.map(p=>[p.productId,p.quantity]).sort()).toEqual([[family.id,1],...before.map(p=>[p.productId,p.quantity])].sort());
     expect(h.conv.sessionData.cart.filter(p=>p.productId===prior.id)).toEqual(before);
     expect(h.replies.at(-1)).toContain(family.name);
