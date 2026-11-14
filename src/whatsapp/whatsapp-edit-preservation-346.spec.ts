@@ -90,6 +90,9 @@ for(const agent of [false,true]){
   h.conv.sessionData.cart.push({...h.conv.sessionData.cart[0],quantity:2,note:'Sin sal'});
   const before=structuredClone(h.conv.sessionData.cart);
   const reply=await h.sendQueued('De los tres churrascos, dos sin arroz');
-  expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/varias versiones/i);
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(reply).toMatch(/repartimos/i);
+  expect(h.conv.sessionData.pendingSubsetKitchenNote).toMatchObject({quantity:2,byUnits:true});
+  expect(h.conv.sessionData.pendingSubsetKitchenNote?.countedScope?.cartSignature).toBe(JSON.stringify(before));
  });
 }
