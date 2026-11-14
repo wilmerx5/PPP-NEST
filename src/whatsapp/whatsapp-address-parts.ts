@@ -48,6 +48,8 @@ export function splitAddressReference(source: string): { address: string; refere
 export function canonicalStreetAddress(source: string): string | null {
   const text = (source || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[–—−_]/g, '-').replace(/\bn[°º]\s*/g, '# ')
+    .replace(/\b(\d{1,3})([a-z])?bis([a-z])?\b/g, '$1$2 bis $3')
+    .replace(/\b(?:n|no)\.?\s*(?=\d)/g, '# ')
     // A letter ends the cross street unambiguously: #80G17 means #80G-17.
     // Do not split all-numeric runs, which have no reliable boundary.
     .replace(/(#\s*\d{1,3}\s*[a-z])(\d{1,3})(?=$|[\s,;])/g, '$1-$2');

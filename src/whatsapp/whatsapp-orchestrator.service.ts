@@ -1280,7 +1280,9 @@ export class WhatsappOrchestratorService {
         const suppliedLabel = [msg.locationName, msg.locationAddress].filter(Boolean).join(' — ');
         const routeLabel = customerLocationLabel(feeResult.session.address || addr);
         const readable = suppliedLabel || (routeLabel === 'Ubicación compartida' ? routeLabel : `Referencia de mapa: ${routeLabel}`);
-        const access = pendingUnit ? ` — ${pendingUnit}` : '';
+        const access = pendingUnit
+          ? ` — ${canonicalStreetAddress(unresolvedAddress || '') ? 'Dirección escrita: ' : ''}${pendingUnit}`
+          : '';
         sessionLoc.address = `${(readable + access).slice(0, 240)} — https://maps.google.com/?q=${msg.latitude},${msg.longitude}`;
         if (sessionLoc.pendingRecipientOrPlace) sessionLoc.pendingRecipientOrPlacePin = {lat:msg.latitude!,lng:msg.longitude!};
       }
@@ -2240,7 +2242,9 @@ export class WhatsappOrchestratorService {
       !!pendingSelection.pendingMultiOrder || !!pendingSelection.pendingAddOffer || !!pendingSelection.pendingSideSwap;
     const explicitCartWithdrawal = /^(?:cancela|olvida) el cambio del carrito$/.test(cancellationText);
     const explicitPurchaseWithdrawal = /^(?:cancela|olvida) la compra pendiente$/.test(cancellationText);
-    const vagueWithdrawal = /^(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo (?:como estaba|igual)|no hagas ese cambio|olvida eso|(?:cancela|olvida) esa seleccion)$/.test(cancellationText);
+    const declinesOptionChange = !/[¿?"«»“”]/.test(originalText) &&
+      /^(?:no quiero cambiar(?: nada)?|no quiero cambios)$/.test(cancellationText);
+    const vagueWithdrawal = declinesOptionChange || /^(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo (?:como estaba|igual)|no hagas ese cambio|olvida eso|(?:cancela|olvida) esa seleccion)$/.test(cancellationText);
     const pendingKitchenNote = !!pendingSelection.pendingSubsetKitchenNote;
     if (activeSelection && pendingSelection.cart.length && pendingEdits.length && (pendingPurchaseSelection || pendingKitchenNote) &&
         (vagueWithdrawal || cancellationAside)) {
@@ -2262,7 +2266,7 @@ export class WhatsappOrchestratorService {
       return;
     }
     const withdrawRemoval = isKeepCartRefusal(cancellationText) && !!pendingSelection.pendingCartRemoval;
-    const withdrawEdit = explicitCartWithdrawal || /^(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo (?:como estaba|igual)|no hagas ese cambio)$/.test(cancellationText);
+    const withdrawEdit = declinesOptionChange || explicitCartWithdrawal || /^(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo (?:como estaba|igual)|no hagas ese cambio)$/.test(cancellationText);
     if (activeSelection && pendingSelection.cart.length && pendingEdits.length && (withdrawRemoval || withdrawEdit)) {
       if (!withdrawRemoval && pendingEdits.length > 1) {
         await this.reply(conv,msg.waId,'Hay varios cambios pendientes. ¿Cuál cancelamos: quitar, cantidad, opciones o reemplazo? El pedido sigue igual.');
@@ -9356,7 +9360,7 @@ export class WhatsappOrchestratorService {
     const label = customerLocationLabel(session.address);
     const parts = label.split(' — ');
     const destination = /^Referencia de mapa:/i.test(parts[0]) && parts.length > 1
-      ? `Dirección escrita: ${parts.slice(1).join(' — ')}\n${parts[0]}` : label;
+      ? `Dirección escrita: ${parts.slice(1).join(' — ').replace(/^Dirección escrita:\s*/i, '')}\n${parts[0]}` : label;
     const pin = validDeliveryCoordinates(session.deliveryLat,session.deliveryLng)
       ? `\nPunto compartido: https://maps.google.com/?q=${session.deliveryLat},${session.deliveryLng}` : '';
     await this.reply(conv,waId,`${prefix}\n${destination}${pin}\n\n` +
@@ -14937,7 +14941,7 @@ export class WhatsappOrchestratorService {
     if (/[¿?]/.test(text)) return undefined;
     const said = this.normalizeForMatch(text).replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '');
     const match = said.match(/^(?:(?:a|en|para)\s+)?(?:(?:los|las)\s+(dos|tres|cuatro)|(ambos|ambas)|(todos|todas))$/);
-    if (!match) return undefined;
+    if (!match) return /^(?:para|en) cada (?:combo|plato|uno|una)$/.test(said) ? null : undefined;
     return match[1] ? ({dos:2,tres:3,cuatro:4}[match[1]]) : match[2] ? 2 : null;
   }
 
@@ -14953,6 +14957,13 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const candidates = pending.candidates;
+    if (/^(?:para|en) cada combo$/.test(this.normalizeForMatch(text)) && candidates.some(candidate => {
+      const product = products.find(item => item.id === session.cart[candidate.cartIndex]?.productId);
+      return product?.comboRole !== 'combo' && !/\bcombo\b/i.test(product?.name || '');
+    })) {
+      await this.reply(conv,waId,'La lista incluye platos diferentes. Indica el nombre o número del combo al que le cambiamos la bebida.');
+      return true;
+    }
     if (pending.unitChanges || candidates.length < 2 || count != null && count !== candidates.length) {
       await this.reply(conv,waId,'Necesito que señales una opción de esta lista para aplicar el cambio sin alterar cantidades:\n' +
         candidates.map((candidate,index) => `${index+1}. ${candidate.name}`).join('\n'));
@@ -17991,7 +18002,7 @@ export class WhatsappOrchestratorService {
       }
       return false;
     }
-    if (pending && /^(?:no|no gracias|mejor no|cancela ese cambio)$/.test(said)) {
+    if (pending && !/[¿?"«»“”]/.test(text) && /^(?:no|no gracias|mejor no|cancela ese cambio|no quiero cambiar(?: nada)?|no quiero cambios)$/.test(said)) {
       await this.conversationService.saveSession(conv,{...session,pendingCartOptionChoice:undefined});await this.reply(conv,waId,'Cancelé ese cambio. El pedido sigue igual.');return true;
     }
     if (pending && (this.isCancelIntent(text) || this.isClearCartIntent(text))) return false;
@@ -24832,6 +24843,17 @@ export class WhatsappOrchestratorService {
     const comboFollowup = said.match(/^(?:y )?el combo con ([a-zñ]+(?: [a-zñ]+){0,3})$/);
     const labelledFollowup = said.match(/^(?:y )?(?:la )?(?:bebida|gaseosa|refresco) ([a-zñ]+(?: [a-zñ]+){0,3})$/);
     const match = said.match(/^(?:y )?de tomar ([a-zñ]+(?: [a-zñ]+){0,3})$/) || labelledFollowup || comboFollowup;
+    if (!match && !/[¿?]/.test(text) &&
+      /^(?:(?:para|en) cada (?:combo|plato|uno|una)|no quiero cambiar(?: nada)?|no quiero cambios)$/.test(said) &&
+      session.cart.length === 1 && !session.pendingReplacementClarification &&
+      !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+      !session.pendingAddOffer && !session.pendingSubsetKitchenNote && !session.pendingUnitDistribution &&
+      !session.mpPreferenceId && !CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) {
+      await this.reply(conv,waId,'Conservo las opciones del pedido.\n\n'+
+        this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+
+        (this.formatInterruptedStepReminder(conv,session)||this.formatContinueShoppingPrompt(session)));
+      return true;
+    }
     if (!match || /\b(?:otra?|mas|extra|adicional|aparte|dos|tres|una?)\b/.test(match[1])) return false;
     // Polite requests retain the existing owner clarification and continuation.
     if (/^(?:(?:me|nos) |(?:puedes|pueden|podrias|podrian|quiero|dame|enviame|mandame)\b)/.test(match[1])) return false;
@@ -24853,7 +24875,11 @@ export class WhatsappOrchestratorService {
     if (session.pendingSubsetKitchenNote || session.mpPreferenceId) return clarify();
     // Existing option selections own their continuation; never replace them with a new prompt.
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
-    if ((labelledFollowup || comboFollowup) && (owners.length!==1 || owners[0].line.quantity!==1)) return clarify();
+    if ((labelledFollowup || comboFollowup) && owners.length!==1) {
+      const values=owners.flatMap(row=>row.attributes.flatMap(attr=>attr.options)).filter(value=>drinkKey(value)===match[1]);
+      if (new Set(values.map(value=>drinkKey(value))).size!==1) return clarify();
+      return await this.tryHandleCartAttributeOptionChange(conv,waId,session,`cambia la bebida por ${values[0]}`,products) || clarify();
+    }
     if (new Set(owners.map(row=>row.line.productId)).size!==1) {
       const labelled=match[1].replace(/^(?:(?:la|el) )?(?:bebida|gaseosa|refresco) /, '');
       const values=owners.flatMap(row=>row.attributes.flatMap(attr=>attr.options)).filter(value=>[match[1],labelled].includes(drinkKey(value)));
