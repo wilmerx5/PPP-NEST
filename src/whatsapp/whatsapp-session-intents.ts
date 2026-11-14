@@ -834,10 +834,32 @@ export function parseQtyMenuCodeLines(text: string): { qty: number; code: number
   return out;
 }
 
-/**
- * "No, son 4 sopas, 2 de ajiaco y 2 de menudencias" reemplaza el carrito.
- * Hace falta la corrección y al menos dos "N de plato".
- */
+/** A complete bulleted restatement needs an explicit correction heading. */
+export function parseBulletCartCorrection(text: string): { qty: number; dish: string }[] | null {
+  const rows = (text || '').trim().split(/\r?\n/).map(row => row.trim()).filter(Boolean);
+  if (rows.length < 2 || /[¿?]/.test(text) ||
+    /\b(?:que (?:trae|incluye|lleva)|cuanto (?:cuesta|vale|sale)|precio|ingredientes)\b/.test(normalizeBullet(text))) return null;
+  const heading = /^(?:no[, ]+)?(?:el pedido (?:es|queda)|deja el pedido|queda asi|seria asi)\s*[:.]?$/i;
+  const hasHeading = heading.test(normalizeBullet(rows[0]));
+  if (hasHeading) rows.shift();
+  if (rows.length < 2 || rows.some(row => !/^[-*•]\s*\S/.test(row))) return null;
+  const clauses = rows.map(row => row.replace(/^[-*•]\s*/, '').trim());
+  if (!hasHeading && !/^(?:no[, ]+)?(?:es|son|era|eran)\s+/i.test(clauses[0])) return null;
+  clauses[0] = clauses[0].replace(/^(?:no[, ]+)?(?:es|son|era|eran)\s+/i, '');
+  const quantities: Record<string, number> = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4,
+    cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
+  return clauses.map(clause => {
+    const amount = clause.match(/^([+-]?\d+(?:[.,]\d+)?|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(?:de\s+)?(.+)$/i);
+    return amount ? { qty: quantities[amount[1].toLowerCase()] ?? Number(amount[1]), dish: amount[2] }
+      : { qty: 1, dish: clause };
+  });
+}
+
+function normalizeBullet(text: string): string {
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/** "No, son 4 sopas, 2 de ajiaco y 2 de menudencias" replaces the cart. */
 export function parseQtyDishCorrection(text: string): { qty: number; dish: string }[] | null {
   const raw = (text || '').trim();
   if (!raw) return null;
