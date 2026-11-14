@@ -10430,7 +10430,7 @@ export class WhatsappOrchestratorService {
     const samePreparationFamily = !pending.replacement && !pending.includesRequestedAccompaniment && target > 1 && total === target &&
       new Set(chosen.map(item=>this.catalogService.stripCookingStyleTokens(item.product!.name))).size === 1;
     const needsChoice = chosen.filter(item => item.product!.hasAttributes && item.product!.attributes?.length &&
-      (!samePreparationFamily || !this.catalogService.isAttributeSelectionComplete(item.product!, this.catalogService.fillDefaultAttributes(item.product!, []))));
+      ((!extras && !samePreparationFamily) || !this.catalogService.isAttributeSelectionComplete(item.product!, this.catalogService.fillDefaultAttributes(item.product!, []))));
     if (needsChoice.length) {
       await this.reply(conv, waId, `${needsChoice.map(item => `*${item.product!.name}*`).join(', ')} ${needsChoice.length === 1 ? 'tiene' : 'tienen'} opciones por elegir. Pídelos uno a la vez: dime primero el número de uno.\n${listed(picks.map(pick => pick.row))}\n\nEl pedido sigue igual.`);
       return true;

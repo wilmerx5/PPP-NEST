@@ -49,6 +49,22 @@ for (const names of families) for (const agent of [false, true]) {
     expect(h.conv.sessionData.cart.find(line => line.productId === 53704)).toMatchObject({ quantity: count === '3' ? 3 : 2 });
   });
 
+  it(`mixed information list accepts complete configured defaults ${names[0]}/${agent}`, async () => {
+    const { h, menu } = setup(names, agent);
+    for (const product of menu.slice(0, 2)) Object.assign(product, {
+      hasAttributes: true, attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] }],
+    });
+    h.conv.sessionData.pendingMatch!.intent = 'info';
+    delete h.conv.sessionData.pendingMatch!.quantity;
+    await h.sendQueued(`1 y 2 una ${names[2].toLowerCase()} y una ${names[3].toLowerCase()}`);
+    expect(h.conv.sessionData.cart.map(line => [line.productId, line.quantity]).sort()).toEqual(menu.map(p => [p.id, 1]));
+    for (const product of menu.slice(0, 2)) {
+      expect(h.conv.sessionData.cart.find(line => line.productId === product.id)?.attributes)
+        .toEqual([{ attributeName: 'Arepas', attributeValue: 'Blancas' }]);
+    }
+    expect(h.conv.sessionData.pendingMatch).toBeFalsy();
+  });
+
   it(`list notes stay on selected rows ${names[0]}/${agent}`, async () => {
     const { h } = setup(names, agent);
     h.conv.sessionData.pendingMatch!.note = 'Sin sal';
@@ -61,7 +77,11 @@ for (const names of families) for (const agent of [false, true]) {
     it(`mixed list keeps the whole purchase on ${guard} ${names[0]}/${agent}`, async () => {
       const { h, menu } = setup(names, agent);
       if (guard === 'missing') menu.splice(1, 1);
-      if (guard === 'choice') Object.assign(menu[1], { hasAttributes: true, attributes: [{ attributeName: 'Salsa', options: ['Ajo', 'Picante'] }] });
+      if (guard === 'choice') {
+        Object.assign(menu[1], { name: 'Smoothie Tropical', hasAttributes: true,
+          attributes: [{ attributeName: 'Sabor', options: ['Mango', 'Fresa'] }] });
+        h.conv.sessionData.pendingMatch!.candidates[1].name = menu[1].name;
+      }
       if (guard === 'limit') Object.assign(h.cfg, { maxTotalUnits: 2 });
       if (guard === 'siblings') h.conv.sessionData.pendingMatch!.alsoAdd = [{ productId: menu[3].id, segment: `una ${menu[3].name}` }];
       if (guard === 'quantity') h.conv.sessionData.pendingMatch!.quantity = 3;
