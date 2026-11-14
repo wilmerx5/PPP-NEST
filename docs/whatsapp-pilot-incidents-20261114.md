@@ -34,10 +34,10 @@ La protección prevista distingue un pedido confirmado de un borrador activo. Un
 
 ## Comprobante sin cierre del pedido
 
-**Crítico operativo.** En el chat del ajiaco, el bot recibió el comprobante y omitió recordar que faltaba confirmar. La atención humana continuó, pero el fragmento no acredita una orden creada. La corrección535 ya desplegada retoma el paso de checkout y mantiene el pago pendiente de verificación del equipo.
+**Crítico operativo.** En el chat del ajiaco, el bot recibió el comprobante y omitió recordar que faltaba confirmar. La atención humana continuó, pero el fragmento no acredita una orden creada. La corrección535 ya desplegada retoma el paso de checkout y mantiene el pago pendiente de verificación del equipo. Por solicitud del usuario,537 cambia el acuse por «Recibí el comprobante. El equipo lo validará y te enviaremos el pedido lo más pronto posible», elimina la invitación a llamar y conserva el recordatorio del paso pendiente.
 
 ## Criterio de cierre de esta revisión
 
 Cada incidente necesita reproducción con carrito, estado y respuesta, verificación de entradas similares y trazabilidad de código, pruebas y despliegue. Se comprueban sesiones nuevas, borradores con historial y órdenes ya confirmadas según corresponda. Las pruebas incluyen catálogos alternativos y la adaptación nativa de Kamppo. Los fallos anteriores se consideran cerrados únicamente cuando la evidencia identifica la versión desplegada. Los detalles por tanda se registran en los archivos `whatsapp-batch-536-validation.json` y de la tanda537.
 
-Al crear este registro,536 está verificada en staging y su global sigue ejecutándose.537 tiene correcciones focalizadas aprobadas, integración y validación final pendientes. La aclaración entre borrador activo y pedido distinto está en implementación. La revisión actual tiene prioridad sobre nuevas tandas exploratorias.
+536 está desplegada en staging y producción de PPP y Kamppo. La global de PPP aprobó51.755 pruebas en615 suites y los1.060 controles compilados pasaron en la imagen activa. Se conservaron los registros del primer intento revertido por reinicios simultáneos y de los reintentos secuenciales verificados.537 tiene correcciones focalizadas aprobadas, integración y validación final pendientes. La aclaración entre borrador activo y pedido distinto está en integración con cancelación, reinicio y audio. La revisión actual tiene prioridad sobre nuevas tandas exploratorias.

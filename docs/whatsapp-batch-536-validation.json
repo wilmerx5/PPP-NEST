@@ -13,6 +13,290 @@
   "paidInference": 0,
   "externalOrders": 0,
   "metaMessages": 0,
-  "globalValidation": "running",
-  "deployment": "pending"
+  "globalValidation": {
+    "passedTests": 51755,
+    "suites": 615,
+    "failed": 0,
+    "skipped": 0,
+    "sourceFiles": 852,
+    "sourceHashesUnchanged": true,
+    "sourceCommit": "9d1d3f9ff88a0ee192c7f42e2a0bb5f2296fdce2"
+  },
+  "deployment": {
+    "environment": "production",
+    "head": "9d1d3f9ff88a0ee192c7f42e2a0bb5f2296fdce2",
+    "image": "sha256:2ca45db81ac5d21ffd5b1312df278b0c993fcbe5ba5fcf69cd9845f20e6e689e",
+    "previousImage": "sha256:a3898a0e7798bdd1823fa34a9fc7cd82cd835102cce53d5201b64197688c9e2e",
+    "rollbackImage": "ppp-rollback:production-before-536-20261114T205819Z",
+    "running": true,
+    "restarts": 0,
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 58.02,
+        "heapTotal": 91.83,
+        "rss": 155.43
+      },
+      "timestamp": "2026-11-14T20:58:38.946Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 61.96,
+        "heapTotal": 92.37,
+        "rss": 153.6
+      },
+      "timestamp": "2026-11-14T20:58:39.168Z"
+    },
+    "publicHealthUrl": "https://api.prontopolloportal.com/api/health",
+    "compiledControls": 1060,
+    "compiledResults": {
+      "536": {
+        "ok": true,
+        "compiledCartEditSelectionTests": 298,
+        "compiledReceiptContinuationTests": 14,
+        "compiledUnavailableContextTests": 13,
+        "totalCompiledTests": 325,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "527": {
+        "ok": true,
+        "compiledCartEditOwnerTests": 38,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "526": {
+        "ok": true,
+        "compiledCartEditRejectionTests": 32,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "525": {
+        "ok": true,
+        "compiledMixedAttributeTests": 50,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "524": {
+        "ok": true,
+        "compiledReplacementTransactionTests": 35,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "523": {
+        "ok": true,
+        "compiledOwnerPaginationTests": 55,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "522": {
+        "ok": true,
+        "compiledAttributeRecoveryTests": 31,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "521": {
+        "ok": true,
+        "compiledToolFeedbackTests": 25,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "520": {
+        "ok": true,
+        "compiledPilot520Cases": 24,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "518": {
+        "ok": true,
+        "compiledInquiryOptionTests": 66,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "517": {
+        "ok": true,
+        "compiledMultiPurchaseTests": 136,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "516": {
+        "ok": true,
+        "compiledMixedReplacementTests": 163,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "515": {
+        "ok": true,
+        "compiledReplacementJourneys": 80,
+        "mockedClosures": 80,
+        "externalOrders": 0,
+        "paidInference": 0
+      }
+    },
+    "privateConfigurationPreserved": true,
+    "effectiveBusinessEnvironmentPreserved": true,
+    "effectiveBusinessEnvironmentSha256": "ad2ae7b58c28f9eec655b4be7cd0599cb166a450b460352ddd6dcd4ae6b5711b",
+    "models": {
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+    },
+    "stagingRuntimePreserved": true,
+    "kamppoRuntimePreserved": true,
+    "backup": "/root/ppp-manual-release/20261114T205819Z-production-536",
+    "checkedAt": "2026-11-14T20:59:51.834421+00:00"
+  },
+  "staging": {
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "compiledCartEditSelectionTests": 298,
+      "compiledReceiptContinuationTests": 14,
+      "compiledUnavailableContextTests": 13,
+      "totalCompiledTests": 325,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 1060,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "9d1d3f9ff88a0ee192c7f42e2a0bb5f2296fdce2",
+    "image": "sha256:2ca45db81ac5d21ffd5b1312df278b0c993fcbe5ba5fcf69cd9845f20e6e689e",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.94,
+        "heapTotal": 66.45,
+        "rss": 128.25
+      },
+      "timestamp": "2026-11-14T20:30:55.439Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 56.08,
+        "heapTotal": 66.45,
+        "rss": 128.63
+      },
+      "timestamp": "2026-11-14T20:30:55.658Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-14T20:32:27.689880+00:00",
+    "backup": "/root/ppp-manual-release/20261114T203002Z-staging-536"
+  },
+  "deploymentRecovery": "Concurrent application restarts triggered preservation checks and both images were rolled back. Sequential retries completed and verified both applications."
 }
