@@ -6348,6 +6348,15 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // A complete acceptance belongs to the saved quote before courtesy handling or the agent.
+    if (businessOpenForBot && conv.state === 'building_cart' && session.pendingAddOffer &&
+        !session.pendingPriceInquiry && !session.pendingAddressConflict &&
+        !CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) &&
+        !/[¿?]/.test(originalText) && this.isMultiOrderAffirmative(originalText) &&
+        await this.tryHandlePendingAddOffer(conv, msg.waId, session, originalText, products, cfg)) {
+      return;
+    }
+
     // "gracias" suelto → NUNCA agregar productos.
     // "listo"/"ok"/"dale" con carrito → checkout (no tragar la confirmación).
     if (this.catalogService.isCourtesyOnlyMessage(text)) {
@@ -6789,15 +6798,6 @@ export class WhatsappOrchestratorService {
       ) {
         return;
       }
-    }
-
-    // A complete acceptance belongs to the saved quote before the agent handles open conversation.
-    if (businessOpenForBot && conv.state === 'building_cart' && session.pendingAddOffer &&
-        !session.pendingPriceInquiry && !session.pendingAddressConflict &&
-        !CART_EDIT_SELECTION_KEYS.some(key => !!session[key]) &&
-        !/[¿?]/.test(originalText) && this.isMultiOrderAffirmative(originalText) &&
-        await this.tryHandlePendingAddOffer(conv, msg.waId, session, originalText, products, cfg)) {
-      return;
     }
 
     if (await this.tryAcceptReferencedOffer(conv, msg.waId, session, originalText || text, text, products, cfg)) {

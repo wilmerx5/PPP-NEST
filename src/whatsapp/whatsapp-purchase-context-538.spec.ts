@@ -98,7 +98,7 @@ for (const family of families) for (const agent of [false, true]) {
     });
   }
 
-  for (const acceptance of ['Sí por favor', 'Sí, porfa', 'Claro que sí', 'Listo, agrégalo']) {
+  for (const acceptance of ['Sí por favor', 'Sí, porfa', 'Claro que sí', 'Listo, agrégalo', 'Listo', 'Dale', 'OK']) {
     for (const multiple of [false, true]) {
       it(`saved quote accepts courtesy once ${family.meal}/${agent}/${multiple}/${acceptance}`, async () => {
         const h = setup(family, agent);
