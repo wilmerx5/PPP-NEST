@@ -1,0 +1,377 @@
+{
+  "batch": 530,
+  "sourceCommit": "ab6c48df963d9700d92ed1019e9ec54e27be2534",
+  "newRegressionTests": 36,
+  "relatedTestsPassed": 903,
+  "relatedSuitesPassed": 16,
+  "typescriptGeneralPassed": true,
+  "sourceFiles": 846,
+  "sourceManifestSha256": "43453aa9633824ba01400a753998ec793ed86edcecc89a8f5182c0a2c3bd357f",
+  "candidateImage": "sha256:119413ea8e749855cf60451545aae2e7ab76f44923dc779b7e48cb5eeaa02fc6",
+  "candidateCompiledControls": 864,
+  "predeploymentRealCatalogCases": 77,
+  "predeploymentSimulatedClosures": 73,
+  "postdeploymentRealCatalogCases": 77,
+  "postdeploymentSimulatedClosures": 73,
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "budgetUsed": 267,
+  "budgetRemaining": 0,
+  "runtimeScope": [
+    "A pending purchase can receive an absolute quantity through standalone agrega solo / solo añade / agrega solamente instructions, supported courtesy prefixes and a complete unique catalog title. One existing proposed variant is required.",
+    "Numeric quantities are parsed without the generic quantity extractor fallback. Only integral values from 1 through 10 are supported. Signed, decimal, zero, oversized or unsupported quantities keep the full plan held.",
+    "Multiple complete product titles joined by y or ni can be withdrawn from proposed purchases as a single revision. Any unresolved part retains all proposed purchases and invalidates the numeric owner choice.",
+    "A full catalog title containing y or ni remains one product. An ambiguous segmentation inside a longer list requires full clarification.",
+    "The common persisted choice, fingerprints, cart guards, atomic commit, expiry, checkout and order-review paths are reused. Existing cart units, unrelated proposed purchases, options and notes are preserved. Repeated absolute quantity revisions are idempotent."
+  ],
+  "developmentFindings": [
+    "Twelve initial normal-entry cases failed, including purchase quantity revisions and multi-product withdrawal requests.",
+    "The general quantity extractor returned one for explicit numeric values 0 and 999. The pending-revision parser now validates explicit digits directly before committing.",
+    "A late-limit fixture initially used an unsupported configuration field. It now configures maxUnitsPerItem through the same fixture extension used by the existing suite. TypeScript and the corrected limit rollback contract pass.",
+    "A catalog title containing y can coincide with separately named products in a longer request. The added catalog-based guard holds that segmentation before any proposed purchase is removed."
+  ],
+  "limits": [
+    "Provider responses, maps, persistence, Meta and order creation are simulated. Real-model wording and representative pilot results require additional measurement.",
+    "Quantity revision requires one proposed variant and an absolute standalone purchasing instruction with a complete normalized catalog title. Relative decrements and partial quantities across several variants need clarification.",
+    "Withdrawal supports complete unique titles joined by y or ni, or all proposed purchases. Aliases, comma-only lists and longer lists containing a compound title with its own conjunction require full clarification.",
+    "The held selector still covers one stable update/remove plan for variants of one SKU. Broader cross-tool recovery and edits affecting groups of existing cart lines remain pending.",
+    "Production promotion and generic Kamppo adaptation remain pending."
+  ],
+  "baselineComparison": {
+    "sourceCommit": "8f65fe2317b5b9643bb55fb69e31b96f8758a905",
+    "contractTests": 129,
+    "passed": 100,
+    "failed": 29,
+    "interpretation": "Synthetic regression contracts covering cart, pending proposal, state, reply, persistence and mocked closure."
+  },
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51532,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 605,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "database": {
+      "success": true,
+      "numPassedTests": 11,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 51559,
+    "totalPassedSuites": 609
+  },
+  "globalExecutionVerification": {
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "workerIdleMemoryLimit": "650MB"
+  },
+  "predeploymentCompiledResults": {
+    "530": {
+      "ok": true,
+      "compiledCartEditSelectionTests": 129,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "527": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "526": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "525": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "524": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "523": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "522": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "521": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "520": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "518": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "517": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "516": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "515": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    }
+  },
+  "disposableDatabaseRemoved": true,
+  "deployment": {
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "compiledCartEditSelectionTests": 129,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 864,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "ab6c48df963d9700d92ed1019e9ec54e27be2534",
+    "image": "sha256:083f89b79abf55dfd06546ff862e25298b265d88c8dfe72ba058021873f42311",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.27,
+        "heapTotal": 65.65,
+        "rss": 127.51
+      },
+      "timestamp": "2026-11-14T02:17:41.756Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.4,
+        "heapTotal": 65.65,
+        "rss": 128.01
+      },
+      "timestamp": "2026-11-14T02:17:42.003Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-14T02:19:14.231023+00:00",
+    "backup": "/root/ppp-manual-release/20261114T021638Z-staging-530"
+  },
+  "runtimeBefore": {
+    "staging": {
+      "head": "8f65fe2317b5b9643bb55fb69e31b96f8758a905",
+      "branch": "staging",
+      "image": "sha256:d4e2af5d7abb288990c8912a03e35a1e852512bb6abd382e3b309c63334990ac",
+      "started": "2026-11-14T01:05:16.025796367Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    }
+  },
+  "runtimeAfter": {
+    "staging": {
+      "head": "ab6c48df963d9700d92ed1019e9ec54e27be2534",
+      "branch": "staging",
+      "image": "sha256:083f89b79abf55dfd06546ff862e25298b265d88c8dfe72ba058021873f42311",
+      "started": "2026-11-14T02:17:32.420996955Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    }
+  },
+  "checkedAt": "2026-11-14T02:20:02.237485+00:00",
+  "realCatalogSnapshots": {
+    "menu-before.json": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+    "menu.json": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa"
+  }
+}
