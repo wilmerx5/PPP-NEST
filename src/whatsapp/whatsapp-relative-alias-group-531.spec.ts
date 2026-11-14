@@ -228,8 +228,8 @@ for (const explicit of [false, true]) {
     if (!explicit) {
       expect(
         h.conv.sessionData.pendingReplacementClarification?.ownerChoice
-          ?.invalidated,
-      ).toBe(true);
+          ?.purchaseScope,
+      ).toMatchObject({ productId: 5313, quantity: 1 });
       return;
     }
     await h.sendQueued('2');

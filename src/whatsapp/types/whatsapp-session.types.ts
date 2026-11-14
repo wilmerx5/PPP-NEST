@@ -10,6 +10,7 @@ export type PendingCartEditOwnerChoice = {
   createdAt: number;
   pageStart?: number;
   invalidated?: boolean;
+  purchaseScope?: { productId: number; productName: string; quantity: number };
 };
 
 export type WhatsappCartItem = {
@@ -120,7 +121,7 @@ export type WhatsappSessionData = {
   };
   /** Subset instruction awaits recipients; an empty note awaits preparation for named products.
    * byUnits counts individual portions rather than rows; quantity 0 permits any explicit selection. */
-  pendingSubsetKitchenNote?: { quantity: number; note: string; productIds: number[]; preparationScope?: { cartSignature: string; createdAt: number; indices: number[]; preserve: string[] }; byProduct?: boolean; byUnits?: boolean; sourceText?: string; addOrEdit?: { cartSignature: string; cartIndex: number }; substitution?: { removed: string; choices: [string, string]; hostNote?: string } };
+  pendingSubsetKitchenNote?: { quantity: number; note: string; productIds: number[]; countedScope?: { cartSignature: string; createdAt: number; indices: number[]; pageStart?: number }; preparationScope?: { cartSignature: string; createdAt: number; indices: number[]; preserve: string[] }; byProduct?: boolean; byUnits?: boolean; sourceText?: string; addOrEdit?: { cartSignature: string; cartIndex: number }; substitution?: { removed: string; choices: [string, string]; hostNote?: string } };
   cart: WhatsappCartItem[];
   orderType: 'delivery' | 'pickup';
   address?: string;
