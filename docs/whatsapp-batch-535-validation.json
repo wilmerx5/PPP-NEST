@@ -1,0 +1,29 @@
+{
+  "batch": 535,
+  "scope": "Payment proof acknowledgement resumes the existing pending checkout question. Response formatting only.",
+  "tests": {
+    "focused": 16,
+    "receiptMediaAffected": 132,
+    "affectedSuites": 8,
+    "typescript": "passed",
+    "build": "passed"
+  },
+  "baseline534": {
+    "passed": 51728,
+    "suites": 613,
+    "rawFailures": 12,
+    "legacyFixtureSuitesRechecked": 2,
+    "legacyRecheckPassed": 101,
+    "runtimeHashesVerified": true
+  },
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "paidInference": 0,
+  "limits": [
+    "Provider, image analysis, maps, persistence and orders are simulated.",
+    "Full baseline precedes the receipt-only response change.",
+    "Temporary validation output was lost during restart and validations were repeated.",
+    "Current-cart reductions in a held mixed plan require a unique current variant."
+  ],
+  "deployment": "pending verification"
+}

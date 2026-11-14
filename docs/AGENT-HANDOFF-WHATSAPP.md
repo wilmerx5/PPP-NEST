@@ -1,3 +1,13 @@
+## Tandas 533–535 — alcance del carrito, bebidas agrupadas y comprobantes
+
+La tanda534 está desplegada en producción con 8c010dedac50c2770e8e3bd517a2c1ab94ce433b e imagen 2f53e16b04aa9c4df449110f88af9f6fdfbd3384b31996b08c5a8198128de2ae. Verificación pública/local saludable y DB conectada, configuración privada conservada. Los 1.033 controles compilados pasaron en staging y producción. Global534 aprobada de 51.728 pruebas en 613 suites. Se conservaron los 12 fallos iniciales y se actualizaron dos suites de contratos antiguos para el nuevo comportamiento de bebidas agrupadas, reejecutando sus 101 pruebas y contrastando hashes. Tras perder archivos temporales durante un reinicio se repitió la validación.
+
+533 permite aclarar reducciones sobre el carrito actual junto a cambios y nuevas compras pendientes, validando firma, cantidades y aplicación conjunta. Una reducción sobre varias variantes actuales todavía requiere aclaración adicional. 534 resuelve bebidas para una línea agrupada, conserva el valor al preguntar el alcance entre varias líneas y admite cancelar el cambio. Normaliza direcciones compactas BIS y separa la dirección escrita de la referencia obtenida del pin, conservando coordenadas y puerta original.
+
+535 retoma la pregunta pendiente tras recibir un comprobante durante checkout. Reutiliza la comprobación de preparación y el recordatorio existentes. Mantiene la verificación manual del pago y la confirmación explícita, conserva prioridad de cambios pendientes y atención humana. Pasan 14 regresiones nuevas, 16 focalizadas y 132 pruebas de recibos/imágenes en ocho suites, TypeScript general y build. La global534 constituye la base anterior a este ajuste de respuesta. La promoción535 y la migración nativa de482–535 a Kamppo siguen pendientes de verificar.
+
+Proveedor, Meta, mapas, imagen, persistencia y órdenes se simulan. Inferencia pagada0, mensajes Meta0 y órdenes externas0. Presupuesto histórico267/267 sin cambios. Los resultados del modelo real y la tasa de cierre del piloto siguen requiriendo medición. Evidencia en whatsapp-batch-535-validation.json y registros persistentes bajo /home/levi/.codex/tmp/ppp-534-validation y ppp-535-validation.
+
 ## Tanda 532 — repartos parciales y alcance de una reducción
 
 Backend publicado y desplegado en staging con b2c3862903bf5b1cc2aa0246d1bca02d45cdc46e. Una nota contada parcial entre variantes existentes conserva una selección byUnits con countedScope opcional. Se comprueban firma del carrito, índices y vigencia. La lista muestra opciones, cantidades y notas actuales, con paginación e índices globales. Los parsers existentes de reparto y resto resuelven cantidades por línea, referencias únicas a opciones/notas y una unidad de cada variante cuando cubre el total solicitado.

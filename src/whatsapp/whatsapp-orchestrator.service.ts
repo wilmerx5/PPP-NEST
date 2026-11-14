@@ -15979,7 +15979,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           msg.waId,
-          this.paymentProofAcknowledgement(),
+          this.paymentProofAcknowledgement(conv),
         );
         return { done: true };
       }
@@ -16004,7 +16004,7 @@ export class WhatsappOrchestratorService {
           await this.reply(
             conv,
             msg.waId,
-            this.paymentProofAcknowledgement(),
+            this.paymentProofAcknowledgement(conv),
           );
           return { done: true };
         }
@@ -16066,8 +16066,33 @@ export class WhatsappOrchestratorService {
   }
 
   /** Tras pedido cerrado o pago por transferencia: la foto suele ser comprobante. */
-  private paymentProofAcknowledgement(): string {
-    return `Recibí tu comprobante. El equipo debe verificar la transferencia; recibir la imagen no confirma el pago. ${this.humanPhoneHint()}`;
+  private paymentProofAcknowledgement(conv?: WhatsappConversation): string {
+    const acknowledgement =
+      'Recibí tu comprobante. El equipo debe verificar la transferencia; recibir la imagen no confirma el pago.';
+    if (
+      conv &&
+      !conv.humanTakeover &&
+      !['completed', 'closed', 'human', 'human_takeover'].includes(conv.state)
+    ) {
+      const session = this.conversationService.getSession(conv);
+      const checkoutStep = [
+        'awaiting_name',
+        'awaiting_phone',
+        'awaiting_address',
+        'awaiting_payment',
+      ].includes(conv.state);
+      const finalStep =
+        conv.state === 'awaiting_final_confirm' &&
+        session.cart?.length &&
+        !session.pendingAddressConflict &&
+        !session.pendingUnitDistribution &&
+        this.isReadyToConfirm(session, conv);
+      if (session.cart?.length && (checkoutStep || finalStep)) {
+        const reminder = this.formatInterruptedStepReminder(conv, session);
+        if (reminder) return `${acknowledgement}\n\n${reminder}`;
+      }
+    }
+    return `${acknowledgement} ${this.humanPhoneHint()}`;
   }
 
   private isLikelyPaymentProofContext(conv: WhatsappConversation): boolean {
