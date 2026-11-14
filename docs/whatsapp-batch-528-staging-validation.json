@@ -1,0 +1,362 @@
+{
+  "batch": 528,
+  "sourceCommit": "dbcff6dad8066ab254468761011de6159cb9a952",
+  "newRegressionTests": 69,
+  "relatedTestsPassed": 843,
+  "relatedSuitesPassed": 16,
+  "typescriptGeneralPassed": true,
+  "sourceFiles": 846,
+  "sourceManifestSha256": "9f9436fd8c4bccb68dd21781a4c14b1e47d2958f14cbecdddef0cc0541f76395",
+  "candidateImage": "sha256:4e08b53f4a136195bc834dd14c1eb23867abdd54699737d5688f043f1704807d",
+  "candidateCompiledControls": 804,
+  "predeploymentRealCatalogCases": 69,
+  "predeploymentSimulatedClosures": 65,
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "budgetUsed": 267,
+  "budgetRemaining": 0,
+  "runtimeScope": [
+    "Capture the bounded requested quantity/note in ambiguous update-item receipts, including omitted or invalid indices with multiple owners. A source-proven retry resolves a missing-owner rejection.",
+    "Persist one unambiguous update/remove proposal with all completely accepted purchases, source text, candidate cart rows, cart signature, relevant catalog fingerprint, page and expiry in optional pendingReplacementClarification.ownerChoice.",
+    "Show the proposed final quantity or complete note and every new purchase before asking one owner question. Apply the selected row and all retained purchases atomically without another model call.",
+    "Validate cart/catalog/availability/expiry and current business hours, reapply action guards and purchase/limit checks, preserve the original session on partial failure and clear the marker only after committing the complete plan.",
+    "Handle numeric and exact current-option/note choices, spoken numbers, pagination, JSON persistence, repeated replies, cancellation, restart, intermediate read-only queries and fresh complete reformulations.",
+    "Defer to another active cart/catalog/contact/location choice and invalidate the stale proposal. Signed replies and menu codes retain distinct interpretation.",
+    "Backend-owned cartEditOwnerRecovery re-enters the agent only for a fresh named customer request. Its contract requires one source-proven edit of the same type and all named pending purchases before the shared atomic commit, including during checkout."
+  ],
+  "developmentFindings": [
+    "All four initial numeric recovery cases failed because the previous source had no persisted owner choice.",
+    "The initial extended pending-attribute fixture omitted materialized name/code/price/attribute fields. It was corrected before final validation. Spoken list numbers now reuse the catalog quantity vocabulary with its unit context.",
+    "A signed numeric reply was normalized to a positive row and mutated the simulated cart. Raw signed-prefix handling now protects negative, polite and Unicode forms. A menu-code regression protects code/list ownership.",
+    "An external normal-entry probe found that a fresh complete request after price invalidation could be partially applied while retaining its old blocker. The development global was interrupted, and backend-owned full-plan recovery now validates and commits that request as a whole.",
+    "The final recovery checks preserve closed-hour restrictions, failed or omitted purchases, current notes, order review, another active option/location dialogue and the existing product-conversion entry. The ordinary final-order price-refresh and reconfirmation behavior is reused."
+  ],
+  "limits": [
+    "Provider responses, Meta, persistence, map quotes and order creation are simulated. Real-model wording and representative pilot outcomes require further measurement.",
+    "The selector covers one stable update/remove proposal for an existing SKU with multiple current variants. Rejected replacements, incompatible edit payloads and other mixed actions retain their full-request clarification.",
+    "Fresh reformulation recovery requires the source and pending purchases to be fully named, the same edit type and complete accepted tool evidence. Partial revocation of purchases and broader cross-tool plan recovery require further work.",
+    "Existing product conversions keep their normal entry. More regional aliases, group-of-lines requests and source/delivery nomenclature overlaps need additional cases.",
+    "Production promotion and generic Kamppo adaptation remain pending."
+  ],
+  "baselineComparison": {
+    "sourceCommit": "410dd5f69e8e00deea605b8c3ca5d756b036e06a",
+    "contractTests": 69,
+    "passed": 10,
+    "failed": 59,
+    "interpretation": "The comparison includes the absent selector/state fields and complete-flow assertions. These figures count synthetic regression contracts."
+  },
+  "developmentGlobal": {
+    "completedSuitesBeforeStop": 20,
+    "includedInFinalApproval": false,
+    "reason": "Stopped to reproduce and correct fresh full-request recovery before refreezing the final source."
+  },
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51472,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 605,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "database": {
+      "success": true,
+      "numPassedTests": 11,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 51499,
+    "totalPassedSuites": 609
+  },
+  "globalExecutionVerification": {
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "sourceFiles": 846,
+    "interruptedAttempt": {
+      "suitesPassed": 445,
+      "reportCompleted": false,
+      "includedInFinalApproval": false
+    },
+    "workerIdleMemoryLimit": "650MB"
+  },
+  "predeploymentCompiledResults": {
+    "528": {
+      "ok": true,
+      "compiledCartEditSelectionTests": 69,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "527": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "526": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "525": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "524": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "523": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "522": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "521": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "520": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "518": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "517": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "516": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "515": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    }
+  },
+  "deployment": {
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "compiledCartEditSelectionTests": 69,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 804,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "dbcff6dad8066ab254468761011de6159cb9a952",
+    "image": "sha256:5dd9e9ac065b73c8df304a11e105c266244ec70dda1d688a962a1dde873e054a",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.9,
+        "heapTotal": 65.39,
+        "rss": 127.06
+      },
+      "timestamp": "2026-11-13T23:56:04.085Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 56.03,
+        "heapTotal": 65.39,
+        "rss": 127.56
+      },
+      "timestamp": "2026-11-13T23:56:04.296Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-13T23:57:27.444772+00:00",
+    "backup": "/root/ppp-manual-release/20261113T235440Z-staging-528"
+  },
+  "runtimeBefore": {
+    "staging": {
+      "head": "410dd5f69e8e00deea605b8c3ca5d756b036e06a",
+      "branch": "staging",
+      "image": "sha256:3538be445fe7224cf76df4408bd7f898c5ec04613627fe8a19377fd2c532a608",
+      "started": "2026-11-13T20:46:09.385306176Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    }
+  },
+  "runtimeAfter": null,
+  "finalSnapshotPending": "Local network became unavailable after successful remote deployment checks and postdeployment catalog journeys. SSH returned No route to host, and GitHub/public HTTPS requests also failed. A fresh independent model/runtime snapshot and evidence push remain pending.",
+  "postdeploymentRealCatalogCases": 69,
+  "postdeploymentSimulatedClosures": 65,
+  "disposableDatabaseRemoved": true,
+  "ownedBuildCacheRemoved": [],
+  "realCatalogSnapshots": {
+    "menu-before.json": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+    "menu.json": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa"
+  },
+  "checkedAt": "2026-11-14T00:08:08.309888+00:00"
+}
