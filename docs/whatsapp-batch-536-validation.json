@@ -1,0 +1,18 @@
+{
+  "batch": 536,
+  "incident": "A stale unavailable fragment lo que quiero es intercepted a fresh executive-and-soup purchase and its complaint. Production read-only history confirmed both new dishes were absent from the cart.",
+  "changes": [
+    "Strip conversational purchase preambles before multi-product framing",
+    "Unavailable follow-ups require every meaningful missing-dish token, excluding conversational framing",
+    "Complete explicit multi-dish additions during checkout use the existing batch handler"
+  ],
+  "focusedTests": 13,
+  "productionCatalogReplayTests": 2,
+  "kamppoAffectedTests": 171,
+  "compiledNewTests": 13,
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "globalValidation": "running",
+  "deployment": "pending"
+}

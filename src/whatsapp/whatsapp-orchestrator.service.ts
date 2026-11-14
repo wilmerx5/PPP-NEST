@@ -5724,6 +5724,26 @@ export class WhatsappOrchestratorService {
     }
     if (await this.tryReplaceRejectedCartLine(conv, msg.waId, session, originalText || text, products, cfg)) return;
 
+    // An explicit multi-dish purchase during checkout uses the same batch
+    // handler as a building cart, preserving every independently named item.
+    if (
+      businessOpenForBot && session.cart.length &&
+      ['awaiting_name', 'awaiting_address', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) &&
+      !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+      !this.formatPendingCartEditReminder(session) &&
+      !isCartItemReplacementIntent(originalText) &&
+      !/[¿?]/.test(originalText) &&
+      !this.catalogService.isPriceInquiryIntent(originalText) &&
+      !this.catalogService.isProductDescriptionInquiry(originalText) &&
+      /\b(?:quiero|dame|env[ií]a|reg[aá]la|pedido|pedir)\b/i.test(originalText) &&
+      this.catalogService.looksLikeClearlyMultiDishOrder(text)
+    ) {
+      const multi = this.catalogService.resolveMultiProductOrder(text, products);
+      if (multi && !multi.ambiguous.length && !multi.unresolved.length &&
+          multi.confident.length + multi.needsAttributes.length >= 2 &&
+          await this.tryHandleMultiProductOrder(conv, msg.waId, session, multi, cfg, text, products, originalText)) return;
+    }
+
     // En checkout, una frase la lee el agente antes de tomarla como nombre, dirección o pago.
     // Si es un pedido que ya hizo, Nest consulta el estado y no sigue el paso abierto.
     const replacingSavedAddress =

@@ -29,6 +29,8 @@ import {
   PPP_ZONE_LANDMARK_RE,
 } from './whatsapp-intent';
 
+const PURCHASE_PREAMBLE = /^lo\s+que\s+(?:yo\s+)?(?:quiero|quieor|qiero|kiero|deseo|necesito)\s+es(?:\s+|$)/i;
+
 export type WhatsappCatalogProduct = WhatsappProductCandidate;
 
 export type MultiProductSegmentMatch = {
@@ -1740,6 +1742,7 @@ export class WhatsappCatalogService {
 
     q = q
       .replace(/^(?:hola|hey|hi|buenas\s+tardes|buenas\s+noches|buenos\s+d[ií]as|buen\s+d[ií]a|buenas|buenos)[\s,!.-]*/i, '')
+      .replace(PURCHASE_PREAMBLE, '')
       // "veci me puedes regalar una pechuga…" — veci/cortesía antes del pedido
       .replace(/^(veci(?:no|na)?|amigo|amiga|parce|compadre)[\s,!.-]*/i, '')
       // "Para un domicilio de un arroz con pollo" / "a domicilio un pollo"
@@ -2011,8 +2014,9 @@ export class WhatsappCatalogService {
     if (this.isPolitenessOnlySegment(raw)) return true;
     if (this.isCourtesyOnlyMessage(raw)) return true;
     if (this.isAvailabilityInquiry(raw)) return true;
-    const q = normalizeText(raw);
+    const q = normalizeText(fixCommonOrderTypos(raw));
     if (!q) return true;
+    if (/^lo que (?:yo )?(?:quiero|deseo|necesito) es$/.test(q)) return true;
     if (
       /\b(thank\s+you|thanks(?:\s+a\s+lot)?|do\s+you\s+have|have\s+you\s+got|something\s+like\s+that|or\s+something)\b/.test(
         q,
@@ -2117,18 +2121,21 @@ export class WhatsappCatalogService {
    * Devuelve el nombre que hay que buscar, no un plato nuevo.
    */
   followUpDishClaim(text: string, unresolved: string[] = []): string | null {
-    const q = normalizeText(text || '');
+    const q = normalizeText(fixCommonOrderTypos(text || ''));
     if (!q || q.length < 5) return null;
     const stop = new Set([
       'menu', 'carta', 'tiene', 'tienen', 'tienes', 'tengo', 'esta', 'estan',
       'visto', 'vimos', 'donde', 'porque', 'estaba', 'dice', 'sale', 'salió',
       'seguro', 'claro', 'bueno',
+      'lo', 'que', 'yo', 'es', 'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+      'de', 'del', 'por', 'para', 'favor', 'porfa', 'quiero', 'deseo', 'necesito',
+      'envia', 'envias', 'enviame', 'dame', 'regalame', 'regalas', 'pedido',
     ]);
     const tokens = q.split(' ').filter((t) => t.length >= 5 && !stop.has(t));
     if (!tokens.length) return null;
     for (const miss of unresolved) {
-      const missTokens = normalizeText(miss).split(' ').filter((t) => t.length >= 4);
-      const hit = missTokens.some((mt) =>
+      const missTokens = normalizeText(fixCommonOrderTypos(miss)).split(' ').filter((t) => t.length >= 4 && !stop.has(t));
+      const hit = missTokens.length > 0 && missTokens.every((mt) =>
         tokens.some(
           (tok) =>
             fuzzyTokenMatch(tok, mt) ||
@@ -9894,6 +9901,7 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): MultiProductResolveResult | null {
+    text = text.replace(PURCHASE_PREAMBLE, '');
     text = omitSubstitutionChoice(this.sharedOrderModifier(text)?.body ?? text);
     // Catalog-backed alternate word order: "burger especial en combo" names
     // the same SKU as "Combo Burger Especial". Preserve quantities and extras.
