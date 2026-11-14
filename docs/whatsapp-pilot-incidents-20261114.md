@@ -36,6 +36,12 @@ La protección537 distingue un pedido confirmado de un borrador activo. Un salud
 
 **Crítico operativo.** En el chat del ajiaco, el bot recibió el comprobante y omitió recordar que faltaba confirmar. La atención humana continuó, pero el fragmento no acredita una orden creada. La corrección535 ya desplegada retoma el paso de checkout y mantiene el pago pendiente de verificación del equipo. Por solicitud del usuario,537 cambia el acuse por «Recibí el comprobante. El equipo lo validará y te enviaremos el pedido lo más pronto posible», elimina la invitación a llamar y conserva el recordatorio del paso pendiente.
 
+## Cotización de pollo y bebida, aceptación y reiteración
+
+**Alta.** Los chats de Mauricio y Alejandro mostraban una consulta de pollo con gaseosa tratada como un producto inexistente, ofertas que seguían pendientes y reiteraciones que añadían unidades. La revisión538 reproduce una causa que persistía en la cotización: la búsqueda de porciones de pollo devolvía el pollo antes de considerar los otros productos nombrados en la misma consulta. El catálogo reutiliza el resolver de pedidos múltiples y conserva todos los productos cuando la lista completa se identifica sin ambigüedad. La consulta conserva el carrito.
+
+Otra reproducción mostraba «sí por favor» enviado al agente sin resolver la oferta guardada.538 da prioridad a una aceptación completa de esa oferta, también para «listo», «dale» y «OK», antes de tratarla como cortesía. Reutiliza la validación y el alta existentes. Los mensajes de cortesía posteriores conservan cantidades y opciones. La tanda cubre cotizaciones de uno o varios productos, cantidades, preguntas intermedias, repetición de la lista, rechazos, disponibilidad, cierre del negocio y límites del carrito. La promoción y los resultados completos se registran en whatsapp-batch-538-validation.json.
+
 ## Criterio de cierre de esta revisión
 
 Cada incidente necesita reproducción con carrito, estado y respuesta, verificación de entradas similares y trazabilidad de código, pruebas y despliegue. Se comprueban sesiones nuevas, borradores con historial y órdenes ya confirmadas según corresponda. Las pruebas incluyen catálogos alternativos y la adaptación nativa de Kamppo. Los fallos anteriores se consideran cerrados únicamente cuando la evidencia identifica la versión desplegada. Los detalles por tanda se registran en los archivos `whatsapp-batch-536-validation.json` y de la tanda537.

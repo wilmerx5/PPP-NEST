@@ -1,0 +1,159 @@
+{
+  "batch": 538,
+  "sourceCommit": "de063fe21914dc3e53eaf005c7688bcb65d486a5",
+  "changes": [
+    "Complete saved quote acceptance is resolved before courtesy handling and agent routing, including Si por favor, Listo, Dale and OK.",
+    "Chicken portion price inquiries retain independently named additional catalog products through the existing complete multi-product resolver.",
+    "Regression journeys preserve quantities and options across courtesy, recap, intermediate questions, rejection and checkout."
+  ],
+  "globalValidation": {
+    "passedTests": 51999,
+    "suites": 620,
+    "failed": 0,
+    "skipped": 0,
+    "sourceFiles": 857,
+    "sourceHashesUnchanged": true,
+    "inventoryExact": true
+  },
+  "newRegressionTests": 96,
+  "publicCatalogSnapshotReplayTests": 8,
+  "compiledLocalTests": 569,
+  "stage": {
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "totalCompiledTests": 569,
+      "compiledPilotIncidentTests": 244,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 1304,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "de063fe21914dc3e53eaf005c7688bcb65d486a5",
+    "image": "sha256:c5b09eb49176b55e732b0c812a79a20eb3735a7fc327331cc56c32ef80807b6b",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.8,
+        "heapTotal": 65.49,
+        "rss": 127.17
+      },
+      "timestamp": "2026-11-14T23:15:31.241Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.93,
+        "heapTotal": 65.49,
+        "rss": 127.67
+      },
+      "timestamp": "2026-11-14T23:15:31.462Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-14T23:17:29.774148+00:00",
+    "backup": "/root/ppp-manual-release/20261114T231438Z-staging-538"
+  },
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "nativeKamppoPort": "pending",
+  "limitations": [
+    "The model, Meta, maps, persistence and order creation are simulated. Live model behavior and pilot conversion are not established by these runs."
+  ],
+  "validationRecovery": [
+    "Expanded the final scope to include standalone Listo/Dale/OK before rerunning the full frozen-source suite.",
+    "A local incremental build omitted unchanged compiled files after output cleanup. A clean build and the 569 compiled controls then passed."
+  ]
+}

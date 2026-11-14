@@ -1,3 +1,11 @@
+## Tanda538 — cotizaciones completas y aceptación de ofertas
+
+Desplegada en staging con de063fe21914dc3e53eaf005c7688bcb65d486a5 e imagen sha256:c5b09eb49176b55e732b0c812a79a20eb3735a7fc327331cc56c32ef80807b6b. Pasan51.999 pruebas en620 suites, con fuentes congeladas e inventario exacto. Hay96 casos nuevos y8 recorridos adicionales con el catálogo público capturado el14/11. Los1.304 controles compilados pasan en staging, API y DB saludables y cero reinicios. TypeScript y build completo pasan. El primer build incremental local había omitido archivos tras limpiar la salida; un build limpio y los569 controles locales posteriores pasaron.
+
+Las consultas de pollo con otros productos conservan todos los identificados sin ambigüedad. Una aceptación completa de la oferta guardada, como «sí por favor», «listo», «dale» u «OK», se resuelve antes de cortesía o agente. Se comprueban cantidades, sabores, reiteraciones, consultas intermedias, rechazo, disponibilidad, horario y límites. Las pruebas simulan modelo, Meta, mapas, persistencia y órdenes. Inferencia pagada0 y órdenes externas0. La adaptación538 a Kamppo queda pendiente.
+
+La revisión de hoy añade notas persistidas en una orden ya confirmada y reinicio de contexto conversacional tras cuatro horas. Revisar también los chats adjuntos del14/11 para registrar los otros incidentes antes de priorizar la próxima tanda. Evidencia en whatsapp-batch-538-validation.json.
+
 ## Tandas536–537 — incidentes del piloto y recuperación de pedidos
 
 PPP537 está desplegada en staging y producción con 2b6d92a79018a88cd50a4de61c8d951f357a5fd9 e imagen sha256:49907e5adcfba144e3fc1485214c4b107d283fcf4601fdbb4d91cca2fea8a06e. Los1.208 controles compilados pasan en ambos entornos, API y DB saludables, cero reinicios y configuración privada/modelos conservados.536 había corregido el fragmento conversacional «lo que quiero es» que bloqueaba nuevas compras y la pérdida de platos durante checkout.
@@ -8,7 +16,7 @@ Global aprobada51.903 pruebas en619 suites. La ejecución completa congelada con
 
 Kamppo adaptado y desplegado con 4cda5429a6cded7abb5d8a78308d7f75577dea42 e imagen sha256:75151b2d05da57929b9afeefe8eb871d1ff61bb2208ec88e33d5d53e6874bc97. Pasan177 controles afectados del motor,144 del contrato anterior de saludo,803 de API y18 contratos nativos compilados en candidata y producción.15 evaluaciones live siguen deshabilitadas. Se mantiene contexto por restaurante, UUID, modificadores y precios propios. Build/tipos del motor pasan; los96 diagnósticos históricos de fixtures API no aumentan. Actions falló antes de ejecutar pasos; la candidata verificada se desplegó por SSH. API pública/local y DB saludables, cero reinicios, configuración y montajes conservados. Despliegues de esta tanda secuenciales.
 
-Límites: una cláusula desconocida en una corrección completa conserva el carrito y pide reenviar la lista; una sola selección mezclada con extras o hermanos pendientes puede pedir aclaración. Proveedores, Meta, mapas, persistencia y órdenes se simulan. Inferencia pagada0, mensajes Meta0 y órdenes externas0. Los resultados reales del piloto requieren revisión posterior. No reanudar tandas exploratorias hasta evaluar estos incidentes en el piloto. Evidencia en whatsapp-batch-537-validation.json y whatsapp-pilot-incidents-20261114.md.536 conserva sus registros de primer despliegue revertido y reintentos secuenciales.
+Límites: una cláusula desconocida en una corrección completa conserva el carrito y pide reenviar la lista; una sola selección mezclada con extras o hermanos pendientes puede pedir aclaración. Proveedores, Meta, mapas, persistencia y órdenes se simulan. Inferencia pagada0, mensajes Meta0 y órdenes externas0. Los resultados reales del piloto requieren revisión posterior. Revisar estos incidentes en el piloto junto con las regresiones de staging. Evidencia en whatsapp-batch-537-validation.json y whatsapp-pilot-incidents-20261114.md.536 conserva sus registros de primer despliegue revertido y reintentos secuenciales.
 
 ## Tandas 533–535 — alcance del carrito, bebidas agrupadas y comprobantes
 
