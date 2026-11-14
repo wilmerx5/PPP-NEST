@@ -7550,6 +7550,18 @@ export class WhatsappCatalogService {
     // Antes que "…Con Medio Pollo" (arroz): cotizar porción de pollo
     const sizedChicken = this.resolveSizedChickenProduct(text, products, opts);
     if (sizedChicken) {
+      if (/(?:\by\b|[,+])/i.test(source)) {
+        const order = this.resolveMultiProductOrder(source, products);
+        if (order && !order.ambiguous.length && !order.unresolved.length) {
+          const named = this.dedupeProductsById([
+            ...order.confident.map(item => item.product),
+            ...order.needsAttributes.map(item => item.product),
+          ]);
+          if (named.length > 1 && named.some(product => product.id === sizedChicken.id)) {
+            return this.orderProductsByTextMention(source, named);
+          }
+        }
+      }
       return [sizedChicken];
     }
 
