@@ -78,6 +78,7 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  pendingOrderBoundary?: { request: string; draftSignature: string };
   pendingCatalogInquiry?: {productIds:number[];createdAt:number};
   pendingCartOptionChoice?: {
     cartSignature: string;

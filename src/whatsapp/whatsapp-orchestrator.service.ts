@@ -1158,6 +1158,10 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    const boundary = await this.resolveOrderBoundary(conv, msg.waId, msg.text || '', cfg, msg.messageType === 'text');
+    if (boundary === null) return;
+    if (boundary !== undefined) msg = { ...msg, text: boundary };
+
     const oldOfferSession = this.conversationService.getSession(conv);
     const offerExpired = oldOfferSession.pendingAddOffer?.createdAt && Date.now() - oldOfferSession.pendingAddOffer.createdAt > 30 * 60_000;
     if (oldOfferSession.pendingAddOffer && (offerExpired || (previousInboundAt && Date.now() - previousInboundAt > 60 * 60_000))) {
@@ -21988,6 +21992,72 @@ export class WhatsappOrchestratorService {
       /^(hola\s+)?buen(os|as)\s+(dias|tardes|noches)(\s+(veci(?:no|na|o)?|parce))?$/.test(t) ||
       /^(menu|ver\s+menu)$/.test(t)
     );
+  }
+
+  private orderBoundarySignature(conv: WhatsappConversation, session: WhatsappSessionData): string {
+    const { pendingOrderBoundary: _boundary, ...draft } = session;
+    return JSON.stringify({ state: conv.state, customerName: conv.customerName, draft });
+  }
+
+  private async resolveOrderBoundary(
+    conv: WhatsappConversation,
+    waId: string,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+    isText: boolean,
+  ): Promise<string | null | undefined> {
+    const session = this.conversationService.getSession(conv);
+    const pending = session.pendingOrderBoundary;
+    const active = ['awaiting_name', 'awaiting_address', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state);
+    if (!active || !session.cart.length || session.mpPreferenceId) return undefined;
+    const said = this.normalizeForMatch(text);
+    const prompt = 'Tienes un pedido pendiente.\n\n' + this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) +
+      '\n\n¿Agrego lo que acabas de pedir a este pedido o empezamos uno nuevo? Escribe *continuar pedido* para agregarlo o *nuevo pedido* para reemplazar el pedido pendiente.';
+    if (pending) {
+      if (pending.draftSignature !== this.orderBoundarySignature(conv, session)) {
+        await this.conversationService.saveSession(conv, { ...session, pendingOrderBoundary: undefined });
+        await this.reply(conv, waId, 'El pedido pendiente cambió. Envíame de nuevo lo que quieres pedir para revisar si continuamos o empezamos otro.');
+        return null;
+      }
+      if (!isText || !/^(?:continuar pedido|nuevo pedido)$/.test(said)) {
+        await this.reply(conv, waId, prompt);
+        return null;
+      }
+      if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) {
+        await this.reply(conv, waId, cfg.closedMessage || 'Ahora estamos cerrados. Podrás continuar cuando abramos.');
+        return null;
+      }
+      if (said === 'nuevo pedido') {
+        await this.conversationService.resetOrderSession(conv, 'building_cart', { ignorePriorHistory: true, rememberDeliveryAddress: true });
+        Object.assign(conv, await this.conversationService.reloadConversation(conv.id));
+      } else {
+        await this.conversationService.saveSession(conv, { ...session, pendingOrderBoundary: undefined });
+      }
+      return pending.request;
+    }
+    if (!isText || /[¿?]/.test(text) || this.isClearCartIntent(text)) return undefined;
+    const explicit = /^(?:(?:quiero|quisiera|necesito)\s+(?:hacer\s+)?(?:un\s+)?(?:nuevo|otro)\s+pedido|(?:nuevo|otro)\s+pedido)\s*[,.:]?\s+(.+)$/i.exec(this.stripLeadingGreeting(text));
+    const withoutGreeting = this.stripLeadingGreeting(text);
+    const greeting = withoutGreeting !== text.trim() && /^(?:hola|hey|hi|buen[ao]s?)\b/i.test(text.trim());
+    if (!explicit && !greeting) return undefined;
+    if (/\b(?:agrega\w*|anade\w*|tambien|ademas|al pedido|quita\w*|cambia\w*|corrige\w*|reemplaza\w*|en vez|no quiero|todavia no)\b/.test(said)) return undefined;
+    const request = explicit ? explicit[1] : text;
+    const products = await this.catalogService.getMenuProducts();
+    const productText = this.parseCompoundOrderMessage(this.stripLeadingGreeting(request)).productText;
+    const query = this.catalogService.extractProductSearchQuery(productText).replace(/^(?:me\s+)?env[ií]a\s+/i, '');
+    const multi = this.catalogService.resolveMultiProductOrder(query, products);
+    const single = multi ? null : this.catalogService.resolveSpokenDish(query, products);
+    const matches = multi && (explicit || !multi.ambiguous.length && !multi.unresolved.length)
+      ? [...multi.confident, ...multi.needsAttributes].map(item => item.product)
+      : single ? [single] : [];
+    const hasDish = matches.length > 0 || !!(explicit && multi?.ambiguous.length);
+    if (!hasDish || (!explicit && matches.some(product => session.cart.some(line => line.productId === product.id)))) return undefined;
+    if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) return undefined;
+    await this.conversationService.saveSession(conv, { ...session, pendingOrderBoundary: {
+      request, draftSignature: this.orderBoundarySignature(conv, session),
+    } });
+    await this.reply(conv, waId, prompt);
+    return null;
   }
 
   /**
