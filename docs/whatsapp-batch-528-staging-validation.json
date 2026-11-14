@@ -348,8 +348,38 @@
       }
     }
   },
-  "runtimeAfter": null,
-  "finalSnapshotPending": "Local network became unavailable after successful remote deployment checks and postdeployment catalog journeys. SSH returned No route to host, and GitHub/public HTTPS requests also failed. A fresh independent model/runtime snapshot and evidence push remain pending.",
+  "runtimeAfter": {
+    "staging": {
+      "head": "dbcff6dad8066ab254468761011de6159cb9a952",
+      "branch": "staging",
+      "image": "sha256:5dd9e9ac065b73c8df304a11e105c266244ec70dda1d688a962a1dde873e054a",
+      "started": "2026-11-13T23:55:54.570928479Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    }
+  },
   "postdeploymentRealCatalogCases": 69,
   "postdeploymentSimulatedClosures": 65,
   "disposableDatabaseRemoved": true,
@@ -358,5 +388,6 @@
     "menu-before.json": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
     "menu.json": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa"
   },
-  "checkedAt": "2026-11-14T00:08:08.309888+00:00"
+  "checkedAt": "2026-11-14T00:08:08.309888+00:00",
+  "finalConnectivityRecoveredAt": "2026-11-14T00:25:33.923197+00:00"
 }
