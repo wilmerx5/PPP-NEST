@@ -1,0 +1,375 @@
+{
+  "batch": 529,
+  "sourceCommit": "8f65fe2317b5b9643bb55fb69e31b96f8758a905",
+  "newRegressionTests": 24,
+  "relatedTestsPassed": 867,
+  "relatedSuitesPassed": 16,
+  "typescriptGeneralPassed": true,
+  "sourceFiles": 846,
+  "sourceManifestSha256": "7ddb6b5f416aeaf3a99feb5bab54f319969ea427b7d595254eb8087ef03a0326",
+  "candidateImage": "sha256:b785174835ece4fd68741157c1c3b0d2aa1ec03ebb54a90959506ed3c4956351",
+  "candidateCompiledControls": 828,
+  "predeploymentRealCatalogCases": 73,
+  "predeploymentSimulatedClosures": 69,
+  "postdeploymentRealCatalogCases": 73,
+  "postdeploymentSimulatedClosures": 69,
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "budgetUsed": 267,
+  "budgetRemaining": 0,
+  "runtimeScope": [
+    "A standalone negative purchase instruction inside a held cart-edit choice withdraws exactly one fully named catalog product from proposed additions. The current cart and its variants are preserved.",
+    "No agregues nada withdraws all proposed additions while retaining the unresolved update/remove.",
+    "The retained choice receives a fingerprint for its remaining products. Existing cart lines for the withdrawn product are preserved. Numeric selection commits the retained plan with the existing guards.",
+    "Question forms keep their read-only behavior. Unresolved negative requests invalidate the old numeric choice and require a full reformulation. Expired or changed plans cannot let the negative request fall through to a purchase."
+  ],
+  "developmentFindings": [
+    "Six initial normal-entry regression cases failed, including negative purchase requests that added the named product. The final compiled comparison reproduces all 24 added contracts on the previous candidate.",
+    "The first implementation held unknown negative requests but redisplayed a selection that could later apply the proposed additions. Before final validation it was expanded to withdraw all additions for no agregues nada and invalidate unresolved vetoes.",
+    "The development global was stopped before any suite completion and excluded from final approval. The complete inventory was restarted after the final source freeze.",
+    "The disposable MariaDB readiness probe initially returned before authenticated SQL was ready. Setup was safely retried with SELECT 1 before installing the actual migrations."
+  ],
+  "limits": [
+    "Provider responses, maps, persistence, Meta and order creation are simulated. Real-model wording and representative pilot results require additional measurement.",
+    "Withdrawal recognizes one complete normalized catalog title per request, with supported negative purchase verbs, or all proposed purchases. Aliases, partial quantities and several named withdrawals in one clause require full clarification.",
+    "The held selector still covers one stable update/remove plan for variants of one SKU. Broader cross-tool recovery and edits affecting groups of lines remain pending.",
+    "Production promotion and generic Kamppo adaptation remain pending."
+  ],
+  "baselineComparison": {
+    "sourceCommit": "dbcff6dad8066ab254468761011de6159cb9a952",
+    "contractTests": 93,
+    "passed": 69,
+    "failed": 24,
+    "interpretation": "Synthetic regression contracts, including cart, state, reply and closure assertions."
+  },
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51496,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 605,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "database": {
+      "success": true,
+      "numPassedTests": 11,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "totalPassedTests": 51523,
+    "totalPassedSuites": 609
+  },
+  "globalExecutionVerification": {
+    "inventoryExact": true,
+    "sourceUnchanged": true,
+    "workerIdleMemoryLimit": "650MB"
+  },
+  "predeploymentCompiledResults": {
+    "529": {
+      "ok": true,
+      "compiledCartEditSelectionTests": 93,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "527": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "526": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "525": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "524": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "523": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "522": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "521": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "520": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "518": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "517": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "516": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "515": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    }
+  },
+  "disposableDatabaseRemoved": true,
+  "deployment": {
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "compiledCartEditSelectionTests": 93,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 828,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "8f65fe2317b5b9643bb55fb69e31b96f8758a905",
+    "image": "sha256:d4e2af5d7abb288990c8912a03e35a1e852512bb6abd382e3b309c63334990ac",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.54,
+        "heapTotal": 65.15,
+        "rss": 127.1
+      },
+      "timestamp": "2026-11-14T01:05:25.421Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.75,
+        "heapTotal": 65.15,
+        "rss": 127.35
+      },
+      "timestamp": "2026-11-14T01:05:25.601Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-14T01:06:53.082353+00:00",
+    "backup": "/root/ppp-manual-release/20261114T010411Z-staging-529"
+  },
+  "runtimeBefore": {
+    "staging": {
+      "head": "dbcff6dad8066ab254468761011de6159cb9a952",
+      "branch": "staging",
+      "image": "sha256:5dd9e9ac065b73c8df304a11e105c266244ec70dda1d688a962a1dde873e054a",
+      "started": "2026-11-13T23:55:54.570928479Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    }
+  },
+  "runtimeAfter": {
+    "staging": {
+      "head": "8f65fe2317b5b9643bb55fb69e31b96f8758a905",
+      "branch": "staging",
+      "image": "sha256:d4e2af5d7abb288990c8912a03e35a1e852512bb6abd382e3b309c63334990ac",
+      "started": "2026-11-14T01:05:16.025796367Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    }
+  },
+  "checkedAt": "2026-11-14T01:07:50.202858+00:00",
+  "realCatalogSnapshots": {
+    "menu-before.json": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+    "menu.json": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa"
+  }
+}
