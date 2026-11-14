@@ -15678,13 +15678,22 @@ export class WhatsappOrchestratorService {
 
     // Varias variantes: mostrar nombre, precio y descripción (no solo “¿cuál?”)
     if (candidates.length > 1) {
-      const family = this.catalogService.findProductVariantFamily(
-        candidates[0].name,
-        products,
-        candidates,
-      );
-      const baseKey = family?.baseKey || '';
-      const baseLabel = family?.baseLabel || candidates[0].name;
+      const portionBases = [...new Set(candidates.map(product =>
+        this.catalogService.stripCookingStyleTokens(product.name)))];
+      const portionBase = portionBases.length === 1
+        ? portionBases[0].replace(/^(?:\d+\s*\/\s*\d+|medio|media|cuarto|cuarta|entero|entera)\s+/, '')
+        : '';
+      const unavailablePreparations: string[] = [];
+      if (portionBase) {
+        const mentions = text.matchAll(/\b(medio|media|cuarto|cuarta|entero|entera|1\s*\/\s*[24])\s+([\p{L}]+)(?:\s+([\p{L}]+))?/giu);
+        for (const mention of mentions) {
+          const preparation = this.normalizeForMatch(mention[2]) === portionBase ? mention[3] : mention[2];
+          if (!preparation) continue;
+          const requested = `${mention[1]} ${portionBase} ${preparation}`;
+          if (this.catalogService.missingStyleAlternatives(requested, products)?.length &&
+              !unavailablePreparations.includes(requested)) unavailablePreparations.push(requested);
+        }
+      }
       session = {
         ...session,
         pendingAddOffer: undefined,
@@ -15698,16 +15707,15 @@ export class WhatsappOrchestratorService {
       const rows = candidates.map((p, i) => {
         const desc = (p.description || '').trim();
         const short = desc.length > 140 ? `${desc.slice(0, 139)}…` : desc;
-        const label = baseKey
-          ? this.catalogService.getVariantDisplayLabel(p.name, baseKey)
-          : p.name;
+        const label = p.name;
         return (
           `${this.catalogService.optionNumberEmoji(i + 1)} *${label}* · ${this.catalogService.formatMoney(p.price)}` +
           (short ? `\n   _${short}_` : '\n   _Sin descripción de ingredientes en el menú._')
         );
       });
       const prompt =
-        `*${baseLabel}*:\n\n` +
+        (unavailablePreparations.length ? `No tenemos ${unavailablePreparations.map(name => `*${name}*`).join(', ')} en la carta.\n\n` : '') +
+        'Estas son las opciones disponibles:\n\n' +
         `${rows.join('\n\n')}\n\n` +
         `_Dime el *número* si quieres agregarlo._`;
       await this.reply(conv, waId, prompt);
@@ -22544,6 +22552,12 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     if (conv.humanTakeover || !['building_cart','awaiting_attribute','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
     const said = this.normalizeForMatch(text).replace(/^(?:oye|veci|vecino) /, '');
+    if (/^(?:mal programado (?:ese|este|el) (?:chatbot|bot|chat)|(?:ese|este|el) (?:chatbot|bot|chat) esta mal programado)$/.test(said)) {
+      await this.reply(conv, waId, session.cart.length
+        ? `Entiendo la molestia. Esto es lo que tengo en el carrito:\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}`
+        : 'Entiendo la molestia. Tu carrito está vacío.');
+      return true;
+    }
     // Anchor the complete message: a supplied correction, contact or question still owns its normal route.
     if (!/^(?:no entiendo(?: ahi)?(?: no entiendo(?: ahi)?)?|no me (?:entiende|entiendes|entendiste|has entendido|estas entendiendo)|no es que usted no me entiende|(?:eso )?no (?:fue|es) lo que (?:te )?pedi)$/.test(said)) return false;
     const registered = session.cart.length
