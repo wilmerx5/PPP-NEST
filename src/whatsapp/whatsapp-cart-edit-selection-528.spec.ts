@@ -107,6 +107,7 @@ async function openChoice(
   configure?: (s: ReturnType<typeof variants>) => void,
   options: {
     includePurchase?: boolean;
+    purchaseQuantity?: number;
     cartLineIndex?: number | null;
     sourceText?: string;
   } = {},
@@ -130,7 +131,16 @@ async function openChoice(
               ...(tool === 'update_item' ? edit : {}),
             }),
             ...(includePurchase
-              ? [call('add_item', { productId: 5282, quantity: 1 }, 'purchase')]
+              ? [
+                  call(
+                    'add_item',
+                    {
+                      productId: 5282,
+                      quantity: options.purchaseQuantity ?? 1,
+                    },
+                    'purchase',
+                  ),
+                ]
               : []),
           ],
         })
@@ -139,7 +149,9 @@ async function openChoice(
   const text =
     options.sourceText ??
     'Ayúdame a cambiar el Combo De Tofu' +
-      (includePurchase ? ' y agrega una Porcion De Hummus' : '');
+      (includePurchase
+        ? ` y agrega ${options.purchaseQuantity ?? 'una'} Porcion De Hummus`
+        : '');
   await s.h.service.tryHandleAgentV1({
     conv: s.h.conv,
     msg: {
@@ -1095,4 +1107,350 @@ test('checkout registers only the retained plan after a purchase withdrawal', as
   expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
   expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(5);
   expect(h.conv.state).toBe('completed');
+});
+
+for (const state of ['building_cart', 'awaiting_final_confirm']) {
+  for (const text of [
+    'Agrega solo dos Porcion De Hummus',
+    'Solo añade 2 Porcion De Hummus porfa',
+    'Porfa agrega solamente dos Porcion De Hummus',
+  ]) {
+    test(`revise a pending purchase quantity ${state} ${text}`, async () => {
+      const { h } = await openChoice(
+        state,
+        'update_item',
+        { quantity: 3 },
+        undefined,
+        { purchaseQuantity: 4 },
+      );
+      const cart = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(text);
+      expect(h.conv.sessionData.cart).toEqual(cart);
+      expect(
+        h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+          ?.addItems[0].quantity,
+      ).toBe(2);
+      await h.sendQueued(text);
+      expect(
+        h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+          ?.addItems[0].quantity,
+      ).toBe(2);
+      await h.sendQueued('2');
+      expect(
+        h.conv.sessionData.cart.find((item) => item.productId === 5282)
+          ?.quantity,
+      ).toBe(2);
+      expect(h.conv.sessionData.cart[1].quantity).toBe(3);
+      expect(
+        h.conv.sessionData.pendingReplacementClarification,
+      ).toBeUndefined();
+      expect(h.conv.state).toBe(state);
+    });
+  }
+}
+
+async function multiplePurchases(state = 'building_cart') {
+  const s = await openChoice(state);
+  s.products.push({
+    ...s.products[1],
+    id: 5283,
+    code: 13,
+    name: 'Pan De Ajo',
+    price: 3000,
+  });
+  const choice =
+    s.h.conv.sessionData.pendingReplacementClarification!.ownerChoice!;
+  choice.addItems.push({ productId: 5283, quantity: 2 });
+  choice.sourceText += ' y agrega dos Pan De Ajo';
+  choice.catalogFingerprint = s.h.service.cartEditOwnerFingerprint(
+    s.products,
+    [5281, 5282, 5283],
+  );
+  return s;
+}
+
+for (const state of ['building_cart', 'awaiting_final_confirm']) {
+  for (const text of [
+    'No agregues la Porcion De Hummus y el Pan De Ajo',
+    'No añadas Porcion De Hummus ni Pan De Ajo porfa',
+    'Porfa no incluyas Pan De Ajo y Porcion De Hummus',
+  ]) {
+    test(`withdraw several pending purchases ${state} ${text}`, async () => {
+      const { h } = await multiplePurchases(state);
+      const cart = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(text);
+      expect(h.conv.sessionData.cart).toEqual(cart);
+      expect(
+        h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+          ?.addItems,
+      ).toEqual([]);
+      await h.sendQueued('2');
+      expect(h.conv.sessionData.cart).toEqual([
+        cart[0],
+        { ...cart[1], quantity: 3 },
+      ]);
+      expect(
+        h.conv.sessionData.pendingReplacementClarification,
+      ).toBeUndefined();
+    });
+  }
+}
+
+for (const value of ['0', '11', '999', '-2', '−2', '2.5']) {
+  test(`an invalid pending quantity stays held ${value}`, async () => {
+    const { h } = await openChoice();
+    const cart = structuredClone(h.conv.sessionData.cart);
+    const purchases = structuredClone(
+      h.conv.sessionData.pendingReplacementClarification!.ownerChoice!.addItems,
+    );
+    await h.sendQueued(`Agrega solo ${value} Porcion De Hummus`);
+    expect(h.conv.sessionData.cart).toEqual(cart);
+    expect(
+      h.conv.sessionData.pendingReplacementClarification?.ownerChoice?.addItems,
+    ).toEqual(purchases);
+    expect(
+      h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+        ?.invalidated,
+    ).toBe(true);
+    await h.sendQueued('2');
+    expect(h.conv.sessionData.cart).toEqual(cart);
+  });
+}
+
+for (const text of [
+  'No agregues Porcion De Hummus y una pizza',
+  'No agregues Porcion De Hummus y cambia el combo',
+]) {
+  test(`a multi-product veto is all or nothing ${text}`, async () => {
+    const { h } = await multiplePurchases();
+    const cart = structuredClone(h.conv.sessionData.cart);
+    const purchases = structuredClone(
+      h.conv.sessionData.pendingReplacementClarification!.ownerChoice!.addItems,
+    );
+    await h.sendQueued(text);
+    expect(h.conv.sessionData.cart).toEqual(cart);
+    expect(
+      h.conv.sessionData.pendingReplacementClarification?.ownerChoice?.addItems,
+    ).toEqual(purchases);
+    expect(
+      h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+        ?.invalidated,
+    ).toBe(true);
+  });
+}
+
+for (const state of ['building_cart', 'awaiting_final_confirm']) {
+  test(`a pending quantity revision preserves existing units ${state}`, async () => {
+    const { h } = await openChoice(
+      state,
+      'update_item',
+      { quantity: 3 },
+      (s) => {
+        s.h.conv.sessionData.cart.push({
+          productId: 5282,
+          code: 12,
+          name: s.products[1].name,
+          unitPrice: 7000,
+          quantity: 4,
+          note: 'Sin sal',
+          attributes: [],
+        });
+      },
+    );
+    const cart = structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Agrega solo dos Porcion De Hummus');
+    expect(h.conv.sessionData.cart).toEqual(cart);
+    await h.sendQueued('2');
+    expect(
+      h.conv.sessionData.cart
+        .filter((line) => line.productId === 5282)
+        .map((line) => line.quantity),
+    ).toEqual([4, 2]);
+  });
+}
+
+test('withdrawal preserves an untargeted third purchase', async () => {
+  const s = await multiplePurchases();
+  s.products.push({
+    ...s.products[1],
+    id: 5284,
+    code: 14,
+    name: 'Postre De Chocolate',
+    price: 4000,
+  });
+  const choice =
+    s.h.conv.sessionData.pendingReplacementClarification!.ownerChoice!;
+  choice.addItems.push({ productId: 5284, quantity: 1 });
+  choice.sourceText += ' y agrega un Postre De Chocolate';
+  choice.catalogFingerprint = s.h.service.cartEditOwnerFingerprint(
+    s.products,
+    [5281, 5282, 5283, 5284],
+  );
+  await s.h.sendQueued('No agregues Porcion De Hummus ni Pan De Ajo');
+  expect(
+    s.h.conv.sessionData.pendingReplacementClarification?.ownerChoice?.addItems,
+  ).toEqual([{ productId: 5284, quantity: 1 }]);
+  await s.h.sendQueued('2');
+  expect(s.h.conv.sessionData.cart.map((line) => line.productId)).toEqual([
+    5281, 5281, 5284,
+  ]);
+});
+
+test('a complete catalog name containing y remains a single product', async () => {
+  const { h } = await openChoice(
+    'building_cart',
+    'update_item',
+    { quantity: 3 },
+    (s) => {
+      s.products[1].name = 'Pan y Queso';
+    },
+    {
+      sourceText: 'Ayúdame a cambiar el Combo De Tofu y agrega un Pan y Queso',
+    },
+  );
+  expect(
+    h.conv.sessionData.pendingReplacementClarification?.ownerChoice,
+  ).toBeDefined();
+  await h.sendQueued('No agregues Pan y Queso');
+  expect(
+    h.conv.sessionData.pendingReplacementClarification?.ownerChoice?.addItems,
+  ).toEqual([]);
+});
+
+test('a quantity revision requires a unique proposed variant', async () => {
+  const { h } = await openChoice();
+  const choice =
+    h.conv.sessionData.pendingReplacementClarification!.ownerChoice!;
+  choice.addItems.push({ ...choice.addItems[0], note: 'Sin sal' });
+  const cart = structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued('Agrega solo dos Porcion De Hummus');
+  expect(h.conv.sessionData.cart).toEqual(cart);
+  expect(
+    h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+      ?.invalidated,
+  ).toBe(true);
+});
+
+for (const text of [
+  'Agrega solo dos Porcion De Hummus?',
+  'No agregues Porcion De Hummus ni Pan De Ajo?',
+]) {
+  test(`a purchase revision question is read only ${text}`, async () => {
+    const { h } = await multiplePurchases();
+    const cart = structuredClone(h.conv.sessionData.cart);
+    const pending = structuredClone(
+      h.conv.sessionData.pendingReplacementClarification,
+    );
+    await h.sendQueued(text);
+    expect(h.conv.sessionData.cart).toEqual(cart);
+    expect(h.conv.sessionData.pendingReplacementClarification).toEqual(pending);
+    expect(h.replies.at(-1)).toMatch(/varias variantes/i);
+  });
+}
+
+for (const text of [
+  'Agrega solo dos Porcion De Hummus',
+  'No agregues Porcion De Hummus ni Pan De Ajo',
+]) {
+  test(`a stale plan cannot accept a purchase revision ${text}`, async () => {
+    const { h } = await multiplePurchases();
+    h.conv.sessionData.pendingReplacementClarification!.ownerChoice!.createdAt = 0;
+    const cart = structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued(text);
+    expect(h.conv.sessionData.cart).toEqual(cart);
+    expect(
+      h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+        ?.invalidated,
+    ).toBe(true);
+    expect(h.replies.at(-1)).toMatch(/selección venció/i);
+  });
+}
+
+test('checkout closes with the revised purchase quantity', async () => {
+  const { h } = await openChoice('awaiting_final_confirm');
+  await h.sendQueued('Agrega solo dos Porcion De Hummus');
+  await h.sendQueued('2');
+  await h.sendQueued('no más, recojo en el local');
+  await h.sendQueued('efectivo');
+  await h.sendQueued('confirmar');
+  if (!h.service.ordersService.create.mock.calls.length)
+    await h.sendQueued('confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(7);
+  expect(h.conv.state).toBe('completed');
+});
+
+for (const [quantity, text] of [
+  [1, 'Añade solamente una'],
+  [10, 'Agrega solo 10'],
+] as const) {
+  test(`pending quantity accepts the supported boundary ${quantity}`, async () => {
+    const { h } = await openChoice();
+    await h.sendQueued(`${text} Porcion De Hummus`);
+    expect(
+      h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+        ?.addItems[0].quantity,
+    ).toBe(quantity);
+    await h.sendQueued('2');
+    expect(
+      h.conv.sessionData.cart.find((item) => item.productId === 5282)?.quantity,
+    ).toBe(quantity);
+  });
+}
+
+test('a quantity revision cannot invent a new purchase', async () => {
+  const { h } = await multiplePurchases();
+  const cart = structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued('Agrega solo dos Combo De Tofu');
+  expect(h.conv.sessionData.cart).toEqual(cart);
+  expect(
+    h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+      ?.invalidated,
+  ).toBe(true);
+});
+
+test('the final commit rechecks limits after a quantity revision', async () => {
+  const { h } = await openChoice();
+  const cart = structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued('Agrega solo 10 Porcion De Hummus');
+  Object.assign(h.cfg, { maxUnitsPerItem: 5 });
+  await h.sendQueued('2');
+  expect(h.conv.sessionData.cart).toEqual(cart);
+  expect(
+    h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+      ?.invalidated,
+  ).toBe(true);
+});
+
+test('a pending quantity revision survives a serialized session', async () => {
+  const { h } = await openChoice();
+  await h.sendQueued('Agrega solo dos Porcion De Hummus');
+  h.conv.sessionData = JSON.parse(JSON.stringify(h.conv.sessionData));
+  await h.sendQueued('2');
+  expect(
+    h.conv.sessionData.cart.find((item) => item.productId === 5282)?.quantity,
+  ).toBe(2);
+  expect(h.conv.sessionData.pendingReplacementClarification).toBeUndefined();
+});
+
+test('a compound title cannot be split into separate purchases in a longer veto', async () => {
+  const s = await multiplePurchases();
+  s.products.push(
+    { ...s.products[1], id: 5284, code: 14, name: 'Pan y Queso' },
+    { ...s.products[1], id: 5285, code: 15, name: 'Pan' },
+    { ...s.products[1], id: 5286, code: 16, name: 'Queso' },
+  );
+  const cart = structuredClone(s.h.conv.sessionData.cart);
+  const pending = structuredClone(
+    s.h.conv.sessionData.pendingReplacementClarification!.ownerChoice!.addItems,
+  );
+  await s.h.sendQueued('No agregues Pan y Queso ni Porcion De Hummus');
+  expect(s.h.conv.sessionData.cart).toEqual(cart);
+  expect(
+    s.h.conv.sessionData.pendingReplacementClarification?.ownerChoice?.addItems,
+  ).toEqual(pending);
+  expect(
+    s.h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+      ?.invalidated,
+  ).toBe(true);
 });

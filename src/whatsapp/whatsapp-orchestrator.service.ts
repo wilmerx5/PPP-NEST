@@ -161,6 +161,7 @@ import { resolveMenuConceptGroups, type MenuConceptGroup } from './whatsapp-menu
 import { isNamedMenuDishOrderPhrase, productLooksLikeNamedMenuDish } from './whatsapp-named-menu-dish';
 import type {
   AiOrderAction,
+  PendingCartEditOwnerChoice,
   WhatsappCartItem,
   WhatsappPendingAttribute,
   WhatsappSessionData,
@@ -18180,6 +18181,93 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  private resolvePendingPurchaseRevision(
+    text: string,
+    choice: PendingCartEditOwnerChoice,
+    products: MenuProduct[],
+  ):
+    | { addItems: PendingCartEditOwnerChoice['addItems']; message: string }
+    | null
+    | undefined {
+    const said = this.normalizeForMatch(text);
+    const withdrawal = said.match(
+      /^(?:(?:por favor|porfa) )?no (?:me )?(?:agregues|anadas|incluyas|sumes|pongas|adiciones) (.+)$/,
+    );
+    const quantityRequest = said.match(
+      /^(?:(?:por favor|porfa) )?(?:(?:agrega|anade) (?:solo|solamente)|(?:solo|solamente) (?:agrega|anade)) (.+)$/,
+    );
+    if (!withdrawal && !quantityRequest) return undefined;
+    const subject = (withdrawal || quantityRequest)![1]
+      .replace(/ (?:por favor|porfa|gracias)$/, '')
+      .trim();
+    if (quantityRequest) {
+      const counted = subject.match(
+        /^(\d+|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) (.+)$/,
+      );
+      if (
+        !counted ||
+        /(?:solo|solamente|agrega|añade|anade)\s+[-−–—]\s*\d/iu.test(text)
+      )
+        return null;
+      const quantity = /^\d+$/.test(counted[1])
+        ? Number(counted[1])
+        : this.catalogService.extractQuantityFromSegment(
+            `${counted[1]} unidades`,
+          );
+      const named = products.filter(
+        (product) => this.normalizeForMatch(product.name) === counted[2],
+      );
+      if (quantity < 1 || quantity > 10 || named.length !== 1) return null;
+      const product = named[0];
+      if (
+        choice.addItems.filter((item) => item.productId === product.id)
+          .length !== 1
+      )
+        return null;
+      return {
+        addItems: choice.addItems.map((item) =>
+          item.productId === product.id ? { ...item, quantity } : item,
+        ),
+        message: `La compra pendiente queda en *${quantity} × ${product.name}*.`,
+      };
+    }
+    if (subject === 'nada') {
+      return {
+        addItems: [],
+        message: 'Retiré las compras adicionales pendientes.',
+      };
+    }
+    const withoutArticle = (value: string) =>
+      value.replace(/^(?:el|la|los|las|un|una|unos|unas) /, '');
+    const exact = products.filter(
+      (product) =>
+        this.normalizeForMatch(product.name) === withoutArticle(subject),
+    );
+    if (exact.length > 1) return null;
+    if (
+      !exact.length &&
+      products.some((product) => {
+        const name = this.normalizeForMatch(product.name);
+        return / (?:y|ni) /.test(name) && ` ${subject} `.includes(` ${name} `);
+      })
+    )
+      return null;
+    const parts = exact.length ? [subject] : subject.split(/\s+(?:y|ni)\s+/);
+    const matches = parts.map((part) =>
+      products.filter(
+        (product) =>
+          this.normalizeForMatch(product.name) === withoutArticle(part),
+      ),
+    );
+    if (matches.some((named) => named.length !== 1)) return null;
+    const withdrawn = matches.map((named) => named[0]);
+    const ids = new Set(withdrawn.map((product) => product.id));
+    return {
+      addItems: choice.addItems.filter((item) => !ids.has(item.productId)),
+      message: `Las compras pendientes excluyen ${withdrawn.map((product) => `*${product.name}*`).join(', ')}.`,
+    };
+  }
+
   private async tryHandleCartEditOwnerChoice(
     conv: WhatsappConversation,
     waId: string,
@@ -18271,22 +18359,12 @@ export class WhatsappOrchestratorService {
             (product) => product.id === id && product.availableNow !== false,
           ),
       );
-    const purchaseWithdrawal = said.match(
-      /^(?:por favor )?no (?:me )?(?:agregues|anadas|incluyas|sumes|pongas|adiciones) (.+)$/,
+    const purchaseRevision = this.resolvePendingPurchaseRevision(
+      text, choice, products,
     );
-    if (purchaseWithdrawal && !invalid) {
-      const subject = purchaseWithdrawal[1]
-        .replace(/ (?:por favor|porfa|gracias)$/, '')
-        .replace(/^(?:el|la|los|las|un|una|unos|unas) /, '');
-      const named = products.filter(
-        (product) => this.normalizeForMatch(product.name) === subject,
-      );
-      const product = named.length === 1 ? named[0] : undefined;
-      const withdrawAll = subject === 'nada';
-      if ((product || withdrawAll) && !/[¿?]/.test(text)) {
-        const addItems = choice.addItems.filter(
-          (item) => !withdrawAll && item.productId !== product!.id,
-        );
+    if (purchaseRevision !== undefined && !invalid) {
+      if (purchaseRevision && !/[¿?]/.test(text)) {
+        const { addItems, message } = purchaseRevision;
         const next = {
           ...session,
           pendingReplacementClarification: {
@@ -18304,9 +18382,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           waId,
-          withdrawAll
-            ? 'Retiré las compras adicionales pendientes.'
-            : `*${product!.name}* queda fuera de las compras pendientes.`,
+          message,
         );
         await this.showCartEditOwnerChoice(conv, waId, next, products);
         return true;
@@ -18344,7 +18420,7 @@ export class WhatsappOrchestratorService {
         direction ||
         acknowledgement ||
         signedChoice ||
-        purchaseWithdrawal ||
+        purchaseRevision !== undefined ||
         matchingOwners.length ||
         knownOption
       ) {
