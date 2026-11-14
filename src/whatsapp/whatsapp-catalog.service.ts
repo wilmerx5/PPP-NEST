@@ -1886,6 +1886,43 @@ export class WhatsappCatalogService {
     return text;
   }
 
+  /** Resolve glossary, serving and plural aliases while preserving every qualifier. */
+  findProductsByExactAlias(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const words = (value: string) => {
+      const tokens = normalizeText(fixCommonOrderTypos(value))
+        .split(' ')
+        .filter(
+          (token) =>
+            token &&
+            !['de', 'del', 'el', 'la', 'los', 'las', 'un', 'una'].includes(
+              token,
+            ),
+        );
+      return /^(?:porcion|porciones)$/.test(tokens[0] || '')
+        ? tokens.slice(1)
+        : tokens;
+    };
+    const query = words(text);
+    if (!query.length) return [];
+    return products.filter((product) => {
+      const title = words(product.name);
+      return (
+        title.length === query.length &&
+        title.every(
+          (token, index) =>
+            query[index] === token ||
+            query[index] === token + 's' ||
+            query[index] === token + 'es' ||
+            token === query[index] + 's' ||
+            token === query[index] + 'es',
+        )
+      );
+    });
+  }
+
   resolveCatalogAliasText(text: string, products: WhatsappCatalogProduct[]): string {
     const q = normalizeText(text);
     if (!/\b(?:maduro con|platano maduro)\b/.test(q)) return text;

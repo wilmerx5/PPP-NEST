@@ -17535,44 +17535,177 @@ export class WhatsappOrchestratorService {
 
   /** Apply a kitchen note to a counted subset without adding purchased units. */
   private async tryHandleCountedGroupNote(
-    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
-    if (!session.cart.length || !['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
-    const raw=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/^¿/,'').replace(/[.!?]+$/,'').replace(/\s+/g,' ').trim();
-    const words:Record<string,number>={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
-    const count=String.raw`(un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[+-]?\d+(?:[.,]\d+)?)`;
-    const match=raw.match(new RegExp('^de (?:los|las) '+count+' (.+?),? '+count+' (sin .+)$'));
-    if(!match)return false;
-    const unchanged=async(reason:string)=>{await this.reply(conv,waId,reason+' El pedido sigue igual.');return true;};
-    if(/[¿?]/.test(text) || /\b(?:si|pero|agrega|anade|dame|quita|cambia|excepto)\b/.test(match[4]) || match[4].length>160)
-      return unchanged('Aclara el reparto y la nota sin otras acciones o condiciones.');
-    const total=words[match[1]]??Number(match[1]),selected=words[match[3]]??Number(match[3]);
-    if(!Number.isSafeInteger(total)||!Number.isSafeInteger(selected)||total<1||total>30||selected<1||selected>total)
+    if (
+      !session.cart.length ||
+      !['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(
+        conv.state,
+      )
+    )
+      return false;
+    const raw = text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/^¿/, '')
+      .replace(/[.!?]+$/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const words: Record<string, number> = {
+      un: 1,
+      uno: 1,
+      una: 1,
+      dos: 2,
+      tres: 3,
+      cuatro: 4,
+      cinco: 5,
+      seis: 6,
+      siete: 7,
+      ocho: 8,
+      nueve: 9,
+      diez: 10,
+    };
+    const count = String.raw`(un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[+-]?\d+(?:[.,]\d+)?)`;
+    const match = raw.match(
+      new RegExp(
+        '^de (?:los|las) ' + count + ' (.+?),? ' + count + ' (sin .+)$',
+      ),
+    );
+    if (!match) return false;
+    const unchanged = async (reason: string) => {
+      await this.reply(conv, waId, reason + ' El pedido sigue igual.');
+      return true;
+    };
+    if (
+      /[¿?]/.test(text) ||
+      /\b(?:si|pero|agrega|anade|dame|quita|cambia|excepto)\b/.test(match[4]) ||
+      match[4].length > 160
+    )
+      return unchanged(
+        'Aclara el reparto y la nota sin otras acciones o condiciones.',
+      );
+    const total = words[match[1]] ?? Number(match[1]),
+      selected = words[match[3]] ?? Number(match[3]);
+    if (
+      !Number.isSafeInteger(total) ||
+      !Number.isSafeInteger(selected) ||
+      total < 1 ||
+      total > 30 ||
+      selected < 1 ||
+      selected > total
+    )
       return unchanged('Indica cuántas unidades del grupo llevan esa nota.');
-    if(session.mpPreferenceId||session.pendingAddOffer||session.pendingPriceInquiry||session.pendingCompositionAsk||session.pendingMatch||session.pendingAttribute||session.pendingMultiOrder||session.pendingUnitDistribution||
-      session.pendingSubsetKitchenNote||session.pendingComposedDishRecovery||CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]))
+    if (
+      session.pendingReplacementClarification ||
+      session.mpPreferenceId ||
+      session.pendingAddOffer ||
+      session.pendingPriceInquiry ||
+      session.pendingCompositionAsk ||
+      session.pendingMatch ||
+      session.pendingAttribute ||
+      session.pendingMultiOrder ||
+      session.pendingUnitDistribution ||
+      session.pendingSubsetKitchenNote ||
+      session.pendingComposedDishRecovery ||
+      CART_EDIT_SELECTION_KEYS.some((key) => !!session[key])
+    )
       return unchanged('Primero aclaremos la selección o pago pendiente.');
-    const query=match[2].replace(/,$/,'');
-    const indices=session.cart.flatMap((line,index)=>correctionMatchesLine(line,query)?[index]:[]);
-    if(!indices.length||new Set(indices.map(i=>session.cart[i].productId)).size!==1||
-      indices.reduce((sum,i)=>sum+session.cart[i].quantity,0)!==total)
-      return unchanged('El grupo no coincide con las unidades del carrito; dime el plato y la cantidad.');
-    const note=match[4],already=indices.filter(i=>this.normalizeForMatch(session.cart[i].note||'')===note);
-    if(already.reduce((sum,i)=>sum+session.cart[i].quantity,0)===selected){
-      await this.reply(conv,waId,'Esa nota ya está aplicada a '+selected+' unidades.\n\n'+this.formatCartOnly(session,this.deliveryFeeFor(session,cfg)));
+    const query = match[2].replace(/,$/, '');
+    const indices = session.cart.flatMap((line, index) =>
+      correctionMatchesLine(line, query) ? [index] : [],
+    );
+    if (
+      !indices.length ||
+      new Set(indices.map((i) => session.cart[i].productId)).size !== 1 ||
+      indices.reduce((sum, i) => sum + session.cart[i].quantity, 0) !== total
+    )
+      return unchanged(
+        'El grupo no coincide con las unidades del carrito; dime el plato y la cantidad.',
+      );
+    const note = match[4],
+      already = indices.filter(
+        (i) => this.normalizeForMatch(session.cart[i].note || '') === note,
+      );
+    if (
+      already.reduce((sum, i) => sum + session.cart[i].quantity, 0) === selected
+    ) {
+      await this.reply(
+        conv,
+        waId,
+        'Esa nota ya está aplicada a ' +
+          selected +
+          ' unidades.\n\n' +
+          this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)),
+      );
       return true;
     }
-    if(indices.length!==1)return unchanged('Hay varias versiones de ese plato; dime a cuáles les aplicamos la nota.');
-    const index=indices[0],original=session.cart[index];
-    if(kitchenNotesConflict(original.note,note))return unchanged('La nota contradice una indicación anterior; aclara cuál conservamos.');
-    const combined=joinKitchenNotes(original.note,note);
-    if((combined||'').length>200)return unchanged('La nota es demasiado larga; resúmela para esas unidades.');
-    const draft={...session,cart:session.cart.flatMap((line,i)=>i!==index?[line]:
-      [...(total>selected?[{...line,quantity:total-selected}]:[]),{...line,quantity:selected,note:combined}])};
-    if(cfg.maxCartLines && draft.cart.length>cfg.maxCartLines)return unchanged('El reparto supera el límite de líneas del carrito.');
-    await this.conversationService.saveSession(conv,draft);
-    await this.reply(conv,waId,'Listo, dejé '+selected+' de los '+total+' *'+original.name+'* '+note+'.\n\n'+
-      this.formatCartOnly(draft,this.deliveryFeeFor(draft,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,draft)||this.formatContinueShoppingPrompt(draft)));
+    if (indices.length !== 1 && selected !== total)
+      return unchanged(
+        'Hay varias versiones de ese plato; dime a cuáles les aplicamos la nota.',
+      );
+    const original = session.cart[indices[0]];
+    if (
+      indices.some((index) =>
+        kitchenNotesConflict(session.cart[index].note, note),
+      )
+    )
+      return unchanged(
+        'La nota contradice una indicación anterior; aclara cuál conservamos.',
+      );
+    const combined = new Map(
+      indices.map((index) => [
+        index,
+        editScopedCartNote(session.cart[index].note, {
+          kind: 'append',
+          query: '',
+          note,
+          preserve: [],
+        }),
+      ]),
+    );
+    if ([...combined.values()].some((value) => value.blocked))
+      return unchanged(
+        'La nota es demasiado larga; resúmela para esas unidades.',
+      );
+    const draft = {
+      ...session,
+      cart: session.cart.flatMap((line, index) => {
+        if (!combined.has(index)) return [line];
+        const notedQuantity = indices.length === 1 ? selected : line.quantity;
+        return [
+          ...(line.quantity > notedQuantity
+            ? [{ ...line, quantity: line.quantity - notedQuantity }]
+            : []),
+          { ...line, quantity: notedQuantity, note: combined.get(index)!.note },
+        ];
+      }),
+    };
+    if (cfg.maxCartLines && draft.cart.length > cfg.maxCartLines)
+      return unchanged('El reparto supera el límite de líneas del carrito.');
+    await this.conversationService.saveSession(conv, draft);
+    await this.reply(
+      conv,
+      waId,
+      'Listo, dejé ' +
+        selected +
+        ' de los ' +
+        total +
+        ' *' +
+        original.name +
+        '* ' +
+        note +
+        '.\n\n' +
+        this.formatCartOnly(draft, this.deliveryFeeFor(draft, cfg)) +
+        '\n\n' +
+        (this.formatInterruptedStepReminder(conv, draft) ||
+          this.formatContinueShoppingPrompt(draft)),
+    );
     return true;
   }
 
@@ -18185,6 +18318,7 @@ export class WhatsappOrchestratorService {
     text: string,
     choice: PendingCartEditOwnerChoice,
     products: MenuProduct[],
+    cart: WhatsappCartItem[],
   ):
     | { addItems: PendingCartEditOwnerChoice['addItems']; message: string }
     | null
@@ -18196,17 +18330,26 @@ export class WhatsappOrchestratorService {
     const quantityRequest = said.match(
       /^(?:(?:por favor|porfa) )?(?:(?:agrega|anade) (?:solo|solamente)|(?:solo|solamente) (?:agrega|anade)) (.+)$/,
     );
-    if (!withdrawal && !quantityRequest) return undefined;
-    const subject = (withdrawal || quantityRequest)![1]
+    const relativeRequest = said.match(
+      /^(?:(de las compras pendientes|de lo que vas a agregar) )?(?:quita(?:le|me)?|resta(?:le|me)?|reduce(?:me)?|baja(?:le|me)?) ((?:\d+|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b.*)$/,
+    );
+    if (!withdrawal && !quantityRequest && !relativeRequest) return undefined;
+    const subject = (
+      withdrawal?.[1] ||
+      quantityRequest?.[1] ||
+      relativeRequest![2]
+    )
       .replace(/ (?:por favor|porfa|gracias)$/, '')
       .trim();
-    if (quantityRequest) {
+    if (quantityRequest || relativeRequest) {
       const counted = subject.match(
         /^(\d+|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) (.+)$/,
       );
       if (
         !counted ||
-        /(?:solo|solamente|agrega|añade|anade)\s+[-−–—]\s*\d/iu.test(text)
+        /(?:solo|solamente|agrega|añade|anade|quita(?:le|me)?|resta(?:le|me)?|reduce(?:me)?|baja(?:le|me)?)\s*[-−–—]\s*\d/iu.test(
+          text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
+        )
       )
         return null;
       const quantity = /^\d+$/.test(counted[1])
@@ -18214,8 +18357,12 @@ export class WhatsappOrchestratorService {
         : this.catalogService.extractQuantityFromSegment(
             `${counted[1]} unidades`,
           );
-      const named = products.filter(
-        (product) => this.normalizeForMatch(product.name) === counted[2],
+      const target = relativeRequest
+        ? counted[2].replace(/^(?:(?:a|de) (?:el|la|los|las)|al|del|a|de) /, '')
+        : counted[2];
+      const named = this.catalogService.findProductsByExactAlias(
+        target,
+        products,
       );
       if (quantity < 1 || quantity > 10 || named.length !== 1) return null;
       const product = named[0];
@@ -18224,11 +18371,31 @@ export class WhatsappOrchestratorService {
           .length !== 1
       )
         return null;
+      if (
+        relativeRequest &&
+        !relativeRequest[1] &&
+        cart.some((line) => line.productId === product.id)
+      )
+        return null;
+      const current = choice.addItems.find(
+        (item) => item.productId === product.id,
+      )!;
+      const finalQuantity = relativeRequest
+        ? (current.quantity ?? 1) - quantity
+        : quantity;
+      if (!Number.isSafeInteger(finalQuantity) || finalQuantity < 0)
+        return null;
       return {
-        addItems: choice.addItems.map((item) =>
-          item.productId === product.id ? { ...item, quantity } : item,
+        addItems: choice.addItems.flatMap((item) =>
+          item.productId !== product.id
+            ? [item]
+            : finalQuantity
+              ? [{ ...item, quantity: finalQuantity }]
+              : [],
         ),
-        message: `La compra pendiente queda en *${quantity} × ${product.name}*.`,
+        message: finalQuantity
+          ? `La compra pendiente queda en *${finalQuantity} × ${product.name}*.`
+          : `*${product.name}* queda fuera de las compras pendientes.`,
       };
     }
     if (subject === 'nada') {
@@ -18239,9 +18406,9 @@ export class WhatsappOrchestratorService {
     }
     const withoutArticle = (value: string) =>
       value.replace(/^(?:el|la|los|las|un|una|unos|unas) /, '');
-    const exact = products.filter(
-      (product) =>
-        this.normalizeForMatch(product.name) === withoutArticle(subject),
+    const exact = this.catalogService.findProductsByExactAlias(
+      withoutArticle(subject),
+      products,
     );
     if (exact.length > 1) return null;
     if (
@@ -18254,9 +18421,9 @@ export class WhatsappOrchestratorService {
       return null;
     const parts = exact.length ? [subject] : subject.split(/\s+(?:y|ni)\s+/);
     const matches = parts.map((part) =>
-      products.filter(
-        (product) =>
-          this.normalizeForMatch(product.name) === withoutArticle(part),
+      this.catalogService.findProductsByExactAlias(
+        withoutArticle(part),
+        products,
       ),
     );
     if (matches.some((named) => named.length !== 1)) return null;
@@ -18360,7 +18527,7 @@ export class WhatsappOrchestratorService {
           ),
       );
     const purchaseRevision = this.resolvePendingPurchaseRevision(
-      text, choice, products,
+      text, choice, products, session.cart,
     );
     if (purchaseRevision !== undefined && !invalid) {
       if (purchaseRevision && !/[¿?]/.test(text)) {
