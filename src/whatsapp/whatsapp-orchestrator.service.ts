@@ -18149,6 +18149,12 @@ export class WhatsappOrchestratorService {
                 : 'Quitaré la nota de la línea que elijas.'
               : '',
           ].filter(Boolean);
+    for (const reduction of choice.cartReductions || []) {
+      const line = session.cart[reduction.cartLineIndex];
+      context.push(
+        `También retiraré *${reduction.quantity} × ${line.name}* del carrito actual.`,
+      );
+    }
     for (const item of choice.addItems) {
       const purchase = products.find(
         (product) => product.id === item.productId,
@@ -18559,11 +18565,30 @@ export class WhatsappOrchestratorService {
     const ids = [
       choice.productId,
       ...choice.addItems.map((item) => item.productId),
+      ...(choice.cartReductions || []).map((item) => item.productId),
     ];
     const anotherSelection = this.hasCartEditOwnerConflict(session);
     const invalid =
       anotherSelection ||
       choice.invalidated ||
+      (choice.cartReductions || []).some((reduction, index, reductions) => {
+        const line = session.cart[reduction.cartLineIndex];
+        return (
+          !Number.isInteger(reduction.cartLineIndex) ||
+          reduction.cartLineIndex < 0 ||
+          !line ||
+          line.productId !== reduction.productId ||
+          reduction.productId === choice.productId ||
+          !Number.isInteger(reduction.quantity) ||
+          reduction.quantity < 1 ||
+          reduction.quantity > line.quantity ||
+          reductions.some(
+            (other, otherIndex) =>
+              otherIndex !== index &&
+              other.cartLineIndex === reduction.cartLineIndex,
+          )
+        );
+      }) ||
       !Number.isFinite(choice.createdAt) ||
       Date.now() - choice.createdAt > 15 * 60 * 1000 ||
       pending.cartSignature !== JSON.stringify(session.cart) ||
@@ -18593,6 +18618,52 @@ export class WhatsappOrchestratorService {
           pendingReplacementClarification: {
             ...pending,
             ownerChoice: { ...choice, purchaseScope: undefined },
+          },
+        };
+        await this.showCartEditOwnerChoice(conv, waId, next, products);
+        return true;
+      }
+      if (
+        /^(?:del carrito(?: actual)?|de lo que ya tengo|de los que ya tengo|del que ya tengo)$/.test(
+          answer,
+        ) &&
+        !/[¿?]/.test(text)
+      ) {
+        const scope = choice.purchaseScope;
+        const indices = session.cart.flatMap((line, index) =>
+          line.productId === scope.productId ? [index] : [],
+        );
+        const cartLineIndex = indices[0];
+        const previous = choice.cartReductions?.find(
+          (item) => item.cartLineIndex === cartLineIndex,
+        );
+        const quantity = (previous?.quantity || 0) + scope.quantity;
+        if (
+          indices.length !== 1 ||
+          scope.productId === choice.productId ||
+          quantity > session.cart[cartLineIndex].quantity
+        ) {
+          await this.reply(
+            conv,
+            waId,
+            indices.length > 1
+              ? 'Hay varias variantes en el carrito. Para retirar unidades de ellas, indica el cambio completo con sus opciones y todas las compras pendientes.'
+              : 'La reducción supera las unidades actuales disponibles para retirar. Puedes revisar la cantidad o cancelar esta reducción.',
+          );
+          await this.showCartEditOwnerChoice(conv, waId, session, products);
+          return true;
+        }
+        const cartReductions = [
+          ...(choice.cartReductions || []).filter(
+            (item) => item.cartLineIndex !== cartLineIndex,
+          ),
+          { productId: scope.productId, cartLineIndex, quantity },
+        ];
+        const next = {
+          ...session,
+          pendingReplacementClarification: {
+            ...pending,
+            ownerChoice: { ...choice, cartReductions, purchaseScope: undefined },
           },
         };
         await this.showCartEditOwnerChoice(conv, waId, next, products);
@@ -18679,6 +18750,7 @@ export class WhatsappOrchestratorService {
               catalogFingerprint: this.cartEditOwnerFingerprint(products, [
                 choice.productId,
                 ...addItems.map((item) => item.productId),
+                ...(choice.cartReductions || []).map((item) => item.productId),
               ]),
             },
           },
@@ -18853,21 +18925,30 @@ export class WhatsappOrchestratorService {
       );
       return true;
     }
+    const removeCartLines: NonNullable<AiOrderAction['removeCartLines']> = [];
+    const updateCartLines: NonNullable<AiOrderAction['updateCartLines']> = [];
+    if (choice.tool === 'remove_item')
+      removeCartLines.push({ productId: choice.productId, cartLineIndex });
+    else
+      updateCartLines.push({
+        productId: choice.productId,
+        cartLineIndex,
+        ...(choice.quantity !== undefined ? { quantity: choice.quantity } : {}),
+        ...(choice.note !== undefined ? { note: choice.note } : {}),
+      });
+    for (const reduction of choice.cartReductions || []) {
+      const quantity =
+        session.cart[reduction.cartLineIndex].quantity - reduction.quantity;
+      const target = {
+        productId: reduction.productId,
+        cartLineIndex: reduction.cartLineIndex,
+      };
+      if (quantity) updateCartLines.push({ ...target, quantity });
+      else removeCartLines.push(target);
+    }
     const actions: AiOrderAction = {
-      ...(choice.tool === 'remove_item'
-        ? { removeCartLines: [{ productId: choice.productId, cartLineIndex }] }
-        : {
-            updateCartLines: [
-              {
-                productId: choice.productId,
-                cartLineIndex,
-                ...(choice.quantity !== undefined
-                  ? { quantity: choice.quantity }
-                  : {}),
-                ...(choice.note !== undefined ? { note: choice.note } : {}),
-              },
-            ],
-          }),
+      ...(removeCartLines.length ? { removeCartLines } : {}),
+      ...(updateCartLines.length ? { updateCartLines } : {}),
       ...(choice.addItems.length
         ? { addItems: structuredClone(choice.addItems) }
         : {}),
@@ -18896,7 +18977,26 @@ export class WhatsappOrchestratorService {
     const choice = session.pendingReplacementClarification?.ownerChoice;
     const key =
       choice?.tool === 'remove_item' ? 'removeCartLines' : 'updateCartLines';
-    const edits = agent.actions?.[key] || [];
+    const edits = (agent.actions?.[key] || []).filter(
+      (edit) => edit.productId === choice?.productId,
+    );
+    const allEdits = [
+      ...(agent.actions?.updateCartLines || []).map((edit) => ({
+        ...edit,
+        tool: 'update_item',
+      })),
+      ...(agent.actions?.removeCartLines || []).map((edit) => ({
+        ...edit,
+        tool: 'remove_item',
+      })),
+    ];
+    const requiredIds = [
+      choice?.productId,
+      ...(choice?.cartReductions || []).map((edit) => edit.productId),
+    ];
+    const allowedActions = choice?.cartReductions?.length
+      ? ['updateCartLines', 'removeCartLines', 'addItems']
+      : [key, 'addItems'];
     const additions = agent.actions?.addItems || [];
     const source =
       edits.length === 1 ? session.cart[edits[0].cartLineIndex] : undefined;
@@ -18920,15 +19020,52 @@ export class WhatsappOrchestratorService {
       edits.length === 1 &&
       edits[0].productId === choice.productId &&
       source?.productId === choice.productId &&
-      hasExplicitCartEditOwner(
-        sourceText,
-        session.cart.map((line, cartLineIndex) => ({ ...line, cartLineIndex })),
-        choice.productId,
-        edits[0].cartLineIndex,
+      allEdits.length === requiredIds.length &&
+      requiredIds.every(
+        (id) => allEdits.filter((edit) => edit.productId === id).length === 1,
+      ) &&
+      (choice.cartReductions || []).every((reduction) => {
+        if (
+          session.pendingReplacementClarification?.cartSignature !==
+          JSON.stringify(session.cart)
+        )
+          return false;
+        const line = session.cart[reduction.cartLineIndex];
+        const edit = allEdits.find(
+          (item) => item.productId === reduction.productId,
+        );
+        if (
+          !line ||
+          line.productId !== reduction.productId ||
+          !Number.isInteger(reduction.quantity) ||
+          reduction.quantity < 1 ||
+          reduction.quantity > line.quantity ||
+          !edit ||
+          edit.cartLineIndex !== reduction.cartLineIndex
+        )
+          return false;
+        const quantity = line.quantity - reduction.quantity;
+        return quantity === 0
+          ? edit.tool === 'remove_item'
+          : quantity > 0 &&
+              edit.tool === 'update_item' &&
+              'quantity' in edit &&
+              edit.quantity === quantity &&
+              !('note' in edit);
+      }) &&
+      allEdits.every((edit) =>
+        agent.toolCalls.includes(edit.tool) &&
+        session.cart[edit.cartLineIndex]?.productId === edit.productId &&
+        hasExplicitCartEditOwner(
+          sourceText,
+          session.cart.map((line, cartLineIndex) => ({ ...line, cartLineIndex })),
+          edit.productId,
+          edit.cartLineIndex,
+        ),
       ) &&
       !Object.entries(agent.actions || {}).some(
         ([action, value]) =>
-          ![key, 'addItems'].includes(action) &&
+          !allowedActions.includes(action) &&
           (Array.isArray(value) ? value.length > 0 : !!value),
       ) &&
       choice.addItems.every((item) =>
@@ -18936,7 +19073,7 @@ export class WhatsappOrchestratorService {
       ) &&
       (!additions.length ||
         hasCompleteToolPurchaseEvidence(agent.purchaseAttempts, additions)) &&
-      [choice.productId, ...additions.map((item) => item.productId)].every(
+      [...requiredIds, ...additions.map((item) => item.productId)].every(
         (id) =>
           this.catalogService.productFullyNamedIn(
             sourceText,
@@ -21954,7 +22091,7 @@ export class WhatsappOrchestratorService {
       if (choice.invalidated) return 'Reformula el cambio completo para continuar.';
       if (choice.purchaseScope) {
         const scope = choice.purchaseScope;
-        return `¿Quieres quitar ${scope.quantity} unidad${scope.quantity === 1 ? '' : 'es'} de la compra pendiente de *${scope.productName}*?\nResponde «de las pendientes» o «cancelar esta reducción».`;
+        return `¿Quieres quitar ${scope.quantity} unidad${scope.quantity === 1 ? '' : 'es'} de la compra pendiente de *${scope.productName}*?\nResponde «de las pendientes», «del carrito» o «cancelar esta reducción».`;
       }
       return 'Elige el número de la variante pendiente para aplicar el cambio y las compras.';
     }

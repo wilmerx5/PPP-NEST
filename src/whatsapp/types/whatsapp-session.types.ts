@@ -11,6 +11,11 @@ export type PendingCartEditOwnerChoice = {
   pageStart?: number;
   invalidated?: boolean;
   purchaseScope?: { productId: number; productName: string; quantity: number };
+  cartReductions?: {
+    productId: number;
+    cartLineIndex: number;
+    quantity: number;
+  }[];
 };
 
 export type WhatsappCartItem = {
