@@ -912,6 +912,7 @@ for (const state of ['building_cart', 'awaiting_final_confirm']) {
     'No agregues la Porcion De Hummus',
     'No me añadas una Porcion De Hummus, por favor',
     'Por favor no incluyas Porcion De Hummus',
+    'No agregues nada',
   ]) {
     test(`partial purchase withdrawal preserves the held edit ${state} ${text}`, async () => {
       const { h } = await openChoice(state);
@@ -943,7 +944,6 @@ for (const text of [
   'No agregues la Porcion De Hummus y cambia el combo',
   'No agregues la Porcion De Hummus mejor una pizza',
   'No agregues dos Porcion De Hummus',
-  'No agregues nada',
   'No agregues la pizza',
 ]) {
   test(`an incomplete withdrawal stays within the pending choice ${text}`, async () => {
@@ -954,8 +954,20 @@ for (const text of [
     );
     await h.sendQueued(text);
     expect(h.conv.sessionData.cart).toEqual(cart);
-    expect(h.conv.sessionData.pendingReplacementClarification).toEqual(pending);
-    expect(h.replies.at(-1)).toMatch(/varias variantes/i);
+    if (text.includes('?')) {
+      expect(h.conv.sessionData.pendingReplacementClarification).toEqual(
+        pending,
+      );
+      expect(h.replies.at(-1)).toMatch(/varias variantes/i);
+    } else {
+      expect(
+        h.conv.sessionData.pendingReplacementClarification?.ownerChoice
+          ?.invalidated,
+      ).toBe(true);
+      expect(h.replies.at(-1)).toMatch(/qué compras conservas/i);
+      await h.sendQueued('2');
+      expect(h.conv.sessionData.cart).toEqual(cart);
+    }
     expect(h.service.ordersService.create).not.toHaveBeenCalled();
   });
 }

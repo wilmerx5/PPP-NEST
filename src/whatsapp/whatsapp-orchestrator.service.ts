@@ -18282,13 +18282,10 @@ export class WhatsappOrchestratorService {
         (product) => this.normalizeForMatch(product.name) === subject,
       );
       const product = named.length === 1 ? named[0] : undefined;
-      if (
-        product &&
-        !/[¿?]/.test(text) &&
-        choice.addItems.some((item) => item.productId === product.id)
-      ) {
+      const withdrawAll = subject === 'nada';
+      if ((product || withdrawAll) && !/[¿?]/.test(text)) {
         const addItems = choice.addItems.filter(
-          (item) => item.productId !== product.id,
+          (item) => !withdrawAll && item.productId !== product!.id,
         );
         const next = {
           ...session,
@@ -18307,12 +18304,29 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           waId,
-          `Retiré *${product.name}* de las compras pendientes.`,
+          withdrawAll
+            ? 'Retiré las compras adicionales pendientes.'
+            : `*${product!.name}* queda fuera de las compras pendientes.`,
         );
         await this.showCartEditOwnerChoice(conv, waId, next, products);
         return true;
       }
-      await this.showCartEditOwnerChoice(conv, waId, session, products);
+      if (/[¿?]/.test(text)) {
+        await this.showCartEditOwnerChoice(conv, waId, session, products);
+        return true;
+      }
+      await this.conversationService.saveSession(conv, {
+        ...session,
+        pendingReplacementClarification: {
+          ...pending,
+          ownerChoice: { ...choice, invalidated: true },
+        },
+      });
+      await this.reply(
+        conv,
+        waId,
+        'Necesito aclarar qué compras conservas. ¿Cómo debe quedar el cambio completo y las compras?',
+      );
       return true;
     }
     if (invalid) {
