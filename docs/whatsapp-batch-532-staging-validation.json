@@ -1,0 +1,404 @@
+{
+  "batch": 532,
+  "sourceCommit": "b2c3862903bf5b1cc2aa0246d1bca02d45cdc46e",
+  "newRegressionTests": 41,
+  "relatedTestsPassed": 1278,
+  "relatedSuitesPassed": 24,
+  "typescriptGeneralPassed": true,
+  "sourceFiles": 848,
+  "sourceManifestSha256": "51c338b9a9bd70f95cf27f5cb571eb92be8fa12eabfe9de4b78b11eb48513b79",
+  "candidateImage": "sha256:9ab5e08e690c3356c6edc35ba17078cfeccfad5ff9232199214201db5433b5d4",
+  "candidateCompiledControls": 949,
+  "predeploymentRealCatalogCases": 87,
+  "predeploymentSimulatedClosures": 83,
+  "postdeploymentRealCatalogCases": 87,
+  "postdeploymentSimulatedClosures": 83,
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "budgetUsed": 267,
+  "budgetRemaining": 0,
+  "runtimeScope": [
+    "A counted partial kitchen note over several existing variants persists a byUnits proposal with countedScope cart signature, candidate indices, creation time and page.",
+    "The existing option-distribution and remainder parsers resolve explicit per-row quantities and unique current attribute/note references. One per variant is accepted only when it covers the requested unit count exactly.",
+    "Every capacity, complete distribution total, existing noted-unit count, conflicting note, full note length and line limit is checked before committing any split. Original attributes, notes and unrelated lines are preserved.",
+    "Counted choice pages retain global row numbers within WhatsApp limits. Totals, serialized sessions, stale cart/expiry, cancellation, repeated original requests and closure are covered.",
+    "An otherwise valid implicit relative decrement whose product also exists in the current cart persists a purchaseScope question. Yes/de las pendientes resolves only the proposed purchase, and no/cancelar esta reducción discards only that reduction question.",
+    "Numeric rows and confirmar cannot select the old owner while the scope question is active. Unrelated purchase revisions preserve the question, same-product absolute revisions supersede it, and a second ambiguous reduction cannot overwrite it.",
+    "Legacy pending note/session fields remain optional. A previous scope guard contract was updated to require the new question while preserving the same original cart and proposed purchases."
+  ],
+  "developmentFindings": [
+    "All four initial normal-entry cases failed because partial notes and ambiguous decrement answers lacked persisted continuation state.",
+    "The existing byUnits note workflow and parsers were reused, with a scoped stale guard and exact per-variant allocation. Existing note clauses are counted so repeating the original instruction cannot create another unresolved distribution.",
+    "An unrelated purchase revision could otherwise discard the active reduction question. Revised product IDs now distinguish an unrelated revision from a superseding same-product instruction.",
+    "The active scope question has priority over the old numeric owner list and final confirmation. Explicit whole-order/whole-plan cancellation retains its existing meaning.",
+    "The full inventory found two obsolete wording assertions in one legacy suite. The preserved-cart check passed. Those assertions now verify the partial distribution question, quantity, byUnits state and original cart signature. The complete 40-test suite was rerun. All other source hashes, including runtime sources, match the full run."
+  ],
+  "limits": [
+    "Provider responses, maps, persistence, Meta and order creation are simulated. Real-model wording and representative pilot results require additional measurement.",
+    "The counted distribution covers a declared unit total of one SKU and its current variants. Partial quantities must be complete, uniquely owned and within each row capacity.",
+    "Kitchen-note allocation uses explicit row/variant references, one-per-variant and the supported final remainder grammar. Other regional shorthand and mixed purchase/correction clauses require clarification.",
+    "Scope confirmation resolves a proposed purchase reduction. A reply requesting an independent current-cart change while another complete edit plan remains held still requires broader cross-tool recovery.",
+    "Several simultaneous ambiguous relative reductions are handled one active question at a time.",
+    "Production promotion and generic Kamppo adaptation remain pending."
+  ],
+  "baselineComparison": {
+    "sourceCommit": "f4af061064ed7b0536764fae01f7888f9fb9ad30",
+    "contractTests": 214,
+    "passed": 182,
+    "failed": 32,
+    "interpretation": "Synthetic regression contracts, including newly persisted state and the updated scope-clarification guard."
+  },
+  "global": {
+    "global": {
+      "success": true,
+      "numPassedTests": 51617,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 607,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "initialGlobal": {
+      "success": false,
+      "numPassedTests": 51615,
+      "numFailedTests": 2,
+      "numPassedTestSuites": 606,
+      "numFailedTestSuites": 1
+    },
+    "legacyRecheck": {
+      "success": true,
+      "numPassedTests": 40,
+      "numFailedTests": 0,
+      "numPassedTestSuites": 1,
+      "numFailedTestSuites": 0
+    },
+    "timers": {
+      "success": true,
+      "numPassedTests": 16,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "database": {
+      "success": true,
+      "numPassedTests": 11,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0
+    },
+    "method": "Full main inventory with complete rerun of one updated legacy wording/state contract suite, followed by the isolated timer and database suites",
+    "inventoryExact": true,
+    "runtimeSourcesUnchanged": true,
+    "untouchedSourcesUnchanged": true,
+    "updatedTestFixtures": [
+      "src/whatsapp/whatsapp-edit-preservation-346.spec.ts"
+    ],
+    "totalPassedTests": 51644,
+    "totalPassedSuites": 611
+  },
+  "globalExecutionVerification": {
+    "method": "Full main inventory with complete rerun of one updated legacy wording/state contract suite, followed by the isolated timer and database suites",
+    "inventoryExact": true,
+    "runtimeSourcesUnchanged": true,
+    "untouchedSourcesUnchanged": true,
+    "updatedTestFixtures": [
+      "src/whatsapp/whatsapp-edit-preservation-346.spec.ts"
+    ]
+  },
+  "predeploymentCompiledResults": {
+    "532": {
+      "ok": true,
+      "compiledCartEditSelectionTests": 214,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "527": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "526": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "525": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "524": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "523": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "522": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "521": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "520": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "518": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "517": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "516": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "515": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    }
+  },
+  "disposableDatabaseRemoved": true,
+  "deployment": {
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "compiledCartEditSelectionTests": 214,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 949,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "b2c3862903bf5b1cc2aa0246d1bca02d45cdc46e",
+    "image": "sha256:c4f9c47f3754eb9e0592ac029e0a3058b2e253a18c6885ba52e9243df8efca85",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.7,
+        "heapTotal": 65.43,
+        "rss": 127.07
+      },
+      "timestamp": "2026-11-14T05:31:01.012Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.83,
+        "heapTotal": 65.43,
+        "rss": 127.44
+      },
+      "timestamp": "2026-11-14T05:31:01.190Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-14T05:32:29.398734+00:00",
+    "backup": "/root/ppp-manual-release/20261114T052941Z-staging-532"
+  },
+  "runtimeBefore": {
+    "staging": {
+      "head": "f4af061064ed7b0536764fae01f7888f9fb9ad30",
+      "branch": "staging",
+      "image": "sha256:1a341db26171ced274f530a512c9879261d07f0e659c9aaff8af0e571f8e4f4b",
+      "started": "2026-11-14T03:35:53.911090112Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    }
+  },
+  "runtimeAfter": {
+    "staging": {
+      "head": "b2c3862903bf5b1cc2aa0246d1bca02d45cdc46e",
+      "branch": "staging",
+      "image": "sha256:c4f9c47f3754eb9e0592ac029e0a3058b2e253a18c6885ba52e9243df8efca85",
+      "started": "2026-11-14T05:30:51.646191705Z",
+      "restarts": 0,
+      "health": "healthy",
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    },
+    "production": {
+      "head": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
+      "branch": "Main",
+      "image": "sha256:9c7b14e96c9e5d9f70f25f858f5522a50b2848dc48d90c331cfb9ba1266e1a44",
+      "started": "2026-11-13T04:57:57.196468368Z",
+      "restarts": 0,
+      "health": null,
+      "models": {
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna"
+      }
+    }
+  },
+  "checkedAt": "2026-11-14T05:35:48.642713+00:00",
+  "realCatalogSnapshots": {
+    "menu-before.json": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa",
+    "menu.json": "d999e95c49e4b38fd877b5fdde555f4d72a18aad7c898db8858188aa071f1ffa"
+  }
+}
