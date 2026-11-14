@@ -16,7 +16,7 @@ describe('transfer proof requires manual verification', () => {
     const conv = { id: 1, state: 'awaiting_final_confirm' };
     const result = await orch.resolveImageMessage({ waId: 'synthetic', mediaId: 'synthetic' }, 'fixture', conv, {});
     expect(result).toEqual({ done: true });
-    expect(orch.reply).toHaveBeenCalledWith(conv, 'synthetic', expect.stringContaining('El equipo lo validará'));
+    expect(orch.reply).toHaveBeenCalledWith(conv, 'synthetic', 'Recibí el comprobante. El equipo lo validará y te enviaremos el pedido lo más pronto posible.');
     expect(orch.reply.mock.calls[0][2]).not.toContain('Pago aprobado');
     expect(orch.ordersService.create).not.toHaveBeenCalled();
     expect(orch.conversationService.updateMessageBody).toHaveBeenCalledWith('fixture', '🧾 Comprobante de pago');

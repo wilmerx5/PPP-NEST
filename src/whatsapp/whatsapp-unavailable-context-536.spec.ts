@@ -74,8 +74,12 @@ function setup() {
 
 test('the production message reaches purchase processing despite stale conversational framing', async () => {
   const h = setup();
+  const before = structuredClone(h.conv.sessionData.cart);
   await h.sendQueued(incident);
   expect(h.replies.at(-1)).not.toMatch(/no tenemos \*lo que quiero es\*/i);
+  expect(h.conv.sessionData.pendingOrderBoundary).toBeDefined();
+  expect(h.conv.sessionData.cart).toEqual(before);
+  await h.sendQueued('continuar pedido');
   expect(h.conv.sessionData.cart).toEqual(
     expect.arrayContaining([
       expect.objectContaining({ productId: 5361, quantity: 1 }),
