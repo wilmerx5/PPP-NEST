@@ -1,0 +1,568 @@
+{
+  "batch": 543,
+  "date": "2026-11-15",
+  "runtimeCommit": "06241bf997a81b7fcefe381f69ac806d36021c5d",
+  "scope": "PPP staging and production. Atomic counted option/note edits combined with independent purchases. Confirmed-order context boundaries.",
+  "implementation": {
+    "semanticMixedUnitPurchases": true,
+    "noteOnlySubsets": true,
+    "appendReplaceAndClearNotes": true,
+    "originalRowIndexesRemainStable": true,
+    "partitionAndNewPurchaseOneSessionCommit": true,
+    "wholeSkuReplacementQuantityMustMatchCurrentLine": true,
+    "replacementOwnerCheckedIndependentlyOfModelIndex": true,
+    "uniqueShortenedCurrentOptionLabels": true,
+    "semanticFlagEnabledInProduction": true,
+    "existingModelsRetained": true,
+    "restaurantCatalogDriven": true,
+    "negativeOptionWordsCannotBeDetachedFromTheirNegation": true,
+    "sharedShortOptionWordsDoNotSelectOwners": true
+  },
+  "local": {
+    "passedTests": 53206,
+    "suites": 631,
+    "sourceFiles": 869,
+    "focusedTests": 1254,
+    "newRegressionTests": 461,
+    "compiledLocalTests": 1892,
+    "semanticPersistenceSqlContracts": 8,
+    "recordedProviderReplayRequests": 10,
+    "paidInferenceRequests": 10,
+    "acceptedRealModelCases": 2,
+    "externalOrders": 0,
+    "metaMessages": 0
+  },
+  "staging": {
+    "semanticSmoke": {
+      "ok": true,
+      "totalCompiledTests": 1892,
+      "compiledPilotIncidentTests": 385,
+      "semanticMixedTests": 506,
+      "semanticUnitPurchaseTests": 461,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "semanticRoutingEnabled": true,
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "totalCompiledTests": 1892,
+      "compiledPilotIncidentTests": 385,
+      "semanticMixedTests": 506,
+      "semanticUnitPurchaseTests": 461,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 2637,
+    "currentCatalogReplay": {
+      "ok": true,
+      "currentCatalogControls": 10,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "06241bf997a81b7fcefe381f69ac806d36021c5d",
+    "image": "sha256:f62418a7c6061f048e95adb7988cf1e73ae3fa37df08fae2e566f5bab21bbda3",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.68,
+        "heapTotal": 67.11,
+        "rss": 128.99
+      },
+      "timestamp": "2026-11-15T17:56:46.047Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.89,
+        "heapTotal": 67.11,
+        "rss": 129.36
+      },
+      "timestamp": "2026-11-15T17:56:46.180Z"
+    },
+    "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-15T17:59:47.659962+00:00",
+    "backup": "/root/ppp-manual-release/20261115T175253Z-staging-543"
+  },
+  "production": {
+    "environment": "production",
+    "head": "06241bf997a81b7fcefe381f69ac806d36021c5d",
+    "image": "sha256:f62418a7c6061f048e95adb7988cf1e73ae3fa37df08fae2e566f5bab21bbda3",
+    "previousImage": "sha256:49907e5adcfba144e3fc1485214c4b107d283fcf4601fdbb4d91cca2fea8a06e",
+    "rollbackImage": "ppp-rollback:production-before-543-20261115T181040Z",
+    "running": true,
+    "restarts": 0,
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 61.18,
+        "heapTotal": 88.73,
+        "rss": 148.75
+      },
+      "timestamp": "2026-11-15T18:11:00.653Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 61.39,
+        "heapTotal": 88.73,
+        "rss": 149
+      },
+      "timestamp": "2026-11-15T18:11:00.913Z"
+    },
+    "publicHealthUrl": "https://api.prontopolloportal.com/api/health",
+    "compiledControls": 2637,
+    "effectiveConfiguration": {
+      "ok": true,
+      "semanticRoutingEnabled": true,
+      "agentV1Enabled": true,
+      "effectiveKeyPresent": true,
+      "model": "gpt-6-luna",
+      "complexModel": "gpt-6.1-sol",
+      "databaseWrites": 0,
+      "inferenceRequests": 0
+    },
+    "currentCatalogReplay": {
+      "ok": true,
+      "currentCatalogControls": 10,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledResults": {
+      "543": {
+        "ok": true,
+        "totalCompiledTests": 1892,
+        "compiledPilotIncidentTests": 385,
+        "semanticMixedTests": 506,
+        "semanticUnitPurchaseTests": 461,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "527": {
+        "ok": true,
+        "compiledCartEditOwnerTests": 38,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "526": {
+        "ok": true,
+        "compiledCartEditRejectionTests": 32,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "525": {
+        "ok": true,
+        "compiledMixedAttributeTests": 50,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "524": {
+        "ok": true,
+        "compiledReplacementTransactionTests": 35,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "523": {
+        "ok": true,
+        "compiledOwnerPaginationTests": 55,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "522": {
+        "ok": true,
+        "compiledAttributeRecoveryTests": 31,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "521": {
+        "ok": true,
+        "compiledToolFeedbackTests": 25,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "520": {
+        "ok": true,
+        "compiledPilot520Cases": 24,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "518": {
+        "ok": true,
+        "compiledInquiryOptionTests": 66,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "517": {
+        "ok": true,
+        "compiledMultiPurchaseTests": 136,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "516": {
+        "ok": true,
+        "compiledMixedReplacementTests": 163,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "515": {
+        "ok": true,
+        "compiledReplacementJourneys": 80,
+        "mockedClosures": 80,
+        "externalOrders": 0,
+        "paidInference": 0
+      }
+    },
+    "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+    "effectiveBusinessEnvironmentPreservedExceptAuthorizedSemanticFlag": true,
+    "previousBusinessEnvironmentSha256": "ad2ae7b58c28f9eec655b4be7cd0599cb166a450b460352ddd6dcd4ae6b5711b",
+    "effectiveBusinessEnvironmentSha256": "6155e40a6e501ac8ac9258e87dfb5e5c1b71358730c5eab7ffd51511e9d91d04",
+    "models": {
+      "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+      "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+    },
+    "stagingRuntimePreserved": true,
+    "kamppoRuntimePreserved": true,
+    "backup": "/root/ppp-manual-release/20261115T181040Z-production-543",
+    "checkedAt": "2026-11-15T18:13:48.974760+00:00"
+  },
+  "compiledRuntimeHashesMatchLocalBuild": {
+    "dist/whatsapp/whatsapp-agent.service.js": "37c074c9c49524504bf31744845b61cc4acdef7b1be172d3da27387cb69a7f40",
+    "dist/whatsapp/whatsapp-action-guard.service.js": "ee03e8a2e374695b5300f5266c06278b658ac9eee22573a8b1abcde36e85d48d",
+    "dist/whatsapp/whatsapp-orchestrator.service.js": "11f581a7828772b9d74bb285bd883c5cecb1308e81dcaaaa9e5717b7e36b6645",
+    "dist/whatsapp/whatsapp-unit-option-plan.js": "5bf2ee31443b0c9304b27af0c19bfda038aeb8d01c3f0449f743182c583ce7b6",
+    "dist/whatsapp/whatsapp-unit-option-source.js": "e7a18050f39b0b6b9ff9b2dd04b641ffe97894eb02e9c7b253da5695f9bf6025",
+    "dist/whatsapp/whatsapp-cart-edit-owner.js": "28683155e4857fd7a71e94f5aeecfc4b8d55823c11214b4e00d98cc9dc06dc92",
+    "dist/whatsapp/whatsapp-semantic-intent.js": "af7f589a1f6009ce961d363b5d401c5855ed17236124879f2d041b7a8f3003fb"
+  },
+  "realInference": {
+    "actualHttpAttempts": 10,
+    "models": [
+      "gpt-6-luna"
+    ],
+    "acceptedDevelopmentCases": [
+      {
+        "id": "partial-combo-beverage-and-new-drinks",
+        "accepted": true,
+        "text": "Veci, de los cuatro combos cambia dos con Coca Cola y agrégame dos limonadas naturales.",
+        "cart": [
+          {
+            "productId": 99,
+            "code": 99,
+            "name": "Combo De Pollo Frito",
+            "quantity": 2,
+            "unitPrice": 53000,
+            "attributes": [
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Colombiana"
+              },
+              {
+                "attributeName": "Arepas",
+                "attributeValue": "Fritas"
+              }
+            ],
+            "note": "Salsa aparte"
+          },
+          {
+            "productId": 99,
+            "code": 99,
+            "name": "Combo De Pollo Frito",
+            "quantity": 2,
+            "unitPrice": 53000,
+            "attributes": [
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Coca cola"
+              },
+              {
+                "attributeName": "Arepas",
+                "attributeValue": "Fritas"
+              }
+            ],
+            "note": "Salsa aparte"
+          },
+          {
+            "productId": 37,
+            "name": "Limonada Natural",
+            "code": 37,
+            "unitPrice": 5000,
+            "quantity": 2,
+            "attributes": []
+          }
+        ],
+        "reply": "🛒 *Carrito*\n*1.* *Combo De Pollo Frito* ×2 · $53.000 c/u → *$106.000*\n   _Bebida: Colombiana · Arepas: Fritas_\n   📝 _Salsa aparte_\n*2.* *Combo De Pollo Frito* ×2 · $53.000 c/u → *$106.000*\n   _Bebida: Coca cola · Arepas: Fritas_\n   📝 _Salsa aparte_\n*3.* *Limonada Natural* ×2 · $5.000 c/u → *$10.000*\n────────────\nSubtotal $222.000\n*Total $222.000*\n\n¿*Algo más*?",
+        "requests": 5,
+        "latencyMs": 690,
+        "providerResponses": 5,
+        "independentHoldout": false
+      },
+      {
+        "id": "counted-kitchen-note-with-a-new-soup",
+        "accepted": true,
+        "text": "De los tres churrascos, dos los quiero sin arroz y con más ensalada, y agrega un ajiaco.",
+        "cart": [
+          {
+            "productId": 17,
+            "code": 17,
+            "name": "Churrasco",
+            "quantity": 1,
+            "unitPrice": 42000,
+            "attributes": [],
+            "note": "Salsa aparte"
+          },
+          {
+            "productId": 17,
+            "code": 17,
+            "name": "Churrasco",
+            "quantity": 2,
+            "unitPrice": 42000,
+            "attributes": [],
+            "note": "Salsa aparte, Salsa aparte; sin arroz y con más ensalada"
+          },
+          {
+            "productId": 38,
+            "name": "Sopa De Ajiaco",
+            "code": 38,
+            "unitPrice": 12000,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "reply": "🛒 *Carrito*\n*1.* *Churrasco* · *$42.000*\n   📝 _Salsa aparte_\n*2.* *Churrasco* ×2 · $42.000 c/u → *$84.000*\n   📝 _Salsa aparte, Salsa aparte; sin arroz y con más ensalada_\n*3.* *Sopa De Ajiaco* · *$12.000*\n────────────\nSubtotal $138.000\n*Total $138.000*\n\n¿*Algo más*?",
+        "requests": 5,
+        "latencyMs": 538,
+        "providerResponses": 5,
+        "independentHoldout": false
+      }
+    ],
+    "responsesReplayedAgainstFinalBuild": 10,
+    "extraReplayApiCalls": 0,
+    "canonicalCatalogCapitalizationAssertionCorrectedWithRecordedOutput": true,
+    "postOrderMixedCase": {
+      "accepted": true,
+      "modelInvocations": 0,
+      "isolatedPersistence": true,
+      "reply": "Listo ✅ *Arroz Chino ×2*\n_Caja de arroz chino para 2 a 4 personas, acompañada de una porción de papas a la francesa._\n\n¿*Algo más*?"
+    },
+    "temporaryApiKeyFileRemoved": true
+  },
+  "coverage": {
+    "newCases": 461,
+    "newUnitPurchaseCases": 437,
+    "newConfirmedOrderBoundaryCases": 24,
+    "completeUnitPurchaseMatrixCases": 384,
+    "matrixDimensions": [
+      "two catalogues",
+      "three active order states",
+      "four complete phrase templates",
+      "one or two affected units",
+      "one or two purchased units",
+      "either operation order",
+      "attribute or note-only change"
+    ],
+    "completeCheckoutPayloadCases": 2,
+    "deferredFlavorQuantityCases": 4,
+    "oldGlobalFixturesGenerallyUseLegacyMode": true,
+    "newSuitesExplicitlyEnableSemanticMode": true,
+    "offlineModelAndTransportSimulated": true,
+    "actualModelCasesUseIsolatedPersistence": true,
+    "sqlContractsUseDisposableMariaDb": true,
+    "compiledSemanticUnitPurchaseTestsFieldIncludesAllNewBatchCases": true
+  },
+  "budget": {
+    "authorizedRequests": 357,
+    "usedRequests": 351,
+    "remainingRequests": 6
+  },
+  "operationalCapsChosenByAgent": true,
+  "developmentRunsRetained": [
+    "fixture-only TypeScript annotation corrected before final validation",
+    "full checkout and deferred-flavor coverage added before final source freeze",
+    "unique shortened current option labels added during review",
+    "one offline run crossed a 34-minute host pause and safely expired its turn; repeated on final sources",
+    "provider-case assertion corrected for catalogue capitalization without another paid run"
+  ],
+  "remaining": [
+    "Representative real-customer pilot conversion, clarification and latency measurement",
+    "A partial SKU replacement requires a supported explicit plan; a whole-line replacement cannot silently consume a subset",
+    "Partitions mixed with removals or SKU replacements still require clarification as a complete operation",
+    "Registered-order delivery changes retain restaurant review and must not be announced as persisted without an actual update",
+    "Native Kamppo adaptation and release of batches beyond its current version"
+  ],
+  "externalTestOrders": 0,
+  "metaTestMessages": 0,
+  "validationDirectory": "/home/levi/.codex/tmp/ppp-543-validation",
+  "checkedAt": "2026-11-15T18:17:15.908265+00:00",
+  "postDeploymentRecheck": {
+    "ppp_nest_api": {
+      "image": "sha256:f62418a7c6061f048e95adb7988cf1e73ae3fa37df08fae2e566f5bab21bbda3",
+      "running": true,
+      "restarts": 0,
+      "startedAt": "2026-11-15T18:10:52.316734559Z",
+      "health": null
+    },
+    "ppp-staging-api-1": {
+      "image": "sha256:f62418a7c6061f048e95adb7988cf1e73ae3fa37df08fae2e566f5bab21bbda3",
+      "running": true,
+      "restarts": 0,
+      "startedAt": "2026-11-15T17:56:36.720550788Z",
+      "health": "healthy"
+    },
+    "kamppo-api": {
+      "image": "sha256:75151b2d05da57929b9afeefe8eb871d1ff61bb2208ec88e33d5d53e6874bc97",
+      "running": true,
+      "restarts": 0,
+      "startedAt": "2026-11-14T21:31:51.399139516Z",
+      "health": "healthy"
+    },
+    "production": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 2,
+      "memory": {
+        "heapUsed": 60.32,
+        "heapTotal": 75.54,
+        "rss": 133.14
+      },
+      "timestamp": "2026-11-15T18:16:54.546Z"
+    },
+    "staging": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 59.62,
+        "heapTotal": 67.66,
+        "rss": 129.06
+      },
+      "timestamp": "2026-11-15T18:16:54.821Z"
+    },
+    "kamppo": {
+      "status": "ok",
+      "service": "kamppo-api",
+      "name": "sapita",
+      "db": "up",
+      "ts": "2026-11-15T18:16:54.907Z"
+    }
+  },
+  "effectiveModelKeyParity": {
+    "effectiveKeysMatch": true,
+    "rawKeysExposed": false,
+    "databaseWrites": 0,
+    "inferenceRequests": 0
+  }
+}
