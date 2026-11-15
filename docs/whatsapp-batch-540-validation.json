@@ -1,0 +1,175 @@
+{
+  "batch": 540,
+  "sourceCommit": "ad16afaa5a30a4c8a78d0c2a5cb5641611a12d7e",
+  "stage": {
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "totalCompiledTests": 826,
+      "compiledPilotIncidentTests": 385,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 1571,
+    "currentCatalogReplay": {
+      "ok": true,
+      "currentCatalogControls": 10,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "ad16afaa5a30a4c8a78d0c2a5cb5641611a12d7e",
+    "image": "sha256:8c782cf757daae51a3b2685857dcacdbc2eb518023700c586a0954477b442dce",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 56.04,
+        "heapTotal": 66.26,
+        "rss": 128.23
+      },
+      "timestamp": "2026-11-15T03:07:54.583Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 56.21,
+        "heapTotal": 66.26,
+        "rss": 128.61
+      },
+      "timestamp": "2026-11-15T03:07:54.795Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-15T03:10:24.270835+00:00",
+    "backup": "/root/ppp-manual-release/20261115T030642Z-staging-540"
+  },
+  "local": {
+    "passedTests": 52140,
+    "suites": 624,
+    "sourceFiles": 861,
+    "focusedTests": 238,
+    "newRegressionTests": 75,
+    "compiledLocalTests": 826,
+    "currentCatalogControls": 10,
+    "paidInference": 0,
+    "externalOrders": 0,
+    "metaMessages": 0
+  },
+  "changes": [
+    "Normalize conversational purchase introductions before dish segmentation and address extraction, preserving restatement intent.",
+    "Recognize size and misspelled composition questions as inquiries in shared catalog guards.",
+    "Answer a named cart dish before offering other catalog presentations.",
+    "Keep composition inquiries out of payment-time additions and quantity recap shortcuts."
+  ],
+  "currentCatalogSnapshot": "/home/levi/.codex/tmp/ppp-536-validation/menu.json",
+  "currentCatalogSnapshotSha256": "a6f5356bd4fa99fa02870de3ef34ad89cb37e499b8f7cd22e57fbb312fcac22b",
+  "initialReproduction": {
+    "passed": 16,
+    "failed": 20,
+    "total": 36
+  },
+  "additionalDetection": "The expanded payment/composition matrix exposed10 failures, including an extra item added during payment. These were corrected before the final frozen global run.",
+  "validationRecovery": "The first partial global run was interrupted after the current catalog revealed an informational list reopened for the existing chicken. That partial run is retained separately. The final full run used the frozen approved sources.",
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "migrationsRun": false,
+  "nativeKamppoPort": "pending",
+  "productionPromotion": "pending",
+  "limitations": [
+    "Model, Meta, maps, conversation persistence and external order creation are simulated in conversation tests.",
+    "The separate11 DB contracts use disposable MariaDB. The production customer database is not used for test orders.",
+    "Other chat incidents remain pending, including multi-row removals, mixed corrections/purchases and incomplete purchases with unknown dishes."
+  ]
+}
