@@ -1,22 +1,22 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 285,
-  "usedRequests": 284,
+  "authorizedRequests": 342,
+  "usedRequests": 341,
   "remainingRequests": 1,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 19,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-11-15T04:04:45.288Z",
+  "lastAttemptAt": "2026-11-15T14:25:34.238Z",
   "latestEvaluation": {
-    "date": "2026-11-14",
-    "baseCommit": "95b7c0ee15dc3b8f2704ed7a0c5d71917ff68a23",
-    "requests": 17,
+    "date": "2026-11-15",
+    "baseCommit": "9cb062f8708bf8ee481d8c8a62457fa50acc6625",
+    "requests": 57,
     "acceptedFinalConversations": 3,
     "developmentOnly": true,
     "model": "gpt-6-luna",
-    "report": "docs/whatsapp-batch-541-validation.json",
-    "scope": "Three isolated full-router single-turn cases. Initial unnecessary clarification corrected using explicit catalogue references. Final mixed case repeated after local request cap stopped its first attempt safely. No customer persistence, Meta or external orders. Final candidate replay uses recorded provider output at zero additional inference.",
+    "report": "docs/whatsapp-batch-542-validation.json",
+    "scope": "Three isolated full-router single-turn development cases. Executive and soup acceptance use recorded real-provider prefixes plus real-provider continuation. Composite correction accepted in a fresh seven-request development retest. Earlier failed development attempts retained. No customer persistence, Meta or external orders. Not an independent holdout or live-channel pilot rate.",
     "temporaryLimitChosenByAgent": true
   },
   "authorizationExtensions": [
@@ -104,6 +104,46 @@
       "evidence": "Continued user-authorized staging implementation and moderate inference testing.",
       "executionLimit": "Agent-selected maximum6 actual HTTP requests, only the unfinished mixed removal/preservation/purchase case, one continuation, stop on first failure. Do not repeat the two accepted cases.",
       "purpose": "The first12-call operational allocation ended before the mixed case final response. Its cart was preserved by the strict guard."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 17,
+      "limitChosenByAgent": true,
+      "userSpecifiedNumericCap": false,
+      "authorization": "Standing authorization for moderate inference and current user request to continue staging batches against the shared chats.",
+      "executionLimit": "At most 18 HTTP requests across three isolated mixed-correction cases, stop on first failing case, no accepted-case repetitions. Numeric cap selected by the agent."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 18,
+      "limitChosenByAgent": true,
+      "userSpecifiedNumericCap": false,
+      "authorization": "Current user explicitly requests a super batch with complete phrases and all necessary corrections, under standing moderate-inference authorization.",
+      "executionLimit": "At most 24 further HTTP requests across the three changed-candidate cases after free diagnosis. Stop on first failure. Retain all prior failed runs and do not repeat accepted cases."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 6,
+      "limitChosenByAgent": true,
+      "userSpecifiedNumericCap": false,
+      "authorization": "User requests exhaustive staging super batch and necessary corrections under standing moderate-inference authorization.",
+      "executionLimit": "At most 10 additional HTTP requests, exclusively continuing the unaccepted soup-preservation case from its recorded prefix and the untouched composite-rice case. Do not repeat the accepted executive case. Stop at first failure."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 8,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "evidence": "Standing authorization for moderate inference and current request for exhaustive complete-sentence batch. Fresh composite-dish development retest after correcting semantic segmentation; accepted cases are not repeated.",
+      "executionLimit": "8 actual requests maximum, one composite case, stop on failure; cumulative attempts retained."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 8,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "evidence": "Current exhaustive batch under standing moderate inference authorization. Final bounded development retest of composite correction after identifying omitted removal, one case only.",
+      "executionLimit": "8 actual HTTP attempts maximum; stop first failure; accepted cases excluded and cumulative usage retained."
     }
   ],
   "evaluationHistory": [

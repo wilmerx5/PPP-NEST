@@ -22,7 +22,9 @@ export function parseSemanticIntent(value: unknown, source: string): SemanticInt
         new Set(segment.productIds).size!==segment.productIds.length || segment.productIds.some(id=>!Number.isSafeInteger(id) || id<1))) return null;
     const text = canonical(segment.text);
     const start = message.indexOf(text, cursor);
-    if (start < 0 || !/^[\s,.!?¿¡;:…–—-]*$/u.test(message.slice(cursor, start))) return null;
+    const gap = message.slice(cursor, start);
+    const additiveSeparator = cursor > 0 && /^[\s,.!?¿¡;:…–—-]*[ye][\s,.!?¿¡;:…–—-]*$/u.test(gap);
+    if (start < 0 || !/^[\s,.!?¿¡;:…–—-]*$/u.test(gap) && !additiveSeparator) return null;
     cursor = start + text.length;
     result.push({ text: segment.text.trim(), role: segment.role,...(segment.productIds ? {productIds:segment.productIds} : {}) });
   }
@@ -92,9 +94,10 @@ INTERPRETACIÓN COMPLETA OBLIGATORIA
 Primero ejecuta interpret_message. Lee todo el mensaje, el carrito, el paso abierto y el historial antes de decidir.
 Los segmentos son citas literales ordenadas del mensaje actual. Conserva todos los términos, cantidades, negaciones y preferencias. No resumas ni inventes citas. Mantén la negación, las preguntas, las cantidades y el alcance unidos a la petición a la que afectan. No separes una negación o una pregunta de su producto para convertirlo en compra.
 purchase autoriza una compra nueva. edit modifica algo existente. remove retira algo. checkout proporciona datos de entrega, nombre, teléfono o pago. inquiry consulta sin comprar. conversation es saludo, cortesía, introducción o explicación sin una operación sobre el pedido. cancel cancela. finish termina de agregar y continúa los datos del pedido. unclear requiere aclaración.
+Agrupa en un mismo segmento las oraciones que expresan una sola corrección y su reformulación o explicación. El segmento puede abarcar varias oraciones completas. Divide cuando haya operaciones independientes, consultas o compras adicionales. No conviertas cada oración de una única sustitución en una modificación duplicada que exija volver a actuar sobre productos ya reemplazados.
 Una consulta que menciona un producto no pide agregarlo. Una reformulación puede describir cómo debe quedar el pedido existente. Interpreta las referencias usando el contexto y conserva cantidades y líneas ajenas.
 Si falta identificar la intención o el alcance de un cambio, usa unclear y pregunta UNA cosa sin modificar el carrito.
-En productIds identifica los SKUs a los que se refiere cada segmento, usando carrito e historial. Usa [] cuando no haya referencia resuelta. Resuelve referencias a un plato existente antes de pedir de nuevo su nombre. Con un único producto en el carrito, una referencia a ese plato usa ese SKU salvo que el mensaje nombre otro. La respuesta de interpret_message devuelve los datos reales de las referencias identificadas. La interpretación queda fija durante el turno. Cada tool de cambio exige sourceText idéntico a un segmento que autoriza esa operación. Interpreta las cláusulas mezcladas por separado y conserva la intención completa.
+En productIds identifica los SKUs a los que se refiere cada segmento, usando carrito e historial. Usa [] cuando no haya referencia resuelta. Resuelve referencias a un plato existente antes de pedir de nuevo su nombre. Con un único producto en el carrito, una referencia a ese plato usa ese SKU salvo que el mensaje nombre otro. La respuesta de interpret_message devuelve los datos reales de las referencias identificadas. La interpretación queda fija durante el turno. search_menu puede resolver un producto de destino adicional dentro del mismo segmento. Conserva el origen y usa replace_item cuando cambia el SKU. Cada tool de cambio exige sourceText idéntico a un segmento que autoriza esa operación. Interpreta las cláusulas mezcladas por separado y conserva la intención completa. Usa los datos ya devueltos por las herramientas y agrupa operaciones independientes cuando estén resueltas. replace_item sustituye UNA línea de origen. Si el cliente corrige varios productos separados para que quede un único plato compuesto, sustituye una línea y retira mediante remove_item todas las demás líneas de origen que ya no deben quedar. Comprueba el carrito resultante antes de dar por terminada la corrección.
 Las búsquedas también exigen sourceText de un segmento de compra, cambio, consulta o duda. Una introducción conversacional no puede convertirse en una búsqueda de producto. Usa search_menu para verificar datos. Un resultado sin coincidencias significa que falta resolver la búsqueda. Solo afirma que un plato está ausente cuando identificaste claramente qué producto gastronómico pidió el cliente. Las palabras conversacionales nunca son productos ausentes.
 Un producto conocido pendiente de elegir sabor u otra opción mantiene intención purchase. Usa add_item para que el backend abra las opciones. Si falta elegir SKU, usa offer_products. Nunca publiques opciones numeradas sin esa tool. Si solo preguntas o aclaras, no anuncies cambios. El backend muestra el carrito de los cambios aceptados y solicita los datos pendientes. No confirmes órdenes ni inventes pagos verificados.
 `;
@@ -120,13 +123,17 @@ export function semanticPlanIsComplete(intent: SemanticIntent, fulfilled: readon
 }
 
 /** A tool must address the products identified during complete-message interpretation. */
-export function semanticToolTargetsAuthorized(intent: SemanticIntent, tool: string, args: Record<string, unknown>): boolean {
+export function semanticToolTargetsAuthorized(intent: SemanticIntent, tool: string, args: Record<string, unknown>,
+  lookupTargets?: Map<string, Set<number>>): boolean {
   const segment = intent.segments.find(segment => typeof args.sourceText === 'string' && canonical(segment.text) === canonical(args.sourceText));
   if (tool === 'set_notes') return !!segment && !segment.productIds?.length;
   if (!['add_item','update_item','remove_item','replace_item','set_attribute','set_unit_attributes'].includes(tool)) return true;
   const ids = segment?.productIds || [];
-  if (!Number.isSafeInteger(args.productId) || !ids.includes(args.productId as number)) return false;
-  return tool !== 'replace_item' || Number.isSafeInteger(args.newProductId) && ids.includes(args.newProductId as number);
+  const discovered = segment && lookupTargets?.get(canonical(segment.text));
+  if (!Number.isSafeInteger(args.productId) ||
+      !(ids.includes(args.productId as number) || tool === 'add_item' && discovered?.has(args.productId as number))) return false;
+  return tool !== 'replace_item' || Number.isSafeInteger(args.newProductId) &&
+    (ids.includes(args.newProductId as number) || !!discovered?.has(args.newProductId as number));
 }
 
 export function semanticTargetsComplete(intent: SemanticIntent, fulfilled: Map<string, Set<number>>): boolean {

@@ -1,5 +1,5 @@
 import { semanticTargetsComplete, semanticToolTargetsAuthorized, semanticToolRequiresSource, authorizeSemanticTool, parseSemanticIntent, SEMANTIC_INTENT_TOOL, SEMANTIC_CHECKOUT_TOOL, SEMANTIC_CHOICE_TOOL, SEMANTIC_INTENT_PROMPT, type SemanticIntent } from './whatsapp-semantic-intent';
-import { isUsableWhatsappCustomerName } from './whatsapp-session-intents';
+import { isUsableWhatsappCustomerName, parseCartItemReplacement } from './whatsapp-session-intents';
 import { findPaymentMethodByText } from './whatsapp-payment-methods';
 import { randomUUID } from 'node:crypto';
 import { hasExplicitCartEditOwner } from './whatsapp-cart-edit-owner';
@@ -133,10 +133,11 @@ const AGENT_TOOLS = [
     }, required: ['productId'] },
   } },
   { type: 'function' as const, function: {
-    name: 'replace_item', description: 'Reemplaza UNA línea por otro SKU de la carta conservando cantidad y nota. Por ejemplo jugo en agua por jugo en leche del mismo sabor, o medio frito por medio broaster. Valida el producto nuevo antes de retirar el anterior.',
+    name: 'replace_item', description: 'Reemplaza UNA línea por otro SKU de la carta conservando cantidad, nota y opciones compatibles. targetText copia literalmente la nueva presentación y todas sus preferencias del mensaje actual, sin incluir la referencia al producto anterior. Usa las palabras del cliente, aunque sean más cortas que el nombre de la carta. Valida el producto nuevo antes de retirar el anterior.',
     parameters: { type: 'object', properties: {
       productId: { type: 'number', description: 'SKU anterior' }, cartLineIndex: { type: 'integer', minimum: 0 },
       newProductId: { type: 'number' }, quantity: { type: 'integer', minimum: 1, maximum: 10 },
+      targetText: { type: 'string', description: 'Cita literal de la presentación de destino en sourceText. Incluye sus negaciones y preferencias. El backend conserva también el resto del segmento desde esa cita.' },
       note: { type: 'string', description: 'Nota completa del producto nuevo; vacío la elimina. Si se omite conserva la anterior.' },
       attributes: { type: 'array', items: { type: 'object', properties: {
         attributeName: { type: 'string' }, attributeValue: { type: 'string' },
@@ -603,6 +604,8 @@ export class WhatsappAgentService {
     let semanticRejected = false;
     const fulfilledSemanticSegments = new Set<string>();
     const fulfilledSemanticTargets = new Map<string,Set<number>>();
+    const semanticLookupTargets = new Map<string, Set<number>>();
+    let retriedSemanticPreservation = false;
     const sourceKey = (source: string) => source.toLowerCase().normalize('NFC').replace(/\s+/g,' ').trim();
     let offeredProducts: AgentV1TurnResult['offeredProducts'];
     const checkoutDetails: NonNullable<AgentV1TurnResult['checkoutDetails']> = {};
@@ -725,9 +728,12 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
     const turnDeadline = Date.now()+25000;
     const inferenceTurnId = randomUUID();
     let inferenceReason = 'initial';
+    // Complete interpretation and destination lookup add bounded protocol steps.
+    // The same turn deadline still applies, and a final model response is required.
+    const iterationLimit = this.maxIterations + (input.semanticInterpretation ? 2 : 0);
 
     try {
-      for (let i = 0; i < this.maxIterations; i++) {
+      for (let i = 0; i < iterationLimit; i++) {
         const body = applyOpenAiChatCompat(
           {
             model,
@@ -737,6 +743,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 ...tool.function.parameters,
                 properties: {...tool.function.parameters.properties, sourceText: {type:'string'}},
                 required: [...('required' in tool.function.parameters ? tool.function.parameters.required ?? [] : []),
+                  ...(tool.function.name === 'replace_item' ? ['targetText'] : []),
                   ...(semanticToolRequiresSource(tool.function.name) ? ['sourceText'] : [])],
               }}}))] : AGENT_TOOLS,
             tool_choice: input.semanticInterpretation
@@ -860,7 +867,26 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             ['purchase','edit','remove','checkout','cancel'].includes(segment.role) &&
             !fulfilledSemanticSegments.has(sourceKey(segment.text))) || !semanticTargetsComplete(semanticIntent,fulfilledSemanticTargets)) &&
             (Object.keys(actions).length > 0 || Object.keys(checkoutDetails).length > 0);
-          if (incompleteSemanticPlan) return {reply:'Necesito aclarar cómo debe quedar el pedido completo.',actions:{},toolCalls,error:'incomplete_semantic_plan'};
+          if (incompleteSemanticPlan) {
+            const pending = semanticIntent!.segments.filter(segment =>
+              ['purchase','edit','remove','checkout','cancel'].includes(segment.role) &&
+              (!fulfilledSemanticSegments.has(sourceKey(segment.text)) ||
+                (segment.productIds || []).some(id => !fulfilledSemanticTargets.get(sourceKey(segment.text))?.has(id))));
+            const existingEdits = pending.length > 0 && pending.every(segment => segment.role === 'edit' &&
+              segment.productIds?.length && segment.productIds.every(id => input.cart?.some(line => line.productId === id)));
+            if (!retriedSemanticPreservation && existingEdits && i + 2 < iterationLimit) {
+              retriedSemanticPreservation = true;
+              inferenceReason = 'recover_semantic_preservation';
+              messages.push({role:'system',content:
+                'La propuesta completa sigue sin aplicar. Estas cláusulas no tienen una operación acreditada: '+JSON.stringify(pending)+
+                '. Si piden conservar productos existentes, verifica cada línea mediante update_item con SU cantidad actual, sin añadirla otra vez. '+
+                'Si piden cambiar cantidad, nota u opciones, ejecuta ese cambio completo. No marques una modificación pendiente como conservada. '+
+                'replace_item sustituye UNA sola línea. Si la cláusula reúne varios productos en un único plato compuesto, retira las otras líneas de origen mediante remove_item. No verifiques como conservado un producto que debe desaparecer. '+
+                'Usa los índices estables de get_cart. No repitas compras o retiradas ya aceptadas. Si el alcance es ambiguo, pide aclaración.'});
+              continue;
+            }
+            return {reply:'Necesito aclarar cómo debe quedar el pedido completo.',actions:{},toolCalls,error:'incomplete_semantic_plan'};
+          }
           return {
             reply,
             actions,
@@ -889,6 +915,15 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           }
           if (input.semanticInterpretation) {
             let contractResult: string | undefined;
+            if (semanticIntent && semanticToolRequiresSource(name) && typeof args.sourceText === 'string' &&
+                !authorizeSemanticTool(semanticIntent,name,args.sourceText) &&
+                parseSemanticIntent({segments:[{text:args.sourceText,role:'conversation'}]},input.userMessage)) {
+              const bindingIntent = semanticIntent;
+              const owners = bindingIntent.segments.filter(segment =>
+                authorizeSemanticTool(bindingIntent,name,segment.text) &&
+                semanticToolTargetsAuthorized(bindingIntent,name,{...args,sourceText:segment.text},semanticLookupTargets));
+              if (owners.length === 1) args.sourceText = owners[0].text;
+            }
             if (name === 'interpret_message') {
               const parsed = parseSemanticIntent(args, input.userMessage);
               if (!parsed || parsed.segments.some(segment=>!Array.isArray(segment.productIds) || segment.productIds.some(id=>!byId.has(id))) ||
@@ -900,7 +935,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 contractResult = JSON.stringify({ok:true,segments:parsed.segments,
                   references:[...new Set(parsed.segments.flatMap(segment=>segment.productIds || []))].map(id=>this.productCard(byId.get(id)!))});
               }
-            } else if (!authorizeSemanticTool(semanticIntent, name, args.sourceText) || !semanticToolTargetsAuthorized(semanticIntent!,name,args)) {
+            } else if (!authorizeSemanticTool(semanticIntent, name, args.sourceText) || !semanticToolTargetsAuthorized(semanticIntent!,name,args,semanticLookupTargets)) {
               semanticRejected = true;
               contractResult = JSON.stringify({ok:false,error:'operation_not_authorized_by_complete_intent'});
             } else if (['add_item','update_item'].includes(name) && args.quantity !== undefined &&
@@ -909,7 +944,11 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               contractResult = JSON.stringify({ok:false,error:'invalid_semantic_quantity'});
             } else if (name === 'search_menu') {
               const segment = semanticIntent!.segments.find(segment=>segment.text.toLowerCase().normalize('NFC').replace(/\s+/g,' ').trim()===sourceKey(String(args.sourceText)));
-              if (segment?.productIds?.length) {
+              const query = typeof args.query === 'string' ? args.query : '';
+              const named = this.catalogService.productFullyNamedIn(query,input.products);
+              const scored = this.catalogService.searchByNameScored(query,input.products,8);
+              const identifiesProduct = !!named || this.catalogService.isStrongProductMatch(scored);
+              if (segment?.productIds?.length && !identifiesProduct) {
                 contractResult = JSON.stringify({ok:true,mode:'semantic_reference',query:args.query,
                   results:segment.productIds.map(id=>this.productCard(byId.get(id)!))});
               }
@@ -1019,6 +1058,17 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               lookupDeliveryTime = true;
             },
           });
+          if (input.semanticInterpretation && name === 'search_menu') {
+            const receipt = JSON.parse(toolResult);
+            if (receipt.ok) {
+              const cards = [...(Array.isArray(receipt.results) ? receipt.results : []),
+                ...(Array.isArray(receipt.drinks) ? receipt.drinks : []), receipt.product, receipt.host];
+              const key = sourceKey(String(args.sourceText));
+              const resolved = semanticLookupTargets.get(key) || new Set<number>();
+              for (const card of cards) if (card && Number.isSafeInteger(card.id) && byId.has(card.id)) resolved.add(card.id);
+              semanticLookupTargets.set(key,resolved);
+            }
+          }
           if (input.semanticInterpretation && semanticToolRequiresSource(name) && !['search_menu','resolve_multi_order'].includes(name) &&
               JSON.parse(toolResult).ok === true) {
             const key = sourceKey(String(args.sourceText));
@@ -1227,6 +1277,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       onAttributeChoice?: (edit: RejectedAttributeChoice, accepted: boolean) => void;
       /** Replacement inherits the old line's units unless the caller explicitly changed them. */
       preserveReplacementQuantity?: boolean;
+      inheritedReplacementAttributes?: Array<{ attributeName: string; attributeValue: string }>;
       verifiedDistributedProductId?: number;
       userMessage?: string;
       cart?: AgentV1TurnInput['cart'];
@@ -1721,7 +1772,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         if (product.availableNow === false) {
           return JSON.stringify({ ok: false, error: `"${product.name}" no disponible ahora` });
         }
-        if (Array.isArray(args.attributes) && args.attributes.some(choice=>!choice || typeof choice!=='object' ||
+        if (ctx.semanticInterpretation && args.attributes !== undefined && !Array.isArray(args.attributes) ||
+          Array.isArray(args.attributes) && args.attributes.some(choice=>!choice || typeof choice!=='object' ||
           typeof choice.attributeName!=='string' || typeof choice.attributeValue!=='string')) {
           return JSON.stringify({ok:false,error:'invalid_attribute_shape',attributes:this.productCard(product).attributes,
             hint:'Cada atributo requiere attributeName y attributeValue como texto. Usa los nombres y opciones del catálogo.'});
@@ -1767,12 +1819,12 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             attributeName:definition.attributeName,requestedOption:unsupported,
             hint:'Busca con search_menu el producto que permite esa opción. No la reemplaces por el valor predeterminado de otro SKU.'});
         }
-        const asked =
+        const asked = !ctx.semanticInterpretation && (
           isFailedAdditionQuestion(ctx.userMessage || '') ||
           this.catalogService.isAvailabilityInquiry(ctx.userMessage || '') ||
           this.catalogService.isPriceInquiryIntent?.(ctx.userMessage || '') ||
           this.catalogService.isCategoryBrowseQuestion(ctx.userMessage || '') ||
-          this.catalogService.isProductDescriptionInquiry(ctx.userMessage || '');
+          this.catalogService.isProductDescriptionInquiry(ctx.userMessage || ''));
         const conditionalPurchase = asked ? this.catalogService.conditionalPurchaseText(ctx.userMessage || '', ctx.products) : null;
         const verifiedMixedPurchase = ctx.verifiedDistributedProductId===product.id &&
           this.catalogService.explicitDistributedPurchaseBeforePriceInquiry(ctx.userMessage || '',product.id,ctx.products);
@@ -1785,7 +1837,14 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           });
         }
         const ownedText = scopedSource;
-        const wrapper = ownedText.match(/\b(ejecutivos?|combos?)\b/i)?.[1];
+        const wrapperMention = ownedText.match(/\b(ejecutivos?|combos?)\b/i)?.[1];
+        const variantPreference = this.catalogService.extractVariantPreferenceHint?.(ownedText);
+        const wrapper = wrapperMention && /^combo/i.test(wrapperMention) && variantPreference === 'solo'
+          ? undefined : wrapperMention;
+        if (variantPreference === 'solo' && this.catalogService.productImpliesCombo?.(product)) {
+          return JSON.stringify({ok:false,error:'excluded_combo_presentation',
+            hint:'El cliente pidió la presentación sin combo. Busca su producto normal y conserva las compras adicionales.'});
+        }
         if (wrapper && /pollo/i.test(product.name) && !new RegExp(wrapper.replace(/s$/i, ''), 'i').test(product.name)) {
           return JSON.stringify({ok:false,error:'different_presentation',
             hint:'El cliente pidió ejecutivo/combo, no el pollo ni la bebida por separado. Busca el SKU de esa presentación.'});
@@ -1958,6 +2017,10 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         let attributes = Array.isArray(args.attributes)
           ? (args.attributes as { attributeName: string; attributeValue: string }[])
           : undefined;
+        const isInheritedChoice = (choice: { attributeName: string; attributeValue: string }) =>
+          ctx.inheritedReplacementAttributes?.some(inherited =>
+            inherited.attributeName.toLowerCase() === choice.attributeName.toLowerCase() &&
+            inherited.attributeValue.toLowerCase() === choice.attributeValue.toLowerCase());
 
         // A catalog choice is an attribute even if the model put it in note.
         // This also scopes two variants of the same SKU to their own clauses.
@@ -1985,7 +2048,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           const explicitChoices = parsed.status === 'invalid' ? [] : parsed.attributes;
           attributes = (attributes || []).filter(choice => {
             const definition = product.attributes!.find(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
-            return !definition || !this.catalogService.requiresExplicitAttributeChoice?.(product, definition) ||
+            return isInheritedChoice(choice) || !definition || !this.catalogService.requiresExplicitAttributeChoice?.(product, definition) ||
               explicitChoices.some(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
           });
           if (parsed.status === 'complete' || parsed.status === 'partial' ||
@@ -1996,8 +2059,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               const explicit = explicitChoices.some(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
               // Preserve invalid values for the rejection below; only replace
               // valid choices invented by the model when the customer omitted them.
-              if (!explicit && definition?.options.some(o => o.toLowerCase() === choice.attributeValue.toLowerCase())) {
-                return defaults.find(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase()) || choice;
+              if (!explicit && !isInheritedChoice(choice) && definition?.options.some(o => o.toLowerCase() === choice.attributeValue.toLowerCase())) {
+                return ctx.inheritedReplacementAttributes?.find(inherited => inherited.attributeName.toLowerCase() === choice.attributeName.toLowerCase()) ||
+                  defaults.find(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase()) || choice;
               }
               return choice;
             });
@@ -2012,6 +2076,11 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             }
             attributes = selected;
           }
+          for (const inherited of ctx.inheritedReplacementAttributes || []) {
+            if (!attributes?.some(choice => choice.attributeName.toLowerCase() === inherited.attributeName.toLowerCase())) {
+              attributes = [...(attributes || []), inherited];
+            }
+          }
         }
 
         // El LLM no puede inventar atributos. Los cambios de guarnición
@@ -2022,6 +2091,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             const declared = (product.attributes || []).find((attr) =>
               attr.attributeName.toLowerCase() === String(choice.attributeName || '').toLowerCase());
             if (!declared) {
+              if (ctx.semanticInterpretation) return JSON.stringify({ok:false,error:'unknown_attribute',
+                attribute:String(choice.attributeName || '').slice(0,80),
+                hint:'Esa opción no pertenece al producto. Las instrucciones de cocina deben conservarse en note.'});
               const part = [choice.attributeName, choice.attributeValue].filter(Boolean).join(': ');
               if (part) note = [note, part].filter(Boolean).join('. ').slice(0, 200);
               continue;
@@ -2174,10 +2246,43 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             }
             return JSON.stringify({ok:true,productId,cartLineIndex,hint:'Es el mismo SKU; se modificó la línea conservando las otras variantes.'});
           }
+          const replacementIntent = ctx.semanticInterpretation
+            ? parseCartItemReplacement(ctx.userMessage || '', true)
+            : null;
+          let replacementSource = replacementIntent?.addQuery || ctx.userMessage;
+          if (ctx.semanticInterpretation && args.targetText !== undefined) {
+            const source = (ctx.userMessage || '').normalize('NFC');
+            const targetText = typeof args.targetText === 'string' ? args.targetText.normalize('NFC').trim() : '';
+            const start = targetText ? source.toLowerCase().lastIndexOf(targetText.toLowerCase()) : -1;
+            const end = start + targetText.length;
+            if (start < 0 || start > 0 && /[\p{L}\p{N}]/u.test(source[start - 1]) ||
+                end < source.length && /[\p{L}\p{N}]/u.test(source[end])) {
+              return JSON.stringify({ok:false,error:'invalid_replacement_evidence',
+                hint:'targetText debe copiar literalmente las palabras de destino escritas por el cliente, con sus preferencias. No copies un nombre inventado ni el nombre largo de la carta si no lo escribió.'});
+            }
+            replacementSource = source.slice(start);
+          }
+          const target = ctx.byId.get(Number(args.newProductId));
+          if (ctx.semanticInterpretation && args.targetText !== undefined && target &&
+              !this.catalogService.productNameFitsUtterance(target,replacementSource || '')) {
+            replacementSource = `${target.name} ${replacementSource || ''}`;
+          }
+          const inheritedAttributes = ctx.semanticInterpretation ? (line.attributes || []).flatMap(choice => {
+            const definition = target?.attributes?.find(attribute => attribute.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
+            const value = definition && this.catalogService.matchAttributeOptionValue(choice.attributeValue, definition.options);
+            return definition && value ? [{attributeName:definition.attributeName,attributeValue:value}] : [];
+          }) : [];
+          const replacementAttributes = ctx.semanticInterpretation && (args.attributes === undefined || Array.isArray(args.attributes))
+            ? [...inheritedAttributes.filter(inherited => !(args.attributes as Array<{attributeName:string}> | undefined)?.some(choice =>
+                choice?.attributeName?.toLowerCase() === inherited.attributeName.toLowerCase())),
+              ...((args.attributes || []) as Array<{attributeName:string;attributeValue:string}>)]
+            : args.attributes;
           const result = JSON.parse(this.executeTool('add_item', {
             productId:args.newProductId, quantity:args.quantity ?? line.quantity ?? 1,
-            note:typeof args.note === 'string' ? args.note : line.note, attributes:args.attributes,
-          },{...ctx,preserveReplacementQuantity:args.quantity === undefined}));
+            note:typeof args.note === 'string' ? args.note : line.note, attributes:replacementAttributes,
+          },{...ctx,preserveReplacementQuantity:!!ctx.semanticInterpretation || args.quantity===undefined,
+            inheritedReplacementAttributes:inheritedAttributes,
+            userMessage:replacementSource}));
           if (!result.ok) return JSON.stringify(result);
           removeLine();
           const replacement = this.toolCartView(ctx).find(c=>c.pendingAddIndex === ctx.actions.addItems!.length-1);
