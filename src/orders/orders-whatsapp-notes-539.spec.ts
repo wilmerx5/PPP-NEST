@@ -63,6 +63,7 @@ it('appends persisted item notes while preserving prices, identities and order s
     expect(Object.keys(call[2])).toEqual(['note']);
   }
   expect(h.service.gateway.emitOrdersUpdates).toHaveBeenCalledTimes(1);
+  expect(h.service.gateway.emitOrdersUpdates).toHaveBeenCalledWith('updated_order_items', expect.objectContaining({ id: 105 }));
 });
 
 it('a repeated note does not write or emit another update', async () => {

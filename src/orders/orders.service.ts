@@ -2867,7 +2867,7 @@ export class OrdersService {
         where: { id: orderId }, relations: ['items', 'items.product', 'items.attributes', 'extras'],
       });
       if (refreshed) {
-        this.gateway.emitOrdersUpdates('orderUpdated', await this.mapOrderToGroupedFormat(refreshed));
+        this.gateway.emitOrdersUpdates('updated_order_items', await this.mapOrderToGroupedFormat(refreshed));
       }
     } catch (error) {
       this.logger.warn(`Order note saved but update notification failed for order=${orderId}`);
