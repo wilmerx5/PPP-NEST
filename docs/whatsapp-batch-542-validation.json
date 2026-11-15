@@ -1,0 +1,471 @@
+{
+  "batch": 542,
+  "date": "2026-11-15",
+  "runtimeCommit": "c9033354632d70524c94d5eb24775ea24571c804",
+  "scope": "Staging active-order semantic routing, full-sentence corrections mixed with new purchases",
+  "implementation": {
+    "literalReplacementDestination": true,
+    "shortDestinationMustPreserveCategoryUnlessConfiguredRelation": true,
+    "explicitFullyNamedDestinationCanChangeCategory": true,
+    "compatibleAttributesInherited": true,
+    "destinationSearchScopedToIntentSegment": true,
+    "wholeMessageCitationRequiresUniqueAuthorizedOwner": true,
+    "onlyAdditiveConjunctionGapsAllowed": true,
+    "semanticIterationLimit": 8,
+    "turnDeadlineMs": 25000,
+    "boundedPreservationRecovery": true,
+    "multiSentenceSingleCorrectionPrompt": true,
+    "legacyQuestionHeuristicsBypassedOnlyAfterSemanticAuthorization": true,
+    "restaurantIndependentRuntime": true,
+    "compositeCorrectionPromptRequiresReplacingOneAndRemovingOtherOrigins": true,
+    "shortDestinationCategoryCheckRequiresBothProductsCategorized": true
+  },
+  "local": {
+    "passedTests": 52745,
+    "suites": 629,
+    "sourceFiles": 867,
+    "focusedTests": 728,
+    "newRegressionTests": 506,
+    "compiledLocalTests": 1431,
+    "semanticPersistenceSqlContracts": 8,
+    "recordedProviderReplayRequests": 21,
+    "paidInferenceRequests": 57,
+    "acceptedRealModelCases": 3,
+    "externalOrders": 0,
+    "metaMessages": 0
+  },
+  "staging": {
+    "semanticSmoke": {
+      "ok": true,
+      "totalCompiledTests": 1431,
+      "compiledPilotIncidentTests": 385,
+      "semanticMixedTests": 506,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "semanticRoutingEnabled": true,
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "totalCompiledTests": 1431,
+      "compiledPilotIncidentTests": 385,
+      "semanticMixedTests": 506,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 2176,
+    "currentCatalogReplay": {
+      "ok": true,
+      "currentCatalogControls": 10,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "c9033354632d70524c94d5eb24775ea24571c804",
+    "image": "sha256:4e475134dcc3c65e51a2ecb7421ea62813fd865d6bbdbb16a6c3188ce70bd9b8",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 56.14,
+        "heapTotal": 66.59,
+        "rss": 128.43
+      },
+      "timestamp": "2026-11-15T15:22:40.479Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 56.27,
+        "heapTotal": 66.59,
+        "rss": 128.68
+      },
+      "timestamp": "2026-11-15T15:22:40.701Z"
+    },
+    "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-15T15:25:43.523519+00:00",
+    "backup": "/root/ppp-manual-release/20261115T151858Z-staging-542"
+  },
+  "effectiveConfiguration": {
+    "ok": true,
+    "semanticRoutingEnabled": true,
+    "agentV1Enabled": true,
+    "effectiveKeyPresent": true,
+    "model": "gpt-6-luna",
+    "complexModel": "gpt-6.1-sol",
+    "databaseWrites": 0,
+    "inferenceRequests": 0
+  },
+  "compiledRuntimeHashesMatchLocalBuild": {
+    "whatsapp/whatsapp-agent.service.js": "a23f138c01cbd338cce0e63ed3dde2df5160d9797e543b813b748bca62de119b",
+    "whatsapp/whatsapp-semantic-intent.js": "af7f589a1f6009ce961d363b5d401c5855ed17236124879f2d041b7a8f3003fb",
+    "whatsapp/whatsapp-orchestrator.service.js": "022cf0e8dbd4d5cbc1f0153c8bc59e639a77674b7e4e088a0265a8e9290abad2"
+  },
+  "productionVerification": {
+    "ppp": {
+      "image": "sha256:49907e5adcfba144e3fc1485214c4b107d283fcf4601fdbb4d91cca2fea8a06e",
+      "startedAt": "2026-11-14T21:29:52.290032372Z",
+      "restarts": 0,
+      "running": true,
+      "health": null
+    },
+    "kamppo": {
+      "image": "sha256:75151b2d05da57929b9afeefe8eb871d1ff61bb2208ec88e33d5d53e6874bc97",
+      "startedAt": "2026-11-14T21:31:51.399139516Z",
+      "restarts": 0,
+      "running": true,
+      "health": "healthy"
+    },
+    "runtimeMatchesPreDeployBaseline": true,
+    "pppHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 75.36,
+        "heapTotal": 83.48,
+        "rss": 148.64
+      },
+      "timestamp": "2026-11-15T15:29:03.331Z"
+    },
+    "kamppoHealth": {
+      "status": "ok",
+      "service": "kamppo-api",
+      "name": "sapita",
+      "db": "up",
+      "ts": "2026-11-15T15:29:03.405Z"
+    }
+  },
+  "realInference": {
+    "model": "gpt-6-luna",
+    "actualHttpAttempts": 57,
+    "allHttp200": true,
+    "acceptedFinalCases": [
+      {
+        "id": "pechuga-executive-replacement-with-new-drink",
+        "accepted": true,
+        "text": "El ejecutivo que tiene ala pechuga cámbiamelo a broaster y agrégame una limonada.",
+        "cart": [
+          {
+            "productId": 22,
+            "code": 22,
+            "name": "Ejecutivo Con Pollo Frito",
+            "quantity": 1,
+            "unitPrice": 25000,
+            "attributes": [
+              {
+                "attributeName": "Presa",
+                "attributeValue": "Pierna Pernil"
+              },
+              {
+                "attributeName": "Sopa",
+                "attributeValue": "Ajiaco"
+              },
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Limonada"
+              }
+            ],
+            "note": "Poca azúcar"
+          },
+          {
+            "productId": 20,
+            "code": 20,
+            "name": "Sopa De Menudencias",
+            "quantity": 1,
+            "unitPrice": 12000,
+            "attributes": []
+          },
+          {
+            "productId": 18,
+            "name": "Ejecutivo Con Pollo Broaster",
+            "code": 18,
+            "unitPrice": 26000,
+            "quantity": 1,
+            "note": "Bebida sin hielo",
+            "attributes": [
+              {
+                "attributeName": "Presa",
+                "attributeValue": "Ala pechuga"
+              },
+              {
+                "attributeName": "Sopa",
+                "attributeValue": "Ajiaco"
+              },
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Coca Cola"
+              }
+            ]
+          },
+          {
+            "productId": 37,
+            "name": "Limonada Natural",
+            "code": 37,
+            "unitPrice": 5000,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "reply": "🛒 *Carrito*\n*1.* *Ejecutivo Con Pollo Frito* · *$25.000*\n   _Presa: Pierna Pernil · Sopa: Ajiaco · Bebida: Limonada_\n   📝 _Poca azúcar_\n*2.* *Sopa De Menudencias* · *$12.000*\n*3.* *Ejecutivo Con Pollo Broaster* · *$26.000*\n   _Presa: Ala pechuga · Sopa: Ajiaco · Bebida: Coca Cola_\n   📝 _Bebida sin hielo_\n*4.* *Limonada Natural* · *$5.000*\n────────────\nSubtotal $68.000\n*Total $68.000*\n\n¿*Algo más*?",
+        "providerResponses": 7,
+        "providerLatencyMsSum": 17643,
+        "mode": "recorded real-provider prefix plus real-provider continuation",
+        "independentHoldout": false
+      },
+      {
+        "id": "keep-soups-remove-two-lines-buy-one-side",
+        "accepted": true,
+        "text": "Solo déjame las dos sopas, quita el pollo y la limonada, y añádeme una porción de papa francesa.",
+        "cart": [
+          {
+            "productId": 38,
+            "code": 38,
+            "name": "Sopa De Ajiaco",
+            "quantity": 1,
+            "unitPrice": 12000,
+            "attributes": []
+          },
+          {
+            "productId": 20,
+            "code": 20,
+            "name": "Sopa De Menudencias",
+            "quantity": 1,
+            "unitPrice": 12000,
+            "attributes": []
+          },
+          {
+            "productId": 9,
+            "name": "Porción De Papa Francesa",
+            "code": 9,
+            "unitPrice": 8000,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "reply": "🛒 *Carrito*\n*1.* *Sopa De Ajiaco* · *$12.000*\n*2.* *Sopa De Menudencias* · *$12.000*\n*3.* *Porción De Papa Francesa* · *$8.000*\n────────────\nSubtotal $32.000\n*Total $32.000*\n\n¿*Algo más*?",
+        "providerResponses": 7,
+        "providerLatencyMsSum": 14003,
+        "mode": "recorded real-provider prefix plus real-provider continuation",
+        "independentHoldout": false
+      },
+      {
+        "id": "two-separate-lines-reformulated-as-one-composite-dish",
+        "accepted": true,
+        "text": "Lo que quiero es un solo arroz chino con costillas de cerdo, sin gaseosa. Corrige esos dos productos para que quede ese plato.",
+        "cart": [
+          {
+            "productId": 84,
+            "name": "Arroz Chino Con Costillas De Cerdo",
+            "code": 84,
+            "unitPrice": 50000,
+            "quantity": 1,
+            "note": "sin gaseosa",
+            "attributes": []
+          }
+        ],
+        "reply": "🛒 *Carrito*\n*1.* *Arroz Chino Con Costillas De Cerdo* · *$50.000*\n   📝 _sin gaseosa_\n────────────\nSubtotal $50.000\n*Total $50.000*\n\n¿*Algo más*?",
+        "providerResponses": 7,
+        "providerLatencyMsSum": 11510,
+        "mode": "fresh development retest",
+        "independentHoldout": false
+      }
+    ],
+    "developmentAttemptFiles": [
+      {
+        "file": "initial-live-requests.json",
+        "requests": 6
+      },
+      {
+        "file": "missing-conjunction-live-requests.json",
+        "requests": 1
+      },
+      {
+        "file": "lookup-continuation-live-requests.json",
+        "requests": 5
+      },
+      {
+        "file": "short-destination-live-requests.json",
+        "requests": 6
+      },
+      {
+        "file": "whole-source-live-requests.json",
+        "requests": 3
+      },
+      {
+        "file": "iteration-limit-live-requests.json",
+        "requests": 6
+      },
+      {
+        "file": "preservation-live-requests.json",
+        "requests": 5
+      },
+      {
+        "file": "composite-incomplete-live-requests.json",
+        "requests": 10
+      },
+      {
+        "file": "composite-missing-removal-live-requests.json",
+        "requests": 8
+      },
+      {
+        "file": "live-requests.json",
+        "requests": 7
+      }
+    ],
+    "finalCompiledReplayProviderResponses": 21,
+    "paidCallsDuringReplay": 0,
+    "originalApiKeyTemporaryFileRemoved": true,
+    "independentHoldout": false
+  },
+  "adversarialCategoryVerification": {
+    "accepted": true,
+    "syntheticModifiedToolPayload": true,
+    "realModelEvaluation": false,
+    "paidCalls": 0,
+    "cartPreserved": true
+  },
+  "coverage": {
+    "newOfflineCases": 506,
+    "completeMultiTurnMatrixCases": 384,
+    "matrixDimensions": [
+      "two catalogues",
+      "three order states",
+      "eight complete correction phrases",
+      "one or two original units",
+      "one or two newly purchased units",
+      "either tool order"
+    ],
+    "providerMockedForOfflineCases": true,
+    "providerActualForThreeFinalCases": true,
+    "historicFixturesGenerallyUseLegacyMode": true,
+    "new542AndFour541SuitesEnableSemanticRouting": true,
+    "sqlContractsUseDisposableMariaDb": true,
+    "customerPersistenceAndTransportsIsolated": true
+  },
+  "budget": {
+    "authorizedRequests": 342,
+    "usedRequests": 341,
+    "remainingRequests": 1
+  },
+  "operationalCapsChosenByAgent": true,
+  "developmentValidationFailuresRetained": [
+    "initial SKU destination resolution",
+    "omitted additive connector",
+    "relative clause misclassified by legacy question heuristic",
+    "short destination resolved as whole chicken",
+    "whole-message tool citation",
+    "six-round protocol limit",
+    "unverified preservation clause",
+    "composite edit split into duplicate clauses",
+    "composite correction omitted redundant line removal",
+    "compiled custom Jest shim lacked mock.results",
+    "focused command referenced missing suite path",
+    "redundant default ts-jest run interrupted",
+    "additional adversarial diagnostic exposed cross-category presentation loss; corrected and final global repeated",
+    "intermediate category-refinement run interrupted before final source freeze"
+  ],
+  "remaining": [
+    "Representative independent model and real-channel pilot measurement",
+    "Per-unit option correction mixed with new purchase remains bounded by existing protocol and can require clarification",
+    "Location and address corrections after confirmation mixed with new purchase need a separate final-router regression batch",
+    "Reproduce remaining historical incidents against current semantic candidate before marking each closed",
+    "PPP production promotion and native restaurant-scoped Kamppo adaptation"
+  ],
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "validationDirectory": "/home/levi/.codex/tmp/ppp-542-validation",
+  "checkedAt": "2026-11-15T15:32:17.515244+00:00"
+}
