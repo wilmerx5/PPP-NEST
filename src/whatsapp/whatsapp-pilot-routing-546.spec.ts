@@ -288,3 +288,42 @@ it('repeating an applied note preserves its result without another model call',a
   expect(await h.sendQueued(text)).not.toMatch(/aclaras/i);
   expect(network).toHaveBeenCalledTimes(3);expect(h.conv.sessionData.cart).toEqual(before);
 });
+
+for (const menu of menus) for (const continuation of ['included', 'additional', 'inquiry']) {
+  it(`a deferred semantic family keeps its purchase scope ${menu[0].name}/${continuation}`,async()=>{
+    const alternative={...menu[1],id:54605,code:99,name:menu[1].name+' Especial'};
+    const h=setup([...menu,alternative]);h.conv.sessionData.cart=[];
+    const purchase='Me vendes un combo con gaseosa manzana por fa';
+    const extra=continuation==='additional' ? `y una ${menu[3].name} aparte` : continuation==='inquiry' ? `y cuánto vale la ${menu[3].name}` : '';
+    const text=purchase+(extra?' '+extra:'');
+    const network=jest.spyOn(global,'fetch')
+      .mockResolvedValueOnce(answer(null,[call('interpret_message',{segments:[{text:purchase,role:'purchase',productIds:[54602,54605]},
+        ...(extra?[{text:extra,role:continuation==='additional'?'purchase':'inquiry',productIds:[54604]}]:[])]})]))
+      .mockResolvedValueOnce(answer(null,[call('offer_products',{sourceText:purchase,productIds:[54602,54605],quantity:1,note:'Gaseosa Manzana.'}),
+        ...(continuation==='additional'?[call('add_item',{sourceText:extra,productId:54604,quantity:1})]:[])]))
+      .mockResolvedValueOnce(answer('Elige el combo.'));
+    await h.sendQueued(text);
+    expect(h.conv.sessionData.pendingMatch.query).toBe(purchase);
+    expect(h.conv.sessionData.pendingMatch.semanticOffer).toBe(true);
+    const reply=await h.sendQueued('1');
+    expect(reply).not.toMatch(/aclaras|no entend/i);expect(network).toHaveBeenCalledTimes(3);
+    expect(h.conv.sessionData.cart).toHaveLength(continuation==='additional'?2:1);
+    const combo=h.conv.sessionData.cart.find(line=>line.productId===54602);
+    expect(combo.quantity).toBe(1);expect(combo.attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Manzana'});
+    expect(h.conv.sessionData.cart.some(line=>line.productId===54603)).toBe(false);
+    if(continuation==='additional')expect(h.conv.sessionData.cart.find(line=>line.productId===54604).quantity).toBe(1);
+  });
+}
+
+for(const menu of menus) for(const separate of [false,true]) it(`an older family offer keeps included and separate drinks distinct ${menu[0].name}/${separate}`,async()=>{
+  const alternative={...menu[1],id:54605,code:99,name:menu[1].name+' Especial'};
+  const h=setup([...menu,alternative]);
+  h.conv.sessionData={cart:[],orderType:'delivery',pendingMatch:{
+    query:separate?'Me vendes un combo y una gaseosa manzana aparte':'Me vendes un combo con gaseosa manzana por fa',
+    candidates:[menu[1],alternative],quantity:1,intent:'order',note:'Gaseosa Manzana.'}};
+  const reply=await h.sendQueued('1');
+  expect(reply).not.toMatch(/aclaras|no entend/i);expect(global.fetch).not.toHaveBeenCalled();
+  expect(h.conv.sessionData.cart).toHaveLength(separate?2:1);
+  expect(h.conv.sessionData.cart.find(line=>line.productId===54602).quantity).toBe(1);
+  expect(h.conv.sessionData.cart.some(line=>line.productId===54603)).toBe(separate);
+});

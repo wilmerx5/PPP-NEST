@@ -11214,13 +11214,23 @@ export class WhatsappOrchestratorService {
       .filter((item): item is { product: MenuProduct; segment: string } => !!item);
     const stored = (pending.query || '').trim();
     const multi =
-      siblings.length || !stored
+      siblings.length || !stored || pending.semanticOffer
         ? null
         : this.catalogService.resolveMultiProductOrder(stored, products);
     const fromResolve = [
       ...(multi?.confident || []),
       ...(multi?.needsAttributes || []),
-    ].filter((row) => row.product.id !== chosen.id && !familyIds.has(row.product.id));
+    ].filter((row) => {
+      if (row.product.id === chosen.id || familyIds.has(row.product.id)) return false;
+      // Older offers have no semantic marker. Keep an included flavour on
+      // its host while preserving explicitly separate or differently sized drinks.
+      if (!this.catalogService.isLikelyDrinkProduct(row.product) ||
+          !this.catalogService.drinkTextMatchesAttribute(chosen,row.segment) ||
+          this.catalogService.wantsSeparateDrink(stored)) return true;
+      const requestedVolume = this.catalogService.extractRequestedDrinkVolumeMl(row.segment);
+      const includedVolume = this.catalogService.extractRequestedDrinkVolumeMl(chosen.description || '');
+      return requestedVolume !== null && requestedVolume !== includedVolume;
+    });
     const others = siblings.length
       ? siblings
       : fromResolve.map((row) => ({ product: row.product, segment: row.segment }));
@@ -29550,7 +29560,7 @@ export class WhatsappOrchestratorService {
       if (!candidates.length || candidates.some(product=>!product)) return clarify();
       const replacementLine = offer.replaceCartLineIndex === undefined ? undefined : session.cart[offer.replaceCartLineIndex];
       if (roles.has('edit') && (!replacementLine || replacementLine.quantity!==offer.quantity)) return clarify();
-      next = {...next,pendingMatch:{query:text,candidates:candidates as MenuProduct[],quantity:offer.quantity,
+      next = {...next,pendingMatch:{query:offer.sourceText || text,semanticOffer:true,candidates:candidates as MenuProduct[],quantity:offer.quantity,
         intent:roles.has('purchase') || replacementLine ? 'order' : 'info',note:offer.note,
         ...(replacementLine ? {replacement:{originalLine:structuredClone(replacementLine)}} : {}),
         ...(offer.attributes ? {offeredAlternatives:offer.productIds.map(productId=>({productId,attributes:offer.attributes!}))} : {})}};

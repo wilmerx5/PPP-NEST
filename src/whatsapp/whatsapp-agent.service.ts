@@ -80,7 +80,7 @@ type RejectedReplacement = {
 export type AgentV1TurnResult = {
   semanticIntent?: SemanticIntent;
   fulfilledSemanticSegments?: string[];
-  offeredProducts?: {productIds:number[];quantity:number;replaceCartLineIndex?:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>};
+  offeredProducts?: {productIds:number[];quantity:number;sourceText?:string;replaceCartLineIndex?:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>};
   checkoutDetails?: { customerName?: string; contactPhone?: string };
   reply: string;
   actions: AiOrderAction;
@@ -1052,7 +1052,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 semanticRejected = true;
                 contractResult = JSON.stringify({ok:false,error:'invalid_product_choice'});
               } else {
-                offeredProducts = {productIds:ids as number[],quantity:Number(quantity),
+                offeredProducts = {productIds:ids as number[],quantity:Number(quantity),sourceText:segment.text,
                   ...(typeof replacementIndex==='number' ? {replaceCartLineIndex:replacementIndex} : {}),
                   ...(typeof args.note==='string' ? {note:args.note.slice(0,500)} : {}),
                   ...(attributes ? {attributes:attributes as Array<{attributeName:string;attributeValue:string}>} : {})};

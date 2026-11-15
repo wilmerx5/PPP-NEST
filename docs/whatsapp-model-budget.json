@@ -1,21 +1,21 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 459,
-  "usedRequests": 455,
-  "remainingRequests": 4,
+  "authorizedRequests": 463,
+  "usedRequests": 461,
+  "remainingRequests": 2,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 19,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-11-15T22:15:05.262Z",
+  "lastAttemptAt": "2026-11-15T23:00:55.396Z",
   "latestEvaluation": {
     "date": "2026-11-15",
-    "requests": 27,
-    "successfulActualModelRequests": 27,
+    "requests": 33,
+    "successfulActualModelRequests": 33,
     "developmentOnly": true,
     "model": "gpt-6-luna",
     "report": "docs/whatsapp-batch-546-validation.json",
-    "scope": "Five-call conversion accepted. Eight-call contextual inquiry diagnostic failed and retained. Ten-call contextual development sequence exposed an incorrectly assigned unscoped honey note, which a weak initial assertion had accepted; now protected with deterministic persisted host selection and stricter regressions. Final fresh four-call compound rice/address request after completed state accepted through four-turn isolated checkout, including the exact follow-up phone. No Meta sends or external orders. Final recorded responses must be replayed on deployed image.",
+    "scope": "Five-call conversion accepted. Eight-call contextual inquiry diagnostic failed and retained. Ten-call contextual development sequence exposed an incorrectly assigned unscoped honey note, which a weak initial assertion had accepted; now protected with deterministic persisted host selection and stricter regressions. Final fresh four-call compound rice/address request after completed state accepted through four-turn isolated checkout, including the exact follow-up phone. No Meta sends or external orders. Final recorded responses must be replayed on deployed image. Additional three-request two-turn family choice reproduced a duplicate included drink in the legacy continuation. After ownership/source-scope correction, a fresh three-request two-turn case passed with one combo and its included Manzana. Initial failed oracle also hardcoded a row identity and was corrected to the actual offered second candidate; the duplicate-cart failure remains valid.",
     "temporaryLimitChosenByAgent": true
   },
   "authorizationExtensions": [
@@ -33,7 +33,7 @@
     {
       "date": "2026-10-14",
       "additionalRequests": 10,
-      "evidence": "User: te autorizo a añadir mas llamadas , continua con el plan",
+      "evidence": "User: te autorizo a a\u00f1adir mas llamadas , continua con el plan",
       "executionLimit": "10 requests maximum; one repetition; stop at first failing conversation"
     },
     {
@@ -218,7 +218,7 @@
       "executed": 1,
       "accepted": 1,
       "requests": 1,
-      "note": "Pregunta abierta de celebración, sin pedido. El modelo no agregó platos; el router descartó esa respuesta y guardó una dirección falsa. Quedó corregido en local después de la llamada.",
+      "note": "Pregunta abierta de celebraci\u00f3n, sin pedido. El modelo no agreg\u00f3 platos; el router descart\u00f3 esa respuesta y guard\u00f3 una direcci\u00f3n falsa. Qued\u00f3 corregido en local despu\u00e9s de la llamada.",
       "usedTotal": 36,
       "remaining": 4
     },
@@ -638,7 +638,7 @@
       "usedTotal": 74,
       "report": "/tmp/ppp-fresh-mixed-correction-live.json",
       "findings": [
-        "Fresh conditional purchase failed before model: deterministic multi shortcut dropped bowl and declared omítelo/no quiero otro postre as unavailable dishes",
+        "Fresh conditional purchase failed before model: deterministic multi shortcut dropped bowl and declared om\u00edtelo/no quiero otro postre as unavailable dishes",
         "Diagnosed free; conditional purchase routed before partial deterministic interpretation"
       ]
     },
@@ -728,7 +728,7 @@
       "requests": 12,
       "usedTotal": 166,
       "remaining": 17,
-      "note": "Falafel 8 turnos aceptado (desarrollo, no holdout). Turno 2 search_menu devolvió not_on_menu para pregunta descriptiva; el modelo respondió bien desde description."
+      "note": "Falafel 8 turnos aceptado (desarrollo, no holdout). Turno 2 search_menu devolvi\u00f3 not_on_menu para pregunta descriptiva; el modelo respondi\u00f3 bien desde description."
     },
     {
       "date": "2026-10-15",
@@ -739,7 +739,7 @@
       "requests": 0,
       "usedTotal": 166,
       "remaining": 17,
-      "note": "Muestra nueva pizza (independiente, congelada 39c06901) falla turno 0 sin llamar al modelo: reglas declaran ambiguas Pizza Hawaiana/Pepperoni aunque el cliente nombró cada una; solo agrega empanadas. Defecto determinista."
+      "note": "Muestra nueva pizza (independiente, congelada 39c06901) falla turno 0 sin llamar al modelo: reglas declaran ambiguas Pizza Hawaiana/Pepperoni aunque el cliente nombr\u00f3 cada una; solo agrega empanadas. Defecto determinista."
     },
     {
       "date": "2026-10-15",
@@ -759,7 +759,7 @@
       "requests": 0,
       "usedTotal": 166,
       "remaining": 17,
-      "note": "Retest pizza tras foco de lasagna y notas: turnos 0-1 pasan; turno 2 'agrégame una gaseosa sprite' no agrega (cart/attributes). Sin llamadas al modelo. Corregido en 4fc3c579 junto con quitar con muletilla (turno 3) y nota de pago (turno 5) hallados offline."
+      "note": "Retest pizza tras foco de lasagna y notas: turnos 0-1 pasan; turno 2 'agr\u00e9game una gaseosa sprite' no agrega (cart/attributes). Sin llamadas al modelo. Corregido en 4fc3c579 junto con quitar con muletilla (turno 3) y nota de pago (turno 5) hallados offline."
     },
     {
       "date": "2026-10-15",
@@ -770,7 +770,7 @@
       "requests": 4,
       "usedTotal": 170,
       "remaining": 13,
-      "note": "Pizza 6 turnos aceptado (desarrollo, no independiente): quitar con muletilla deja 2 empanadas, gaseosa sprite agregada, efectivo con billete de 100 sin nota de cocina. Lasagna responde con la ficha (pan de ajo en description), sin un sí/no explícito."
+      "note": "Pizza 6 turnos aceptado (desarrollo, no independiente): quitar con muletilla deja 2 empanadas, gaseosa sprite agregada, efectivo con billete de 100 sin nota de cocina. Lasagna responde con la ficha (pan de ajo en description), sin un s\u00ed/no expl\u00edcito."
     },
     {
       "date": "2026-10-15",
@@ -914,6 +914,15 @@
       "authorization": "Standing user authorization for moderate continued inference; this numeric cap is chosen by the agent",
       "executionLimit": "One reserved synthetic unit-option turn; maximum4 requests, one repetition, stop on first failing case",
       "case": "reserved-unit-options-shawarma-1710"
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 4,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "authorization": "Standing user authorization for moderate API validation and prioritizing blocks.",
+      "case": "546-deferred-combo-flavour",
+      "executionLimit": "One fresh two-turn development case, maximum8 requests including existing4, stop first failure. No Meta or external orders."
     }
   ],
   "latestUnitOptionEvaluation": {

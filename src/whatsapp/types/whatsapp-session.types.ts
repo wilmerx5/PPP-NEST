@@ -154,6 +154,8 @@ export type WhatsappSessionData = {
   /** A product list left without a pick; recalled once before the final summary. */
   droppedPick?: { query: string; candidates: WhatsappProductCandidate[]; shown?: boolean };
   pendingMatch?: {
+    /** This choice owns only the already interpreted offer, not fresh purchases inferred from its text. */
+    semanticOffer?: boolean;
     /** Database family that owns this combo conversion offer. */
     configuredComboBaseProductId?: number;
     /** Complete per-unit catalog options retained while the product preparation is chosen. */
