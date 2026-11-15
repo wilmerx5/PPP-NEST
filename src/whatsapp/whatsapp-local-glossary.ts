@@ -8,11 +8,21 @@ import { normalizeSideSwapPhrase } from './whatsapp-kitchen-preference';
  * Fuente: chats reales humano↔cliente (corpus 2026-08) + bugs de prod.
  */
 
+/** A purchase introduction belongs to the sentence, never to the menu lookup. */
+export function normalizePurchaseIntroduction(text: string): string {
+  return text.replace(
+    /^(?:(?:hola|buenas(?:\s+(?:tardes|noches))?|buenos\s+d[ií]as|buen\s+d[ií]a|por\s+favor|porfa|veci(?:no|na)?)[\s,!.-]+)*(?:(lo\s+que\s+(?:yo\s+)?(?:quiero|quieor|qiero|kiero|deseo|necesito)\s+es)|(?:(?:para|quiero|quisiera|deseo|necesito|me\s+gustar[ií]a)\s+)?(?:hacer|realizar)\s+(?:un|el|mi)\s+pedido\s+(?:de|con))\s+(?=\S)/i,
+    (_match, restatement: string | undefined) => restatement ? 'lo que quiero es ' : 'quiero ',
+  );
+}
+
 /** Reescrituras de frase (orden importa: más específicas primero). */
 const PHRASE_REWRITES: Array<{
   re: RegExp;
   to: string | ((match: string, ...groups: string[]) => string);
 }> = [
+  // Composition questions with common spelling errors remain questions.
+  { re: /\bc[oó]mo\s+(?:bienes|vienes)\b/gi, to: 'como viene' },
   // Numbered road shorthand, independent of restaurant or place names.
   { re: /^cr\.?\s*(?=\d)/i, to: 'Carrera ' },
   // A quantity adjective about condiment packets is a kitchen note.
@@ -243,7 +253,7 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bejeuctivo\b/gi, to: 'ejecutivo' },
   { re: /\bejecutvo\b/gi, to: 'ejecutivo' },
   { re: /\ble\s+men[uú]\b/gi, to: 'el menu' },
-  { re: /\b(?:roaster|broster|brouster)\b/gi, to: 'broaster' },
+  { re: /\b(?:roaster|broster|brouster|broastes)\b/gi, to: 'broaster' },
   { re: /\bfrittos?\b/gi, to: 'frito' },
   { re: /\bplacha\b/gi, to: 'plancha' },
   { re: /\bgritarme\b/gi, to: 'fritarme' },
@@ -320,7 +330,7 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
  */
 export function applyLocalGlossary(text: string): string {
   // A truncated purchase verb must be repaired before phrase/side-swap parsing.
-  const source = (text || '').trim().replace(/^uiero(?=\s+(?:un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b)/i,'quiero')
+  const source = normalizePurchaseIntroduction((text || '').trim()).replace(/^uiero(?=\s+(?:un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b)/i,'quiero')
     .replace(/(\p{L})[`´](?=\p{L})/gu, '$1')
     .replace(/\b(?:quieor|qiero|quiro|qiuero|quieri)\b/gi, 'quiero');
   let out = normalizeSideSwapPhrase(source);

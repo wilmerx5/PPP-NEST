@@ -10,7 +10,7 @@ import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { productCategoryNames, productInCategory } from './whatsapp-product-categories';
 import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
-import { applyLocalGlossary } from './whatsapp-local-glossary';
+import { applyLocalGlossary, normalizePurchaseIntroduction } from './whatsapp-local-glossary';
 import { editDistance } from './whatsapp-message-classify';
 import { expandDistributedVariants, expandSpokenSameSkuPair } from './whatsapp-distributed-variants';
 import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
@@ -8984,10 +8984,11 @@ export class WhatsappCatalogService {
     if (!raw || raw.length < 5) return false;
     if (this.isPriceInquiryIntent(text)) return false;
 
-    const q = normalizeText(raw);
+    const q = normalizeText(fixCommonOrderTypos(raw));
 
     // Peso / rinde / porciones: incluso si dice "quiero pedir X, ¿para cuántas alcanza?"
     const sizeOrYieldAsk =
+      /\b(?:que tan (?:grande|pequen[oa]) (?:es|son)|(?:de )?que tamano (?:es|son|tiene|tienen))\b/.test(q) ||
       /\b(de\s+)?cuantos\s+gramos\b/.test(q) ||
       /\bcuanto\s+pesa\b/.test(q) ||
       (/\b(peso|gramos?|kilogramos?|kg)\b/.test(q) &&
@@ -9914,7 +9915,7 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): MultiProductResolveResult | null {
-    text = text.replace(PURCHASE_PREAMBLE, '');
+    text = normalizePurchaseIntroduction(text).replace(PURCHASE_PREAMBLE, '');
     text = omitSubstitutionChoice(this.sharedOrderModifier(text)?.body ?? text);
     // Catalog-backed alternate word order: "burger especial en combo" names
     // the same SKU as "Combo Burger Especial". Preserve quantities and extras.

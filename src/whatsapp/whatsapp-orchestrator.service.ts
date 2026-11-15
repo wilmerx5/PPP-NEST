@@ -3639,7 +3639,7 @@ export class WhatsappOrchestratorService {
       const numericParts = (value: string) => (value.match(/\d+(?:\s*\/\s*\d+)?/g) || []).map(part => part.replace(/\s/g,''));
       const requestedNumbers = new Set(numericParts(originalText));
       const fullNames = menu.filter(product => this.catalogService.productFullyNamedIn(originalText,[product]) &&
-        numericParts(product.name).every(part => requestedNumbers.has(part)));
+        numericParts(product.name.replace(/^1\s+/, '')).every(part => requestedNumbers.has(part)));
       const wordsOf = (name: string) => this.normalizeForMatch(name).split(/[^a-z0-9]+/).filter(word => word.length >= 3);
       const named = fullNames.filter(product => !fullNames.some(other => other.id !== product.id &&
         wordsOf(other.name).length > wordsOf(product.name).length &&
@@ -3725,7 +3725,7 @@ export class WhatsappOrchestratorService {
         return;
       }
       const withClause = originalText.trim().match(/^con\s+(.+)$/i);
-      if (withClause && mentionsLine(withClause[1])) {
+      if (withClause && mentionsLine(withClause[1]) && !this.catalogService.isProductDescriptionInquiry(originalText)) {
         await this.reply(conv, msg.waId, `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${this.formatContinueShoppingPrompt(session)}`);
         return;
       }
@@ -12024,6 +12024,8 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const raw = (text || '').trim();
     if (raw.length < 3) return false;
+    if (this.catalogService.isProductDescriptionInquiry(raw) &&
+        !this.catalogService.looksLikeExplicitAddProductRequest(raw)) return false;
     if (this.resolvePaymentChoice(raw, cfg)) return false;
     if (this.looksLikePaymentMethodQuestion(raw)) return false;
     if (this.looksLikePhoneNumber(raw)) return false;
@@ -13388,6 +13390,14 @@ export class WhatsappOrchestratorService {
 
     const stripped = this.catalogService.stripProductDescriptionInquiryNoise(text);
     const query = this.catalogService.extractProductSearchQuery(stripped || text);
+
+    // A fully named cart dish remains the subject of a factual follow-up.
+    // Other presentations in the catalog do not open a new purchase selection.
+    const namedQuery = this.normalizeForMatch(query).replace(/^1\s+/, '');
+    const namedCartProducts = products.filter(product => product.availableNow !== false &&
+      session.cart.some(line => line.productId === product.id) &&
+      this.normalizeForMatch(product.name).replace(/^1\s+/, '') === namedQuery);
+    if (namedCartProducts.length === 1) return namedCartProducts;
 
     // "el pollo lleva arepas / no lleva papa" → la familia del plato, no la porción de arepas
     if (this.catalogService.hasAccompanimentModifierWithMain(text)) {
