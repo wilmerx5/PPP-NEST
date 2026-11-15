@@ -1010,7 +1010,8 @@ export class WhatsappOrchestratorService {
     turn.observationConversation = conv;
     try { observeWhatsappState(conv.id, conv.state, this.conversationService.getSession(conv)); }
     catch { /* Observation cannot block routing. */ }
-    const previousInboundAt = conv.lastInboundAt ? new Date(conv.lastInboundAt).getTime() : undefined;
+    const previousActivity = conv.lastInboundAt || conv.lastMessageAt;
+    const previousInboundAt = previousActivity ? new Date(previousActivity).getTime() : undefined;
     await this.conversationService.touchInbound(conv);
 
     // Cada burbuja del lote tiene su propio ID de Meta. Reclamar todos,
@@ -1139,6 +1140,15 @@ export class WhatsappOrchestratorService {
     if (conv.humanTakeover) {
       observeWhatsappIgnored('human_takeover');
       return;
+    }
+    if (!continuation && previousInboundAt !== undefined && Number.isFinite(previousInboundAt) &&
+        Date.now() - previousInboundAt >= 4 * 60 * 60_000 &&
+        !['human', 'human_takeover', 'awaiting_mp_payment', 'confirming'].includes(conv.state)) {
+      await this.conversationService.resetOrderSession(conv, 'building_cart', {
+        ignorePriorHistory: true,
+        rememberDeliveryAddress: true,
+        historyStartMessageId: logged ? String(logged.id) : undefined,
+      });
     }
     // Only fill a missing recipient after claiming the message and reloading state.
     // Explicit names already stored always win over a profile suggestion.
@@ -2171,6 +2181,7 @@ export class WhatsappOrchestratorService {
     // Mismo chat por número: al escribir de nuevo tras pedido o cierre, empieza pedido nuevo
     let reopenedFreshOrder = false;
     if (conv.state === 'completed' || conv.state === 'closed') {
+      if (await this.tryHandleConfirmedOrderNote(conv, msg.waId, originalText)) return;
       if (await this.tryUndoLastUnitOptionEdit(conv, msg.waId, this.conversationService.getSession(conv), originalText, cfg)) return;
       // A courtesy or repeated affirmative is not a new purchase. Preserve the
       // completed state so a trailing WhatsApp bubble cannot reopen the cart.
@@ -12935,6 +12946,60 @@ export class WhatsappOrchestratorService {
    * Pedido ya creado (completed/closed): demora, ETA, faltante, amenaza de cancelar.
    * No reabre carrito ni busca productos.
    */
+  private async tryHandleConfirmedOrderNote(
+    conv: WhatsappConversation, waId: string, text: string,
+  ): Promise<boolean> {
+    if (/[¿?;\n]/.test(text)) return false;
+    const clean = text.trim().replace(/[.!]+$/, '')
+      .replace(/(?:\s+(?:por favor|porfa|gracias|tambien))+$/i, '').trim();
+    const scoped = parseScopedCartNote(clean);
+    const supply = clean.match(/^(?:(?:y\s+)?(?:con|me regalas?|me puedes enviar|me env[ií]as|me mandas|incl[uú]yeme|agr[eé]game|incluye|agrega)\s+|y\s+)(.+)$/i);
+    const noun = '(?:platos?|cucharas?|cubiertos?|servilletas?|salsas?|tenedores|cuchillos?|sobres de (?:salsa|mostaza|mayonesa))';
+    const part = `(?:(?:un[oa]s?|dos|tres|\\d+)\\s+)?${noun}`;
+    const supplies = supply && new RegExp(`^${part}(?:\\s*(?:,|y)\\s*${part})*$`, 'i').test(supply[1]);
+    if (!supplies && scoped?.kind !== 'append') return false;
+    const note = supplies ? `Incluir ${supply![1]}` : scoped!.note;
+    try {
+      const receipt = typeof this.conversationService.getLastOrderConfirmation === 'function'
+        ? await this.conversationService.getLastOrderConfirmation(conv.id) : null;
+      const order = receipt && typeof this.ordersService.getWhatsappOrderForNotes === 'function'
+        ? await this.ordersService.getWhatsappOrderForNotes(conv.id, receipt) : null;
+      if (!order) {
+        await this.reply(conv, waId, 'No pude localizar un pedido reciente de esta conversación para guardar la nota. Puedes contactar al restaurante para revisarlo.');
+        return true;
+      }
+      if (['completed', 'canceled'].includes(order.orderStatus)) {
+        await this.reply(conv, waId, `El pedido *#${order.dailyOrderNumber ?? order.id}* ya está ${order.orderStatus === 'completed' ? 'entregado' : 'cancelado'}. Esta nota no se pudo añadir.`);
+        return true;
+      }
+      const lines = order.items.map(item => ({
+        id: item.id, productId: item.product.id, name: item.product.name,
+        code: item.product.code, quantity: 1, unitPrice: Number(item.unitPrice), note: item.note,
+        attributes: (item.attributes || []).map(attribute => ({
+          attributeName: attribute.attributeName, attributeValue: attribute.attributeValue,
+        })),
+      }));
+      let selected = lines;
+      if (!supplies) {
+        const exact = lines.filter(line => this.normalizeForMatch(line.name) === this.normalizeForMatch(scoped!.query));
+        selected = exact.length ? exact : lines.filter(line => correctionMatchesLine(line, scoped!.query));
+        const variants = new Set(selected.map(line => JSON.stringify([
+          line.productId, [...line.attributes].sort((a, b) => a.attributeName.localeCompare(b.attributeName)), line.note,
+        ])));
+        if (!selected.length || variants.size > 1) {
+          await this.reply(conv, waId, 'Para guardar esa nota, escribe el nombre completo del producto y cómo lo quieres, por ejemplo «Al producto ponle la nota sin cebolla».');
+          return true;
+        }
+      }
+      const saved = await this.ordersService.appendWhatsappOrderNote(order.id, conv.id, selected.map(item => item.id), note);
+      await this.reply(conv, waId, `${saved.changed ? 'Listo, guardé' : 'Ya está guardada'} la nota «${note}» en el pedido *#${saved.dailyOrderNumber ?? saved.orderId}*.`);
+    } catch (error) {
+      this.logger.warn(`Confirmed-order note could not be saved for conversation=${conv.id}`);
+      await this.reply(conv, waId, 'No pude confirmar que la nota quedara guardada en el pedido. Puedes contactar al restaurante para que la revisen.');
+    }
+    return true;
+  }
+
   private async handlePostOrderFollowUp(
     conv: WhatsappConversation,
     waId: string,

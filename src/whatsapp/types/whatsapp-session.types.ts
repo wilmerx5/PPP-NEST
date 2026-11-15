@@ -145,6 +145,8 @@ export type WhatsappSessionData = {
    * la IA no debe re-agregar esos productos salvo que el cliente los pida de nuevo.
    */
   ignorePriorOrderHistory?: boolean;
+  /** First inbound message of the current conversation window. */
+  historyStartMessageId?: string;
   /** A product list left without a pick; recalled once before the final summary. */
   droppedPick?: { query: string; candidates: WhatsappProductCandidate[]; shown?: boolean };
   pendingMatch?: {

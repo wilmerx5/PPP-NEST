@@ -2802,9 +2802,80 @@ export class OrdersService {
     return order;
   }
 
-  /**
-   * Obtiene datos breves de órdenes por IDs (para listados de puntos u otros reportes).
-   */
+  /** Resolve the persisted confirmation from this chat, including legacy sessions. */
+  async getWhatsappOrderForNotes(conversationId: number, receipt: { dailyOrderNumber: number; createdAt: Date }) {
+    if (!Number.isSafeInteger(conversationId) || conversationId < 1 ||
+        !Number.isSafeInteger(receipt?.dailyOrderNumber) || receipt.dailyOrderNumber < 1 ||
+        !Number.isFinite(new Date(receipt.createdAt).getTime())) return null;
+    const query = this.orderRepo.createQueryBuilder('o')
+      .where('o.clientRequestId LIKE :prefix', { prefix: `wa-${conversationId}-%` })
+      .andWhere('o.orderSource = :source', { source: 'whatsapp' })
+      .andWhere('o.dailyOrderNumber = :dailyNumber', { dailyNumber: receipt.dailyOrderNumber })
+      .andWhere('o.createdAt <= :confirmedAt', { confirmedAt: receipt.createdAt })
+      .andWhere('o.createdAt BETWEEN :since AND :now', {
+        since: new Date(Date.now() - 4 * 60 * 60_000), now: new Date(),
+      });
+    const order = await query.orderBy('o.createdAt', 'DESC').addOrderBy('o.id', 'DESC').take(1).getOne();
+    if (!order) return null;
+    return this.orderRepo.findOne({
+      where: { id: order.id }, relations: ['items', 'items.product', 'items.attributes'],
+    });
+  }
+
+  async appendWhatsappOrderNote(orderId: number, conversationId: number, itemIds: number[], note: string) {
+    const addition = typeof note === 'string' ? note.trim() : '';
+    if (!addition || !itemIds.length || itemIds.some(id => !Number.isSafeInteger(id) || id < 1)) {
+      throw new BadRequestException('Falta la nota o los productos del pedido');
+    }
+    const result = await this.dataSource.transaction(async manager => {
+      const order = await manager.findOne(Order, {
+        where: { id: orderId }, lock: { mode: 'pessimistic_write' },
+      });
+      if (!order || order.orderSource !== 'whatsapp' ||
+          !order.clientRequestId?.startsWith(`wa-${conversationId}-`)) {
+        throw new NotFoundException('No encontré ese pedido en esta conversación');
+      }
+      if (['completed', 'canceled'].includes(order.orderStatus)) {
+        throw new BadRequestException('El pedido ya fue entregado o cancelado');
+      }
+      const age = Date.now() - new Date(order.createdAt).getTime();
+      if (!Number.isFinite(age) || age < 0 || age > 4 * 60 * 60_000) {
+        throw new BadRequestException('Ese pedido pertenece a una conversación anterior');
+      }
+      const items = await manager.find(OrderItem, { where: { order: { id: orderId } } });
+      const selected = items.filter(item => itemIds.includes(item.id));
+      if (selected.length !== new Set(itemIds).size) {
+        throw new ConflictException('Los productos del pedido cambiaron. Revisa la nota de nuevo');
+      }
+      const normalized = (value: string) => value.trim().toLocaleLowerCase('es').replace(/[.!]+$/, '');
+      let changed = false;
+      for (const item of selected) {
+        if ((item.note || '').split(';').some(part => normalized(part) === normalized(addition))) continue;
+        const merged = [item.note?.trim(), addition].filter(Boolean).join('; ');
+        if (Buffer.byteLength(merged, 'utf8') > 65535) {
+          throw new BadRequestException('La nota del producto supera el espacio disponible');
+        }
+        const updated = await manager.update(OrderItem, { id: item.id, order: { id: orderId } }, { note: merged });
+        if (updated.affected !== 1) throw new ConflictException('El producto cambió mientras guardaba la nota');
+        changed = true;
+      }
+      return { orderId: order.id, dailyOrderNumber: order.dailyOrderNumber, changed };
+    });
+    if (!result.changed) return result;
+    try {
+      const refreshed = await this.orderRepo.findOne({
+        where: { id: orderId }, relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      });
+      if (refreshed) {
+        this.gateway.emitOrdersUpdates('orderUpdated', await this.mapOrderToGroupedFormat(refreshed));
+      }
+    } catch (error) {
+      this.logger.warn(`Order note saved but update notification failed for order=${orderId}`);
+    }
+    return result;
+  }
+
+  /** Obtiene datos breves de órdenes para listados de puntos u otros reportes. */
   async getOrdersBrief(orderIds: number[]): Promise<Array<{
     id: number;
     dailyOrderNumber: number;

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThanOrEqual, Repository } from 'typeorm';
 import { WhatsappConversation } from './entities/whatsapp-conversation.entity';
 import { WhatsappMessage } from './entities/whatsapp-message.entity';
 import { EMPTY_SESSION, type WhatsappSessionData } from './types/whatsapp-session.types';
@@ -140,7 +140,7 @@ export class WhatsappConversationService {
   async resetOrderSession(
     conv: WhatsappConversation,
     state: string,
-    opts?: { ignorePriorHistory?: boolean; rememberDeliveryAddress?: boolean },
+    opts?: { ignorePriorHistory?: boolean; rememberDeliveryAddress?: boolean; historyStartMessageId?: string },
   ): Promise<WhatsappConversation> {
     const next = this.buildResetSession(conv, opts);
     // Asignación directa: no mergear con el carrito viejo
@@ -160,7 +160,7 @@ export class WhatsappConversationService {
 
   private buildResetSession(
     conv: WhatsappConversation,
-    opts?: { ignorePriorHistory?: boolean; rememberDeliveryAddress?: boolean },
+    opts?: { ignorePriorHistory?: boolean; rememberDeliveryAddress?: boolean; historyStartMessageId?: string },
   ): WhatsappSessionData {
     const current = this.getSession(conv);
     const currentAddr = (current.address || '').trim();
@@ -179,6 +179,8 @@ export class WhatsappConversationService {
       linkedUserId: current.linkedUserId ?? null,
       linkedUserName: current.linkedUserName ?? null,
       ignorePriorOrderHistory: opts?.ignorePriorHistory !== false,
+      ...(opts?.historyStartMessageId || current.historyStartMessageId
+        ? { historyStartMessageId: opts?.historyStartMessageId ?? current.historyStartMessageId } : {}),
       fulfillmentChosen: false,
       addressConfirmed: false,
       phoneConfirmed: false,
@@ -688,21 +690,42 @@ export class WhatsappConversationService {
   }
 
   async getLastOutboundBody(conversationId: number): Promise<string | null> {
+    const historyStart = await this.getHistoryStartMessageId(conversationId);
     const row = await this.msgRepo.findOne({
-      where: { conversationId, direction: 'out' },
+      where: { conversationId, direction: 'out', ...(historyStart ? { id: MoreThanOrEqual(historyStart) } : {}) },
       order: { id: 'DESC' },
     });
     const body = row?.body?.trim();
     return body || null;
   }
 
+  async getLastOrderConfirmation(conversationId: number): Promise<{ dailyOrderNumber: number; createdAt: Date } | null> {
+    const historyStart = await this.getHistoryStartMessageId(conversationId);
+    const query = this.msgRepo.createQueryBuilder('m')
+      .where('m.conversationId = :conversationId', { conversationId })
+      .andWhere('m.direction = :direction', { direction: 'out' })
+      .andWhere('m.createdAt >= :since', { since: new Date(Date.now() - 4 * 60 * 60_000) })
+      .andWhere('m.body LIKE :receipt', { receipt: '✅%¡Listo!%Tu pedido quedó registrado%' });
+    if (historyStart) query.andWhere('m.id >= :historyStart', { historyStart });
+    const row = await query.orderBy('m.id', 'DESC').getOne();
+    const match = row?.body?.match(/^✅\s*\*?¡Listo!\s*Tu pedido quedó registrado[\s\S]*?Orden\s*\*?#(\d+)/i);
+    return match ? { dailyOrderNumber: Number(match[1]), createdAt: row!.createdAt } : null;
+  }
+
   async getRecentMessageTexts(conversationId: number, limit = 10): Promise<string[]> {
+    const historyStart = await this.getHistoryStartMessageId(conversationId);
     const rows = await this.msgRepo.find({
-      where: { conversationId },
+      where: { conversationId, ...(historyStart ? { id: MoreThanOrEqual(historyStart) } : {}) },
       order: { createdAt: 'DESC' },
       take: limit,
     });
     return rows.reverse().map((r) => `${r.direction === 'in' ? 'Cliente' : 'Bot'}: ${r.body || ''}`);
+  }
+
+  private async getHistoryStartMessageId(conversationId: number): Promise<string | undefined> {
+    const conversation = await this.convRepo.findOne({ where: { id: conversationId }, select: ['id', 'sessionData'] });
+    const value = conversation?.sessionData?.historyStartMessageId;
+    return typeof value === 'string' && /^[1-9]\d*$/.test(value) ? value : undefined;
   }
 
   /**
