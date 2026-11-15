@@ -1,0 +1,94 @@
+{
+  "batch": 545,
+  "date": "2026-11-15",
+  "sourceCommit": "1d573650caa05d98e088398389ce813f046f34e0",
+  "sourceFiles": 872,
+  "sourceManifestSha256": "cd28db32bb422dee08a3c630bf4206aea1ab4bcd7b478a462f14fb72d5f7761b",
+  "global": {
+    "passedTests": 53280,
+    "passedSuites": 634,
+    "failed": 0,
+    "pending": 0,
+    "checkpointed": true
+  },
+  "newRegressionTests": 5,
+  "focused": {
+    "tests": 1183,
+    "suites": 10
+  },
+  "typecheckPassed": true,
+  "cleanDockerBuildPassed": true,
+  "isolatedBoldDatabaseContracts": 11,
+  "environments": {
+    "staging": {
+      "compiledControls": 2709,
+      "head": "1d573650caa05d98e088398389ce813f046f34e0",
+      "image": "sha256:35c08fafecd9b510906bfe021c1cea099b979efa49a4de4696fa51adae45b8f9",
+      "running": true,
+      "restarts": 0,
+      "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+      "checkedAt": "2026-11-15T21:11:45.951265+00:00"
+    },
+    "production": {
+      "head": "1d573650caa05d98e088398389ce813f046f34e0",
+      "image": "sha256:35c08fafecd9b510906bfe021c1cea099b979efa49a4de4696fa51adae45b8f9",
+      "running": true,
+      "restarts": 0,
+      "publicHealthUrl": "https://api.prontopolloportal.com/api/health",
+      "compiledControls": 2709,
+      "effectiveConfiguration": {
+        "ok": true,
+        "semanticRoutingEnabled": true,
+        "agentV1Enabled": true,
+        "effectiveKeyPresent": true,
+        "model": "gpt-6-luna",
+        "complexModel": "gpt-6.1-sol",
+        "databaseWrites": 0,
+        "inferenceRequests": 0
+      },
+      "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+      "effectiveBusinessEnvironmentPreservedExceptAuthorizedSemanticFlag": true,
+      "checkedAt": "2026-11-15T21:15:26.665930+00:00"
+    }
+  },
+  "additionalChecksPerActiveImage": {
+    "signedHttp": 5,
+    "condimentTurns": 2,
+    "purchaseModifierTurns": 2,
+    "recordedProviderResponses": 23,
+    "paidRequests": 0,
+    "externalOrders": 0,
+    "metaMessages": 0
+  },
+  "realModel": {
+    "model": "gpt-6-luna",
+    "developmentAttempts": 14,
+    "http200": 14,
+    "failedDiagnosticAttempts": 9,
+    "acceptedFreshCaseRequests": 5,
+    "latencySeconds": 11.981,
+    "isolatedPersistence": true,
+    "metaMessages": 0,
+    "externalOrders": 0,
+    "fixtureDifference": "Default payment method keywords replace previously redacted private fixture fields."
+  },
+  "budget": {
+    "authorizedRequests": 434,
+    "usedRequests": 428,
+    "remainingRequests": 6,
+    "numericCapsChosenByAgent": true
+  },
+  "preliminaryFailuresRetained": [
+    "Six-call diagnostic run with unowned accompaniment edit",
+    "Three-call lower-priority prompt-only development attempt",
+    "Compiled runner missing stringMatching matcher caused staging rollback; corrected runner passed unchanged tests"
+  ],
+  "releaseSequence": "Urgent hotfix promoted after exact-image and actual API checks. Frozen-source global finished after deployment.",
+  "limitations": [
+    "Representative live conversion and latency remain unmeasured",
+    "Accepted fresh development case took 11.981 seconds",
+    "Kamppo native migration pending",
+    "Automated results do not establish universal commercial readiness"
+  ],
+  "privateEvidenceDirectory": "/home/levi/.codex/tmp/ppp-545-validation"
+}

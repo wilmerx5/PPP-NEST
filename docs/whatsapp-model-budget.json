@@ -10,14 +10,14 @@
   "lastAttemptAt": "2026-11-15T21:00:15.914Z",
   "latestEvaluation": {
     "date": "2026-11-15",
-    "baseCommit": "f4d3007c065273ef71101365ee8e5642fb6029ba",
-    "requests": 63,
-    "successfulActualModelRequests": 55,
-    "reconciledSyntheticKey401Attempts": 8,
+    "baseCommit": "1d573650caa05d98e088398389ce813f046f34e0",
+    "requests": 14,
+    "successfulActualModelRequests": 14,
+    "acceptedFinalConversations": 1,
     "developmentOnly": true,
     "model": "gpt-6-luna",
-    "report": "docs/whatsapp-batch-544-validation.json",
-    "scope": "Actual API diagnostic reproduction, 12-turn development checkout, signed loopback webhook burst and quantity correction, condiment edit and fresh full rice/Ginger/aji request. Some accepted development runs reuse recorded response prefixes and actual continuations. Independent fresh full request used eight calls and 17.094 seconds. No Meta sends or external orders. Eight failed synthetic-key fixture attempts were reconciled after discovery and are counted separately from successful model calls.",
+    "report": "docs/whatsapp-batch-545-validation.json",
+    "scope": "Two failed isolated development reproductions retained, six calls before diagnostic cap and three calls after a lower-priority prompt-only experiment. Final fresh full-router case accepted with five actual calls on final source, preserving two pechugas and accompaniment replacement note. 11.981 seconds. Meta and external orders zero. Default payment methods replace redacted fixture keyword fields.",
     "temporaryLimitChosenByAgent": true
   },
   "authorizationExtensions": [
@@ -781,6 +781,18 @@
       "model": "gpt-6-luna",
       "report": "docs/whatsapp-batch-543-validation.json",
       "scope": "Two fresh isolated full-router mixed-partition cases, five actual requests each. The first fixture assertion was corrected for canonical catalogue capitalization using captured output at zero additional inference. An extra confirmed-order address correction plus separate purchase passed with zero model requests through the deterministic route. No customer persistence, Meta or external orders.",
+      "temporaryLimitChosenByAgent": true
+    },
+    {
+      "date": "2026-11-15",
+      "baseCommit": "f4d3007c065273ef71101365ee8e5642fb6029ba",
+      "requests": 63,
+      "successfulActualModelRequests": 55,
+      "reconciledSyntheticKey401Attempts": 8,
+      "developmentOnly": true,
+      "model": "gpt-6-luna",
+      "report": "docs/whatsapp-batch-544-validation.json",
+      "scope": "Actual API diagnostic reproduction, 12-turn development checkout, signed loopback webhook burst and quantity correction, condiment edit and fresh full rice/Ginger/aji request. Some accepted development runs reuse recorded response prefixes and actual continuations. Independent fresh full request used eight calls and 17.094 seconds. No Meta sends or external orders. Eight failed synthetic-key fixture attempts were reconciled after discovery and are counted separately from successful model calls.",
       "temporaryLimitChosenByAgent": true
     }
   ],
