@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 398,
-  "usedRequests": 396,
-  "remainingRequests": 2,
+  "authorizedRequests": 414,
+  "usedRequests": 414,
+  "remainingRequests": 0,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 19,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-11-15T19:03:40.218Z",
+  "lastAttemptAt": "2026-11-15T19:35:57.560Z",
   "latestEvaluation": {
     "date": "2026-11-15",
     "baseCommit": "32251150407c0ffea9ba58a1e309888ddfb8d603",
@@ -170,6 +170,18 @@
       "additionalRequests": 3,
       "evidence": "User explicitly requests API-based repeated tests after production incident. Agent-selected cap, six available requests in total.",
       "executionLimit": "Reuse the three recorded HTTP burst responses without new inference, then at most six requests for an isolated signed-HTTP quantity correction. Stop on failure."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 10,
+      "evidence": "User adds a current pilot transcript showing a condiment note duplicating rice and explicitly requested real API tests. Agent-selected cap under that authorization.",
+      "executionLimit": "At most twelve available requests across the new kitchen-note follow-up and original mixed purchase, isolated full router with real Luna, stop on first failure. No Meta or external orders."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 6,
+      "evidence": "User explicitly requested real API tests and supplied the condiment incident. Agent-selected fresh confirmation cap after the recorded development case passed.",
+      "executionLimit": "One independent fresh original full-message condiment purchase, at most eight available HTTP attempts, stop on first failure. No Meta or external orders."
     }
   ],
   "evaluationHistory": [

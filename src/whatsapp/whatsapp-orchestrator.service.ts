@@ -29375,7 +29375,7 @@ export class WhatsappOrchestratorService {
     let result: Awaited<ReturnType<WhatsappAgentService['runTurn']>>;
     try {
       result = await this.agentService.runTurn({
-        semanticInterpretation:true,conversationId:conv.id,userMessage:text,products,cart:structuredClone(session.cart),
+        semanticInterpretation:true,currentOrderType:session.orderType,conversationId:conv.id,userMessage:text,products,cart:structuredClone(session.cart),
         sessionSummary:this.buildSessionSummary(conv,session,this.deliveryFeeFor(session,cfg),products),
         recentMessages:recent,brandName:cfg.brandName || cfg.localContext?.restaurantName || 'Restaurante',
         menuUrl:cfg.menuUrl,humanPhone:cfg.localContext?.publicPhone,

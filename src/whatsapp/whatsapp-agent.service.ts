@@ -33,6 +33,8 @@ import { looksLikeKitchenSendRequest, parseEachOfQuantity, parseQtyDishCorrectio
 
 export type AgentV1TurnInput = {
   semanticInterpretation?: boolean;
+  /** Backend snapshot. A redundant tool request can acknowledge this value without writing it. */
+  currentOrderType?: 'delivery' | 'pickup';
   /** Internal database identifier, never a phone or a customer name. */
   conversationId?: number;
   userMessage: string;
@@ -607,6 +609,7 @@ export class WhatsappAgentService {
     const fulfilledSemanticSegments = new Set<string>();
     const fulfilledSemanticTargets = new Map<string,Set<number>>();
     const semanticLookupTargets = new Map<string, Set<number>>();
+    const pendingPurchaseSources = new WeakMap<object, Set<string>>();
     let retriedSemanticPreservation = false;
     const sourceKey = (source: string) => source.toLowerCase().normalize('NFC').replace(/\s+/g,' ').trim();
     let offeredProducts: AgentV1TurnResult['offeredProducts'];
@@ -915,6 +918,17 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           } catch {
             args = {};
           }
+          const pendingNotes = input.semanticInterpretation && name === 'update_item' &&
+              Number.isSafeInteger(args.productId) && args.quantity === undefined &&
+              typeof args.note === 'string' && args.note.trim()
+            ? this.toolCartView({actions,cart:input.cart,byId,semanticInterpretation:true})
+              .filter(line=>line.productId === args.productId && line.pendingAddIndex >= 0 &&
+                (args.cartLineIndex === undefined || line.cartLineIndex === args.cartLineIndex))
+            : [];
+          const pendingNoteLine = pendingNotes.length === 1 ? pendingNotes[0] : undefined;
+          const pendingNoteItem = pendingNoteLine && actions.addItems?.[pendingNoteLine.pendingAddIndex];
+          const noteSources = pendingNoteItem && pendingPurchaseSources.get(pendingNoteItem);
+          const pendingNoteSource = noteSources?.size === 1 ? [...noteSources][0] : undefined;
           if (input.semanticInterpretation) {
             let contractResult: string | undefined;
             if (semanticIntent && semanticToolRequiresSource(name) && typeof args.sourceText === 'string' &&
@@ -922,8 +936,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 parseSemanticIntent({segments:[{text:args.sourceText,role:'conversation'}]},input.userMessage)) {
               const bindingIntent = semanticIntent;
               const owners = bindingIntent.segments.filter(segment =>
+                pendingNoteSource === sourceKey(segment.text) ||
                 authorizeSemanticTool(bindingIntent,name,segment.text) &&
-                semanticToolTargetsAuthorized(bindingIntent,name,{...args,sourceText:segment.text},semanticLookupTargets));
+                  semanticToolTargetsAuthorized(bindingIntent,name,{...args,sourceText:segment.text},semanticLookupTargets));
               if (owners.length === 1) args.sourceText = owners[0].text;
             }
             if (name === 'interpret_message') {
@@ -948,6 +963,23 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 contractResult = JSON.stringify({ok:true,segments:parsed.segments,
                   references:[...new Set(parsed.segments.flatMap(segment=>segment.productIds || []))].map(id=>this.productCard(byId.get(id)!))});
               }
+            } else if (name === 'set_order_type' && semanticIntent &&
+                (input.currentOrderType === 'delivery' || input.currentOrderType === 'pickup') &&
+                args.orderType === input.currentOrderType && !authorizeSemanticTool(semanticIntent,name,args.sourceText)) {
+              // This is a read-only acknowledgement, not a fulfilled purchase
+              // or checkout mutation. All requested products still need receipts.
+              contractResult = JSON.stringify({ok:true,unchanged:true,orderType:input.currentOrderType,
+                hint:'Ese tipo de entrega ya está vigente. No se guardó ningún cambio. Continúa con las compras, opciones y notas pendientes de la interpretación.'});
+            } else if (pendingNoteSource && typeof args.sourceText === 'string' && pendingNoteSource === sourceKey(args.sourceText)) {
+              const previous = (pendingNoteItem?.note || '').replace(/\s+/g,' ').trim();
+              const incoming = String(args.note).replace(/\s+/g,' ').trim();
+              const distinct = previous && !sourceKey(previous).includes(sourceKey(incoming)) &&
+                !sourceKey(incoming).includes(sourceKey(previous));
+              const length = distinct ? previous.length + 2 + incoming.length : Math.max(previous.length,incoming.length);
+              if (length > 200) {
+                semanticRejected = true;
+                contractResult = JSON.stringify({ok:false,error:'pending_purchase_note_too_long'});
+              } else args.note = joinKitchenNotes(previous,incoming);
             } else if (!authorizeSemanticTool(semanticIntent, name, args.sourceText) || !semanticToolTargetsAuthorized(semanticIntent!,name,args,semanticLookupTargets)) {
               semanticRejected = true;
               contractResult = JSON.stringify({ok:false,error:'operation_not_authorized_by_complete_intent'});
@@ -1027,9 +1059,11 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               .filter(line => line.productId === Number(args.productId))
               .map(line => line.cartLineIndex)
             : [];
+          const purchaseSnapshot = new Map((actions.addItems || []).map(item=>[item,JSON.stringify(item)]));
           const toolResult = this.executeTool(name, args, {
             diagnosticOrigin:'model_call',
             semanticInterpretation:input.semanticInterpretation,
+            verifiedPendingPurchaseNoteIndex:pendingNoteSource === sourceKey(String(args.sourceText)) ? pendingNoteLine?.cartLineIndex : undefined,
             onAttributeChoice: (edit, accepted) => {
               const key = `${edit.productId}:${edit.cartLineIndex}:${edit.attributeName.toLowerCase()}`;
               if (!accepted) {
@@ -1071,6 +1105,14 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               lookupDeliveryTime = true;
             },
           });
+          if (input.semanticInterpretation && name === 'add_item' && JSON.parse(toolResult).ok === true) {
+            for (const item of actions.addItems || []) {
+              if (purchaseSnapshot.get(item) === JSON.stringify(item)) continue;
+              const sources = pendingPurchaseSources.get(item) || new Set<string>();
+              sources.add(sourceKey(String(args.sourceText)));
+              pendingPurchaseSources.set(item,sources);
+            }
+          }
           if (input.semanticInterpretation && name === 'search_menu') {
             const receipt = JSON.parse(toolResult);
             if (receipt.ok) {
@@ -1304,6 +1346,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       preserveReplacementQuantity?: boolean;
       inheritedReplacementAttributes?: Array<{ attributeName: string; attributeValue: string }>;
       verifiedDistributedProductId?: number;
+      verifiedPendingPurchaseNoteIndex?: number;
       userMessage?: string;
       cart?: AgentV1TurnInput['cart'];
       menuConceptGroups?: MenuConceptGroup[];
@@ -1314,7 +1357,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
   ): string {
     const readOnly = ['get_cart', 'search_menu', 'resolve_multi_order', 'order_status', 'delivery_time'];
     if (name !== 'set_unit_attributes' && !readOnly.includes(name) && this.unitOptionAttempts.has(ctx.actions) &&
-        !(ctx.semanticInterpretation && name === 'add_item' && !this.ambiguousUnitOptionSources.has(ctx.actions))) {
+        !(ctx.semanticInterpretation && !this.ambiguousUnitOptionSources.has(ctx.actions) &&
+          (name === 'add_item' || name === 'update_item' && ctx.verifiedPendingPurchaseNoteIndex !== undefined))) {
       return JSON.stringify({ ok: false, error: 'unit_option_turn_locked',
         hint: 'No amplíes el cambio a toda la línea ni mezcles otra mutación. Consulta get_cart y explica lo aplicado o pide aclaración.' });
     }
@@ -2225,6 +2269,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         ];
         const ownerRejection = ctx.diagnosticOrigin === 'model_call' &&
           name !== 'replace_item' &&
+          !(name === 'update_item' && pendingAddIndex >= 0 && args.quantity === undefined &&
+            typeof args.note === 'string' && ctx.verifiedPendingPurchaseNoteIndex === cartLineIndex) &&
           !hasExplicitCartEditOwner(ctx.userMessage || '', ownershipLines, productId,
             cartLineIndex, typeof args.note === 'string' ? args.note : undefined)
           ? JSON.stringify({ ok: false, error: 'ambiguous_cart_owner',

@@ -203,3 +203,121 @@ for (const name of names) it(`corrected count, beverage and details close exactl
   expect(payload.items[0].productId).toBe(54401);
   expect(JSON.stringify(payload.items[0])).toContain('7up');
 });
+
+for (const currentOrderType of ['delivery', 'pickup'] as const) it(`redundant fulfillment is read-only and purchases still execute ${currentOrderType}`, async () => {
+  const h = setup();
+  const text = `Quiero un ${h.menu[0].name}`;
+  jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(answer(null, [call('interpret_message', { segments: [{ text, role: 'purchase', productIds: [54401] }] })]))
+    .mockResolvedValueOnce(answer(null, [call('set_order_type', { orderType: currentOrderType, sourceText: text })]))
+    .mockResolvedValueOnce(answer(null, [call('add_item', { productId: 54401, quantity: 1, sourceText: text })]))
+    .mockResolvedValueOnce(answer('Listo'));
+  const result = await agent().runTurn({ semanticInterpretation: true, currentOrderType, userMessage: text,
+    products: h.menu, cart: [], sessionSummary: '', recentMessages: [], businessRulesBlock: '', brandName: 'Restaurante' });
+  expect(result.error).toBeUndefined();
+  expect(result.actions.setOrderType).toBeUndefined();
+  expect(result.actions.addItems).toEqual([expect.objectContaining({ productId: 54401, quantity: 1 })]);
+  expect(result.fulfilledSemanticSegments).toEqual([text.toLowerCase()]);
+});
+
+it('a purchase segment cannot change the current fulfillment mode', async () => {
+  const h = setup(); const text = `Quiero un ${h.menu[0].name}`;
+  jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(answer(null, [call('interpret_message', { segments: [{ text, role: 'purchase', productIds: [54401] }] })]))
+    .mockResolvedValueOnce(answer(null, [call('set_order_type', { orderType: 'pickup', sourceText: text })]));
+  const result = await agent().runTurn({ semanticInterpretation: true, currentOrderType: 'delivery', userMessage: text,
+    products: h.menu, cart: [], sessionSummary: '', recentMessages: [], businessRulesBlock: '', brandName: 'Restaurante' });
+  expect(result.error).toBe('semantic_contract_rejected'); expect(result.actions).toEqual({});
+});
+
+it('acknowledging the existing fulfillment never fulfills a purchase clause', async () => {
+  const h = setup(); const text = `Quiero un ${h.menu[0].name}`;
+  jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(answer(null, [call('interpret_message', { segments: [{ text, role: 'purchase', productIds: [54401] }] })]))
+    .mockResolvedValueOnce(answer(null, [call('set_order_type', { orderType: 'delivery', sourceText: text })]))
+    .mockResolvedValueOnce(answer('¿Qué opción prefieres?'));
+  const result = await agent().runTurn({ semanticInterpretation: true, currentOrderType: 'delivery', userMessage: text,
+    products: h.menu, cart: [], sessionSummary: '', recentMessages: [], businessRulesBlock: '', brandName: 'Restaurante' });
+  expect(result.actions).toEqual({}); expect(result.fulfilledSemanticSegments).toEqual([]);
+});
+
+it('a purchase can finish its own pending note while preserving existing units', async () => {
+  const h = setup(); const text = `Otros dos ${h.menu[0].name} sin sal y con ají`;
+  const cart = structuredClone(h.conv.sessionData.cart);
+  cart[0].quantity = 3;
+  const original = structuredClone(cart);
+  jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(answer(null, [call('interpret_message', { segments: [{ text, role: 'purchase', productIds: [54401] }] })]))
+    .mockResolvedValueOnce(answer(null, [call('add_item', { productId: 54401, quantity: 2, note: 'Sin sal', sourceText: text })]))
+    .mockResolvedValueOnce(answer(null, [call('update_item', { productId: 54401, cartLineIndex: 1, note: 'Con ají', sourceText: text })]))
+    .mockResolvedValueOnce(answer('Listo'));
+  const result = await agent().runTurn({ semanticInterpretation: true, userMessage: text, products: h.menu,
+    cart, sessionSummary: '', recentMessages: [], businessRulesBlock: '', brandName: 'Restaurante' });
+  expect(result.error).toBeUndefined(); expect(cart).toEqual(original);
+  expect(result.actions.addItems).toHaveLength(1);
+  expect(result.actions.addItems[0]).toMatchObject({ productId: 54401, quantity: 2 });
+  expect(result.actions.addItems[0].note).toMatch(/sin sal/i);
+  expect(result.actions.addItems[0].note).toMatch(/aj[ií]/i);
+  expect(result.actions.updateCartLines).toBeUndefined();
+});
+
+it('a purchase cannot use its note permission to modify a pre-existing line', async () => {
+  const h = setup(); const text = `Otro ${h.menu[0].name} con ají`;
+  jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(answer(null, [call('interpret_message', { segments: [{ text, role: 'purchase', productIds: [54401] }] })]))
+    .mockResolvedValueOnce(answer(null, [call('add_item', { productId: 54401, quantity: 1, sourceText: text })]))
+    .mockResolvedValueOnce(answer(null, [call('update_item', { productId: 54401, cartLineIndex: 0, note: 'Con ají', sourceText: text })]));
+  const result = await agent().runTurn({ semanticInterpretation: true, userMessage: text, products: h.menu,
+    cart: h.conv.sessionData.cart, sessionSummary: '', recentMessages: [], businessRulesBlock: '', brandName: 'Restaurante' });
+  expect(result.error).toBe('semantic_contract_rejected'); expect(result.actions).toEqual({});
+});
+
+it('one purchase clause cannot annotate another clause pending item', async () => {
+  const h = setup();
+  const extra = { id: 54402, code: 90, name: 'Crema De Tomate', price: 9000, availableNow: true, attributes: [], hasAttributes: false };
+  const first = `Un ${h.menu[0].name}`; const second = `una ${extra.name} con ají`; const text = `${first} y ${second}`;
+  jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(answer(null, [call('interpret_message', { segments: [
+      { text: first, role: 'purchase', productIds: [54401] }, { text: second, role: 'purchase', productIds: [54402] },
+    ] })]))
+    .mockResolvedValueOnce(answer(null, [call('add_item', { productId: 54401, quantity: 1, sourceText: first }),
+      call('add_item', { productId: 54402, quantity: 1, sourceText: second })]))
+    .mockResolvedValueOnce(answer(null, [call('update_item', { productId: 54402, cartLineIndex: 1, note: 'Con ají', sourceText: first })]));
+  const result = await agent().runTurn({ semanticInterpretation: true, userMessage: text, products: [...h.menu, extra],
+    cart: [], sessionSummary: '', recentMessages: [], businessRulesBlock: '', brandName: 'Restaurante' });
+  expect(result.error).toBe('semantic_contract_rejected'); expect(result.actions).toEqual({});
+});
+
+it('an oversized pending annotation discards the whole purchase proposal', async () => {
+  const h = setup(); const text = `Un ${h.menu[0].name} con ají`;
+  jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(answer(null, [call('interpret_message', { segments: [{ text, role: 'purchase', productIds: [54401] }] })]))
+    .mockResolvedValueOnce(answer(null, [call('add_item', { productId: 54401, quantity: 1, sourceText: text })]))
+    .mockResolvedValueOnce(answer(null, [call('update_item', { productId: 54401, cartLineIndex: 0, note: 'Ají '.repeat(60), sourceText: text })]));
+  const result = await agent().runTurn({ semanticInterpretation: true, userMessage: text, products: h.menu,
+    cart: [], sessionSummary: '', recentMessages: [], businessRulesBlock: '', brandName: 'Restaurante' });
+  expect(result.error).toBe('semantic_contract_rejected'); expect(result.actions).toEqual({});
+});
+
+it('a validated pending purchase annotation preserves an existing unit partition', () => {
+  const h = setup();
+  const soup = { id: 54402, code: 90, name: 'Crema De Tomate', price: 9000, availableNow: true, attributes: [], hasAttributes: false };
+  const service = agent() as any;
+  const cart = structuredClone(h.conv.sessionData.cart); cart[0].quantity = 3;
+  const ctx: any = { semanticInterpretation: true, diagnosticOrigin: 'model_call', actions: {},
+    products: [...h.menu, soup], byId: new Map([...h.menu, soup].map(product => [product.id, product])), cart,
+    userMessage: `De los tres ${h.menu[0].name}, dos con 7up`, setNeedsAttr: () => undefined };
+  const partition = service.executeTool('set_unit_attributes', { productId: 54401, cartLineIndex: 0, affectedQuantity: 2,
+    attributes: [{ attributeName: 'Bebida', attributeValue: '7up' }] }, ctx);
+  expect(JSON.parse(partition).ok).toBe(true);
+  const plan = structuredClone(ctx.actions.updateUnitOptions);
+  ctx.userMessage = `Una ${soup.name} con ají`;
+  expect(JSON.parse(service.executeTool('add_item', { productId: 54402, quantity: 1 }, ctx)).ok).toBe(true);
+  const line = service.toolCartView(ctx).find(item => item.productId === 54402);
+  ctx.verifiedPendingPurchaseNoteIndex = line.cartLineIndex;
+  const result = service.executeTool('update_item', { productId: 54402, cartLineIndex: line.cartLineIndex, note: 'Con ají' }, ctx);
+  expect(JSON.parse(result).ok).toBe(true);
+  expect(ctx.actions.updateUnitOptions).toEqual(plan);
+  expect(ctx.actions.addItems).toEqual([expect.objectContaining({ productId: 54402, quantity: 1, note: 'Con ají' })]);
+  expect(cart[0].quantity).toBe(3);
+});
