@@ -1,0 +1,378 @@
+{
+  "batch": 541,
+  "date": "2026-11-15",
+  "runtimeCommit": "aeffa93c9ca4992e03b5c18bdf1bdf4f5b523034",
+  "scope": "Staging only, free-form input in active ordering states",
+  "implementation": {
+    "completeLiteralIntentBeforeTools": true,
+    "catalogueProductReferences": true,
+    "roleAndSourceScopedTools": true,
+    "completePlanOrClarification": true,
+    "optimisticAtomicSessionCommit": true,
+    "persistedDecisionMarkerRecovery": true,
+    "closedProtocolOwnershipRetained": true,
+    "restaurantIndependentRuntime": true,
+    "flag": "WHATSAPP_SEMANTIC_ROUTING=true"
+  },
+  "local": {
+    "passedTests": 52239,
+    "suites": 628,
+    "sourceFiles": 866,
+    "focusedTests": 222,
+    "newRegressionTests": 99,
+    "compiledLocalTests": 925,
+    "semanticPersistenceSqlContracts": 8,
+    "recordedProviderReplayRequests": 5,
+    "paidInferenceRequests": 17,
+    "acceptedRealModelCases": 3,
+    "externalOrders": 0,
+    "metaMessages": 0
+  },
+  "staging": {
+    "semanticSmoke": {
+      "ok": true,
+      "totalCompiledTests": 925,
+      "compiledPilotIncidentTests": 385,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "semanticRoutingEnabled": true,
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "totalCompiledTests": 925,
+      "compiledPilotIncidentTests": 385,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 1670,
+    "currentCatalogReplay": {
+      "ok": true,
+      "currentCatalogControls": 10,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "aeffa93c9ca4992e03b5c18bdf1bdf4f5b523034",
+    "image": "sha256:91474ab4e15a5773a665d3fa3154cc4b6cd92f7efe20776e4514d219ce329d5a",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.66,
+        "heapTotal": 65.57,
+        "rss": 127.32
+      },
+      "timestamp": "2026-11-15T06:34:31.420Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.87,
+        "heapTotal": 65.57,
+        "rss": 127.82
+      },
+      "timestamp": "2026-11-15T06:34:31.568Z"
+    },
+    "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-15T06:37:08.020566+00:00",
+    "backup": "/root/ppp-manual-release/20261115T063040Z-staging-541"
+  },
+  "effectiveConfiguration": {
+    "ok": true,
+    "semanticRoutingEnabled": true,
+    "agentV1Enabled": true,
+    "effectiveKeyPresent": true,
+    "model": "gpt-6-luna",
+    "complexModel": "gpt-6.1-sol",
+    "databaseWrites": 0,
+    "inferenceRequests": 0
+  },
+  "firstStagingDeployment": {
+    "semanticSmoke": {
+      "ok": true,
+      "totalCompiledTests": 922,
+      "compiledPilotIncidentTests": 385,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "semanticRoutingEnabled": true,
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "totalCompiledTests": 922,
+      "compiledPilotIncidentTests": 385,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 1667,
+    "currentCatalogReplay": {
+      "ok": true,
+      "currentCatalogControls": 10,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "2be64d55f7ab5c217d61debb077da4c5f4727562",
+    "image": "sha256:82a3fe6987d7e11636e4be59848af198e1e995e33219e580e60267edddde482f",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.69,
+        "heapTotal": 65.32,
+        "rss": 127.28
+      },
+      "timestamp": "2026-11-15T05:58:44.435Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 56.14,
+        "heapTotal": 65.57,
+        "rss": 127.53
+      },
+      "timestamp": "2026-11-15T05:58:44.669Z"
+    },
+    "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-15T06:01:21.763566+00:00",
+    "backup": "/root/ppp-manual-release/20261115T055424Z-staging-541"
+  },
+  "coverageLimits": {
+    "legacyMode": "Existing global fixtures generally run with semantic routing disabled. The four new suites explicitly enable the new mode.",
+    "semanticRegressionTests": 99,
+    "realModelCases": 3,
+    "postConfirmation": "Existing post-order routes retain their own state handling.",
+    "commercialAcceptance": "Representative end-to-end pilot closure and latency measurements remain pending."
+  },
+  "realInference": {
+    "requests": 17,
+    "model": "gpt-6-luna",
+    "complexModelConfigured": "gpt-6.1-sol",
+    "acceptedCases": [
+      "inquiry about a unique cart item during payment",
+      "unfamiliar introduction with two vegetable lasagnas and a tomato soup",
+      "remove soup, retain two rice dishes and add one lemonade"
+    ],
+    "latencyMs": [
+      6368,
+      6043,
+      12194
+    ],
+    "sourceRuntime": "Development transpilation of candidate services; the final clean build also passed a free replay of the recorded mixed-case provider responses.",
+    "developmentFailures": [
+      "First run requested an unnecessary clarification for a uniquely referenced cart dish. Corrected through explicit catalogue IDs in the interpretation contract.",
+      "The first mixed-case run exhausted the local request cap before completion. No cart changes committed. Six extra requests were allocated by the agent for that unfinished case, five used."
+    ],
+    "budget": {
+      "authorizedRequests": 285,
+      "usedRequests": 284,
+      "remainingRequests": 1,
+      "operationalExtensionsChosenByAgent": 18,
+      "priorPrivateLedgerReconciledToVersionedLedger": true
+    },
+    "paidRunArtifacts": "/home/levi/.codex/tmp/ppp-541-validation",
+    "customerPersistenceWrites": 0,
+    "externalOrders": 0,
+    "metaMessages": 0,
+    "temporaryKeyDeleted": true
+  },
+  "validationHistory": [
+    "The complete 52,236-test candidate passed before the additional deferred-note fix. That full result and first staging deployment are retained separately. The final candidate reruns the complete suite.",
+    "Early partial global run stopped before final source freeze while expanding choice coverage. The final full run is separately inventoried.",
+    "A synthetic food fixture with a Sabor attribute initially asserted a deferred choice despite existing food defaults. Changed that fixture to two actual drink categories; original failure evidence retained.",
+    "An additional free replay found recipient notes lost during deferred flavor choices. The existing structured pending note now survives each choice and same-SKU units retain independent notes.",
+    "Informational offer selection initially added the chosen product. The new mode now preserves informational ownership on numeric selection."
+  ],
+  "pending": [
+    "Production promotion",
+    "Native Kamppo adaptation",
+    "Wider real-model pilot measurement",
+    "Additional mixed cart corrections, unknown products and post-order incident review"
+  ],
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "checkedAt": "2026-11-15T07:32:02.303013+00:00"
+}
