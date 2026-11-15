@@ -5613,6 +5613,7 @@ export class WhatsappOrchestratorService {
                     // o se interpreta como cantidad ×2.
                     sourceText: nextNeeds?.note || nextNeeds?.segment || undefined,
                     quantity: nextNeeds?.quantity,
+                    answerNote: nextNeeds?.note,
                   }),
                   selected: ready.status === 'partial' ? ready.attributes : [],
                 },
@@ -8519,6 +8520,7 @@ export class WhatsappOrchestratorService {
             selected: { attributeName: string; attributeValue: string }[];
             sourceText: string;
             quantity: number;
+            note?: string;
           }
         | undefined;
       for (const {product,quantity:qty,note:itemNote,attributes,sourceText:itemSource} of purchasePlan.lines) {
@@ -8543,6 +8545,7 @@ export class WhatsappOrchestratorService {
               product,
               quantity: qty,
               selected: attempt.missingAttributes,
+              note: itemNote,
               sourceText: itemNote || sourceText || product.name,
             };
           }
@@ -8561,6 +8564,7 @@ export class WhatsappOrchestratorService {
           {
             sourceText: pendingAttr.sourceText,
             quantity: validatedToolActions ? pendingAttr.quantity : undefined,
+            answerNote: validatedToolActions ? pendingAttr.note : undefined,
             pendingMultiOrder: {
               confident: [],
               ambiguous: [],
@@ -8936,6 +8940,7 @@ export class WhatsappOrchestratorService {
     opts?: {
       sourceText?: string;
       quantity?: number;
+      answerNote?: string;
       variantIntent?: 'combo' | 'solo';
       pendingMultiOrder?: WhatsappSessionData['pendingMultiOrder'];
       replacement?: NonNullable<WhatsappSessionData['pendingAttribute']>['replacement'];
@@ -8948,6 +8953,7 @@ export class WhatsappOrchestratorService {
         ...this.toPendingAttribute(product, {
           sourceText: opts?.sourceText,
           quantity: opts?.quantity,
+          answerNote: opts?.answerNote,
           variantIntent: opts?.variantIntent,
           selected,
         }),
@@ -9278,6 +9284,7 @@ export class WhatsappOrchestratorService {
       variantIntent?: 'combo' | 'solo';
       sourceText?: string;
       quantity?: number;
+      answerNote?: string;
     },
   ): WhatsappPendingAttribute {
     const variantIntent =
@@ -9287,6 +9294,7 @@ export class WhatsappOrchestratorService {
         : undefined) ||
       (this.catalogService.productImpliesCombo(product) ? 'combo' : undefined);
     return {
+      ...(opts?.answerNote ? {answerNote:opts.answerNote} : {}),
       quantity: opts?.quantity ?? (opts?.sourceText && this.catalogService.extractQuantityFromMessage(opts.sourceText, [product]) > 1
         ? this.catalogService.extractQuantityFromMessage(opts.sourceText, [product]) : undefined),
       productId: product.id,
@@ -33757,7 +33765,7 @@ export class WhatsappOrchestratorService {
             },
             pendingAttribute: this.toPendingAttribute(nextProduct, {
               sourceText: nextItem.note || nextItem.segment || sourceText,
-              quantity: nextItem.quantity,selected:nextItem.selectedAttributes,
+              quantity: nextItem.quantity,selected:nextItem.selectedAttributes,answerNote:nextItem.note,
             }),
           };
           await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
@@ -35603,6 +35611,7 @@ export class WhatsappOrchestratorService {
                   ...this.toPendingAttribute(nextProduct, {
                     sourceText: nextNeeds.note || nextNeeds.segment || undefined,
                     quantity:nextNeeds.quantity,
+                    answerNote:nextNeeds.note,
                   }),
                   selected: pre.status === 'partial' ? pre.attributes : [],
                 },

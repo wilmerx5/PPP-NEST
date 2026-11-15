@@ -144,3 +144,21 @@ it('a replacement choice preserves both units and the unrelated product',async()
     expect.objectContaining({productId:54103,quantity:2}),expect.objectContaining({productId:54102,quantity:1})]));
   expect(h.conv.sessionData.cart).toHaveLength(2);
 });
+
+for (const notes of [['Para Juan','Para María'],['Sin azúcar','Poca azúcar'],['Empacar por separado','Para llevar al trabajo']]) {
+  it(`deferred choices preserve each item's validated free note ${notes.join('/')}`,async()=>{
+    const h=setup(catalogs[1]);h.menu[0].name='Jugo Natural';h.menu[0].hasAttributes=true;
+    h.menu[0].attributes=[{attributeName:'Sabor',options:['Mango','Mora']}] as never;
+    const text=`Un jugo ${notes[0]} y otro ${notes[1]}`;
+    h.agent.runTurn.mockResolvedValue(result(text,'purchase',{addItems:[
+      {productId:54101,quantity:1,note:notes[0]},{productId:54101,quantity:1,note:notes[1]},
+    ]}));
+    await h.sendQueued(text);await h.sendQueued('1');await h.sendQueued('2');
+    expect(h.conv.sessionData.cart).toEqual([
+      expect.objectContaining({productId:54101,quantity:1,note:notes[0],attributes:[{attributeName:'Sabor',attributeValue:'Mango'}]}),
+      expect.objectContaining({productId:54101,quantity:1,note:notes[1],attributes:[{attributeName:'Sabor',attributeValue:'Mora'}]}),
+    ]);
+    expect(h.conv.sessionData.pendingAttribute).toBeUndefined();
+    expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();
+  });
+}
