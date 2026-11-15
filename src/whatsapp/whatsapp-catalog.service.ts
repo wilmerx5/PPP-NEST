@@ -11887,11 +11887,12 @@ export class WhatsappCatalogService {
     const attrName = normalizeText(attr.attributeName || '');
     const isArepaAttr = /\barepas?\b/.test(attrName);
 
-    if (!rejectsOption && this.isComboOnlyAttribute(attr)) {
+    if (this.isComboOnlyAttribute(attr)) {
       const conMatch = q.match(
         /\bcon\s+(?:la\s+|el\s+|las?\s+|una\s+)?(?:gaseosa\s+(?:de\s+)?)?([a-z0-9\s]{3,40})/,
       );
-      if (conMatch?.[1]) {
+      const negatedChoice = conMatch && /\b(?:no quiero|ya no|que no|no era|no es eso)\s*$/.test(q.slice(0, conMatch.index));
+      if (conMatch?.[1] && !negatedChoice) {
         const tail = normalizeText(conMatch[1]);
         let best: string | null = null;
         const keepLonger = (option: string) => {

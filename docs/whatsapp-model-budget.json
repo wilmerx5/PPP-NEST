@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 395,
-  "usedRequests": 392,
-  "remainingRequests": 3,
+  "authorizedRequests": 398,
+  "usedRequests": 396,
+  "remainingRequests": 2,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 19,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-11-15T18:55:43.866Z",
+  "lastAttemptAt": "2026-11-15T19:03:40.218Z",
   "latestEvaluation": {
     "date": "2026-11-15",
     "baseCommit": "32251150407c0ffea9ba58a1e309888ddfb8d603",
@@ -164,6 +164,12 @@
       "additionalRequests": 14,
       "evidence": "Agent-selected continuation cap under standing moderate inference authorization. Eight attempts repair the ledger for an initial regression fixture that exhausted its fetch mock and contacted the provider with a synthetic invalid key, each HTTP401. The fixture now blocks unconfigured network. Six further requests are reserved to finish a recorded checkout sequence that hit its operational cap after delivery_time.",
       "executionLimit": "Replay the first 24 captured requests without network, at most six actual continuation requests, stop at first failed conversation. No customer persistence or Meta."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 3,
+      "evidence": "User explicitly requests API-based repeated tests after production incident. Agent-selected cap, six available requests in total.",
+      "executionLimit": "Reuse the three recorded HTTP burst responses without new inference, then at most six requests for an isolated signed-HTTP quantity correction. Stop on failure."
     }
   ],
   "evaluationHistory": [
