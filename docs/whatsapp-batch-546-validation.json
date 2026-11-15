@@ -1,0 +1,207 @@
+{
+  "batch": 546,
+  "date": "2026-11-15",
+  "sourceCommit": "4e7cc8d1520d64a58edbb6fb6b2cacf4d1c4d1fe",
+  "sourceFiles": 874,
+  "sourceManifestSha256": "0d6f4cfb1a6048ec6d2525b758ce3a9f4a1a006bfdad4567c62f5a6dba0dc5a7",
+  "global": {
+    "passedTests": 53334,
+    "passedSuites": 636,
+    "failed": 0,
+    "pending": 0,
+    "checkpointed": true
+  },
+  "newRegressionTests": 54,
+  "focused": {
+    "passedTests": 106,
+    "passedSuites": 4
+  },
+  "typecheckPassed": true,
+  "cleanDockerBuildPassed": true,
+  "isolatedBoldDatabaseContracts": 11,
+  "environments": {
+    "staging": {
+      "head": "4e7cc8d1520d64a58edbb6fb6b2cacf4d1c4d1fe",
+      "image": "sha256:14368dcfc41df8ee06dbe448846481dca3f82851bc6bb340308e5b265f2b722e",
+      "running": true,
+      "restarts": 0,
+      "compiledControls": 2763,
+      "checkedAt": "2026-11-15T23:18:48.491391+00:00"
+    },
+    "production": {
+      "head": "4e7cc8d1520d64a58edbb6fb6b2cacf4d1c4d1fe",
+      "image": "sha256:14368dcfc41df8ee06dbe448846481dca3f82851bc6bb340308e5b265f2b722e",
+      "running": true,
+      "restarts": 0,
+      "compiledControls": 2763,
+      "checkedAt": "2026-11-15T23:23:13.011840+00:00"
+    }
+  },
+  "effectiveConfiguration": {
+    "ok": true,
+    "semanticRoutingEnabled": true,
+    "agentV1Enabled": true,
+    "effectiveKeyPresent": true,
+    "model": "gpt-6-luna",
+    "complexModel": "gpt-6.1-sol",
+    "databaseWrites": 0,
+    "inferenceRequests": 0
+  },
+  "unchangedBusinessEnvironment": true,
+  "currentImageReplays": {
+    "staging-extra": {
+      "container": "ppp-staging-api-1",
+      "results": {
+        "http": {
+          "ok": true,
+          "compiledHttpChecks": 5,
+          "recordedProviderResponses": 7,
+          "paidInferenceRequests": 0,
+          "isolatedPersistence": true,
+          "metaMessages": 0,
+          "externalOrders": 0
+        },
+        "condiment": {
+          "ok": true,
+          "compiledCondimentTurns": 2,
+          "recordedProviderResponses": 11,
+          "paidInferenceRequests": 0,
+          "isolatedPersistence": true,
+          "metaMessages": 0,
+          "externalOrders": 0
+        },
+        "purchaseModifier": {
+          "ok": true,
+          "compiledPurchaseModifierTurns": 2,
+          "recordedProviderResponses": 5,
+          "paidInferenceRequests": 0,
+          "isolatedPersistence": true,
+          "metaMessages": 0,
+          "externalOrders": 0
+        },
+        "pilotIncidents": {
+          "ok": true,
+          "pilotIncidentTurns": 7,
+          "recordedProviderResponses": 12,
+          "paidInferenceRequests": 0,
+          "isolatedPersistence": true,
+          "metaMessages": 0,
+          "externalOrders": 0
+        }
+      },
+      "moduleHashes": "756d02de98e188add1a66591f4062bd49dbf014b93a2291f9e8a923a714e9a43  dist/whatsapp/whatsapp-agent.service.js\n3d9f0c0f1d2c04c54a01789c02f55748df9e90c5cc9bf2ae25eda44042fa8bd0  dist/whatsapp/whatsapp-orchestrator.service.js\n9bf1531ec1e4858f8e44e72583a27228a182bc1f5a6dfc41503e5f10b0673d9e  dist/whatsapp/whatsapp-catalog.service.js\n3148962e99a81713793d72cb8b60e1b3dd307a6eca46511379bc6aa883310f68  dist/whatsapp/whatsapp-address-parts.js\nae496f4c42bda2ddaf062eb3d2849fdbe59d742ff9853bd9ed4f6d6e5e4e6554  dist/whatsapp/whatsapp-semantic-intent.js\n0f2f597c7958b4b2b82d348d536f021daab4021652476d6ddd4ba6639f1bdd88  dist/orders/orders.service.js\n"
+    },
+    "production-extra": {
+      "container": "ppp_nest_api",
+      "results": {
+        "http": {
+          "ok": true,
+          "compiledHttpChecks": 5,
+          "recordedProviderResponses": 7,
+          "paidInferenceRequests": 0,
+          "isolatedPersistence": true,
+          "metaMessages": 0,
+          "externalOrders": 0
+        },
+        "condiment": {
+          "ok": true,
+          "compiledCondimentTurns": 2,
+          "recordedProviderResponses": 11,
+          "paidInferenceRequests": 0,
+          "isolatedPersistence": true,
+          "metaMessages": 0,
+          "externalOrders": 0
+        },
+        "purchaseModifier": {
+          "ok": true,
+          "compiledPurchaseModifierTurns": 2,
+          "recordedProviderResponses": 5,
+          "paidInferenceRequests": 0,
+          "isolatedPersistence": true,
+          "metaMessages": 0,
+          "externalOrders": 0
+        },
+        "pilotIncidents": {
+          "ok": true,
+          "pilotIncidentTurns": 7,
+          "recordedProviderResponses": 12,
+          "paidInferenceRequests": 0,
+          "isolatedPersistence": true,
+          "metaMessages": 0,
+          "externalOrders": 0
+        }
+      },
+      "moduleHashes": "756d02de98e188add1a66591f4062bd49dbf014b93a2291f9e8a923a714e9a43  dist/whatsapp/whatsapp-agent.service.js\n3d9f0c0f1d2c04c54a01789c02f55748df9e90c5cc9bf2ae25eda44042fa8bd0  dist/whatsapp/whatsapp-orchestrator.service.js\n9bf1531ec1e4858f8e44e72583a27228a182bc1f5a6dfc41503e5f10b0673d9e  dist/whatsapp/whatsapp-catalog.service.js\n3148962e99a81713793d72cb8b60e1b3dd307a6eca46511379bc6aa883310f68  dist/whatsapp/whatsapp-address-parts.js\nae496f4c42bda2ddaf062eb3d2849fdbe59d742ff9853bd9ed4f6d6e5e4e6554  dist/whatsapp/whatsapp-semantic-intent.js\n0f2f597c7958b4b2b82d348d536f021daab4021652476d6ddd4ba6639f1bdd88  dist/orders/orders.service.js\n"
+    }
+  },
+  "actualModelValidation": {
+    "model": "gpt-6-luna",
+    "requests": 33,
+    "http200": 33,
+    "externalOrders": 0,
+    "metaMessages": 0,
+    "acceptedDevelopmentCases": [
+      {
+        "case": "exclusive_base_to_combo",
+        "requests": 5,
+        "turns": 1,
+        "latencyMs": 12755
+      },
+      {
+        "case": "new_purchase_after_confirmed_order_with_price_address_phone_and_checkout",
+        "requests": 4,
+        "turns": 4,
+        "firstTurnLatencyMs": 9614
+      },
+      {
+        "case": "deferred_combo_flavour",
+        "requests": 3,
+        "turns": 2,
+        "firstTurnLatencyMs": 7306
+      }
+    ],
+    "retainedDiagnostics": [
+      {
+        "case": "deferred_combo_flavour_legacy_continuation",
+        "requests": 3,
+        "accepted": false,
+        "reason": "Choosing an offered combo re-parsed the whole original message and added its included drink as a separate product."
+      },
+      {
+        "case": "elliptical_price_context_before_read_only_context",
+        "requests": 8,
+        "accepted": false
+      },
+      {
+        "case": "contextual_three_turn_development",
+        "requests": 10,
+        "wholeSequenceAccepted": false,
+        "reason": "Initial weak assertion accepted a honey note on a random dish. Strict host-selection regression added. Read-only inquiry first turn was safe."
+      }
+    ],
+    "fixtureChanges": [
+      "Payment method keywords from the old sanitized fixture were replaced by DEFAULT_PAYMENT_METHODS.",
+      "Delivery validation and persistence use isolated fixtures."
+    ],
+    "limits": [
+      "Development cases with isolated dependencies, not a holdout or live WhatsApp sales rate.",
+      "Transcribed text tested. Original media and live geocoding are outside these replays."
+    ]
+  },
+  "deploymentTiming": "Urgent production promotions followed exact-image controls and recorded real-provider journeys while the final full suite continued. The global result reported here is the completed final-source run.",
+  "retainedValidationFailures": [
+    "Staging rejected adding provenance inside offeredProducts because an existing strict result-shape contract failed. Provenance moved into separate backend-owned metadata; existing expected offer shape preserved. Previous staging image restored automatically before the corrected retry.",
+    "Two named-extra compound-measure regressions failed in an early candidate and were fixed without changing their expected results.",
+    "First staging Docker build rejected an unknown-to-string TypeScript error. Previous runtime remained active. Narrowing corrected and clean build repeated.",
+    "One focal invocation referenced a nonexistent spec path. Its 44 valid tests passed, and the corrected three-suite invocation passed82.",
+    "Earlier global manifests interrupted for source changes. Final report uses only the frozen final manifest."
+  ],
+  "limitations": [
+    "The latest historical review contains pending exact replays for forwarded four-item list, colloquial cooking note, and ambiguous combo-without-drink plus plantain.",
+    "Different street or door map results still require validation.",
+    "Missing original media and historical channel configuration changes cannot be resolved from the exported text alone.",
+    "Native Kamppo adaptation and representative pilot closure/latency measurement remain pending."
+  ],
+  "privateEvidenceDirectory": "/home/levi/.codex/tmp/ppp-546-validation",
+  "checkedAt": "2026-11-15T23:39:54.254332+00:00"
+}

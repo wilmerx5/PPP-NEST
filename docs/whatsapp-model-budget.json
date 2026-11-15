@@ -15,8 +15,10 @@
     "developmentOnly": true,
     "model": "gpt-6-luna",
     "report": "docs/whatsapp-batch-546-validation.json",
-    "scope": "Five-call conversion accepted. Eight-call contextual inquiry diagnostic failed and retained. Ten-call contextual development sequence exposed an incorrectly assigned unscoped honey note, which a weak initial assertion had accepted; now protected with deterministic persisted host selection and stricter regressions. Final fresh four-call compound rice/address request after completed state accepted through four-turn isolated checkout, including the exact follow-up phone. No Meta sends or external orders. Final recorded responses must be replayed on deployed image. Additional three-request two-turn family choice reproduced a duplicate included drink in the legacy continuation. After ownership/source-scope correction, a fresh three-request two-turn case passed with one combo and its included Manzana. Initial failed oracle also hardcoded a row identity and was corrected to the actual offered second candidate; the duplicate-cart failure remains valid.",
-    "temporaryLimitChosenByAgent": true
+    "scope": "Five-call conversion accepted. Eight-call contextual inquiry diagnostic failed and retained. Ten-call contextual development sequence exposed an incorrectly assigned unscoped honey note, which a weak initial assertion had accepted; now protected with deterministic persisted host selection and stricter regressions. Final fresh four-call compound rice/address request after completed state accepted through four-turn isolated checkout, including the exact follow-up phone. No Meta sends or external orders. Final recorded responses replayed on the exact image active in staging and production. Additional three-request two-turn family choice reproduced a duplicate included drink in the legacy continuation. After ownership/source-scope correction, a fresh three-request two-turn case passed with one combo and its included Manzana. Initial failed oracle also hardcoded a row identity and was corrected to the actual offered second candidate; the duplicate-cart failure remains valid.",
+    "temporaryLimitChosenByAgent": true,
+    "finalSourceCommit": "4e7cc8d1520d64a58edbb6fb6b2cacf4d1c4d1fe",
+    "recordedReplayVerifiedInStagingAndProduction": true
   },
   "authorizationExtensions": [
     {

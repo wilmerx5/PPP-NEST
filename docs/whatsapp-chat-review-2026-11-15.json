@@ -1,0 +1,189 @@
+{
+  "date": "2026-11-15",
+  "sourceArchive": "15-11-2026.zip",
+  "messages": 375,
+  "customerMessages": 189,
+  "botMessages": 186,
+  "confirmedOrderMessages": 19,
+  "genericClarificationMessages": 14,
+  "limits": [
+    "chat.md y chat.txt son el mismo historial de una cuenta compartida.",
+    "El conteo de aclaraciones incluye un teléfono incompleto.",
+    "Una cuenta compartida no representa una muestra independiente de clientes."
+  ],
+  "priority": "Bloqueos de comprensión y compras no solicitadas.",
+  "deploymentEvidence": "docs/whatsapp-batch-546-validation.json",
+  "findings": [
+    {
+      "id": "A01",
+      "priority": 0,
+      "time": "16:30",
+      "case": "Dame solo uno en combo con manzana Postobón",
+      "historicalStatus": "observed_after_545_deploy",
+      "status": "covered_in_546_focused_regressions",
+      "evidence": "Cambio exclusivo a combo y Unicode, inferencia real y regresión con dos catálogos."
+    },
+    {
+      "id": "A02",
+      "priority": 0,
+      "time": "15:26",
+      "case": "Rincón de los Ángeles, casa: 7",
+      "historicalStatus": "before_544_requires_current_replay",
+      "status": "covered_in_546_focused_regressions",
+      "evidence": "Referencia y casa conservadas sin añadir SKU. La retirada posterior por negación conserva revisión exacta pendiente."
+    },
+    {
+      "id": "A03",
+      "priority": 0,
+      "time": "14:47–14:50",
+      "case": "Pago con un billete de 100mil tras confirmar #93",
+      "historicalStatus": "before_544_current_order_lookup_code_matches_risk",
+      "status": "covered_in_546_focused_regressions",
+      "evidence": "Cambio de efectivo en orden propia, guardado transaccional y búsqueda por comprobante de la conversación con contacto distinto."
+    },
+    {
+      "id": "A04",
+      "priority": 0,
+      "time": "15:34–15:37",
+      "case": "Una gaseosa fria litro y cuarto",
+      "historicalStatus": "before_544_requires_current_replay",
+      "status": "covered_in_546_focused_regressions",
+      "evidence": "Medida de litro y cuarto conservada, bebida pendiente y checkout con una sola bebida."
+    },
+    {
+      "id": "A05",
+      "priority": 1,
+      "time": "16:29",
+      "case": "Y pollo y medio con gaseos después de preguntar precio",
+      "historicalStatus": "observed_after_545_deploy",
+      "status": "covered_in_546_focused_regressions",
+      "evidence": "Continuación de cotización conserva contexto informativo y pregunta concreta cuando falta detalle."
+    },
+    {
+      "id": "A06",
+      "priority": 1,
+      "time": "16:34",
+      "case": "Por favor muchas miel",
+      "historicalStatus": "observed_after_545_deploy",
+      "status": "covered_in_546_focused_regressions",
+      "evidence": "Nota sin destinatario mantiene pregunta persistida y admite elección del producto sin alterar los demás."
+    },
+    {
+      "id": "A07",
+      "priority": 1,
+      "time": "13:24",
+      "case": "Combo de pollo con gaseosa manzana seguido de elección2",
+      "historicalStatus": "before_544_requires_current_replay",
+      "status": "covered_in_546_actual_model_and_regressions",
+      "evidence": "La API real reprodujo una bebida adicional al elegir el combo. Se conserva el segmento literal de la oferta y su autoridad. Una repetición fresca aprueba con una sola línea y Manzana incluida. Diez regresiones nuevas cubren dos catálogos, compras adicionales, consulta intermedia y ofertas anteriores."
+    },
+    {
+      "id": "A08",
+      "priority": 1,
+      "time": "14:04 y14:59",
+      "case": "Torre4 907 y Torre1 apto407 antes de elegir lugar1",
+      "historicalStatus": "before_544_requires_current_replay",
+      "status": "covered_in_546_focused_regressions",
+      "evidence": "Unidad interna anterior al lugar y elección geográfica posterior conservan torre y apartamento."
+    },
+    {
+      "id": "A09",
+      "priority": 1,
+      "time": "15:04",
+      "case": "Me puedes vender un bagre en salsa por favor",
+      "historicalStatus": "before_544_requires_current_replay",
+      "status": "covered_in_546_focused_regressions",
+      "evidence": "Compra completa con preparación válida recorre el router en dos catálogos simulados."
+    },
+    {
+      "id": "A10",
+      "priority": 1,
+      "time": "12:44–12:46 y14:26",
+      "case": "Direcciones con Bis y Sur",
+      "historicalStatus": "historical_geocoder_review_required",
+      "status": "pending_exact_review",
+      "nextAction": "Verificar resultados geográficos de los ejemplos históricos Bis y Sur. Una vía o puerta diferente requiere confirmación."
+    },
+    {
+      "id": "A11",
+      "priority": 1,
+      "time": "15:02",
+      "case": "Lista de cuatro productos reenviada",
+      "historicalStatus": "before_544_requires_current_replay",
+      "status": "pending_exact_review",
+      "nextAction": "Repetir la lista reenviada de cuatro productos y la aclaración específica del ejecutivo."
+    },
+    {
+      "id": "A12",
+      "priority": 1,
+      "time": "14:58",
+      "case": "Con pechuga ala pero plissss bn frito",
+      "historicalStatus": "before_544_requires_current_replay",
+      "status": "pending_exact_review",
+      "nextAction": "Repetir presa y nota coloquial de cocción juntas, comprobando nota final."
+    },
+    {
+      "id": "A13",
+      "priority": 1,
+      "time": "14:03",
+      "case": "Combo sin gaseosa platano por favor",
+      "historicalStatus": "ambiguous_customer_text_requires_targeted_question",
+      "status": "pending_exact_review",
+      "nextAction": "Aclarar plátano adicional frente a sustitución y excluir la bebida del combo."
+    },
+    {
+      "id": "A14",
+      "priority": 1,
+      "time": "13:28 y15:57",
+      "case": "Teléfono válido durante checkout",
+      "historicalStatus": "mixed_historical_behaviors",
+      "status": "covered_in_546_focused_regressions",
+      "evidence": "Teléfono válido aislado reconocido en cuatro estados activos y en el recorrido real de arroz hasta confirmar."
+    },
+    {
+      "id": "F544",
+      "priority": 0,
+      "time": "13:30–13:32 y14:09",
+      "case": "Con7up, dirección Altavista y nota de ají que duplicaba arroz",
+      "historicalStatus": "covered_by_deployed_544_specific_replays",
+      "status": "prior_deployed_regression_retained",
+      "evidence": "Recorrido grabado se repite en la imagen546. Ver informe de despliegue."
+    },
+    {
+      "id": "F545",
+      "priority": 0,
+      "time": "15:54–15:56",
+      "case": "Dos pechugas con sustitución de papa en una frase",
+      "historicalStatus": "covered_by_deployed_545_specific_replay",
+      "status": "prior_deployed_regression_retained",
+      "evidence": "Recorrido grabado se repite en la imagen546. Ver informe de despliegue."
+    },
+    {
+      "id": "U01",
+      "priority": 2,
+      "time": "16:16–16:17",
+      "case": "Dos imágenes y un audio, luego dirección y adición de Sobrebarriga",
+      "historicalStatus": "insufficient_media_content",
+      "status": "pending_exact_review",
+      "nextAction": "Faltan originales multimedia o transcripción para verificar los productos de esa secuencia."
+    },
+    {
+      "id": "U02",
+      "priority": 2,
+      "time": "13:43",
+      "case": "Medio pollo después de un combo atascado",
+      "historicalStatus": "order_boundary_ambiguous",
+      "status": "pending_exact_review",
+      "nextAction": "Repetir límite entre continuar borrador y nuevo pedido ante una compra posterior ambigua."
+    },
+    {
+      "id": "U03",
+      "priority": 1,
+      "time": "13:34",
+      "case": "WhatsApp no está activo durante las pruebas",
+      "historicalStatus": "configuration_history_unverified",
+      "status": "pending_exact_review",
+      "nextAction": "La exportación no atribuye la desactivación histórica del canal. Verificar auditoría de configuración disponible."
+    }
+  ]
+}
