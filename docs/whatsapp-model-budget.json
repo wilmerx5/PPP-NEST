@@ -1,22 +1,23 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 414,
-  "usedRequests": 414,
-  "remainingRequests": 0,
+  "authorizedRequests": 426,
+  "usedRequests": 423,
+  "remainingRequests": 3,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 19,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-11-15T19:35:57.560Z",
+  "lastAttemptAt": "2026-11-15T20:57:48.493Z",
   "latestEvaluation": {
     "date": "2026-11-15",
-    "baseCommit": "32251150407c0ffea9ba58a1e309888ddfb8d603",
-    "requests": 10,
-    "acceptedFinalConversations": 2,
+    "baseCommit": "f4d3007c065273ef71101365ee8e5642fb6029ba",
+    "requests": 63,
+    "successfulActualModelRequests": 55,
+    "reconciledSyntheticKey401Attempts": 8,
     "developmentOnly": true,
     "model": "gpt-6-luna",
-    "report": "docs/whatsapp-batch-543-validation.json",
-    "scope": "Two fresh isolated full-router mixed-partition cases, five actual requests each. The first fixture assertion was corrected for canonical catalogue capitalization using captured output at zero additional inference. An extra confirmed-order address correction plus separate purchase passed with zero model requests through the deterministic route. No customer persistence, Meta or external orders.",
+    "report": "docs/whatsapp-batch-544-validation.json",
+    "scope": "Actual API diagnostic reproduction, 12-turn development checkout, signed loopback webhook burst and quantity correction, condiment edit and fresh full rice/Ginger/aji request. Some accepted development runs reuse recorded response prefixes and actual continuations. Independent fresh full request used eight calls and 17.094 seconds. No Meta sends or external orders. Eight failed synthetic-key fixture attempts were reconciled after discovery and are counted separately from successful model calls.",
     "temporaryLimitChosenByAgent": true
   },
   "authorizationExtensions": [
@@ -182,6 +183,13 @@
       "additionalRequests": 6,
       "evidence": "User explicitly requested real API tests and supplied the condiment incident. Agent-selected fresh confirmation cap after the recorded development case passed.",
       "executionLimit": "One independent fresh original full-message condiment purchase, at most eight available HTTP attempts, stop on first failure. No Meta or external orders."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 12,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "scope": "New urgent pechuga purchase with accompaniment substitution regression. Stop first failing run and diagnose offline. Standing moderate inference authorization and explicit API validation request."
     }
   ],
   "evaluationHistory": [
@@ -756,6 +764,17 @@
       "status": "interrupted_not_accepted",
       "report": "docs/whatsapp-latest-integration-validation-1510.json",
       "note": "Runner launched after stale expected-budget assertion failed because shell did not stop. Source and ledger had advanced from prior chat state; interrupted only own preload process. No complete provider usage report emitted, cost unknown; do not treat unreported usage as free. No reset of counters."
+    },
+    {
+      "date": "2026-11-15",
+      "baseCommit": "32251150407c0ffea9ba58a1e309888ddfb8d603",
+      "requests": 10,
+      "acceptedFinalConversations": 2,
+      "developmentOnly": true,
+      "model": "gpt-6-luna",
+      "report": "docs/whatsapp-batch-543-validation.json",
+      "scope": "Two fresh isolated full-router mixed-partition cases, five actual requests each. The first fixture assertion was corrected for canonical catalogue capitalization using captured output at zero additional inference. An extra confirmed-order address correction plus separate purchase passed with zero model requests through the deterministic route. No customer persistence, Meta or external orders.",
+      "temporaryLimitChosenByAgent": true
     }
   ],
   "authorizationHistory": [

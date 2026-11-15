@@ -1,0 +1,98 @@
+{
+  "batch": 544,
+  "date": "2026-11-15",
+  "sourceCommit": "f4d3007c065273ef71101365ee8e5642fb6029ba",
+  "sourceFiles": 871,
+  "sourceManifestSha256": "6998d068eca973c30c68b908cef32f045c5dd2d8367faf16e31a332b3803ff05",
+  "global": {
+    "passedTests": 53275,
+    "passedSuites": 633,
+    "failed": 0,
+    "pending": 0,
+    "checkpointed": true
+  },
+  "newRegressionTests": 69,
+  "typecheckPassed": true,
+  "cleanDockerBuildPassed": true,
+  "isolatedDatabaseContracts": {
+    "bold": 11,
+    "semanticAndHistory": 12
+  },
+  "environments": {
+    "staging": {
+      "compiledControls": 2704,
+      "head": "f4d3007c065273ef71101365ee8e5642fb6029ba",
+      "image": "sha256:85be698b62ea4e2bb73b212a887a567a22438c42cc19502a8aa3f746a2e821d1",
+      "running": true,
+      "restarts": 0,
+      "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+      "checkedAt": "2026-11-15T20:33:15.155069+00:00"
+    },
+    "production": {
+      "head": "f4d3007c065273ef71101365ee8e5642fb6029ba",
+      "image": "sha256:85be698b62ea4e2bb73b212a887a567a22438c42cc19502a8aa3f746a2e821d1",
+      "running": true,
+      "restarts": 0,
+      "publicHealthUrl": "https://api.prontopolloportal.com/api/health",
+      "compiledControls": 2704,
+      "effectiveConfiguration": {
+        "ok": true,
+        "semanticRoutingEnabled": true,
+        "agentV1Enabled": true,
+        "effectiveKeyPresent": true,
+        "model": "gpt-6-luna",
+        "complexModel": "gpt-6.1-sol",
+        "databaseWrites": 0,
+        "inferenceRequests": 0
+      },
+      "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+      "effectiveBusinessEnvironmentPreservedExceptAuthorizedSemanticFlag": true,
+      "checkedAt": "2026-11-15T20:41:09.943000+00:00"
+    }
+  },
+  "additionalActiveImageChecksPerEnvironment": {
+    "signedHttp": 5,
+    "condimentTurns": 2,
+    "recordedResponses": 18,
+    "paidRequests": 0,
+    "metaMessages": 0,
+    "externalOrders": 0
+  },
+  "realModelEvaluation": {
+    "model": "gpt-6-luna",
+    "successfulRequests": 55,
+    "reconciledSyntheticKey401Attempts": 8,
+    "countedAttempts": 63,
+    "developmentOnly": true,
+    "freshCompoundRequest": {
+      "accepted": true,
+      "requests": 8,
+      "latencySeconds": 17.094
+    },
+    "notes": "Accepted development runs include recorded prefixes plus real continuations. No live-channel conversion rate measured."
+  },
+  "budget": {
+    "authorizedRequests": 414,
+    "usedRequests": 414,
+    "remainingRequests": 0,
+    "numericCapsChosenByAgent": true
+  },
+  "userRule": "Only explicit purchase intent authorizes add_item. Edit, inquiry and conversational segments cannot add. Explicit new purchases may accompany edits. Absolute quantity corrections update existing lines.",
+  "preliminaryFailuresRetained": [
+    "Current inbound duplicated in history",
+    "Address dropped when mixed with included flavor",
+    "Negated salad suppressed affirmed drink",
+    "Pending purchase note ownership guard rejection",
+    "Eight synthetic-key401 fixture attempts",
+    "Interrupted local builds and global run after host reboot"
+  ],
+  "releaseSequence": "Exact-image and actual API development checks passed before urgent production hotfix. Full frozen-source global completed after deployment.",
+  "maps": "South query returned a different door number. Validation preserved.",
+  "limitations": [
+    "Representative live conversion and latency remain unmeasured",
+    "Fresh compound development turn used eight requests and 17.094 seconds",
+    "Kamppo native migration pending",
+    "Tests do not establish universal commercial readiness"
+  ],
+  "privateEvidenceDirectory": "/home/levi/.codex/tmp/ppp-544-validation"
+}
