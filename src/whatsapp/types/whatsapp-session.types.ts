@@ -80,6 +80,8 @@ export type WhatsappPendingAttribute = {
 export type WhatsappSessionData = {
   /** Last atomically persisted semantic turn, used to resolve an uncertain commit outcome. */
   lastSemanticDecisionId?: string;
+  /** Repeating an already applied absolute note/option edit preserves its result. */
+  lastSemanticDetailEdit?: { messageHash: string; cartSignature: string; createdAt: number };
   pendingOrderBoundary?: { request: string; draftSignature: string; createdAt?: number };
   pendingCatalogInquiry?: {productIds:number[];createdAt:number};
   pendingCartOptionChoice?: {

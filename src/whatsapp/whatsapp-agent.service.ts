@@ -932,6 +932,12 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           const pendingNoteItem = pendingNoteLine && actions.addItems?.[pendingNoteLine.pendingAddIndex];
           const noteSources = pendingNoteItem && pendingPurchaseSources.get(pendingNoteItem);
           const pendingNoteSource = noteSources?.size === 1 ? [...noteSources][0] : undefined;
+          if (input.semanticInterpretation && !pendingNoteItem && ['add_item','update_item','replace_item'].includes(name) &&
+              typeof args.note === 'string' && args.note.trim().length > 200) {
+            messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify({ok:false,error:'note_requires_summary',
+              hint:'La nota supera 200 caracteres y no se guardó. Resume todas las instrucciones de preparación en 200 caracteres como máximo, conservando exclusiones, sustituciones y cantidades. Omite saludos y explicaciones repetidas. Repite la misma operación con esa nota completa; no añadas otra unidad.'})});
+            continue;
+          }
           if (input.semanticInterpretation) {
             let contractResult: string | undefined;
             if (semanticIntent && semanticToolRequiresSource(name) && typeof args.sourceText === 'string' &&
@@ -1959,8 +1965,17 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             options:styleChoices.map(candidate => ({id:candidate.id,name:candidate.name})),
             hint:'Pregunta si quiere frito o broaster; no elijas una preparación por tu cuenta.'});
         }
+        // An explicitly conditional kitchen substitution remains a request in
+        // the note. It does not assert that the substitute is in the recipe.
+        const conditionalSubstitution = /\bsi\s+(?:hay|tienen|tienes)\b[^.!?]*\b(?:en lugar de|en vez de)\b[^.!?]*/i.exec(ownedText);
+        const requestedIngredients = this.catalogService.uncoveredWordsAnchoredByProduct(ownedText, product, ctx.products);
+        const conditionalNote = typeof args.note === 'string' &&
+          /\bsi\s+(?:hay|tienen|tienes)\b[^.!?]*\b(?:en lugar de|en vez de)\b/i.test(args.note) &&
+          requestedIngredients.every(word => (' ' + normalizeOption(args.note) + ' ').includes(' ' + normalizeOption(word) + ' '));
+        const coverageText = ctx.semanticInterpretation && conditionalSubstitution && conditionalNote
+          ? ownedText.replace(conditionalSubstitution[0], ' ') : ownedText;
         const uncovered = this.catalogService.uncoveredWordsAnchoredByProduct(
-          ownedText,
+          coverageText,
           product,
           ctx.products,
         );
@@ -2091,7 +2106,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         }
         // Retain additional kitchen preferences even when the model supplied
         // only the first one. A note already scoped to one line does not absorb the other line.
-        if (sourceNote && note) {
+        if (sourceNote && note && !(ctx.semanticInterpretation && modelNote && source.length > 200)) {
           for (const part of sourceNote.split(',').map(s => s.trim()).filter(Boolean)) {
             if (modelNote && preferenceSource && !normalizeOption(preferenceSource).includes(normalizeOption(part))) continue;
             if (!note.toLowerCase().includes(part.toLowerCase())) note = `${note}, ${part}`.slice(0, 200);

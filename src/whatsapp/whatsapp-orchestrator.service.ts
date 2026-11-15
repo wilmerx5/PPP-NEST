@@ -1358,7 +1358,8 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (await this.tryHandleSemanticTurn(conv, msg, text, cfg, turn)) return;
+    const semanticCustomerText = text;
+    if (await this.tryHandleSemanticTurn(conv, msg, semanticCustomerText, cfg, turn)) return;
 
     if (await this.tryHandleRejectedReplacementFollowup(conv,msg.waId,this.conversationService.getSession(conv),text,cfg)) return;
 
@@ -2189,6 +2190,7 @@ export class WhatsappOrchestratorService {
 
     // Mismo chat por número: al escribir de nuevo tras pedido o cierre, empieza pedido nuevo
     let reopenedFreshOrder = false;
+    let separateReopenedPurchase = false;
     if (conv.state === 'completed' || conv.state === 'closed') {
       if (/\b(?:pago|billete|cambio|vueltas?)\b/i.test(originalText) && this.extractCashChangeFromText(originalText) &&
           !this.extractSeparatePostOrderPurchase(originalText)) {
@@ -2223,6 +2225,7 @@ export class WhatsappOrchestratorService {
         if (!separatePurchase) return;
         originalText = `quiero ${separatePurchase}`;
         text = originalText;
+        separateReopenedPurchase = true;
       }
       const postText = this.normalizeForMatch(originalText);
       // A retrospective correction concerns the registered order, not another purchase.
@@ -2243,6 +2246,7 @@ export class WhatsappOrchestratorService {
               '\n\nVoy a preparar la compra que pediste aparte.');
             originalText = `quiero ${newPurchase}`;
             text = originalText;
+            separateReopenedPurchase = true;
           } else {
             await this.reply(conv, msg.waId,
               'Tu pedido ya está registrado. No lo he modificado ni abrí otro pedido. Para revisar esta corrección antes de la entrega, contacta al restaurante. ' + this.humanPhoneHint());
@@ -2262,7 +2266,8 @@ export class WhatsappOrchestratorService {
       }
       // ETA / demora / faltante: no reabrir carrito ni buscar platos
       const postInquiry = originalText.replace(/\bcu[aá]nto\s+sr\s+demora\b/gi, 'cuánto se demora');
-      if (isPostOrderFollowUpIntent(postInquiry) || isSpecificOrderProgressInquiry(postInquiry)) {
+      const freshPurchase = /\b(?:para pedir|me gustaria|quisiera|quiero(?: pedir)?|me (?:das|regalas|envias|vendes))\s+(?:un[oa]?|dos|tres|\d+)\b/.test(postText);
+      if (!freshPurchase && (isPostOrderFollowUpIntent(postInquiry) || isSpecificOrderProgressInquiry(postInquiry))) {
         await this.handlePostOrderFollowUp(conv, msg.waId, postInquiry, cfg);
         return;
       }
@@ -2272,7 +2277,7 @@ export class WhatsappOrchestratorService {
       reopenedFreshOrder = true;
     }
 
-    if (reopenedFreshOrder && await this.tryHandleSemanticTurn(conv,msg,originalText,cfg,turn)) return;
+    if (reopenedFreshOrder && await this.tryHandleSemanticTurn(conv,msg,separateReopenedPurchase ? originalText : semanticCustomerText,cfg,turn)) return;
 
     if (this.isClearCartIntent(originalText)) {
       await this.conversationService.resetOrderSession(conv, 'building_cart', {
@@ -29347,6 +29352,14 @@ export class WhatsappOrchestratorService {
         !['building_cart','awaiting_attribute','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
     const session = this.conversationService.getSession(conv);
     if (session.mpPreferenceId) return false;
+    const messageHash = createHash('sha256').update(text.normalize('NFC').toLocaleLowerCase('es').replace(/\s+/g,' ').trim()).digest('hex');
+    const previousEdit = session.lastSemanticDetailEdit;
+    if (previousEdit && previousEdit.messageHash === messageHash && previousEdit.cartSignature === JSON.stringify(session.cart) &&
+        Date.now() - previousEdit.createdAt >= 0 && Date.now() - previousEdit.createdAt < 5 * 60_000) {
+      await this.reply(conv,msg.waId,this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+
+        (this.formatInterruptedStepReminder(conv,session) || this.formatContinueShoppingPrompt(session)));
+      return true;
+    }
     if (session.pendingSubsetKitchenNote && await this.tryHandleSubsetKitchenNote(conv,msg.waId,session,text,cfg)) return true;
     if (session.cart.length && await this.tryHandleCartChargeQuestion(conv, msg.waId, session, text, cfg)) return true;
     if (session.cart.length && /^[+\d\s().-]+$/.test(text.trim()) && this.looksLikePhoneNumber(text)) return false;
@@ -29541,6 +29554,12 @@ export class WhatsappOrchestratorService {
         intent:roles.has('purchase') || replacementLine ? 'order' : 'info',note:offer.note,
         ...(replacementLine ? {replacement:{originalLine:structuredClone(replacementLine)}} : {}),
         ...(offer.attributes ? {offeredAlternatives:offer.productIds.map(productId=>({productId,attributes:offer.attributes!}))} : {})}};
+    }
+    const detailOnly = (guarded.actions?.updateCartLines?.length || guarded.actions?.updateAttributes?.length) &&
+      (guarded.actions?.updateCartLines || []).every(edit => edit.quantity === undefined && typeof edit.note === 'string') &&
+      Object.entries(guarded.actions || {}).every(([key,value]) => !present(value) || ['updateCartLines','updateAttributes'].includes(key));
+    if (detailOnly && roles.has('edit') && [...roles].every(role => ['edit','conversation'].includes(role))) {
+      next = {...next,lastSemanticDetailEdit:{messageHash,cartSignature:JSON.stringify(next.cart),createdAt:Date.now()}};
     }
     const changed = JSON.stringify(next) !== JSON.stringify(session) || !!customerName && customerName !== conv.customerName;
     const nextState = next.pendingAttribute ? 'awaiting_attribute' : changes || result.offeredProducts && roles.has('purchase') ? 'building_cart' : conv.state;

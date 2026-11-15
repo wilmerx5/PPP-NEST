@@ -9350,8 +9350,13 @@ export class WhatsappCatalogService {
    * También bullets/líneas WhatsApp: "* Medio pollo\n* Porción de papas".
    */
   splitMultiProductSegments(text: string, products?: WhatsappCatalogProduct[]): string[] {
-    text = text.replace(/\b(?:un\s+)?litro\s+y\s+(?:un\s+)?(medio|cuarto)\b/gi,
-      (_whole, fraction: string) => fraction.toLowerCase() === 'medio' ? '1.5 litros' : '1.25 litros');
+    text = text.replace(/\b(?:un\s+)?litro\s+y\s+(?:un\s+)?(medio|cuarto)\b(?=\s*(?:$|[,;.!?]|y\b))/gi,
+      (whole: string, fraction: string, offset: number) => {
+        const start = offset + whole.toLowerCase().lastIndexOf(fraction.toLowerCase());
+        const extra = text.slice(start).split(/[;,\r\n]|\s+y\s+/i)[0];
+        if (products?.length && this.productFullyNamedIn(extra,products)) return whole;
+        return fraction.toLowerCase() === 'medio' ? '1.5 litros' : '1.25 litros';
+      });
     // An uncounted named compound is still one dish. Do not let the raw
     // "con medio…" splitter detach its included preparation from its owner.
     if (products?.length) {

@@ -13,7 +13,7 @@ export function parseSemanticIntent(value: unknown, source: string): SemanticInt
   const segments = (value as Partial<SemanticIntent> | null)?.segments;
   if (!Array.isArray(segments) || !segments.length || segments.length > 20) return null;
   const message = canonical(source);
-  const measurements = [...message.matchAll(/\b(?:litros?|kilos?|kilogramos?|libras?|onzas?|metros?|horas?)\s+y\s+(?:un\s+)?(?:medio|media|cuarto|cuarta)\b/g)];
+  const measurements = [...message.matchAll(/\b(?:litros?|kilos?|kilogramos?|libras?|onzas?|metros?|horas?)\s+y\s+(?:un\s+)?(?:medio|media|cuarto|cuarta)\b(?=\s*(?:$|[,;.!?]|y\b))/g)];
   let cursor = 0;
   const result: SemanticIntent['segments'] = [];
   for (const segment of segments) {
@@ -108,6 +108,7 @@ En productIds identifica los SKUs a los que se refiere cada segmento, usando car
 Las búsquedas también exigen sourceText de un segmento de compra, cambio, consulta o duda. Una introducción conversacional no puede convertirse en una búsqueda de producto. Usa search_menu para verificar datos. Un resultado sin coincidencias significa que falta resolver la búsqueda. Solo afirma que un plato está ausente cuando identificaste claramente qué producto gastronómico pidió el cliente. Las palabras conversacionales nunca son productos ausentes.
 Un producto conocido pendiente de elegir sabor u otra opción mantiene intención purchase. Usa add_item para que el backend abra las opciones. Si falta elegir SKU, usa offer_products. Nunca publiques opciones numeradas sin esa tool. Si solo preguntas o aclaras, no anuncies cambios. El backend muestra el carrito de los cambios aceptados y solicita los datos pendientes. No confirmes órdenes ni inventes pagos verificados.
 Las solicitudes de salsas, condimentos, cubiertos o servilletas para un plato son notas de cocina, salvo que la carta los identifique como productos con precio. Los sobres o paquetes solicitados forman parte de esa nota. Conserva la indicación completa y anótala en el plato existente o en su compra nueva. Una nota para un plato existente no autoriza añadir otra unidad. Anotar una solicitud no acredita disponibilidad ni gratuidad.
+Las notas de producto admiten 200 caracteres. Resume saludos, explicaciones y repeticiones para conservar TODAS las instrucciones concretas dentro de ese límite. Al revisar una nota conserva las instrucciones anteriores que el cliente mantiene. Nunca cortes una frase ni omitas una exclusión o sustitución para hacerla caber. Si las instrucciones completas no caben, solicita una aclaración concreta antes de modificar el pedido.
 `;
 
 export const SEMANTIC_CHOICE_TOOL = {

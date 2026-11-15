@@ -249,3 +249,42 @@ for(const state of ['completed','closed']) it(`a new full purchase with price an
   await h.sendQueued('contraentrega');expect(await h.sendQueued('confirmar')).toMatch(/registrado/i);
   expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
 });
+
+it('a new audio transcript with preparation and a previous-delivery complaint stays a new purchase',async()=>{
+  const fish={id:54630,code:30,name:'Mojarra',price:32000,description:'Mojarra acompañada de papas a la francesa y ensalada.',availableNow:true,attributes:[]};
+  const h=setup([...menus[0],fish]);h.conv.state='completed';h.conv.sessionData={cart:[],orderType:'delivery'};
+  const text='Muchas gracias, buenas tardes. Es para pedir una mojarrita, la más grande que tengan, pero me das papas saladas y si tienen ensalada pico de gallo, mejor en lugar de la vinagreta. Les recomiendo porque siempre llega el pedido distinto.';
+  const note='Solicita mojarra grande; papa salada en vez de francesa. Si hay pico de gallo, en vez de vinagreta.';
+  jest.spyOn(global,'fetch')
+    .mockResolvedValueOnce(answer(null,[call('interpret_message',{segments:[{text,role:'purchase',productIds:[54630]}]})]))
+    .mockResolvedValueOnce(answer(null,[call('add_item',{sourceText:text,productId:54630,quantity:1,note})]))
+    .mockResolvedValueOnce(answer('Listo'));
+  const reply=await h.sendQueued(text);
+  expect(reply).not.toMatch(/revisar la cobertura|aclaras/i);
+  expect(h.conv.sessionData.cart).toEqual([expect.objectContaining({productId:54630,quantity:1,note:expect.stringContaining('vinagreta')})]);
+});
+
+it('a long model note must be summarized before any part of the update is persisted',async()=>{
+  const h=setup();const text='El plato sin salsas ni ají picante y con papa salada en vez de francesa';
+  const long='El cliente pide revisar cuidadosamente la preparación y las recomendaciones para su pedido. '.repeat(3)+'Sin salsas ni ají picante; papa salada en vez de francesa.';
+  const summary='Sin salsas ni ají picante; papa salada en vez de francesa.';
+  const network=jest.spyOn(global,'fetch')
+    .mockResolvedValueOnce(answer(null,[call('interpret_message',{segments:[{text,role:'edit',productIds:[54601]}]})]))
+    .mockResolvedValueOnce(answer(null,[call('update_item',{sourceText:text,productId:54601,cartLineIndex:0,note:long})]))
+    .mockResolvedValueOnce(answer(null,[call('update_item',{sourceText:text,productId:54601,cartLineIndex:0,note:summary})]))
+    .mockResolvedValueOnce(answer('Listo'));
+  await h.sendQueued(text);
+  expect(network).toHaveBeenCalledTimes(4);expect(h.conv.sessionData.cart).toHaveLength(1);
+  expect(h.conv.sessionData.cart[0].note).toBe(summary);
+});
+
+it('repeating an applied note preserves its result without another model call',async()=>{
+  const h=setup();const text='El plato sin salsas ni ají picante';
+  const network=jest.spyOn(global,'fetch')
+    .mockResolvedValueOnce(answer(null,[call('interpret_message',{segments:[{text,role:'edit',productIds:[54601]}]})]))
+    .mockResolvedValueOnce(answer(null,[call('update_item',{sourceText:text,productId:54601,cartLineIndex:0,note:'Sin salsas ni ají picante'})]))
+    .mockResolvedValueOnce(answer('Listo'));
+  await h.sendQueued(text);const before=structuredClone(h.conv.sessionData.cart);
+  expect(await h.sendQueued(text)).not.toMatch(/aclaras/i);
+  expect(network).toHaveBeenCalledTimes(3);expect(h.conv.sessionData.cart).toEqual(before);
+});
