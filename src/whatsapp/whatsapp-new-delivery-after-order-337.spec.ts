@@ -59,7 +59,7 @@ for (const agent of [false, true]) for (const state of ['completed', 'closed']) 
       expect(h.service.conversationService.reopenForNewOrder).not.toHaveBeenCalled();
       expect(h.service.ordersService.create).not.toHaveBeenCalled();
       expect(reply).not.toMatch(/qué.*pedir|qu[eé].*antoja|cu[aá]l prefieres/i);
-      expect(reply).toMatch(text.includes('demora') ? /preparaci[oó]n|estimad/ : text.includes('salsas') ? /no.*aplicada|confirmar/i : /con gusto/i);
+      expect(reply).toMatch(text.includes('demora') ? /preparaci[oó]n|estimad/ : text.includes('salsas') ? /no pude localizar.*pedido.*guardar la nota/i : /con gusto/i);
     });
   }
 }
