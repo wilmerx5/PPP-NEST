@@ -1971,7 +1971,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         const requestedIngredients = this.catalogService.uncoveredWordsAnchoredByProduct(ownedText, product, ctx.products);
         const conditionalNote = typeof args.note === 'string' &&
           /\bsi\s+(?:hay|tienen|tienes)\b[^.!?]*\b(?:en lugar de|en vez de)\b/i.test(args.note) &&
-          requestedIngredients.every(word => (' ' + normalizeOption(args.note) + ' ').includes(' ' + normalizeOption(word) + ' '));
+          requestedIngredients.every(word => (' ' + normalizeOption(String(args.note)) + ' ').includes(' ' + normalizeOption(word) + ' '));
         const coverageText = ctx.semanticInterpretation && conditionalSubstitution && conditionalNote
           ? ownedText.replace(conditionalSubstitution[0], ' ') : ownedText;
         const uncovered = this.catalogService.uncoveredWordsAnchoredByProduct(
