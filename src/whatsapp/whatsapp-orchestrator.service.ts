@@ -216,6 +216,7 @@ const CART_EDIT_SELECTION_KEYS = ['pendingCartReplacement', 'pendingCartQuantity
 
 type InboundTurnContext = {
   semanticHandled?: boolean;
+  historyBeforeMessageId?: string;
   observationConversation?: WhatsappConversation;
   conv?: WhatsappConversation;
   initialCart?: string;
@@ -234,7 +235,7 @@ type InboundTurnContext = {
 };
 
 /** Bubbles of one coalesced burst that run as a later turn after its pending answer. */
-type BurstContinuation = { text: string; approvalAfter?: string };
+type BurstContinuation = { text: string; approvalAfter?: string; historyBeforeMessageId?: string };
 
 type InboundCoalesceState = {
   pending: IncomingWhatsappMessage[];
@@ -1085,6 +1086,8 @@ export class WhatsappOrchestratorService {
       this.logger.debug(`Skip duplicate inbound waMessageId=${msg.messageId}`);
       return;
     }
+    turn.historyBeforeMessageId = logged ? String(logged.id) : continuation?.historyBeforeMessageId;
+    if (turn.burstContinuation) turn.burstContinuation.historyBeforeMessageId = turn.historyBeforeMessageId;
     const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
     // Nunca cambiar el estado de IDs duplicados reclamados por otro worker.
     if (!continuation) {
@@ -29337,7 +29340,9 @@ export class WhatsappOrchestratorService {
     }
     // Closed protocol replies retain their existing persisted ownership checks.
     const protocol = new Set(['confirmar','confirmo','reiniciar','cancelar','cancelar pedido','no','nada mas','eso es todo']);
-    if (protocol.has(normalized) || this.isGreetingKeyword(text) || /^\d{1,4}(?:\s*(?:,|y)\s*\d{1,4})*$/.test(text.trim())) return false;
+    if (protocol.has(normalized) || isNothingElseOrderIntent(text) ||
+        conv.state === 'building_cart' && isDeclineMoreItemsIntent(text) ||
+        this.isGreetingKeyword(text) || /^\d{1,4}(?:\s*(?:,|y)\s*\d{1,4})*$/.test(text.trim())) return false;
     const ownsAffirmation = session.pendingAddOffer || session.pendingMatch || session.pendingAttribute ||
       session.pendingOrderBoundary || session.pendingCartQuantity || session.pendingCartRemoval ||
       conv.state === 'awaiting_final_confirm';
@@ -29346,6 +29351,12 @@ export class WhatsappOrchestratorService {
     if (methods.some(method =>
       [method.id, method.label, ...method.keywords].some(value => this.normalizeForMatch(value) === normalized))) return false;
     const products = await this.catalogService.getMenuProducts();
+    // An address carrying an option choice is a mixed turn. The interpreter
+    // must account for both clauses before either part can be saved.
+    const includesCartOption = session.cart.some(line => products.find(product => product.id === line.productId)
+      ?.attributes?.some(attribute => this.catalogService.pickAttributeOptionFromText(text,attribute)));
+    if (!includesCartOption && looksLikeAddressOnlyMessage(text) &&
+        this.isAddressOnlyCustomerMessage(text, this.parseCompoundOrderMessage(text))) return false;
     const pending = session.pendingAttribute;
     if (pending?.attributes.some(attribute => attribute.options.some(option => this.normalizeForMatch(option) === normalized))) return false;
     if (session.pendingMatch?.candidates.some(product => this.normalizeForMatch(product.name) === normalized)) return false;
@@ -29359,7 +29370,7 @@ export class WhatsappOrchestratorService {
     if (!cfg.agentV1Enabled) return clarify();
     const status = await this.businessService.getStatus();
     const businessOpen = cfg.ignoreBusinessHours || status.isOpen;
-    const recent = await this.conversationService.getRecentMessageTexts(conv.id,14);
+    const recent = await this.conversationService.getRecentMessageTexts(conv.id,14,turn.historyBeforeMessageId);
     observeWhatsappAgentInvocation();
     let result: Awaited<ReturnType<WhatsappAgentService['runTurn']>>;
     try {

@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 357,
-  "usedRequests": 351,
-  "remainingRequests": 6,
+  "authorizedRequests": 395,
+  "usedRequests": 392,
+  "remainingRequests": 3,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 19,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-11-15T16:22:16.645Z",
+  "lastAttemptAt": "2026-11-15T18:55:43.866Z",
   "latestEvaluation": {
     "date": "2026-11-15",
     "baseCommit": "32251150407c0ffea9ba58a1e309888ddfb8d603",
@@ -152,6 +152,18 @@
       "userSpecifiedNumericCap": false,
       "evidence": "Standing moderate inference authorization and user request for next batch and production release. Agent selects a cap of sixteen actual HTTP attempts for two targeted mixed-partition development cases.",
       "executionLimit": "16 actual HTTP attempts maximum including the one previously remaining, stop at first failure, one run per candidate, no reset of cumulative counters."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 24,
+      "evidence": "Standing user authorization for moderate ongoing inference and current request to repair the production regression and deploy. This operational cap is chosen by the agent.",
+      "executionLimit": "Batch544, maximum 24 additional HTTP attempts after the five metered diagnostic requests, isolated development replay of the supplied checkout chats, stop at first failed conversation, inspect freely before any repetition."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 14,
+      "evidence": "Agent-selected continuation cap under standing moderate inference authorization. Eight attempts repair the ledger for an initial regression fixture that exhausted its fetch mock and contacted the provider with a synthetic invalid key, each HTTP401. The fixture now blocks unconfigured network. Six further requests are reserved to finish a recorded checkout sequence that hit its operational cap after delivery_time.",
+      "executionLimit": "Replay the first 24 captured requests without network, at most six actual continuation requests, stop at first failed conversation. No customer persistence or Meta."
     }
   ],
   "evaluationHistory": [
@@ -864,5 +876,14 @@
     "maximumRequests": 6,
     "additionalAuthorization": 0,
     "scope": "Remaining six requests from the current sixteen-request operational cap after two accepted mixed partition cases; one fresh development postorder-boundary probe, stop first failure."
-  }
+  },
+  "reconciledAttempts": [
+    {
+      "date": "2026-11-15",
+      "requests": 8,
+      "httpStatus": 401,
+      "model": "gpt-4o-mini",
+      "reason": "Synthetic-key requests escaped an exhausted mock in initial544 fixture. Discovered from inference logs and reconciled after execution. Provider returned invalid_api_key. No successful inference. Default network rejection now installed for every new test."
+    }
+  ]
 }

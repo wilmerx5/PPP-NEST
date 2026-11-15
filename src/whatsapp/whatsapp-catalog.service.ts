@@ -11771,7 +11771,7 @@ export class WhatsappCatalogService {
     attributeName: string;
     attributeValue: string;
   }[] {
-    const q = normalizeText(text || '');
+    const q = normalizeText(text || '').replace(/\bcon(?=\d)/g, 'con ');
     if (!q || !cart.length) return [];
     const hits: {
       cartIndex: number;
@@ -11877,7 +11877,7 @@ export class WhatsappCatalogService {
     cleaned = cleaned.replace(/\bpapas?\s+fritas?\b/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    const q = normalizeText(cleaned);
+    const q = normalizeText(cleaned).replace(/\bcon(?=\d)/g, 'con ');
     if (!q) return null;
 
     const rejectsOption =
@@ -11887,7 +11887,7 @@ export class WhatsappCatalogService {
     const attrName = normalizeText(attr.attributeName || '');
     const isArepaAttr = /\barepas?\b/.test(attrName);
 
-    if (this.isComboOnlyAttribute(attr)) {
+    if (!rejectsOption && this.isComboOnlyAttribute(attr)) {
       const conMatch = q.match(
         /\bcon\s+(?:la\s+|el\s+|las?\s+|una\s+)?(?:gaseosa\s+(?:de\s+)?)?([a-z0-9\s]{3,40})/,
       );

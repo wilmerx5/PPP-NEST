@@ -603,6 +603,7 @@ export class WhatsappAgentService {
     }
     let semanticIntent: SemanticIntent | undefined;
     let semanticRejected = false;
+    let retriedSemanticInterpretation = false;
     const fulfilledSemanticSegments = new Set<string>();
     const fulfilledSemanticTargets = new Map<string,Set<number>>();
     const semanticLookupTargets = new Map<string, Set<number>>();
@@ -929,8 +930,19 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               const parsed = parseSemanticIntent(args, input.userMessage);
               if (!parsed || parsed.segments.some(segment=>!Array.isArray(segment.productIds) || segment.productIds.some(id=>!byId.has(id))) ||
                   semanticIntent && JSON.stringify(parsed) !== JSON.stringify(semanticIntent)) {
-                semanticRejected = true;
-                contractResult = JSON.stringify({ok:false,error:'invalid_or_changed_interpretation'});
+                this.logger.warn(JSON.stringify({event:'whatsapp_semantic_contract_rejected',
+                  conversationId:input.conversationId || null,tool:name,reason:'invalid_or_changed_interpretation'}));
+                const canRepair = !semanticIntent && !retriedSemanticInterpretation && calls.length === 1 &&
+                  i + 2 < iterationLimit && Date.now() < turnDeadline;
+                if (canRepair) {
+                  retriedSemanticInterpretation = true;
+                  contractResult = JSON.stringify({ok:false,error:'invalid_interpretation',
+                    currentMessage:input.userMessage,
+                    instruction:'Repite interpret_message una sola vez. Cubre exclusivamente currentMessage, cada fragmento una sola vez y en orden. No copies mensajes del historial. Conserva negaciones, preguntas y cantidades. Usa solo IDs del catálogo y [] para fragmentos sin producto.'});
+                } else {
+                  semanticRejected = true;
+                  contractResult = JSON.stringify({ok:false,error:'invalid_or_changed_interpretation'});
+                }
               } else {
                 semanticIntent = parsed;
                 contractResult = JSON.stringify({ok:true,segments:parsed.segments,

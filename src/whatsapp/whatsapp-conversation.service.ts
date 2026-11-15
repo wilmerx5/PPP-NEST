@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThanOrEqual, Repository } from 'typeorm';
+import { And, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { WhatsappConversation } from './entities/whatsapp-conversation.entity';
 import { WhatsappMessage } from './entities/whatsapp-message.entity';
 import { EMPTY_SESSION, type WhatsappSessionData } from './types/whatsapp-session.types';
@@ -737,10 +737,13 @@ export class WhatsappConversationService {
     return match ? { dailyOrderNumber: Number(match[1]), createdAt: row!.createdAt } : null;
   }
 
-  async getRecentMessageTexts(conversationId: number, limit = 10): Promise<string[]> {
+  async getRecentMessageTexts(conversationId: number, limit = 10, beforeMessageId?: string): Promise<string[]> {
     const historyStart = await this.getHistoryStartMessageId(conversationId);
+    const before = beforeMessageId && /^[1-9]\d*$/.test(beforeMessageId) ? beforeMessageId : undefined;
+    const range = historyStart && before ? And(MoreThanOrEqual(historyStart), LessThan(before))
+      : historyStart ? MoreThanOrEqual(historyStart) : before ? LessThan(before) : undefined;
     const rows = await this.msgRepo.find({
-      where: { conversationId, ...(historyStart ? { id: MoreThanOrEqual(historyStart) } : {}) },
+      where: { conversationId, ...(range ? { id: range } : {}) },
       order: { createdAt: 'DESC' },
       take: limit,
     });

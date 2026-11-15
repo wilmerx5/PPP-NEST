@@ -65,6 +65,7 @@ export const SEMANTIC_INTENT_TOOL = {
   type: 'function' as const,
   function: {
     name: 'interpret_message',
+    strict: true,
     description: 'Interpreta la intención COMPLETA del mensaje con el contexto reciente antes de buscar productos o proponer cambios. Copia fragmentos literales en orden. Todos los términos del mensaje deben quedar cubiertos. Una consulta, una aclaración o una cortesía no autoriza compras.',
     parameters: {
       type: 'object',
@@ -92,7 +93,7 @@ export const SEMANTIC_CHECKOUT_TOOL = {
 export const SEMANTIC_INTENT_PROMPT = `
 INTERPRETACIÓN COMPLETA OBLIGATORIA
 Primero ejecuta interpret_message. Lee todo el mensaje, el carrito, el paso abierto y el historial antes de decidir.
-Los segmentos son citas literales ordenadas del mensaje actual. Conserva todos los términos, cantidades, negaciones y preferencias. No resumas ni inventes citas. Mantén la negación, las preguntas, las cantidades y el alcance unidos a la petición a la que afectan. No separes una negación o una pregunta de su producto para convertirlo en compra.
+Los segmentos son citas literales ordenadas EXCLUSIVAMENTE del último mensaje de usuario. El historial solo resuelve referencias y nunca aporta segmentos ni operaciones nuevas. Cada aparición del texto actual se cubre una sola vez, aunque el historial contenga el mismo texto. Conserva todos los términos, cantidades, negaciones y preferencias. No resumas ni inventes citas. Mantén la negación, las preguntas, las cantidades y el alcance unidos a la petición a la que afectan. No separes una negación o una pregunta de su producto para convertirlo en compra.
 purchase autoriza una compra nueva. edit modifica algo existente. remove retira algo. checkout proporciona datos de entrega, nombre, teléfono o pago. inquiry consulta sin comprar. conversation es saludo, cortesía, introducción o explicación sin una operación sobre el pedido. cancel cancela. finish termina de agregar y continúa los datos del pedido. unclear requiere aclaración.
 Agrupa en un mismo segmento las oraciones que expresan una sola corrección y su reformulación o explicación. El segmento puede abarcar varias oraciones completas. Divide cuando haya operaciones independientes, consultas o compras adicionales. No conviertas cada oración de una única sustitución en una modificación duplicada que exija volver a actuar sobre productos ya reemplazados.
 Una consulta que menciona un producto no pide agregarlo. Una reformulación puede describir cómo debe quedar el pedido existente. Interpreta las referencias usando el contexto y conserva cantidades y líneas ajenas.
