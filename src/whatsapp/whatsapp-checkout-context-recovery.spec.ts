@@ -75,7 +75,7 @@ for (const enabled of [false, true]) describe(`Checkout context recovery ${dish}
   });
   it.each(['Con salsas porfa','Me regalas unas servilletas','Me puedes enviar sobres de salsa'])('post-order supplies: %s',async text=>{
     const h=rig('completed');h.conv.sessionData.cart=[];const before=structuredClone(h.conv.sessionData);
-    const reply=await h.sendQueued(text);expect(reply).toMatch(/solicitud|cambio/i);expect(reply).toMatch(/ll[aá]ma/i);
+    const reply=await h.sendQueued(text);expect(reply).toMatch(/no pude localizar.*pedido.*guardar la nota/i);expect(reply).toMatch(/contactar al restaurante/i);
     expect(reply).not.toMatch(/anot[eé]|agregu[eé]|listo ✅/i);expect(h.conv.state).toBe('completed');expect(h.conv.sessionData).toEqual(before);
     expect(h.service.conversationService.reopenForNewOrder).not.toHaveBeenCalled();expect(h.service.ordersService.create).not.toHaveBeenCalled();
   });
