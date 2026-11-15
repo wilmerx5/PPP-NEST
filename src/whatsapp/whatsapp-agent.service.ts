@@ -80,7 +80,9 @@ type RejectedReplacement = {
 export type AgentV1TurnResult = {
   semanticIntent?: SemanticIntent;
   fulfilledSemanticSegments?: string[];
-  offeredProducts?: {productIds:number[];quantity:number;sourceText?:string;replaceCartLineIndex?:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>};
+  offeredProducts?: {productIds:number[];quantity:number;replaceCartLineIndex?:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>};
+  /** Validated literal segment that owns the deferred product choice. */
+  offeredProductsSource?: string;
   checkoutDetails?: { customerName?: string; contactPhone?: string };
   reply: string;
   actions: AiOrderAction;
@@ -615,6 +617,7 @@ export class WhatsappAgentService {
     let retriedSemanticPreservation = false;
     const sourceKey = (source: string) => source.toLowerCase().normalize('NFC').replace(/\s+/g,' ').trim();
     let offeredProducts: AgentV1TurnResult['offeredProducts'];
+    let offeredProductsSource: string | undefined;
     const checkoutDetails: NonNullable<AgentV1TurnResult['checkoutDetails']> = {};
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
@@ -906,7 +909,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             needsAttributeProductId,
             lookupPlacedOrder,
             lookupDeliveryTime,
-            ...(input.semanticInterpretation ? {semanticIntent,fulfilledSemanticSegments:[...fulfilledSemanticSegments],offeredProducts,...(Object.keys(checkoutDetails).length ? {checkoutDetails} : {})} : {}),
+            ...(input.semanticInterpretation ? {semanticIntent,fulfilledSemanticSegments:[...fulfilledSemanticSegments],offeredProducts,...(offeredProductsSource ? {offeredProductsSource} : {}),...(Object.keys(checkoutDetails).length ? {checkoutDetails} : {})} : {}),
             error: semanticRejected ? 'semantic_contract_rejected' : reply || input.semanticInterpretation && (Object.keys(actions).length || Object.keys(checkoutDetails).length || needsAttributeProductId) ? undefined : 'empty_reply',
           };
         }
@@ -1052,7 +1055,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 semanticRejected = true;
                 contractResult = JSON.stringify({ok:false,error:'invalid_product_choice'});
               } else {
-                offeredProducts = {productIds:ids as number[],quantity:Number(quantity),sourceText:segment.text,
+                offeredProductsSource = segment.text;
+                offeredProducts = {productIds:ids as number[],quantity:Number(quantity),
                   ...(typeof replacementIndex==='number' ? {replaceCartLineIndex:replacementIndex} : {}),
                   ...(typeof args.note==='string' ? {note:args.note.slice(0,500)} : {}),
                   ...(attributes ? {attributes:attributes as Array<{attributeName:string;attributeValue:string}>} : {})};

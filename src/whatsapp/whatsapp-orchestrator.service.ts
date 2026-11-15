@@ -29560,7 +29560,7 @@ export class WhatsappOrchestratorService {
       if (!candidates.length || candidates.some(product=>!product)) return clarify();
       const replacementLine = offer.replaceCartLineIndex === undefined ? undefined : session.cart[offer.replaceCartLineIndex];
       if (roles.has('edit') && (!replacementLine || replacementLine.quantity!==offer.quantity)) return clarify();
-      next = {...next,pendingMatch:{query:offer.sourceText || text,semanticOffer:true,candidates:candidates as MenuProduct[],quantity:offer.quantity,
+      next = {...next,pendingMatch:{query:result.offeredProductsSource || text,semanticOffer:true,candidates:candidates as MenuProduct[],quantity:offer.quantity,
         intent:roles.has('purchase') || replacementLine ? 'order' : 'info',note:offer.note,
         ...(replacementLine ? {replacement:{originalLine:structuredClone(replacementLine)}} : {}),
         ...(offer.attributes ? {offeredAlternatives:offer.productIds.map(productId=>({productId,attributes:offer.attributes!}))} : {})}};
