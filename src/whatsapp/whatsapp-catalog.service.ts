@@ -1849,8 +1849,8 @@ export class WhatsappCatalogService {
   stripProductSearchNoise(query: string): string {
     return this.stripMentionedPriceFromQuery(query)
       .replace(
-        /\s+con\s+(?:la\s+|el\s+|las?\s+|una\s+)?(?:gaseosa\s+(?:de\s+)?)?(?:manzana|coca\s*cola?|cola|sprite|pepsi|uva|postobon|postob[oó]n|litro\s*personal|personal|limonada|hit|mr\s*tea|cysco|agua|fresa|naranja|maracuya|maracuy[aá]|mango|poker|costena|coste[nñ]a)[\w\s]*/gi,
-        '',
+        /\s+con\s+(?:la\s+|el\s+|las?\s+|una\s+)?(?:gaseosa\s+(?:de\s+)?)?(?:manzana|coca\s*cola?|cola|sprite|pepsi|uva|postobon|postob[oó]n|litro\s*personal|personal|limonada|hit|mr\s*tea|cysco|agua|fresa|naranja|maracuya|maracuy[aá]|mango|poker|costena|coste[nñ]a)[\p{L}\p{N}\s]*/giu,
+        ' ',
       )
       .replace(/^combo\s+de\s+/i, '')
       .replace(/^combo\s+/i, '')
@@ -5364,6 +5364,7 @@ export class WhatsappCatalogService {
     }
 
     if (/\b(?:un\s+)?litro\s+y\s+medi[oa]\b/i.test(lower)) return 1500;
+    if (/\b(?:un\s+)?litro\s+y\s+(?:un\s+)?cuarto\b/i.test(lower)) return 1250;
     if (/\bmedia?\s+de\s+litro\b/i.test(lower)) return 500;
 
     const q = normalizeText(raw);
@@ -9349,6 +9350,8 @@ export class WhatsappCatalogService {
    * También bullets/líneas WhatsApp: "* Medio pollo\n* Porción de papas".
    */
   splitMultiProductSegments(text: string, products?: WhatsappCatalogProduct[]): string[] {
+    text = text.replace(/\b(?:un\s+)?litro\s+y\s+(?:un\s+)?(medio|cuarto)\b/gi,
+      (_whole, fraction: string) => fraction.toLowerCase() === 'medio' ? '1.5 litros' : '1.25 litros');
     // An uncounted named compound is still one dish. Do not let the raw
     // "con medio…" splitter detach its included preparation from its owner.
     if (products?.length) {

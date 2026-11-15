@@ -1,3 +1,7 @@
+## Tanda546 en validación — adiciones indebidas y bloqueos del 15/11
+
+Se reproducen y corrigen cambios a combo tratados como compras, recorte Unicode de opciones, consultas elípticas, medidas de bebidas, notas ambiguas, detalles de dirección, seguimiento por identidad de conversación y cambio de efectivo postpedido. El caso nuevo de las17:11 detectó que la primera compra después de completed/closed omitía la ruta semántica. La reentrada ya está corregida y el recorrido real de cuatro turnos incluye arroz, precio, dirección, teléfono, efectivo y confirmación aislada. La global y TypeScript están en curso sobre fuentes congeladas. Producción todavía conserva545 hasta verificar la imagen candidata. Evidencia privada /home/levi/.codex/tmp/ppp-546-validation. Mantener la evidencia preliminar y los límites de los chats multimedia sin contenido original.
+
 ## Tanda545 — compra nueva con sustitución de acompañamiento en producción
 
 Se corrigió el incidente de «2 pechugas asadas por favor En vez de papa francesas, papa salada». La fuente 1d573650caa05d98e088398389ce813f046f34e0 está desplegada en staging y producción PPP. Se promovió la misma imagen sha256:35c08fafecd9b510906bfe021c1cea099b979efa49a4de4696fa51adae45b8f9. APIs y bases de datos saludables, cero reinicios, agente y ruta semántica activos, modelos y configuración del comercio conservados. Kamppo continúa pendiente de adaptación nativa.

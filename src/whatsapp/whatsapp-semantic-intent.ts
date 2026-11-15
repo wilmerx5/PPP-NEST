@@ -13,6 +13,7 @@ export function parseSemanticIntent(value: unknown, source: string): SemanticInt
   const segments = (value as Partial<SemanticIntent> | null)?.segments;
   if (!Array.isArray(segments) || !segments.length || segments.length > 20) return null;
   const message = canonical(source);
+  const measurements = [...message.matchAll(/\b(?:litros?|kilos?|kilogramos?|libras?|onzas?|metros?|horas?)\s+y\s+(?:un\s+)?(?:medio|media|cuarto|cuarta)\b/g)];
   let cursor = 0;
   const result: SemanticIntent['segments'] = [];
   for (const segment of segments) {
@@ -26,6 +27,7 @@ export function parseSemanticIntent(value: unknown, source: string): SemanticInt
     const additiveSeparator = cursor > 0 && /^[\s,.!?¿¡;:…–—-]*[ye][\s,.!?¿¡;:…–—-]*$/u.test(gap);
     if (start < 0 || !/^[\s,.!?¿¡;:…–—-]*$/u.test(gap) && !additiveSeparator) return null;
     cursor = start + text.length;
+    if (measurements.some(measure => cursor > measure.index! && cursor < measure.index! + measure[0].length)) return null;
     result.push({ text: segment.text.trim(), role: segment.role,...(segment.productIds ? {productIds:segment.productIds} : {}) });
   }
   if (!/^[\s,.!?¿¡;:…–—-]*$/u.test(message.slice(cursor))) return null;
@@ -98,6 +100,9 @@ Una compra nueva conserva en UN MISMO segmento purchase sus especificaciones, pr
 purchase autoriza una compra nueva. edit modifica algo existente. remove retira algo. checkout proporciona datos de entrega, nombre, teléfono o pago. inquiry consulta sin comprar. conversation es saludo, cortesía, introducción o explicación sin una operación sobre el pedido. cancel cancela. finish termina de agregar y continúa los datos del pedido. unclear requiere aclaración.
 Agrupa en un mismo segmento las oraciones que expresan una sola corrección y su reformulación o explicación. El segmento puede abarcar varias oraciones completas. Divide cuando haya operaciones independientes, consultas o compras adicionales. No conviertas cada oración de una única sustitución en una modificación duplicada que exija volver a actuar sobre productos ya reemplazados.
 Una consulta que menciona un producto no pide agregarlo. Una reformulación puede describir cómo debe quedar el pedido existente. Interpreta las referencias usando el contexto y conserva cantidades y líneas ajenas.
+Después de una consulta de precio o composición, una pregunta abreviada mantiene el contexto de consulta. Las medidas compuestas como litro y cuarto pertenecen a una sola bebida. No conviertas una parte de una medida en otro producto. Si el tamaño solicitado no existe, ofrece tamaños reales y conserva la bebida hasta resolverlo.
+Cuando el cliente pide solo uno en combo o solo el normal y ya tiene su producto vinculado, describe el estado final del pedido existente. Usa edit y replace_item con esa línea de origen, conserva sus unidades y las opciones compatibles. Agregar otro, adicional o aparte sí puede ser purchase. Si hay varios orígenes posibles, pregunta cuál antes de aumentar unidades.
+Una referencia de entrega, torre, casa o apartamento pertenece a checkout aunque sus palabras o números se parezcan a un producto. El historial no autoriza añadir platos. Un rechazo como no pedí esa gaseosa identifica remove sobre la línea existente o requiere preguntar cuál línea se retira.
 Si falta identificar la intención o el alcance de un cambio, usa unclear y pregunta UNA cosa sin modificar el carrito.
 En productIds identifica los SKUs a los que se refiere cada segmento, usando carrito e historial. Usa [] cuando no haya referencia resuelta. Resuelve referencias a un plato existente antes de pedir de nuevo su nombre. Con un único producto en el carrito, una referencia a ese plato usa ese SKU salvo que el mensaje nombre otro. La respuesta de interpret_message devuelve los datos reales de las referencias identificadas. La interpretación queda fija durante el turno. search_menu puede resolver un producto de destino adicional dentro del mismo segmento. Conserva el origen y usa replace_item cuando cambia el SKU. Cada tool de cambio exige sourceText idéntico a un segmento que autoriza esa operación. Interpreta las cláusulas mezcladas por separado y conserva la intención completa. Usa los datos ya devueltos por las herramientas y agrupa operaciones independientes cuando estén resueltas. replace_item sustituye UNA línea de origen. Si el cliente corrige varios productos separados para que quede un único plato compuesto, sustituye una línea y retira mediante remove_item todas las demás líneas de origen que ya no deben quedar. Comprueba el carrito resultante antes de dar por terminada la corrección.
 Las búsquedas también exigen sourceText de un segmento de compra, cambio, consulta o duda. Una introducción conversacional no puede convertirse en una búsqueda de producto. Usa search_menu para verificar datos. Un resultado sin coincidencias significa que falta resolver la búsqueda. Solo afirma que un plato está ausente cuando identificaste claramente qué producto gastronómico pidió el cliente. Las palabras conversacionales nunca son productos ausentes.

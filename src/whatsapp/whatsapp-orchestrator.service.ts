@@ -963,6 +963,7 @@ export class WhatsappOrchestratorService {
     const short = said.split(' ').length <= 5;
     const picksName = short && !!this.catalogService.pickFromCandidateList(text, list.candidates as MenuProduct[]);
     const products = await this.catalogService.getMenuProducts();
+
     let pickText = text;
     if (!picksRow && !picksName) {
       const words = ` ${said} `;
@@ -2189,6 +2190,22 @@ export class WhatsappOrchestratorService {
     // Mismo chat por número: al escribir de nuevo tras pedido o cierre, empieza pedido nuevo
     let reopenedFreshOrder = false;
     if (conv.state === 'completed' || conv.state === 'closed') {
+      if (/\b(?:pago|billete|cambio|vueltas?)\b/i.test(originalText) && this.extractCashChangeFromText(originalText) &&
+          !this.extractSeparatePostOrderPurchase(originalText)) {
+        const receipt = await this.conversationService.getLastOrderConfirmation?.(conv.id);
+        const order = receipt && await this.ordersService.getWhatsappOrderForNotes?.(conv.id, receipt);
+        if (!order) {
+          await this.reply(conv,msg.waId,'¿Cuál es el número del pedido al que debemos llevar cambio?');
+          return;
+        }
+        try {
+          const saved = await this.ordersService.setWhatsappCashChange(order.id,conv.id,this.extractCashChangeFromText(originalText)!);
+          await this.reply(conv,msg.waId,`Listo, guardé «${saved.note}» para el pedido *#${saved.dailyOrderNumber ?? saved.orderId}*.`);
+        } catch {
+          await this.reply(conv,msg.waId,`El equipo debe revisar el cambio para el pedido *#${order.dailyOrderNumber ?? order.id}*. ${this.humanPhoneHint()}`);
+        }
+        return;
+      }
       if (await this.tryHandleConfirmedOrderNote(conv, msg.waId, originalText)) return;
       if (await this.tryUndoLastUnitOptionEdit(conv, msg.waId, this.conversationService.getSession(conv), originalText, cfg)) return;
       // A courtesy or repeated affirmative is not a new purchase. Preserve the
@@ -2245,7 +2262,7 @@ export class WhatsappOrchestratorService {
       }
       // ETA / demora / faltante: no reabrir carrito ni buscar platos
       const postInquiry = originalText.replace(/\bcu[aá]nto\s+sr\s+demora\b/gi, 'cuánto se demora');
-      if (isPostOrderFollowUpIntent(postInquiry)) {
+      if (isPostOrderFollowUpIntent(postInquiry) || isSpecificOrderProgressInquiry(postInquiry)) {
         await this.handlePostOrderFollowUp(conv, msg.waId, postInquiry, cfg);
         return;
       }
@@ -2254,6 +2271,8 @@ export class WhatsappOrchestratorService {
       Object.assign(conv, freshReopen);
       reopenedFreshOrder = true;
     }
+
+    if (reopenedFreshOrder && await this.tryHandleSemanticTurn(conv,msg,originalText,cfg,turn)) return;
 
     if (this.isClearCartIntent(originalText)) {
       await this.conversationService.resetOrderSession(conv, 'building_cart', {
@@ -13205,11 +13224,16 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const today = await this.ordersService.findTodayOrdersByPhone(conv.phoneE164);
     const hint = opts?.forceNumber ?? extractDailyOrderNumberHint(text);
+    const receipt = await this.conversationService.getLastOrderConfirmation?.(conv.id);
+    const owned = receipt && await this.ordersService.getWhatsappOrderForNotes?.(conv.id,
+      hint == null ? receipt : {dailyOrderNumber:hint,createdAt:new Date()});
+    if (owned && !today.some(order => order.id === owned.id)) today.unshift(owned);
     const active = today.filter((o) => !['canceled', 'completed'].includes(o.orderStatus));
     const pool = active.length ? active : today.filter((o) => o.orderStatus !== 'canceled');
 
     let match =
       hint != null ? today.find((o) => Number(o.dailyOrderNumber) === hint) : undefined;
+    if (!match && hint == null && owned) match = owned;
 
     if (!match && hint == null && pool.length === 1) {
       match = pool[0];
@@ -26648,7 +26672,8 @@ export class WhatsappOrchestratorService {
       .replace(/\b(\d)\s*apto\.?\s*(\d{2,4})\b/gi, '$1 apto $2')
       .replace(/\btorre\s*(\d+)\s*apto\.?\s*(\d{2,4})\b/gi, 'Torre $1 apto $2')
       .replace(/\bapto\.?\s*(\d{2,4})\b/gi, 'apto $1')
-      .replace(/\bcasa\s*(\d{1,4})\b/gi, 'Casa $1')
+      .replace(/\bcasa\s*:?\s*(\d{1,4})\b/gi, 'Casa $1')
+      .replace(/\b(torre|bloque)\s+(\d{1,2})\s+(\d{3,4})\b/gi, '$1 $2 apto $3')
       .replace(/\bint(?:erior)?\.?\s*(\d{1,4})\b/gi, 'int $1')
       .replace(/\blocal\s*(\d{1,4})\b/gi, 'Local $1')
       .replace(/\s+/g, ' ')
@@ -27057,7 +27082,7 @@ export class WhatsappOrchestratorService {
       }
       const candidate = candidates[index];
       if (!candidate) {await this.reply(conv,waId,this.formatNearbyDeliveryPlaces(session));return true;}
-      const access = splitDeliveryAddressParts(session.address || '').details;
+      const access = mergeDeliveryUnitDetails(splitDeliveryAddressParts(session.address || '').details, session.pendingDeliveryUnit || '');
       const selectedAddress = access && !candidate.address.toLowerCase().includes(access.toLowerCase())
         ? `${candidate.address}, ${access}`.slice(0,240) : candidate.address;
       session = this.withDeliveryAddress({...session,address:undefined,addressConfirmed:false,pendingDeliveryCandidates:undefined,
@@ -29322,6 +29347,9 @@ export class WhatsappOrchestratorService {
         !['building_cart','awaiting_attribute','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
     const session = this.conversationService.getSession(conv);
     if (session.mpPreferenceId) return false;
+    if (session.pendingSubsetKitchenNote && await this.tryHandleSubsetKitchenNote(conv,msg.waId,session,text,cfg)) return true;
+    if (session.cart.length && await this.tryHandleCartChargeQuestion(conv, msg.waId, session, text, cfg)) return true;
+    if (session.cart.length && /^[+\d\s().-]+$/.test(text.trim()) && this.looksLikePhoneNumber(text)) return false;
     const normalized = this.normalizeForMatch(text).replace(/[.!?¿¡]+$/g,'').trim();
     // An informational list keeps its read-only ownership on a closed numeric answer.
     if (session.pendingMatch?.intent === 'info' && /^\d{1,4}$/.test(normalized)) {
@@ -29351,6 +29379,33 @@ export class WhatsappOrchestratorService {
     if (methods.some(method =>
       [method.id, method.label, ...method.keywords].some(value => this.normalizeForMatch(value) === normalized))) return false;
     const products = await this.catalogService.getMenuProducts();
+    const referenceParts = splitDeliveryAddressParts(text);
+    const preference = text.trim().replace(/^(?:por\s+favor|porfa)\s+/i,'').replace(/\s+(?:por\s+favor|porfa|gracias)[.!]*$/i,'');
+    if (session.cart.length > 1 && !session.pendingSubsetKitchenNote &&
+        /^(?:con\s+)?(?:much[oa]s?|bastantes?|h?art[oa]s?|extra|poc[oa]s?)\s+[\p{L} ]+$/iu.test(preference) &&
+        !this.catalogService.productFullyNamedIn(preference,products)) {
+      const next = {...session,pendingSubsetKitchenNote:{quantity:0,note:preference,
+        productIds:[...new Set(session.cart.map(line=>line.productId))],byUnits:true}};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,msg.waId,this.formatSubsetKitchenNoteQuestion(next));
+      return true;
+    }
+    if (session.cart.length && session.addressConfirmed && canonicalStreetAddress(session.address || '') &&
+        referenceParts.details && !canonicalStreetAddress(text) && referenceParts.base.length >= 4 &&
+        referenceParts.base.split(/\s+/).length <= 12 && !looksLikeNonAddressCommand(text) &&
+        !this.looksLikeFoodNotAddress(text) && !this.catalogService.productFullyNamedIn(referenceParts.base, products)) {
+      const oldParts = splitDeliveryAddressParts(session.address!);
+      const unit = mergeDeliveryUnitDetails(oldParts.details, this.normalizeUnitDetailText(referenceParts.details));
+      const base = oldParts.base.toLocaleLowerCase('es').includes(referenceParts.base.toLocaleLowerCase('es'))
+        ? oldParts.base : `${oldParts.base} — ${referenceParts.base}`;
+      const address = `${base}, ${unit}`;
+      if (address.length <= 240) {
+        const next = {...session,address};
+        await this.conversationService.saveSession(conv,next);
+        await this.tryConfirmOrder(conv,msg.waId,next,{preface:`📍 Dirección actualizada ✅ ${address}`});
+        return true;
+      }
+    }
     // An address carrying an option choice is a mixed turn. The interpreter
     // must account for both clauses before either part can be saved.
     const includesCartOption = session.cart.some(line => products.find(product => product.id === line.productId)
@@ -29371,11 +29426,15 @@ export class WhatsappOrchestratorService {
     const status = await this.businessService.getStatus();
     const businessOpen = cfg.ignoreBusinessHours || status.isOpen;
     const recent = await this.conversationService.getRecentMessageTexts(conv.id,14,turn.historyBeforeMessageId);
+    const previousCustomer = [...recent].reverse().find(entry => /^Cliente:\s*/i.test(entry))?.replace(/^Cliente:\s*/i, '') || '';
+    const readOnlyInquiryContext = /^y\b/i.test(text.trim()) &&
+      !/\b(?:quiero|dame|agrega(?:me)?|ponme|env[ií]ame|reg[aá]lame|pido|llevo|a[nñ]ade)\b/i.test(text) &&
+      (this.catalogService.isPriceInquiryIntent(previousCustomer) || this.catalogService.isProductDescriptionInquiry(previousCustomer));
     observeWhatsappAgentInvocation();
     let result: Awaited<ReturnType<WhatsappAgentService['runTurn']>>;
     try {
       result = await this.agentService.runTurn({
-        semanticInterpretation:true,currentOrderType:session.orderType,conversationId:conv.id,userMessage:text,products,cart:structuredClone(session.cart),
+        semanticInterpretation:true,readOnlyInquiryContext,currentOrderType:session.orderType,conversationId:conv.id,userMessage:text,products,cart:structuredClone(session.cart),
         sessionSummary:this.buildSessionSummary(conv,session,this.deliveryFeeFor(session,cfg),products),
         recentMessages:recent,brandName:cfg.brandName || cfg.localContext?.restaurantName || 'Restaurante',
         menuUrl:cfg.menuUrl,humanPhone:cfg.localContext?.publicPhone,
@@ -29394,6 +29453,14 @@ export class WhatsappOrchestratorService {
     const intent = parseSemanticIntent(result.semanticIntent,text);
     if (result.error || !intent) {
       observeWhatsappAgentError();
+      if (readOnlyInquiryContext) {
+        await this.reply(conv,msg.waId,'¿Quieres consultar el precio de esa opción o agregarla al pedido?');
+        return true;
+      }
+      if (session.cart.length && /^(?:por\s+favor\s+)?(?:con\s+)?(?:much[oa]s?|bastantes?|h?art[oa]s?|extra|poc[oa]s?)\s+[\p{L} ]+[.!]*$/iu.test(text.trim())) {
+        await this.reply(conv,msg.waId,`¿Para cuál producto anotamos «${text.trim()}»? Dime el nombre del plato.`);
+        return true;
+      }
       return clarify();
     }
     const roles = new Set(intent.segments.map(segment=>segment.role));

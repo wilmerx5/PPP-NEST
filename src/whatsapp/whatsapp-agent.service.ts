@@ -33,6 +33,8 @@ import { looksLikeKitchenSendRequest, parseEachOfQuantity, parseQtyDishCorrectio
 
 export type AgentV1TurnInput = {
   semanticInterpretation?: boolean;
+  /** A backend-owned continuation of a catalogue inquiry cannot mutate the order. */
+  readOnlyInquiryContext?: boolean;
   /** Backend snapshot. A redundant tool request can acknowledge this value without writing it. */
   currentOrderType?: 'delivery' | 'pickup';
   /** Internal database identifier, never a phone or a customer name. */
@@ -630,6 +632,7 @@ export class WhatsappAgentService {
 
     const system = `${cfg.systemPrompt}
 ${input.semanticInterpretation ? SEMANTIC_INTENT_PROMPT : ''}
+${input.readOnlyInquiryContext ? 'El mensaje continúa una consulta reciente de precio o composición sin una compra adicional explícita. Mantén intención inquiry o pide una aclaración concreta. Solo se permiten consultas; conserva todo el pedido.' : ''}
 
 Eres el agente de pedidos por WhatsApp de *${input.brandName}*.
 NO inventes productos ni precios. Usa tools para buscar y modificar el carrito.
@@ -946,9 +949,26 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               const hasUnownedEdit = parsed?.segments.some(segment =>
                 ['edit', 'remove'].includes(segment.role) &&
                 !(input.cart || []).some(line => !segment.productIds?.length || segment.productIds.includes(line.productId)));
+              const hasExclusiveConversionPurchase = parsed?.segments.some(segment => {
+                if (segment.role !== 'purchase' || !/\b(?:solo|solamente|unicamente|mejor|en vez)\b/.test(sourceKey(segment.text))) return false;
+                if (/\b(?:otr[oa]s?|adicional(?:es)?|aparte|ademas)\b/.test(sourceKey(segment.text))) return false;
+                const variant = this.catalogService.extractVariantPreferenceHint(segment.text);
+                const namedTargets = input.products.filter(product => this.catalogService.productFullyNamedIn(segment.text, [product]));
+                return !!variant && (input.cart || []).some(line => {
+                  const product = byId.get(line.productId);
+                  const family = product && this.catalogService.getConfiguredVariantFamily(product, input.products);
+                  return !!family && (namedTargets.length ? namedTargets.some(target => family.variants.some(member => member.id === target.id)) :
+                    /\b(?:uno|un|el|lo)\s+(?:en\s+)?(?:combo|normal|sin combo)\b/.test(sourceKey(segment.text))) &&
+                    (variant === 'combo' ? product!.comboBaseProductId == null : product!.comboBaseProductId != null);
+                });
+              });
+              const sameFrozenMeaning = semanticIntent && parsed && JSON.stringify(parsed.segments.map(segment =>
+                [sourceKey(segment.text), segment.role])) === JSON.stringify(semanticIntent.segments.map(segment =>
+                [sourceKey(segment.text), segment.role]));
               if (!parsed || parsed.segments.some(segment=>!Array.isArray(segment.productIds) || segment.productIds.some(id=>!byId.has(id))) ||
-                  hasUnownedEdit ||
-                  semanticIntent && JSON.stringify(parsed) !== JSON.stringify(semanticIntent)) {
+                  hasUnownedEdit || hasExclusiveConversionPurchase ||
+                  input.readOnlyInquiryContext && parsed?.segments.some(segment => !['inquiry','conversation','unclear'].includes(segment.role)) ||
+                  semanticIntent && !sameFrozenMeaning) {
                 this.logger.warn(JSON.stringify({event:'whatsapp_semantic_contract_rejected',
                   conversationId:input.conversationId || null,tool:name,reason:'invalid_or_changed_interpretation'}));
                 const canRepair = !semanticIntent && !retriedSemanticInterpretation && calls.length === 1 &&
@@ -957,15 +977,16 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                   retriedSemanticInterpretation = true;
                   contractResult = JSON.stringify({ok:false,error:'invalid_interpretation',
                     currentMessage:input.userMessage,
-                    instruction:'Repite interpret_message una sola vez. Cubre exclusivamente currentMessage, cada fragmento una sola vez y en orden. No copies mensajes del historial. Conserva negaciones, preguntas y cantidades. Usa solo IDs del catálogo y [] para fragmentos sin producto. edit y remove requieren una línea del carrito de entrada. Las especificaciones y sustituciones de acompañamiento de una compra nueva permanecen dentro del MISMO segmento purchase de esa compra. Si realmente falta resolver el alcance, conserva esa duda completa como unclear.'});
+                    instruction:'Repite interpret_message una sola vez. Cubre exclusivamente currentMessage, cada fragmento una sola vez y en orden. No copies mensajes del historial. Conserva negaciones, preguntas y cantidades. Usa solo IDs del catálogo y [] para fragmentos sin producto. edit y remove requieren una línea del carrito de entrada. Si pide solo uno en combo o solo el normal y ya existe su pareja vinculada en el carrito, interpreta la conversión como edit con el origen existente y usa replace_item. Una compra adicional explícita mantiene purchase. Las especificaciones y sustituciones de acompañamiento de una compra nueva permanecen dentro del MISMO segmento purchase de esa compra. Si realmente falta resolver el alcance, conserva esa duda completa como unclear.'});
                 } else {
                   semanticRejected = true;
                   contractResult = JSON.stringify({ok:false,error:'invalid_or_changed_interpretation'});
                 }
               } else {
-                semanticIntent = parsed;
-                contractResult = JSON.stringify({ok:true,segments:parsed.segments,
-                  references:[...new Set(parsed.segments.flatMap(segment=>segment.productIds || []))].map(id=>this.productCard(byId.get(id)!))});
+                semanticIntent = semanticIntent || parsed;
+                contractResult = JSON.stringify({ok:true,segments:semanticIntent.segments,
+                  references:[...new Set(semanticIntent.segments.flatMap(segment=>segment.productIds || []))].map(id=>this.productCard(byId.get(id)!)),
+                  hint:'La interpretación sigue fija. Continúa con sus herramientas; las búsquedas resuelven destinos sin reinterpretar el mensaje.'});
               }
             } else if (name === 'set_order_type' && semanticIntent &&
                 (input.currentOrderType === 'delivery' || input.currentOrderType === 'pickup') &&

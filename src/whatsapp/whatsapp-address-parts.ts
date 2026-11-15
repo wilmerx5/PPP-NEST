@@ -83,10 +83,15 @@ export function splitDeliveryAddressParts(source: string): { base: string; detai
 }
 
 function splitDeliveryUnitParts(source: string): { base: string; details: string } {
-  const raw = (source || '').trim();
+  const raw = (source || '').trim().replace(/^((?:torre|bloque)\s+\d{1,2})\s+(\d{3,4})(?=\s+[\p{L}])/iu, '$1 apto $2');
   const label = '(?:entrada|torre|bloque|apartamento|apto|interior|int|casa|piso|local|oficina)';
   const identifier = '(?:\\d+[a-z]?(?:-\\d+[a-z]?)?|[a-z](?:-\\d+)?)';
-  const unitPattern = `${label}\\.?\\s*(?:#\\s*)?${identifier}(?=$|[\\s,;])`;
+  const unitPattern = `${label}\\.?\\s*:?\\s*(?:#\\s*)?${identifier}(?=$|[\\s,;])`;
+  const leading = new RegExp(`^(${unitPattern}(?:[\\s,;]+${unitPattern})*)[\\s,;]+([\\p{L}][\\p{L}\\p{N} .-]+)$`, 'iu').exec(raw);
+  if (leading && !new RegExp(`^${label}\\b`, 'i').test(leading[2]) &&
+      !/\b(?:calle|cll?|carrera|cra?|diagonal|dg|transversal|tv)\.?\s*\d/i.test(leading[2])) {
+    return {base:leading[2].trim(),details:leading[1].trim()};
+  }
   const unit = new RegExp(`\\s+(?=${unitPattern})`, 'i').exec(raw);
   if (!unit || new RegExp(`^${unitPattern}`, 'i').test(raw)) return { base: raw, details: '' };
   const base = raw.slice(0, unit.index).replace(/[,;\s]+$/, '').replace(/^a\s+/i, '').trim();

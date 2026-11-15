@@ -2875,6 +2875,44 @@ export class OrdersService {
     return result;
   }
 
+  async setWhatsappCashChange(orderId: number, conversationId: number, change: string) {
+    if (!Number.isSafeInteger(orderId) || orderId < 1 || !Number.isSafeInteger(conversationId) || conversationId < 1 ||
+        typeof change !== 'string' || !change.trim() || change.length > 120) throw new BadRequestException('Indicación de cambio inválida');
+    const note = `Cambio para pago: ${change.trim()}`;
+    const result = await this.dataSource.transaction(async manager => {
+      const order = await manager.findOne(Order, {where:{id:orderId},lock:{mode:'pessimistic_write'}});
+      if (!order || order.orderSource !== 'whatsapp' || !order.clientRequestId?.startsWith(`wa-${conversationId}-`)) {
+        throw new NotFoundException('Pedido de esta conversación no encontrado');
+      }
+      const age = Date.now() - new Date(order.createdAt).getTime();
+      if (!Number.isFinite(age) || age < 0 || age > 4 * 60 * 60_000 || ['completed','canceled'].includes(order.orderStatus)) {
+        throw new BadRequestException('El pedido ya no admite esta indicación');
+      }
+      const parts = (order.address || '').split(' / ');
+      if (parts.slice(1).some(part => /^(?:transferencia|nequi|daviplata|mercado pago)\b/i.test(part))) {
+        throw new BadRequestException('Debe revisarse el método de pago');
+      }
+      const kept = parts.filter((part,index) => index === 0 || !/^(?:cambio para pago:|(?:cambio de|pago con (?:un )?billete de|billete de)\b)/i.test(part));
+      const address = [...kept,note].join(' / ');
+      if (address.length > 500) throw new BadRequestException('La indicación supera el espacio disponible');
+      const changed = address !== order.address;
+      if (changed) {
+        const updated = await manager.update(Order,{id:orderId},{address});
+        if (updated.affected !== 1) throw new ConflictException('El pedido cambió durante la actualización');
+      }
+      return {orderId:order.id,dailyOrderNumber:order.dailyOrderNumber,note,changed};
+    });
+    if (result.changed) {
+      try {
+        const refreshed = await this.orderRepo.findOne({where:{id:orderId},relations:['items','items.product','items.attributes','extras']});
+        if (refreshed) this.gateway.emitOrdersUpdates('updated_order_items',await this.mapOrderToGroupedFormat(refreshed));
+      } catch {
+        this.logger.warn(`Cash change saved but update notification failed for order=${orderId}`);
+      }
+    }
+    return result;
+  }
+
   /** Obtiene datos breves de órdenes para listados de puntos u otros reportes. */
   async getOrdersBrief(orderIds: number[]): Promise<Array<{
     id: number;
