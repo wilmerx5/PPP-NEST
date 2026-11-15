@@ -33,10 +33,10 @@ function plan(segments: Segment[], calls: ToolCall[], reply = '') {
 function setup(names: string[], state = 'building_cart') {
   const menu: WhatsappCatalogProduct[] = names.map((name, index) => ({
     id: 54201 + index, code: 11 + index, name, price: [24000, 25000, 12000, 13000, 5000, 8000][index],
-    availableNow: true, hasAttributes: false, attributes: [],
+    availableNow: true, hasAttributes: false, attributes: [], categoryName: 'Platos principales',
   }));
   menu.push({id:54207,code:17,name:names[0].includes('Pollo') ? '1 Pollo Broaster' : 'Pizza De Hongos',
-    price:46000,availableNow:true,hasAttributes:false,attributes:[]});
+    price:46000,availableNow:true,hasAttributes:false,attributes:[],categoryName:'Otra presentación'});
   const h = harness(menu, true);
   h.conv.state = state;
   h.service.settingsService.semanticRoutingEnabled = () => true;
@@ -703,3 +703,68 @@ for (const state of states) for (const reverse of [false, true]) {
     expect(h.service.conversationService.saveSemanticSession).toHaveBeenCalledTimes(1);
   });
 }
+
+for (const [index, names] of families.entries()) {
+  it(`an abbreviated destination cannot silently change catalogue category ${index}`, async () => {
+    const h = setup(names);
+    h.conv.sessionData.cart = [h.line(0), h.line(2)];
+    const before = structuredClone(h.conv.sessionData);
+    const destination = index === 0 ? 'broaster' : 'de hongos';
+    const text = `El que ya tengo cámbialo a ${destination}`;
+    plan([{ text, role: 'edit', productIds: [54201] }], [
+      { name: 'search_menu', args: { query: h.menu[6].name, sourceText: text } },
+      { name: 'replace_item', args: { productId: 54201, newProductId: 54207,
+        cartLineIndex: 0, targetText: destination, sourceText: text } },
+    ]);
+    await h.sendQueued(text);
+    expect(h.conv.sessionData).toEqual(before);
+    expect(h.service.conversationService.saveSemanticSession).not.toHaveBeenCalled();
+  });
+
+  it(`a fully named destination explicitly permits a different catalogue category ${index}`, async () => {
+    const h = setup(names);
+    h.conv.sessionData.cart = [h.line(0), h.line(2)];
+    const text = `Cambia el que ya tengo por ${h.menu[6].name}`;
+    plan([{ text, role: 'edit', productIds: [54201] }], [
+      { name: 'search_menu', args: { query: h.menu[6].name, sourceText: text } },
+      { name: 'replace_item', args: { productId: 54201, newProductId: 54207,
+        cartLineIndex: 0, targetText: h.menu[6].name, sourceText: text } },
+    ]);
+    await h.sendQueued(text);
+    expect((await h.agent.mock.results[0].value).error).toBeUndefined();
+    expect(h.conv.sessionData.cart).toEqual([h.line(2), h.line(6)]);
+  });
+}
+
+it('configured product-combo relations allow short changes across menu categories', async () => {
+  const h = setup(families[0]);
+  Object.assign(h.menu[0], { name: 'Combo De Pollo Broaster', comboBaseProductId: 54202 });
+  Object.assign(h.menu[1], { name: '1 Pollo Broaster', categoryName: 'Otra categoría', comboRole: 'normal' });
+  h.conv.sessionData.cart = [h.line(0)];
+  const text = 'Cámbialo a broaster sin combo';
+  plan([{ text, role: 'edit', productIds: [54201] }], [
+    { name: 'search_menu', args: { query: h.menu[1].name, sourceText: text } },
+    { name: 'replace_item', args: { productId: 54201, newProductId: 54202,
+      cartLineIndex: 0, targetText: 'a broaster sin combo', sourceText: text } },
+  ]);
+  await h.sendQueued(text);
+  expect((await h.agent.mock.results[0].value).error).toBeUndefined();
+  expect(h.conv.sessionData.cart).toHaveLength(1);
+  expect(h.conv.sessionData.cart[0].productId).toBe(54202);
+  expect(h.conv.sessionData.cart[0].quantity).toBe(1);
+});
+
+it('a cooking phrase does not name the whole-chicken numeric presentation of another category', async () => {
+  const h = setup(families[0]);
+  h.conv.sessionData.cart = [h.line(0)];
+  const before = structuredClone(h.conv.sessionData);
+  const text = 'El ejecutivo de pechuga cámbiamelo con pollo broaster';
+  plan([{ text, role: 'edit', productIds: [54201] }], [
+    { name: 'search_menu', args: { query: h.menu[6].name, sourceText: text } },
+    { name: 'replace_item', args: { productId: 54201, newProductId: 54207,
+      cartLineIndex: 0, targetText: 'pollo broaster', sourceText: text } },
+  ]);
+  await h.sendQueued(text);
+  expect(h.conv.sessionData).toEqual(before);
+  expect(h.service.conversationService.saveSemanticSession).not.toHaveBeenCalled();
+});

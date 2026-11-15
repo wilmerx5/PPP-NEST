@@ -2,6 +2,7 @@ import { semanticTargetsComplete, semanticToolTargetsAuthorized, semanticToolReq
 import { isUsableWhatsappCustomerName, parseCartItemReplacement } from './whatsapp-session-intents';
 import { findPaymentMethodByText } from './whatsapp-payment-methods';
 import { randomUUID } from 'node:crypto';
+import { productCategoryNames } from './whatsapp-product-categories';
 import { hasExplicitCartEditOwner } from './whatsapp-cart-edit-owner';
 import { hasExplicitCartAttributeOwner } from './whatsapp-cart-attribute-owner';
 import { observeWhatsappGuardRejection } from './whatsapp-turn-observation';
@@ -2263,6 +2264,22 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             replacementSource = source.slice(start);
           }
           const target = ctx.byId.get(Number(args.newProductId));
+          const originalProduct = ctx.byId.get(productId);
+          if (ctx.semanticInterpretation && target && originalProduct) {
+            const normalizeName = (text: string) => text.toLowerCase().normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+            const fullyNamedDestination = (` ${normalizeName(replacementSource || '')} `)
+              .includes(` ${normalizeName(target.name)} `);
+            const sourceCategories = productCategoryNames(originalProduct);
+            const targetCategories = productCategoryNames(target);
+            const configuredFamily = this.catalogService.getConfiguredVariantFamily(originalProduct, ctx.products);
+            const relatedPresentation = configuredFamily?.variants.some(product => product.id === target.id);
+            if (sourceCategories.length && targetCategories.length &&
+                !sourceCategories.some(category => targetCategories.includes(category)) && !relatedPresentation && !fullyNamedDestination) {
+              return JSON.stringify({ok:false,error:'different_replacement_category',
+                hint:'El destino abreviado cambia a otra categoría del catálogo. Conserva la presentación del plato original o pide que el cliente identifique el producto nuevo.'});
+            }
+          }
           if (ctx.semanticInterpretation && args.targetText !== undefined && target &&
               !this.catalogService.productNameFitsUtterance(target,replacementSource || '')) {
             replacementSource = `${target.name} ${replacementSource || ''}`;
