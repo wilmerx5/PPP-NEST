@@ -78,6 +78,8 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  /** Last atomically persisted semantic turn, used to resolve an uncertain commit outcome. */
+  lastSemanticDecisionId?: string;
   pendingOrderBoundary?: { request: string; draftSignature: string; createdAt?: number };
   pendingCatalogInquiry?: {productIds:number[];createdAt:number};
   pendingCartOptionChoice?: {
@@ -227,6 +229,10 @@ export type WhatsappSessionData = {
     }>;
     needsAttributes: Array<{
       segment: string;
+      /** Structured semantic proposals retain quantities/options without reparsing human wording. */
+      quantity?: number;
+      selectedAttributes?: Array<{ attributeName: string; attributeValue: string }>;
+
       productId: number;
       name: string;
       code: number;

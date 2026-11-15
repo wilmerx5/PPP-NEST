@@ -147,6 +147,10 @@ export class WhatsappSettingsService {
   }
 
   /** Config efectiva: DB + fallback env (útil en dev). */
+  semanticRoutingEnabled(): boolean {
+    return ['true', '1'].includes((this.config.get<string>('WHATSAPP_SEMANTIC_ROUTING') || '').trim().toLowerCase());
+  }
+
   async getEffectiveConfig() {
     const row = await this.getSettings();
     const envEnabled = (this.config.get<string>('WHATSAPP_ENABLED') || '')

@@ -1,3 +1,6 @@
+import { semanticTargetsComplete, semanticToolTargetsAuthorized, semanticToolRequiresSource, authorizeSemanticTool, parseSemanticIntent, SEMANTIC_INTENT_TOOL, SEMANTIC_CHECKOUT_TOOL, SEMANTIC_CHOICE_TOOL, SEMANTIC_INTENT_PROMPT, type SemanticIntent } from './whatsapp-semantic-intent';
+import { isUsableWhatsappCustomerName } from './whatsapp-session-intents';
+import { findPaymentMethodByText } from './whatsapp-payment-methods';
 import { randomUUID } from 'node:crypto';
 import { hasExplicitCartEditOwner } from './whatsapp-cart-edit-owner';
 import { hasExplicitCartAttributeOwner } from './whatsapp-cart-attribute-owner';
@@ -28,6 +31,7 @@ import { looksLikeAddressOnlyMessage } from './whatsapp-intent';
 import { looksLikeKitchenSendRequest, parseEachOfQuantity, parseQtyDishCorrection } from './whatsapp-session-intents';
 
 export type AgentV1TurnInput = {
+  semanticInterpretation?: boolean;
   /** Internal database identifier, never a phone or a customer name. */
   conversationId?: number;
   userMessage: string;
@@ -69,6 +73,10 @@ type RejectedReplacement = {
 };
 
 export type AgentV1TurnResult = {
+  semanticIntent?: SemanticIntent;
+  fulfilledSemanticSegments?: string[];
+  offeredProducts?: {productIds:number[];quantity:number;replaceCartLineIndex?:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>};
+  checkoutDetails?: { customerName?: string; contactPhone?: string };
   reply: string;
   actions: AiOrderAction;
   /** Producto que necesita attrs: el orquestador abre pendingAttribute */
@@ -332,6 +340,15 @@ export class WhatsappAgentService {
   ) {}
 
   async runTurn(input: AgentV1TurnInput): Promise<AgentV1TurnResult> {
+    const result = await this.proposeTurn(input);
+    if (input.semanticInterpretation && (result.error || !result.semanticIntent)) {
+      return { reply: '¿Me aclaras qué quieres pedir, consultar o cambiar?', actions: {}, toolCalls: result.toolCalls,
+        error: result.error || 'missing_semantic_interpretation' };
+    }
+    return result;
+  }
+
+  private async proposeTurn(input: AgentV1TurnInput): Promise<AgentV1TurnResult> {
     const cfg = await this.settingsService.getEffectiveConfig();
     const phone = (input.humanPhone || cfg.localContext?.publicPhone || '').replace(
       /\D/g,
@@ -344,10 +361,13 @@ export class WhatsappAgentService {
     if(/\b(?:alergi(?:a|as|co|ca|cos|cas)|celiac[oa]s?)\b/.test(allergyContext) ||
       (/\bgarantiz\w*\b/.test(shortNorm) && /\b(?:alergenos?|gluten|lacteos?|leche)\b/.test(shortNorm))) {
       return {reply:'No puedo garantizar la ausencia de alérgenos. Un asesor debe verificar ingredientes y preparación con cocina antes de tomar tu pedido.',
-        actions:{requestHuman:true},toolCalls:[]};
+        actions:{requestHuman:true},toolCalls:[],
+        ...(input.semanticInterpretation ? {semanticIntent:{segments:[{text:input.userMessage,role:'conversation' as const}]}} : {})};
     }
+    if (!input.semanticInterpretation) {
     const accompanimentReply = catalogAccompanimentReply(input.userMessage, input.products, this.catalogService);
     if (accompanimentReply) return { reply: accompanimentReply, actions: {}, toolCalls: [] };
+    }
     if (!cfg.openaiApiKey) {
       return {
         reply: `El asistente aún no está configurado. ${contactHelp}`,
@@ -357,6 +377,8 @@ export class WhatsappAgentService {
       };
     }
 
+    const byId = new Map(input.products.map((p) => [p.id, p]));
+    if (!input.semanticInterpretation) {
     // Referencias deícticas y distributivas sin un único referente claro:
     // jamás crear productos por adivinar "ese" o "de cada una".
     if (/\b(?:\d+|un[ao]?|dos|tres|cuatro|cinco)\s+de\s+cada\s+un[ao]\b/.test(shortNorm) ||
@@ -551,7 +573,6 @@ export class WhatsappAgentService {
       };
     }
 
-    const byId = new Map(input.products.map((p) => [p.id, p]));
     // A complete, unambiguous correction of catalog options keeps its SKU.
     // Leave mixed requests and questions to the agent rather than guessing.
     if (input.cart?.length === 1 && !/[?¿]/.test(input.userMessage) &&
@@ -577,6 +598,14 @@ export class WhatsappAgentService {
         };
       }
     }
+    }
+    let semanticIntent: SemanticIntent | undefined;
+    let semanticRejected = false;
+    const fulfilledSemanticSegments = new Set<string>();
+    const fulfilledSemanticTargets = new Map<string,Set<number>>();
+    const sourceKey = (source: string) => source.toLowerCase().normalize('NFC').replace(/\s+/g,' ').trim();
+    let offeredProducts: AgentV1TurnResult['offeredProducts'];
+    const checkoutDetails: NonNullable<AgentV1TurnResult['checkoutDetails']> = {};
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
     const rejectedAttributeChoices = new Map<string, RejectedAttributeChoice>();
@@ -592,6 +621,7 @@ export class WhatsappAgentService {
     let lookupDeliveryTime = false;
 
     const system = `${cfg.systemPrompt}
+${input.semanticInterpretation ? SEMANTIC_INTENT_PROMPT : ''}
 
 Eres el agente de pedidos por WhatsApp de *${input.brandName}*.
 NO inventes productos ni precios. Usa tools para buscar y modificar el carrito.
@@ -702,8 +732,16 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           {
             model,
             messages,
-            tools: AGENT_TOOLS,
-            tool_choice: i===0 && (
+            tools: input.semanticInterpretation ? [SEMANTIC_INTENT_TOOL, SEMANTIC_CHECKOUT_TOOL, SEMANTIC_CHOICE_TOOL,
+              ...AGENT_TOOLS.map(tool => ({...tool, function: {...tool.function, parameters: {
+                ...tool.function.parameters,
+                properties: {...tool.function.parameters.properties, sourceText: {type:'string'}},
+                required: [...('required' in tool.function.parameters ? tool.function.parameters.required ?? [] : []),
+                  ...(semanticToolRequiresSource(tool.function.name) ? ['sourceText'] : [])],
+              }}}))] : AGENT_TOOLS,
+            tool_choice: input.semanticInterpretation
+              ? (!semanticIntent ? {type:'function',function:{name:'interpret_message'}} : 'auto')
+              : i===0 && (
               this.catalogService.isAvailabilityInquiry(input.userMessage) ||
               this.catalogService.isPriceInquiryIntent?.(input.userMessage) ||
               this.catalogService.isProductDescriptionInquiry(input.userMessage)
@@ -775,7 +813,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           const reply = (msg.content || '').trim().slice(0, 3500);
           const editsCart = actions.clearCart || actions.removeProductIds?.length || actions.removeCartLines?.length ||
             actions.updateCartLines?.length || actions.updateUnitOptions?.length || actions.updateAttributes?.length || actions.setCustomerNotes || actions.requestHuman;
-          const multi = actions.addItems?.length && !editsCart && !this.catalogService.swapIntent(input.userMessage)
+          const multi = !input.semanticInterpretation && actions.addItems?.length && !editsCart && !this.catalogService.swapIntent(input.userMessage)
             ? this.catalogService.resolveMultiProductOrder?.(input.userMessage,input.products) : null;
           const addedIds = new Set((actions.addItems || []).map(item=>item.productId));
           // A composed dish may be more specific than the multi resolver's
@@ -806,7 +844,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               error:'incomplete_multi_order'};
           }
           const claimsOrderAdded = /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)(?![\p{L}\p{N}_])/iu.test(reply);
-          if (!retriedUnappliedOrder && !actions.addItems?.length && claimsOrderAdded &&
+          if (!input.semanticInterpretation && !retriedUnappliedOrder && !actions.addItems?.length && claimsOrderAdded &&
             !this.catalogService.isAvailabilityInquiry(input.userMessage) &&
             !this.catalogService.isPriceInquiryIntent(input.userMessage) &&
             !this.catalogService.isProductDescriptionInquiry(input.userMessage)) {
@@ -818,6 +856,11 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           // Preserve the completed answer. Length alone must not trigger another
           // paid inference; incomplete purchases are recovered above.
           // Sin tools ni texto → el orquestador puede caer a reglas (multi-pedido)
+          const incompleteSemanticPlan = input.semanticInterpretation && semanticIntent && (semanticIntent.segments.some(segment=>
+            ['purchase','edit','remove','checkout','cancel'].includes(segment.role) &&
+            !fulfilledSemanticSegments.has(sourceKey(segment.text))) || !semanticTargetsComplete(semanticIntent,fulfilledSemanticTargets)) &&
+            (Object.keys(actions).length > 0 || Object.keys(checkoutDetails).length > 0);
+          if (incompleteSemanticPlan) return {reply:'Necesito aclarar cómo debe quedar el pedido completo.',actions:{},toolCalls,error:'incomplete_semantic_plan'};
           return {
             reply,
             actions,
@@ -829,7 +872,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             needsAttributeProductId,
             lookupPlacedOrder,
             lookupDeliveryTime,
-            error: reply ? undefined : 'empty_reply',
+            ...(input.semanticInterpretation ? {semanticIntent,fulfilledSemanticSegments:[...fulfilledSemanticSegments],offeredProducts,...(Object.keys(checkoutDetails).length ? {checkoutDetails} : {})} : {}),
+            error: semanticRejected ? 'semantic_contract_rejected' : reply || input.semanticInterpretation && (Object.keys(actions).length || Object.keys(checkoutDetails).length || needsAttributeProductId) ? undefined : 'empty_reply',
           };
         }
 
@@ -843,6 +887,89 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           } catch {
             args = {};
           }
+          if (input.semanticInterpretation) {
+            let contractResult: string | undefined;
+            if (name === 'interpret_message') {
+              const parsed = parseSemanticIntent(args, input.userMessage);
+              if (!parsed || parsed.segments.some(segment=>!Array.isArray(segment.productIds) || segment.productIds.some(id=>!byId.has(id))) ||
+                  semanticIntent && JSON.stringify(parsed) !== JSON.stringify(semanticIntent)) {
+                semanticRejected = true;
+                contractResult = JSON.stringify({ok:false,error:'invalid_or_changed_interpretation'});
+              } else {
+                semanticIntent = parsed;
+                contractResult = JSON.stringify({ok:true,segments:parsed.segments,
+                  references:[...new Set(parsed.segments.flatMap(segment=>segment.productIds || []))].map(id=>this.productCard(byId.get(id)!))});
+              }
+            } else if (!authorizeSemanticTool(semanticIntent, name, args.sourceText) || !semanticToolTargetsAuthorized(semanticIntent!,name,args)) {
+              semanticRejected = true;
+              contractResult = JSON.stringify({ok:false,error:'operation_not_authorized_by_complete_intent'});
+            } else if (['add_item','update_item'].includes(name) && args.quantity !== undefined &&
+                (!Number.isInteger(args.quantity) || Number(args.quantity)<1 || Number(args.quantity)>10)) {
+              semanticRejected = true;
+              contractResult = JSON.stringify({ok:false,error:'invalid_semantic_quantity'});
+            } else if (name === 'search_menu') {
+              const segment = semanticIntent!.segments.find(segment=>segment.text.toLowerCase().normalize('NFC').replace(/\s+/g,' ').trim()===sourceKey(String(args.sourceText)));
+              if (segment?.productIds?.length) {
+                contractResult = JSON.stringify({ok:true,mode:'semantic_reference',query:args.query,
+                  results:segment.productIds.map(id=>this.productCard(byId.get(id)!))});
+              }
+            } else if (name === 'offer_products') {
+              const ids = Array.isArray(args.productIds) ? args.productIds : [];
+              const segment = semanticIntent!.segments.find(segment=>sourceKey(segment.text)===sourceKey(String(args.sourceText)))!;
+              const replacementIndex = args.replaceCartLineIndex;
+              const originalLine = typeof replacementIndex==='number' ? input.cart?.[replacementIndex] : undefined;
+              const replacementValid = replacementIndex === undefined ? segment.role!=='edit' :
+                segment.role==='edit' && typeof replacementIndex==='number' && Number.isInteger(replacementIndex) && replacementIndex>=0 && !!originalLine &&
+                ((input.cart || []).length===1 || this.catalogService.productFullyNamedIn(String(args.sourceText),input.products.filter(product=>product.id===originalLine.productId))) &&
+                hasExplicitCartEditOwner(String(args.sourceText),(input.cart || []).map((line,cartLineIndex)=>({...line,cartLineIndex})),originalLine.productId,replacementIndex);
+              const quantity = args.quantity === undefined ? originalLine?.quantity || 1 : args.quantity;
+              const sourceQuantity = this.catalogService.extractQuantityFromMessage(String(args.sourceText));
+              const explicitQuantity = this.catalogService.countQuantityMentions(String(args.sourceText))>0;
+              const attributes = args.attributes;
+              if (!replacementValid || originalLine && quantity !== originalLine.quantity || !ids.length || ids.length>8 || new Set(ids).size!==ids.length ||
+                  !ids.every(id=>typeof id==='number' && input.products.some(product=>product.id===id && product.availableNow!==false)) ||
+                  !Number.isInteger(quantity) || Number(quantity)<1 || Number(quantity)>10 ||
+                  segment.role==='purchase' && explicitQuantity && sourceQuantity!==quantity ||
+                  attributes !== undefined && (!Array.isArray(attributes) || attributes.some(choice=>!choice ||
+                    typeof choice.attributeName!=='string' || typeof choice.attributeValue!=='string' ||
+                    ids.some(id=>!input.products.find(product=>product.id===id)?.attributes?.some(attribute=>
+                      attribute.attributeName===choice.attributeName && attribute.options.includes(choice.attributeValue)))))) {
+                semanticRejected = true;
+                contractResult = JSON.stringify({ok:false,error:'invalid_product_choice'});
+              } else {
+                offeredProducts = {productIds:ids as number[],quantity:Number(quantity),
+                  ...(typeof replacementIndex==='number' ? {replaceCartLineIndex:replacementIndex} : {}),
+                  ...(typeof args.note==='string' ? {note:args.note.slice(0,500)} : {}),
+                  ...(attributes ? {attributes:attributes as Array<{attributeName:string;attributeValue:string}>} : {})};
+                fulfilledSemanticSegments.add(sourceKey(String(args.sourceText)));
+                fulfilledSemanticTargets.set(sourceKey(String(args.sourceText)),new Set(ids as number[]));
+                contractResult = JSON.stringify({ok:true,selection:'The backend will display and persist these choices. Do not repeat a numbered list.'});
+              }
+            } else if (name === 'set_checkout_details') {
+              const source = String(args.sourceText).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+              const customerName = typeof args.customerName === 'string' ? args.customerName.trim() : undefined;
+              const contactPhone = typeof args.contactPhone === 'string' ? args.contactPhone.replace(/\D/g,'') : undefined;
+              const payment = typeof args.paymentMethod === 'string' ? findPaymentMethodByText(args.paymentMethod,cfg.paymentMethods || []) : undefined;
+              const validName = !customerName || isUsableWhatsappCustomerName(customerName) &&
+                source.replace(/\s+/g,' ').includes(customerName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' '));
+              const validPhone = !contactPhone || /^([0-9]{10}|57[0-9]{10})$/.test(contactPhone) && source.replace(/\D/g,'').includes(contactPhone);
+              if (!validName || !validPhone || args.paymentMethod && (!payment || findPaymentMethodByText(source,cfg.paymentMethods || [])?.id !== payment.id)) {
+                semanticRejected = true;
+                contractResult = JSON.stringify({ok:false,error:'invalid_checkout_details'});
+              } else {
+                if (customerName) checkoutDetails.customerName = customerName;
+                if (contactPhone) checkoutDetails.contactPhone = contactPhone;
+                if (payment) actions.setPaymentMethod = payment.id;
+                fulfilledSemanticSegments.add(sourceKey(String(args.sourceText)));
+                contractResult = JSON.stringify({ok:true});
+              }
+            }
+            if (contractResult !== undefined) {
+              if (semanticRejected) return {reply:'¿Me aclaras qué quieres pedir, consultar o cambiar?',actions:{},toolCalls,error:'semantic_contract_rejected'};
+              messages.push({role:'tool',tool_call_id:call.id,content:contractResult});
+              continue;
+            }
+          }
           const cartEditOwners = name === 'update_item' || name === 'remove_item'
             ? this.toolCartView({ actions, cart: input.cart, byId })
               .filter(line => line.productId === Number(args.productId))
@@ -850,6 +977,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             : [];
           const toolResult = this.executeTool(name, args, {
             diagnosticOrigin:'model_call',
+            semanticInterpretation:input.semanticInterpretation,
             onAttributeChoice: (edit, accepted) => {
               const key = `${edit.productId}:${edit.cartLineIndex}:${edit.attributeName.toLowerCase()}`;
               if (!accepted) {
@@ -877,7 +1005,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             products: input.products,
             byId,
             actions,
-            userMessage: input.userMessage,
+            userMessage: input.semanticInterpretation && typeof args.sourceText === 'string' ? args.sourceText : input.userMessage,
             verifiedDistributedProductId: input.verifiedDistributedProductId,
             cart: input.cart,
             menuConceptGroups: input.menuConceptGroups,
@@ -891,6 +1019,15 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               lookupDeliveryTime = true;
             },
           });
+          if (input.semanticInterpretation && semanticToolRequiresSource(name) && !['search_menu','resolve_multi_order'].includes(name) &&
+              JSON.parse(toolResult).ok === true) {
+            const key = sourceKey(String(args.sourceText));
+            fulfilledSemanticSegments.add(key);
+            const targets = fulfilledSemanticTargets.get(key) || new Set<number>();
+            for (const id of [args.productId,args.newProductId]) if (typeof id==='number') targets.add(id);
+            if (name==='clear_cart') for (const line of input.cart || []) targets.add(line.productId);
+            fulfilledSemanticTargets.set(key,targets);
+          }
           if (name === 'update_item' || name === 'remove_item') {
             const outcome = JSON.parse(toolResult) as { ok?: boolean; error?: string };
             const productId = Number(args.productId);
@@ -1086,6 +1223,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       actions: AiOrderAction;
       diagnosticOrigin?: 'model_call' | 'validation_probe';
       stagedReplacement?: boolean;
+      semanticInterpretation?: boolean;
       onAttributeChoice?: (edit: RejectedAttributeChoice, accepted: boolean) => void;
       /** Replacement inherits the old line's units unless the caller explicitly changed them. */
       preserveReplacementQuantity?: boolean;
@@ -1769,6 +1907,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         if (!ctx.preserveReplacementQuantity && !distributedVariant && !/\b(?:cada|por persona)\b|c\/u/i.test(source)) {
           const literal = namedPackOrderQuantity(source, product.name) ??
             this.catalogService.extractQuantityNearProduct(source, product.name);
+          if (ctx.semanticInterpretation && literal != null && (!Number.isInteger(literal) || literal<1 || literal>10)) {
+            return JSON.stringify({ok:false,error:'requested_quantity_out_of_range'});
+          }
           if (literal != null) quantity = Math.min(10, Math.max(1, literal));
         }
         const modelNote = args.note != null ? String(args.note).trim().slice(0, 200) : '';

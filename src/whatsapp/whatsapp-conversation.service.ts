@@ -110,6 +110,31 @@ export class WhatsappConversationService {
     };
   }
 
+  /** Commit one interpreted turn only while its complete conversation snapshot is current. */
+  async saveSemanticSession(
+    conv: WhatsappConversation,
+    expected: { session: WhatsappSessionData; state: string; customerName: string | null },
+    session: WhatsappSessionData,
+    state: string,
+    customerName?: string,
+  ): Promise<boolean> {
+    const saved = await this.convRepo.manager.transaction(async manager => {
+      const repository = manager.getRepository(WhatsappConversation);
+      const current = await repository.findOne({ where: { id: conv.id }, lock: { mode: 'pessimistic_write' } });
+      if (!current || current.humanTakeover || current.state !== expected.state ||
+          (current.customerName || null) !== expected.customerName ||
+          JSON.stringify(this.getSession(current)) !== JSON.stringify(expected.session)) return null;
+      current.sessionData = JSON.parse(JSON.stringify(session));
+      current.state = state;
+      if (customerName !== undefined) current.customerName = customerName;
+      current.lastMessageAt = new Date();
+      return repository.save(current);
+    });
+    if (!saved) return false;
+    Object.assign(conv, saved);
+    return true;
+  }
+
   async saveSession(conv: WhatsappConversation, patch: Partial<WhatsappSessionData>, state?: string) {
     const current = this.getSession(conv);
     const next: WhatsappSessionData = {
