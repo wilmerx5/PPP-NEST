@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 426,
-  "usedRequests": 423,
-  "remainingRequests": 3,
+  "authorizedRequests": 434,
+  "usedRequests": 428,
+  "remainingRequests": 6,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 19,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-11-15T20:57:48.493Z",
+  "lastAttemptAt": "2026-11-15T21:00:15.914Z",
   "latestEvaluation": {
     "date": "2026-11-15",
     "baseCommit": "f4d3007c065273ef71101365ee8e5642fb6029ba",
@@ -190,6 +190,13 @@
       "agentSelected": true,
       "userSpecifiedNumericCap": false,
       "scope": "New urgent pechuga purchase with accompaniment substitution regression. Stop first failing run and diagnose offline. Standing moderate inference authorization and explicit API validation request."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 8,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "scope": "Bounded fresh validation of general purchase-modifier grouping after offline diagnosis. Maximum eight requests, stop first failing run."
     }
   ],
   "evaluationHistory": [

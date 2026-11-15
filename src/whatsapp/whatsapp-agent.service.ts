@@ -943,7 +943,11 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             }
             if (name === 'interpret_message') {
               const parsed = parseSemanticIntent(args, input.userMessage);
+              const hasUnownedEdit = parsed?.segments.some(segment =>
+                ['edit', 'remove'].includes(segment.role) &&
+                !(input.cart || []).some(line => !segment.productIds?.length || segment.productIds.includes(line.productId)));
               if (!parsed || parsed.segments.some(segment=>!Array.isArray(segment.productIds) || segment.productIds.some(id=>!byId.has(id))) ||
+                  hasUnownedEdit ||
                   semanticIntent && JSON.stringify(parsed) !== JSON.stringify(semanticIntent)) {
                 this.logger.warn(JSON.stringify({event:'whatsapp_semantic_contract_rejected',
                   conversationId:input.conversationId || null,tool:name,reason:'invalid_or_changed_interpretation'}));
@@ -953,7 +957,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                   retriedSemanticInterpretation = true;
                   contractResult = JSON.stringify({ok:false,error:'invalid_interpretation',
                     currentMessage:input.userMessage,
-                    instruction:'Repite interpret_message una sola vez. Cubre exclusivamente currentMessage, cada fragmento una sola vez y en orden. No copies mensajes del historial. Conserva negaciones, preguntas y cantidades. Usa solo IDs del catálogo y [] para fragmentos sin producto.'});
+                    instruction:'Repite interpret_message una sola vez. Cubre exclusivamente currentMessage, cada fragmento una sola vez y en orden. No copies mensajes del historial. Conserva negaciones, preguntas y cantidades. Usa solo IDs del catálogo y [] para fragmentos sin producto. edit y remove requieren una línea del carrito de entrada. Las especificaciones y sustituciones de acompañamiento de una compra nueva permanecen dentro del MISMO segmento purchase de esa compra. Si realmente falta resolver el alcance, conserva esa duda completa como unclear.'});
                 } else {
                   semanticRejected = true;
                   contractResult = JSON.stringify({ok:false,error:'invalid_or_changed_interpretation'});
