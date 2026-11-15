@@ -19,9 +19,9 @@ export function hasExplicitUnitOptionSource(text: string, cart: WhatsappCartItem
   const references = [...message.matchAll(/\b(?:linea|fila|item|numero)\s+(\d+)\b/g)];
   if (references.some(match => Number(match[1]) === edit.cartLineIndex + 1)) return true;
   const destinations = new Set(edit.attributes.map(attribute => normalize(attribute.attributeValue)));
-  return (source.attributes || []).some(attribute => {
-    const value = normalize(attribute.attributeValue);
-    if (!value || destinations.has(value) || peers.some(line => (line.attributes || []).some(other => normalize(other.attributeValue) === value))) return false;
+  return [...(source.attributes || []).map(attribute => attribute.attributeValue), source.note || ''].some(current => {
+    const value = normalize(current);
+    if (!value || destinations.has(value) || peers.some(line => normalize(line.note || '') === value || (line.attributes || []).some(other => normalize(other.attributeValue) === value))) return false;
     // Optional plural suffix supports human references such as "los originales".
     const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return new RegExp(`\\b(?:de|entre) (?:los |las |el |la )?(?:de )?${escaped}(?:s|es)?\\b`).test(message);

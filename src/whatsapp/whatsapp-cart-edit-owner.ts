@@ -43,25 +43,21 @@ export function hasExplicitCartEditOwner(
     ];
     return values.some((value) => {
       const current = normalize(value);
-      if (
-        !current ||
-        current === destinationNote ||
-        variants.some(
-          (peer) =>
-            peer.cartLineIndex !== line.cartLineIndex &&
-            [
-              ...(peer.attributes || []).map((attribute) =>
-                normalize(attribute.attributeValue),
-              ),
-              normalize(peer.note || ''),
-            ].includes(current),
-        )
-      )
-        return false;
-      const escaped = current.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      return new RegExp(
-        `\\b(?:de|del|entre|que tiene|que lleva|que va) (?:los |las |el |la )?(?:de )?${escaped}(?:s|es)?\\b`,
-      ).test(message);
+      if (!current || current === destinationNote) return false;
+      const isOption = (line.attributes || []).some(attribute => normalize(attribute.attributeValue) === current);
+      const aliases = isOption && !/^(?:sin|no|cero|ningun|ninguna)\b/.test(current)
+        ? [...new Set([current, ...current.split(' ').filter(word => word.length >= 4)])]
+        : [current];
+      return aliases.some(alias => {
+        const shared = variants.some(peer => peer.cartLineIndex !== line.cartLineIndex &&
+          [...(peer.attributes || []).map(attribute => normalize(attribute.attributeValue)), normalize(peer.note || '')]
+            .some(other => alias === current ? other === current : (` ${other} `).includes(` ${alias} `)));
+        if (shared) return false;
+        const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(
+          `\\b(?:de|del|entre|que tiene|que lleva|que va) (?:los |las |el |la )?(?:de )?${escaped}(?:s|es)?\\b`,
+        ).test(message);
+      });
     });
   });
   return candidates.length === 1

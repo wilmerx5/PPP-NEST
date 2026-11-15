@@ -8389,6 +8389,7 @@ export class WhatsappOrchestratorService {
     decision?:TurnDecisionFrame,
     validatedToolActions = false,
     replacementProductIds: number[] = [],
+    semanticInterpretation = false,
   ): Promise<{ session: WhatsappSessionData; limitBlocked?: CartLimitCheck; unitOptionError?: string; cartChangeError?: string }> {
     if (replacementProductIds.length) {
       const plan = prepareValidatedPurchases({ additions: actions?.addItems || [], products, sourceText,
@@ -8399,12 +8400,14 @@ export class WhatsappOrchestratorService {
       }
     }
     if (!actions) return { session };
-    if (actions.updateUnitOptions !== undefined) {
-      const plan = prepareUnitOptionActions(session.cart, actions, products, this.catalogService);
-      if (!plan.ok) return { session, unitOptionError: plan.reason };
-      return { session: { ...session, cart: this.consolidateCart(plan.cart) } };
-    }
     let next = { ...session };
+    if (actions.updateUnitOptions !== undefined) {
+      const plan = prepareUnitOptionActions(session.cart, actions, products, this.catalogService,
+        {allowPurchases:semanticInterpretation,allowNoteOnly:semanticInterpretation});
+      if (!plan.ok) return { session, unitOptionError: plan.reason };
+      next = { ...session, cart: this.consolidateCart(plan.cart) };
+      if (!semanticInterpretation || !actions.addItems?.length) return { session: next };
+    }
 
     if (actions.updateAttributes?.length || actions.updateCartLines?.length || actions.removeCartLines?.length) {
       next = { ...next, cart: this.consolidateCart(applyCartLineEdits(next.cart, actions)),
@@ -29420,13 +29423,13 @@ export class WhatsappOrchestratorService {
     const guardSource = intent.segments.filter(segment=>segment.role==='edit' || segment.role==='remove').map(segment=>segment.text).join(' ') || text;
     const cancellationOnly = !!actions.clearCart && roles.has('cancel') && Object.keys(actions).every(key=>key==='clearCart' || key==='requestHuman');
     const guarded = this.actionGuard.sanitize({actions,products,businessOpen:businessOpen || cancellationOnly,allowMercadoPago:!!cfg.allowMercadoPago,
-      paymentMethods:cfg.paymentMethods,cart:session.cart,sourceText:guardSource});
+      paymentMethods:cfg.paymentMethods,cart:session.cart,sourceText:guardSource,semanticInterpretation:true});
     if (guarded.blockedClosed && changes) {
       await this.reply(conv,msg.waId,status.message || cfg.closedMessage);
       return true;
     }
     if (guarded.requiresOptionChoice || guarded.warnings.length || guarded.requiresCartOwnerChoice) return clarify();
-    const applied = await this.applyActions(conv,structuredClone(session),guarded.actions,products,cfg,'',turn.decision,true);
+    const applied = await this.applyActions(conv,structuredClone(session),guarded.actions,products,cfg,'',turn.decision,true,[],true);
     if (applied.limitBlocked || applied.unitOptionError || applied.cartChangeError) return clarify();
     let next = applied.session;
     const customerName = result.checkoutDetails?.customerName || guarded.actions?.setCustomerName;

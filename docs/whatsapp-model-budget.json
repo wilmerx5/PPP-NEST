@@ -1,22 +1,22 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 342,
-  "usedRequests": 341,
-  "remainingRequests": 1,
+  "authorizedRequests": 357,
+  "usedRequests": 351,
+  "remainingRequests": 6,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 19,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-11-15T14:25:34.238Z",
+  "lastAttemptAt": "2026-11-15T16:22:16.645Z",
   "latestEvaluation": {
     "date": "2026-11-15",
-    "baseCommit": "9cb062f8708bf8ee481d8c8a62457fa50acc6625",
-    "requests": 57,
-    "acceptedFinalConversations": 3,
+    "baseCommit": "32251150407c0ffea9ba58a1e309888ddfb8d603",
+    "requests": 10,
+    "acceptedFinalConversations": 2,
     "developmentOnly": true,
     "model": "gpt-6-luna",
-    "report": "docs/whatsapp-batch-542-validation.json",
-    "scope": "Three isolated full-router single-turn development cases. Executive and soup acceptance use recorded real-provider prefixes plus real-provider continuation. Composite correction accepted in a fresh seven-request development retest. Earlier failed development attempts retained. No customer persistence, Meta or external orders. Not an independent holdout or live-channel pilot rate.",
+    "report": "docs/whatsapp-batch-543-validation.json",
+    "scope": "Two fresh isolated full-router mixed-partition cases, five actual requests each. The first fixture assertion was corrected for canonical catalogue capitalization using captured output at zero additional inference. An extra confirmed-order address correction plus separate purchase passed with zero model requests through the deterministic route. No customer persistence, Meta or external orders.",
     "temporaryLimitChosenByAgent": true
   },
   "authorizationExtensions": [
@@ -144,6 +144,14 @@
       "userSpecifiedNumericCap": false,
       "evidence": "Current exhaustive batch under standing moderate inference authorization. Final bounded development retest of composite correction after identifying omitted removal, one case only.",
       "executionLimit": "8 actual HTTP attempts maximum; stop first failure; accepted cases excluded and cumulative usage retained."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 15,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "evidence": "Standing moderate inference authorization and user request for next batch and production release. Agent selects a cap of sixteen actual HTTP attempts for two targeted mixed-partition development cases.",
+      "executionLimit": "16 actual HTTP attempts maximum including the one previously remaining, stop at first failure, one run per candidate, no reset of cumulative counters."
     }
   ],
   "evaluationHistory": [
@@ -839,12 +847,22 @@
     "report": "docs/whatsapp-joint-subset-real-probe-1810.json"
   },
   "previousEvaluation": {
-    "date": "2026-11-12",
-    "baseCommit": "66d86d7e6b66880b96c5e21ee3153df26d6f5761",
-    "requests": 4,
-    "acceptedFinalConversations": 1,
+    "date": "2026-11-15",
+    "baseCommit": "9cb062f8708bf8ee481d8c8a62457fa50acc6625",
+    "requests": 57,
+    "acceptedFinalConversations": 3,
     "developmentOnly": true,
-    "report": "docs/whatsapp-pilot-live-520.json",
-    "scope": "One five-turn case repeated after persisted-selector correction, two requests each run. Final numeric selection and one simulated pickup order accepted. No representative pilot-rate claim."
+    "model": "gpt-6-luna",
+    "report": "docs/whatsapp-batch-542-validation.json",
+    "scope": "Three isolated full-router single-turn development cases. Executive and soup acceptance use recorded real-provider prefixes plus real-provider continuation. Composite correction accepted in a fresh seven-request development retest. Earlier failed development attempts retained. No customer persistence, Meta or external orders. Not an independent holdout or live-channel pilot rate.",
+    "temporaryLimitChosenByAgent": true
+  },
+  "latestSupplementalScope": {
+    "date": "2026-11-15",
+    "agentSelected": true,
+    "case": "confirmed-address-correction-followed-by-new-rice-purchase",
+    "maximumRequests": 6,
+    "additionalAuthorization": 0,
+    "scope": "Remaining six requests from the current sixteen-request operational cap after two accepted mixed partition cases; one fresh development postorder-boundary probe, stop first failure."
   }
 }

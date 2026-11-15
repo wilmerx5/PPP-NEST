@@ -35,6 +35,7 @@ export class WhatsappActionGuardService {
     paymentMethods?: WhatsappPaymentMethodConfig[];
     cart?: WhatsappCartItem[];
     sourceText?: string;
+    semanticInterpretation?: boolean;
   }): GuardResult {
     const warnings: string[] = [];
     if (!params.actions) {
@@ -89,15 +90,19 @@ export class WhatsappActionGuardService {
     }
 
     // Never keep valid fragments of a rejected grouped edit, including purchases.
+    let unitEdits: AiOrderAction['updateUnitOptions'];
     if (params.actions.updateUnitOptions !== undefined) {
-      const plan = prepareUnitOptionActions(params.cart || [], params.actions, params.products, this.catalogService);
+      const plan = prepareUnitOptionActions(params.cart || [], params.actions, params.products, this.catalogService,
+        {allowPurchases:params.semanticInterpretation,allowNoteOnly:params.semanticInterpretation});
       if (!plan.ok) observeWhatsappGuardRejection();
-      return plan.ok
-        ? { actions: { updateUnitOptions: plan.edits }, warnings, blockedClosed: false }
-        : { actions: undefined, warnings: [`No se aplicó el cambio por unidades: ${plan.reason}. El pedido sigue igual.`], blockedClosed: false };
+      if (!plan.ok) return { actions: undefined, warnings: [`No se aplicó el cambio por unidades: ${plan.reason}. El pedido sigue igual.`], blockedClosed: false };
+      if (!params.semanticInterpretation || !params.actions.addItems?.length) {
+        return { actions: { updateUnitOptions: plan.edits }, warnings, blockedClosed: false };
+      }
+      unitEdits = plan.edits;
     }
 
-    const out: AiOrderAction = {};
+    const out: AiOrderAction = unitEdits ? {updateUnitOptions:unitEdits} : {};
     const byId = new Map(params.products.map((p) => [p.id, p]));
 
     if (params.actions.requestHuman) out.requestHuman = true;

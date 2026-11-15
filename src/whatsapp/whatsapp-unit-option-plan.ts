@@ -1,6 +1,8 @@
 import type { AiOrderAction, WhatsappCartItem } from './types/whatsapp-session.types';
 import type { WhatsappCatalogProduct, WhatsappCatalogService } from './whatsapp-catalog.service';
 
+export type UnitOptionCapabilities = { allowPurchases?: boolean; allowNoteOnly?: boolean };
+
 /** One request describes ONE subset. All its attributes belong to those same units. */
 export type UnitOptionEdit = NonNullable<AiOrderAction['updateUnitOptions']>[number];
 export type UnitOptionPlan =
@@ -17,6 +19,7 @@ export function prepareUnitOptionPlan(
   edits: UnitOptionEdit[],
   products: WhatsappCatalogProduct[],
   catalog: Pick<WhatsappCatalogService, 'matchAttributeOptionValue'>,
+  capabilities: UnitOptionCapabilities = {},
 ): UnitOptionPlan {
   if (!Array.isArray(edits) || !edits.length) return { ok: false, reason: 'empty_edits' };
   const prepared = new Map<number, { quantity: number; attributes: UnitOptionEdit['attributes']; note?: string; noteMode?: UnitOptionEdit['noteMode'] }>();
@@ -34,7 +37,8 @@ export function prepareUnitOptionPlan(
     }
     const product = products.find(candidate => candidate.id === edit.productId);
     if (!product || product.availableNow === false) return fail('unavailable_product');
-    if (!Array.isArray(edit.attributes) || !edit.attributes.length) return fail('empty_attributes');
+    const hasNoteChange = edit.note !== undefined || edit.noteMode === 'clear';
+    if (!Array.isArray(edit.attributes) || !edit.attributes.length && !(capabilities.allowNoteOnly && hasNoteChange)) return fail('empty_attributes');
     const seen = new Set<string>();
     const attributes: UnitOptionEdit['attributes'] = [];
     for (const option of edit.attributes) {
@@ -109,14 +113,15 @@ export function prepareUnitOptionPlan(
   return { ok: true, changed, cart: result, partitions, edits: normalized };
 }
 
-/** Partial edits are atomic. Mixed purchases/removals/approval are deferred rather
- * than applying a valid fragment and claiming that the whole request succeeded. */
+/** Partial edits are atomic. A semantic caller may include independent purchases.
+ * Other mixed mutations require a separate supported plan. */
 export function prepareUnitOptionActions(
   cart: WhatsappCartItem[], actions: AiOrderAction, products: WhatsappCatalogProduct[],
   catalog: Pick<WhatsappCatalogService, 'matchAttributeOptionValue'>,
+  capabilities: UnitOptionCapabilities = {},
 ): UnitOptionPlan {
-  const mixed = Object.entries(actions).some(([key, value]) => key !== 'updateUnitOptions' &&
+  const mixed = Object.entries(actions).some(([key, value]) => key !== 'updateUnitOptions' && !(capabilities.allowPurchases && key === 'addItems' && Array.isArray(value)) &&
     (Array.isArray(value) ? value.length > 0 : !!value));
   if (mixed) return { ok: false, reason: 'mixed_unit_option_actions' };
-  return prepareUnitOptionPlan(cart, actions.updateUnitOptions!, products, catalog);
+  return prepareUnitOptionPlan(cart, actions.updateUnitOptions!, products, catalog, capabilities);
 }
