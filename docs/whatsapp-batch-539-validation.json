@@ -1,0 +1,205 @@
+{
+  "batch": 539,
+  "sourceCommit": "e6a70866b822466aa78af0b4c829349cd89b7aba",
+  "imageCodeCommit": "3196a53d9f737c28215ccb2f97cb056ff0066dc9",
+  "changes": [
+    "Append confirmed-order item notes through an atomic persisted update tied to the trusted confirmation saved in this WhatsApp conversation.",
+    "Use the existing updated_order_items event to refresh staff screens after a committed change.",
+    "Start a fresh context after four hours of inbound inactivity, including a BIGINT-safe history boundary for model context and outbound references."
+  ],
+  "globalValidation": {
+    "batch": 539,
+    "passedTests": 52065,
+    "suites": 623,
+    "failed": 0,
+    "skipped": 0,
+    "inventoryExact": true,
+    "frozenCodeCommit": "3196a53d9f737c28215ccb2f97cb056ff0066dc9",
+    "approvedTestCommit": "e6a70866b822466aa78af0b4c829349cd89b7aba",
+    "sourceFiles": 860,
+    "runtimeSourcesUnchanged": true,
+    "runtimeSourceManifestSha256": "c7fa7398f7d02e347797c75f90f541f3697c3bacb4845743841f5848eb9936b9",
+    "rawFullRun": {
+      "passed": 52016,
+      "failed": 22,
+      "retained": true
+    },
+    "changedFixtures": [
+      {
+        "path": "src/whatsapp/whatsapp-checkout-context-recovery.spec.ts",
+        "sha256": "878a07ac7277968c688ba6ab8638b5f703cd7a7c26f48e709f1622b28edf113d"
+      },
+      {
+        "path": "src/whatsapp/whatsapp-new-delivery-after-order-337.spec.ts",
+        "sha256": "88fcb20022827a78ecba1d816cc72a6ef032f672ba8479c0bde5bb30a3f60a35"
+      }
+    ],
+    "recheckedAssertions": 168,
+    "replacedFailedAssertions": 22,
+    "reason": "Old missing-order cases required an invitation to call. The requested feature now explains that no matching order was found, preserves the closed session and avoids a success claim. Only their copy assertions changed; persistence, state and cart checks remain.",
+    "method": "Complete frozen-source run plus the exact isolated fixture rerun. Every original passing assertion and inventory entry retained; names disambiguated by occurrence ordinal.",
+    "paidInference": 0,
+    "externalOrders": 0,
+    "metaMessages": 0
+  },
+  "newRegressionTests": 66,
+  "isolatedMariaDbNoteContracts": {
+    "ok": true,
+    "isolatedMariaDbNoteContracts": 8,
+    "realRowLocksAndRollback": true,
+    "externalCustomerOrders": 0
+  },
+  "compiledLocalTests": 635,
+  "stage": {
+    "cartEditSelectionSmoke": {
+      "ok": true,
+      "totalCompiledTests": 635,
+      "compiledPilotIncidentTests": 310,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditOwnerSmoke": {
+      "ok": true,
+      "compiledCartEditOwnerTests": 38,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "cartEditRejectionSmoke": {
+      "ok": true,
+      "compiledCartEditRejectionTests": 32,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "mixedAttributeSmoke": {
+      "ok": true,
+      "compiledMixedAttributeTests": 50,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "replacementTransactionSmoke": {
+      "ok": true,
+      "compiledReplacementTransactionTests": 35,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "ownerPaginationSmoke": {
+      "ok": true,
+      "compiledOwnerPaginationTests": 55,
+      "failed": 0,
+      "failures": [],
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "attributeRecoverySmoke": {
+      "ok": true,
+      "compiledAttributeRecoveryTests": 31,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "toolFeedbackSmoke": {
+      "ok": true,
+      "compiledToolFeedbackTests": 25,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "compiledControls": 1370,
+    "pilot520Smoke": {
+      "ok": true,
+      "compiledPilot520Cases": 24,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMultiSmoke": {
+      "ok": true,
+      "compiledMultiPurchaseTests": 136,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "environment": "staging",
+    "head": "e6a70866b822466aa78af0b4c829349cd89b7aba",
+    "image": "sha256:f52204b8f4a119430cbef40cf4f027919ae0929dd4ea302bf3fcfc847eee100c",
+    "running": true,
+    "restarts": 0,
+    "health": "healthy",
+    "localHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 55.85,
+        "heapTotal": 65.01,
+        "rss": 126.86
+      },
+      "timestamp": "2026-11-15T00:32:00.091Z"
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 57.78,
+        "heapTotal": 65.06,
+        "rss": 126.36
+      },
+      "timestamp": "2026-11-15T01:25:37.139Z"
+    },
+    "privateConfigurationPreserved": true,
+    "compiledSmoke": {
+      "ok": true,
+      "compiledInquiryOptionTests": 66,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "priorCompiledSmoke": {
+      "ok": true,
+      "compiledReplacementJourneys": 80,
+      "mockedClosures": 80,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "previousMixedSmoke": {
+      "ok": true,
+      "compiledMixedReplacementTests": 163,
+      "externalOrders": 0,
+      "paidInference": 0
+    },
+    "productionRuntimePreserved": true,
+    "checkedAt": "2026-11-15T01:25:37.144659+00:00",
+    "backup": "/root/ppp-manual-release/20261115T003040Z-staging-539",
+    "imageCodeCommit": "3196a53d9f737c28215ccb2f97cb056ff0066dc9",
+    "runtimeSourcesIdentical": true,
+    "changedSourceFiles": [
+      "src/whatsapp/whatsapp-checkout-context-recovery.spec.ts",
+      "src/whatsapp/whatsapp-new-delivery-after-order-337.spec.ts"
+    ],
+    "containerRestarted": false,
+    "allRuntimeStatesPreserved": true
+  },
+  "paidInference": 0,
+  "externalOrders": 0,
+  "metaMessages": 0,
+  "nativeKamppoPort": "pending",
+  "productionPromotion": "pending",
+  "migrationsRun": false,
+  "noteScope": "Recent active WhatsApp orders identified by the trusted confirmation. General packaging requests apply to order items; a named-product note requires an unambiguous matching product. Repeated notes are idempotent.",
+  "conversationWindow": "Four hours since previous inbound activity. Human takeover and an active Mercado Pago payment retain their existing paths.",
+  "limitations": [
+    "The model, Meta, maps and external customer-order creation are simulated.",
+    "The MariaDB integration uses a disposable minimal schema and the compiled OrdersService to verify real persistence, row locks, concurrent notes and rollback.",
+    "Other critical issues in the newly supplied chats are prioritized in whatsapp-pilot-incidents-20261114.md."
+  ],
+  "validationRecovery": [
+    "An intermediate notification action was corrected to the existing updated_order_items event before release. Focused and compiled controls were repeated and the frozen full run restarted.",
+    "The complete frozen run retained22 old copy-expectation failures. Two fixture updates rechecked168 cases, preserving state, cart and missing-write assertions. The deployed runtime code is identical between the build and approved test commit."
+  ]
+}

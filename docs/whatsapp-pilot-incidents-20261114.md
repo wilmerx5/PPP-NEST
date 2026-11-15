@@ -42,6 +42,29 @@ La protección537 distingue un pedido confirmado de un borrador activo. Un salud
 
 Otra reproducción mostraba «sí por favor» enviado al agente sin resolver la oferta guardada.538 da prioridad a una aceptación completa de esa oferta, también para «listo», «dale» y «OK», antes de tratarla como cortesía. Reutiliza la validación y el alta existentes. Los mensajes de cortesía posteriores conservan cantidades y opciones. La tanda cubre cotizaciones de uno o varios productos, cantidades, preguntas intermedias, repetición de la lista, rechazos, disponibilidad, cierre del negocio y límites del carrito. La promoción y los resultados completos se registran en whatsapp-batch-538-validation.json.
 
+## Revisión adicional de los chats de hoy
+
+El archivo aportado el14/11 contiene varios intentos distintos desde un mismo chat. Esto explica parte de la reutilización de nombre, teléfono o carrito, pero las consultas y las correcciones deben conservar su significado dentro de ese contexto. Hay recorridos confirmados con bebida, domicilio y teléfono corregidos, candidatos de lugares dentro de cobertura y complementos de dirección repetidos sin duplicarse.
+
+Los pendientes observados tienen prioridad sobre ampliar variantes aisladas de vocabulario.
+
+- Una pregunta sobre si el arroz incluye gaseosa reabre la elección del pollo. Responder1 añade otro arroz. Es crítico por duplicación y cobro adicional.
+- «Como bienes el pollo broastes» abre una lista de compra. Después una dirección añade una bandeja que nadie pidió. Es crítico por modificación del carrito durante consultas y datos de entrega.
+- El pedido de arroz sin ensalada con sustitución por yuca y un pollo frito solo conserva el arroz. Es crítico por pérdida de un producto explícito.
+- El combo con arepas fritas, porción de papa y Ginger se convierte en porción de arepas y pierde el combo. Es crítico por confundir opciones incluidas con productos independientes.
+- La distribución de dos ejecutivos se interpreta como nuevas bandejas, y las aclaraciones posteriores quedan encerradas en esa lista. Es crítico por tipo de producto, duplicación y bloqueo de recuperación.
+- «Gaseosa de cual tienes» añade una presentación sin que el cliente la elija. Cambiarla a Coca-Cola y combinar quitar una línea con una compra nueva no se resuelve. Es crítico por consulta convertida en compra y corrección incompleta.
+- «Solo quiero las dos sopas, el pollo no» ofrece pollo en vez de retirar las líneas ajenas. Eliminar varios índices tampoco funciona. Es crítico por mantener un total que el cliente rechazó.
+- «Pollo y medio broster en combo» pierde la media unidad y reformular el pedido añade otro combo. Es crítico por cantidad y contexto de corrección.
+- Se pierden casa11 y referencias de entrega al seleccionar un lugar, mientras palabras de cortesía o fragmentos de producto aparecen en notas/dirección. Requiere conservar puerta, torre y apartamento al confirmar candidatos y separar instrucciones de cocina.
+- Las preguntas por combos broaster muestran productos ajenos a esa presentación, y la dirección con paréntesis solo se reconoce al reescribirla. Son fricciones de selección y normalización.
+
+El fragmento conversacional «lo que quiero es» ya tiene la corrección536 y regresiones. La tanda538 validada en staging cubre aceptación de cotizaciones y listas de precios que antes omitían productos. Los demás casos de esta lista necesitan reproducciones completas para distinguir qué persiste en la versión actual.
+
+La tanda539 implementa las dos solicitudes nuevas. Las notas posteriores a la confirmación se vinculan a una confirmación saliente guardada en el chat y a la orden WhatsApp que la originó. La actualización transaccional añade notas a los ítems y emite la actualización del panel después de guardar, con repetición idempotente y comprobación de estado. Los suministros generales se anotan en los productos de la orden y las instrucciones que nombran un plato se aplican a ese plato cuando se identifica sin ambigüedad.
+
+Después de cuatro horas sin mensajes del cliente, el siguiente turno crea un contexto nuevo. La sesión conserva un límite de historial por ID de mensaje BIGINT en forma de texto, por lo que el modelo y las referencias a respuestas anteriores excluyen la conversación antigua. Dentro de las cuatro horas se mantiene el comportamiento de continuación. La atención humana y un pago Mercado Pago en curso conservan sus rutas propias. 539 está desplegada y verificada en staging con1.370 controles compilados,66 regresiones nuevas y ocho contratos de MariaDB desechable. La global aprobada incluye52.065 pruebas en623 suites y conserva los22 fallos originales de expectativas de mensaje junto a los168 controles reejecutados de dos fixtures. La evidencia y el alcance de las simulaciones se registran en whatsapp-batch-539-validation.json. Los demás incidentes de esta revisión siguen pendientes de reproducción y corrección en la versión actual.
+
 ## Criterio de cierre de esta revisión
 
 Cada incidente necesita reproducción con carrito, estado y respuesta, verificación de entradas similares y trazabilidad de código, pruebas y despliegue. Se comprueban sesiones nuevas, borradores con historial y órdenes ya confirmadas según corresponda. Las pruebas incluyen catálogos alternativos y la adaptación nativa de Kamppo. Los fallos anteriores se consideran cerrados únicamente cuando la evidencia identifica la versión desplegada. Los detalles por tanda se registran en los archivos `whatsapp-batch-536-validation.json` y de la tanda537.
