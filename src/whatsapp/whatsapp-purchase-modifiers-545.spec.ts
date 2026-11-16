@@ -13,7 +13,7 @@ const menu = [
 ];
 function setup() {
   const h = harness(menu, true);
-  h.conv.customerName = null;
+  h.conv.customerName=null!;
   h.conv.sessionData = { cart: [], orderType: 'delivery' };
   h.service.settingsService.semanticRoutingEnabled = () => true;
   h.service.conversationService.saveSemanticSession = jest.fn(async (_conv, expected, next, state) => {

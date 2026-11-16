@@ -54,18 +54,18 @@ for(const {config,products} of menus) for(const missingQty of [1,2]) for(const m
     .mockResolvedValueOnce(answer(null,[call('update_item',{sourceText:note,productId:54704,cartLineIndex:0,note})]))
     .mockResolvedValueOnce(answer('Anotado'));
   const second=await h.sendQueued(note);
-  expect(h.conv.sessionData.cart[0].note).toMatch(/ají/i);expect(h.conv.sessionData.pendingMatch.quantity).toBe(missingQty);
+  expect(h.conv.sessionData.cart[0].note).toMatch(/ají/i);expect(h.conv.sessionData.pendingMatch!.quantity).toBe(missingQty);
   expect(second).not.toMatch(/aclaras qué quieres|Algo más/i);
   const pending=structuredClone(h.conv.sessionData.pendingMatch);
   h.service.agentService={runTurn:jest.fn().mockResolvedValue({reply:'',actions:{},toolCalls:[],error:'semantic_contract_rejected'})};
   const unclear=await h.sendQueued('El plato muy bien cocido');
   expect(unclear).toMatch(/Frito/);expect(unclear).not.toMatch(/aclaras qué quieres/i);
   expect(h.conv.sessionData.pendingMatch).toEqual(pending);
-  const index=h.conv.sessionData.pendingMatch.candidates.findIndex(item=>item.id===54701)+1;
+  const index=h.conv.sessionData.pendingMatch!.candidates.findIndex(item=>item.id===54701)+1;
   await h.sendQueued(String(index));
   expect(h.conv.sessionData.cart).toHaveLength(2);
-  expect(h.conv.sessionData.cart.find(item=>item.productId===54701).quantity).toBe(missingQty);
-  expect(h.conv.sessionData.cart.find(item=>item.productId===54704).quantity).toBe(1);
+  expect(h.conv.sessionData.cart.find(item=>item.productId===54701)!.quantity).toBe(missingQty);
+  expect(h.conv.sessionData.cart.find(item=>item.productId===54704)!.quantity).toBe(1);
   h.service.ordersService.create=jest.fn().mockResolvedValue({id:547,dailyOrderNumber:547});
   await h.sendQueued('No señor');await h.sendQueued('Carrera 79 c 6 a 08');await h.sendQueued('Nequi');
   expect(await h.sendQueued('Confírmar')).toMatch(/registrado/i);

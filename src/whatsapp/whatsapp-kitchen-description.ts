@@ -1,6 +1,6 @@
 import { editDistance } from './whatsapp-message-classify';
 
-const STEMS=['dorad','cocinad','cocid','tostad','delgad','grues','gord','bonit','crud','sec'];
+const STEMS=['dorad','cocinad','cocid','tostad','delgad','grues','gord','bonit','crud','sec','jugos','tiern','fresc'];
 const ADJECTIVE=`(?:(?:${STEMS.join('|')})(?:it)?[oa]s?|calientes?|fri[oa]s?|crocantes?|crujientes?|dulces?|picantes?|salad[oa]s?|acid[oa]s?|grasos[oa]s?)`;
 const FORMS=STEMS.flatMap(stem=>['o','a','os','as','ito','ita','itos','itas'].map(ending=>stem+ending));
 const normalize=(value:string)=>value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -9,7 +9,7 @@ const normalize=(value:string)=>value.toLowerCase().normalize('NFD').replace(/[\
  * Spelling tolerance only classifies an adjective; the stored note stays literal.
  */
 export function kitchenDescriptionNote(source:string):string|null {
- const raw=source.trim().replace(/\s+(?:por favor|porfa|gracias)[.!]*$/i,'').replace(/[.!]+$/,'').trim();
+ const raw=source.trim().replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D\s.!]+$/gu,'').replace(/\s+(?:por favor|porfa|gracias)[.!]*$/i,'').replace(/[.!]+$/,'').trim();
  if(!raw || raw.length>200 || /[?¿;\d]/.test(raw))return null;
  let text=normalize(raw).replace(/[,!.]+/g,' ').replace(/\s+/g,' ').trim();
  text=text.replace(/\b[a-z]{5,}\b/g,word=>{
@@ -18,7 +18,7 @@ export function kitchenDescriptionNote(source:string):string|null {
   return matches.length ? matches[0] : word;
  });
  const qualified=`(?:(?:bien|muy|no tan|no muy|un poco) )?${ADJECTIVE}`;
- const relative=`que (?:no )?(?:(?:me|nos) )?(?:esten?|vengan?|sean?|salgan?|(?:vayan? a )?(?:salir|venir|llegar)) (?:(?:tan|muy|bien|demasiado|un poco) )?${ADJECTIVE}`;
+ const relative=`que (?:no )?(?:(?:me|nos) )?(?:esten?|vengan?|sean?|salgan?|queden?|lleguen?|(?:vayan? a )?(?:salir|venir|llegar)) (?:(?:tan|muy|bien|demasiado|un poco) )?${ADJECTIVE}`;
  const clause=`(?:${relative}|${qualified})`;
  return new RegExp(`^${clause}(?: (?:(?:y|pero) )?${clause})*$`).test(text)?raw:null;
 }

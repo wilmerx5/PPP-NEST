@@ -303,15 +303,15 @@ for (const menu of menus) for (const continuation of ['included', 'additional', 
         ...(continuation==='additional'?[call('add_item',{sourceText:extra,productId:54604,quantity:1})]:[])]))
       .mockResolvedValueOnce(answer('Elige el combo.'));
     await h.sendQueued(text);
-    expect(h.conv.sessionData.pendingMatch.query).toBe(purchase);
-    expect(h.conv.sessionData.pendingMatch.semanticOffer).toBe(true);
+    expect(h.conv.sessionData.pendingMatch!.query).toBe(purchase);
+    expect(h.conv.sessionData.pendingMatch!.semanticOffer).toBe(true);
     const reply=await h.sendQueued('1');
     expect(reply).not.toMatch(/aclaras|no entend/i);expect(network).toHaveBeenCalledTimes(3);
     expect(h.conv.sessionData.cart).toHaveLength(continuation==='additional'?2:1);
     const combo=h.conv.sessionData.cart.find(line=>line.productId===54602);
-    expect(combo.quantity).toBe(1);expect(combo.attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Manzana'});
+    expect(combo!.quantity).toBe(1);expect(combo!.attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Manzana'});
     expect(h.conv.sessionData.cart.some(line=>line.productId===54603)).toBe(false);
-    if(continuation==='additional')expect(h.conv.sessionData.cart.find(line=>line.productId===54604).quantity).toBe(1);
+    if(continuation==='additional')expect(h.conv.sessionData.cart.find(line=>line.productId===54604)!.quantity).toBe(1);
   });
 }
 
@@ -324,6 +324,6 @@ for(const menu of menus) for(const separate of [false,true]) it(`an older family
   const reply=await h.sendQueued('1');
   expect(reply).not.toMatch(/aclaras|no entend/i);expect(global.fetch).not.toHaveBeenCalled();
   expect(h.conv.sessionData.cart).toHaveLength(separate?2:1);
-  expect(h.conv.sessionData.cart.find(line=>line.productId===54602).quantity).toBe(1);
+  expect(h.conv.sessionData.cart.find(line=>line.productId===54602)!.quantity).toBe(1);
   expect(h.conv.sessionData.cart.some(line=>line.productId===54603)).toBe(separate);
 });

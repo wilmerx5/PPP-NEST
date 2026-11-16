@@ -16357,13 +16357,20 @@ export class WhatsappOrchestratorService {
   /** Tras pedido cerrado o pago por transferencia: la foto suele ser comprobante. */
   private paymentProofAcknowledgement(conv?: WhatsappConversation): string {
     const acknowledgement =
-      'Recibí el comprobante. El equipo lo validará y te enviaremos el pedido lo más pronto posible.';
+      'Recibí el comprobante. El equipo lo validará.';
+    if (conv && ['completed', 'closed'].includes(conv.state)) {
+      return acknowledgement + ' Te enviaremos el pedido lo más pronto posible.';
+    }
     if (
       conv &&
       !conv.humanTakeover &&
       !['completed', 'closed', 'human', 'human_takeover'].includes(conv.state)
     ) {
       const session = this.conversationService.getSession(conv);
+      if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder) {
+        return `${acknowledgement}\n\n${this.formatPendingPurchaseReminder(session)}`;
+      }
+      if (!session.cart?.length) return `${acknowledgement}\n\n¿Qué deseas pedir para completar tu pedido?`;
       const checkoutStep = [
         'awaiting_name',
         'awaiting_phone',

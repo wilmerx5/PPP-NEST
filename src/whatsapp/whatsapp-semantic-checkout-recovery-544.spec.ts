@@ -10,7 +10,7 @@ function setup(name = names[0], state = 'building_cart') {
     attributes: [{ attributeName: 'Bebida', options: ['Colombiana', '7up', 'Ginger', '3fresh'] }] }];
   const h = harness(menu, true);
   h.conv.state = state;
-  h.conv.customerName = null;
+  h.conv.customerName=null!;
   h.conv.sessionData = { cart: [{ productId: 54401, code: 89, name, unitPrice: 57000, quantity: 1,
     attributes: [{ attributeName: 'Bebida', attributeValue: 'Colombiana' }] }], orderType: 'delivery' };
   h.service.settingsService.semanticRoutingEnabled = () => true;
@@ -124,7 +124,7 @@ for (const text of ['Conjunto altavista Torre 4 1105', 'Solo 1', 'No señor', 'e
     const result = await agent().runTurn({ semanticInterpretation: true, userMessage: text, products: h.menu,
       cart: h.conv.sessionData.cart, sessionSummary: 'Pedido activo', recentMessages: [`Cliente: ${text}`], businessRulesBlock: 'Abierto', brandName: 'Restaurante' });
     expect(result.error).toBeUndefined();
-    expect(result.semanticIntent.segments).toEqual([segment]);
+    expect(result.semanticIntent!.segments).toEqual([segment]);
     expect(result.actions).toEqual({});
     expect(fetch).toHaveBeenCalledTimes(3);
     const repairRequest = JSON.parse(String(fetch.mock.calls[1][1]?.body));
@@ -158,7 +158,7 @@ for (const name of names) it(`coalesced messages share one history boundary ${na
   expect(h.agent.runTurn).toHaveBeenCalledTimes(1);
   expect(h.agent.runTurn.mock.calls[0][0].userMessage).toBe(text);
   expect(h.conv.sessionData.cart).toHaveLength(1);
-  expect(h.conv.sessionData.cart[0].attributes[0].attributeValue).toBe('Ginger');
+  expect(h.conv.sessionData.cart[0].attributes![0].attributeValue).toBe('Ginger');
 });
 
 for (const value of ['7up', '3fresh']) it(`a joined connector preserves the rejection of ${value}`, () => {
@@ -255,9 +255,9 @@ it('a purchase can finish its own pending note while preserving existing units',
     cart, sessionSummary: '', recentMessages: [], businessRulesBlock: '', brandName: 'Restaurante' });
   expect(result.error).toBeUndefined(); expect(cart).toEqual(original);
   expect(result.actions.addItems).toHaveLength(1);
-  expect(result.actions.addItems[0]).toMatchObject({ productId: 54401, quantity: 2 });
-  expect(result.actions.addItems[0].note).toMatch(/sin sal/i);
-  expect(result.actions.addItems[0].note).toMatch(/aj[ií]/i);
+  expect(result.actions.addItems![0]).toMatchObject({ productId: 54401, quantity: 2 });
+  expect(result.actions.addItems![0].note).toMatch(/sin sal/i);
+  expect(result.actions.addItems![0].note).toMatch(/aj[ií]/i);
   expect(result.actions.updateCartLines).toBeUndefined();
 });
 

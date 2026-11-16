@@ -16,7 +16,7 @@ for (const name of ['Combo De Pollo Mixto', 'Combo De Tofu']) {
     const menu = [{ id: 54401, code: 89, name, price: 57000, availableNow: true, hasAttributes: true,
       attributes: [{ attributeName: 'Bebida', options: ['Colombiana', '7up', 'Ginger'] }] }];
     const h = harness(menu, true);
-    h.conv.customerName = null;
+    h.conv.customerName=null!;
     h.conv.waId = '573000000001';
     h.conv.sessionData = { orderType: 'delivery', cart: [{ productId: 54401, code: 89, name, unitPrice: 57000, quantity: 1,
       attributes: [{ attributeName: 'Bebida', attributeValue: 'Colombiana' }] }] };
