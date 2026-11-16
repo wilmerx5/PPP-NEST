@@ -98,6 +98,7 @@ export class OrdersService {
       dto.deliveryFee ?? '',
       items,
       extras,
+      this.normalizeRedemptionCodes(dto).sort().join(','),
     ].join('::');
   }
 
@@ -155,6 +156,7 @@ export class OrdersService {
         address: order.address,
         orderType: order.orderType,
         deliveryFee: order.deliveryFee,
+        redemptionCodes: this.getRedemptionCodes(order),
         items: (order.items ?? []).map((it) => ({
           productId: it.product.id,
           note: it.note ?? '',
@@ -487,6 +489,21 @@ export class OrdersService {
     return run;
   }
 
+  private normalizeRedemptionCodes({ redemptionCode, redemptionCodes }: CreateOrderDto): string[] {
+    if (redemptionCodes != null && !Array.isArray(redemptionCodes)) {
+      throw new BadRequestException('Los códigos de premio deben enviarse en una lista');
+    }
+    const rawRewardCodes = redemptionCodes ?? (redemptionCode?.trim() ? [redemptionCode] : []);
+    if (rawRewardCodes.some(code => typeof code !== 'string' || !code.trim())) {
+      throw new BadRequestException('Código de premio inválido');
+    }
+    const rewardCodes = rawRewardCodes.map(code => code.trim().toUpperCase());
+    if (new Set(rewardCodes).size !== rewardCodes.length) {
+      throw new BadRequestException('Cada código de premio solo se puede aplicar una vez');
+    }
+    return rewardCodes;
+  }
+
   private getRedemptionCodes(order: Order): string[] {
     return order.redemptionCodes ?? (order.redemptionCode ? [order.redemptionCode] : []);
   }
@@ -517,23 +534,13 @@ export class OrdersService {
   }
 
   private async createOrderInternal(createOrderDto: CreateOrderDto) {
-    const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode, redemptionCodes, extras } = createOrderDto;
+    const { customerName, phone, address, items, customerEmail, orderSource, extras } = createOrderDto;
     const orderType = createOrderDto.orderType ?? 'pickup';
     const deliveryFee = createOrderDto.deliveryFee;
     const source = orderSource ?? 'internal';
     const clientRequestId = (createOrderDto.clientRequestId || '').trim().slice(0, 64) || null;
 
-    if (redemptionCodes != null && !Array.isArray(redemptionCodes)) {
-      throw new BadRequestException('Los códigos de premio deben enviarse en una lista');
-    }
-    const rawRewardCodes = redemptionCodes ?? (redemptionCode?.trim() ? [redemptionCode] : []);
-    if (rawRewardCodes.some(code => typeof code !== 'string' || !code.trim())) {
-      throw new BadRequestException('Código de premio inválido');
-    }
-    const rewardCodes = rawRewardCodes.map(code => code.trim().toUpperCase());
-    if (new Set(rewardCodes).size !== rewardCodes.length) {
-      throw new BadRequestException('Cada código de premio solo se puede aplicar una vez');
-    }
+    const rewardCodes = this.normalizeRedemptionCodes(createOrderDto);
 
     const hasItems = items && items.length > 0;
     const hasExtras = extras && extras.length > 0;
