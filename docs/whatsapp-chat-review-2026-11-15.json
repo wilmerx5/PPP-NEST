@@ -185,5 +185,8 @@
       "status": "pending_exact_review",
       "nextAction": "La exportación no atribuye la desactivación histórica del canal. Verificar auditoría de configuración disponible."
     }
-  ]
+  ],
+  "latestValidationBatch": 552,
+  "latestValidationReport": "docs/whatsapp-batch-552-validation.json",
+  "deploymentRegressionFinding": "Kamppo recibió compilados antiguos en una publicación paralela. La imagen combinada actual aprueba185 contratos y coincide con los218 artefactos del motor y630 de API probados."
 }
