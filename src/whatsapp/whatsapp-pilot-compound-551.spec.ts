@@ -208,3 +208,57 @@ for (const { data, products } of menus)
           h.service.ordersService.create.mock.calls[0][0].items,
         ).toHaveLength(2);
       });
+
+for (const { data, products } of menus) {
+  for (const repeatAcceptedPurchase of [false, true]) {
+    it(`repairs omitted checkout without adding a second purchase ${data.subject}/${repeatAcceptedPurchase}`, async () => {
+      const h = setup(products);
+      const purchase = `un ${data.dish}`;
+      const address = 'Calle 6B #78C-36 apto 302';
+      const checkout = `para ${address}`;
+      const text = `${purchase}, ${checkout}`;
+      h.service.agentService = new WhatsappAgentService(
+        { getEffectiveConfig: async () => cfg } as never,
+        new WhatsappCatalogService({} as never),
+      );
+      const add = call('add_item', {
+        sourceText: purchase,
+        productId: products[0].id,
+        quantity: 1,
+      });
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          answer(null, [
+            call('interpret_message', {
+              segments: [
+                {
+                  text: purchase,
+                  role: 'purchase',
+                  productIds: [products[0].id],
+                },
+                { text: checkout, role: 'checkout', productIds: [] },
+              ],
+            }),
+          ]),
+        )
+        .mockResolvedValueOnce(answer(null, [add]))
+        .mockResolvedValueOnce(answer('Listo'))
+        .mockResolvedValueOnce(
+          answer(null, [
+            ...(repeatAcceptedPurchase ? [add] : []),
+            call('set_address', { sourceText: checkout, address }),
+          ]),
+        )
+        .mockResolvedValueOnce(answer('Completado'));
+      const reply = await h.sendQueued(text);
+      expect(reply).not.toMatch(/aclaras qué quieres|no entend/i);
+      expect(reply).toMatch(/c[oó]mo pagas/i);
+      expect(h.conv.sessionData.cart).toEqual([
+        expect.objectContaining({ productId: products[0].id, quantity: 1 }),
+      ]);
+      expect(h.conv.sessionData.address).toBe(address);
+      expect(global.fetch).toHaveBeenCalledTimes(5);
+    });
+  }
+}

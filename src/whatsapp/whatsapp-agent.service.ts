@@ -915,13 +915,14 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 (segment.productIds || []).some(id => !fulfilledSemanticTargets.get(sourceKey(segment.text))?.has(id))));
             const existingEdits = pending.length > 0 && pending.every(segment => segment.role === 'edit' &&
               segment.productIds?.length && segment.productIds.every(id => input.cart?.some(line => line.productId === id)));
-            if (!retriedSemanticPreservation && (existingEdits || missingMultiTargets.length>0) && i + 2 < iterationLimit) {
+            if (!retriedSemanticPreservation && (existingEdits || missingMultiTargets.length>0 ||
+              pending.some(segment => segment.role === 'checkout')) && i + 2 < iterationLimit) {
               retriedSemanticPreservation = true;
               inferenceReason = 'recover_semantic_preservation';
               messages.push({role:'system',content:
                 'La propuesta completa sigue sin aplicar. Estas cláusulas no tienen una operación acreditada: '+JSON.stringify(pending)+
                 '. Estas compras identificadas por el catálogo siguen sin resolver: '+JSON.stringify(missingMultiTargets)+
-                '. Una búsqueda no agrega productos. Usa add_item para las compras disponibles y offer_products para las alternativas de la preparación ausente. No preguntes si quiere comprar el plato que ya pidió. Conserva cada cantidad de su cláusula.'+
+                '. Completa también los datos explícitos pendientes mediante set_address o set_checkout_details, con su fragmento literal. Una búsqueda no agrega productos. Usa add_item para las compras disponibles y offer_products para las alternativas de la preparación ausente. No preguntes si quiere comprar el plato que ya pidió. Conserva cada cantidad de su cláusula.'+
                 '. Si piden conservar productos existentes, verifica cada línea mediante update_item con SU cantidad actual, sin añadirla otra vez. '+
                 'Si piden cambiar cantidad, nota u opciones, ejecuta ese cambio completo. No marques una modificación pendiente como conservada. '+
                 'replace_item sustituye UNA sola línea. Si la cláusula reúne varios productos en un único plato compuesto, retira las otras líneas de origen mediante remove_item. No verifiques como conservado un producto que debe desaparecer. '+
@@ -1154,6 +1155,15 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               messages.push({role:'tool',tool_call_id:call.id,content:contractResult});
               continue;
             }
+          }
+          const repeatedAcceptedPurchase = input.semanticInterpretation && retriedSemanticPreservation && name === 'add_item' &&
+            actions.addItems?.some(item => item.productId === args.productId && item.quantity === (args.quantity ?? 1) &&
+              (item.note || '') === (args.note || '') && pendingPurchaseSources.get(item)?.has(sourceKey(String(args.sourceText))) &&
+              JSON.stringify(item.attributes || []) === JSON.stringify(args.attributes || []));
+          if (repeatedAcceptedPurchase) {
+            messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify({ok:true,alreadyApplied:true,
+              hint:'Esta compra ya estaba acreditada. Conserva su cantidad y completa solo los datos pendientes.'})});
+            continue;
           }
           const cartEditOwners = name === 'update_item' || name === 'remove_item'
             ? this.toolCartView({ actions, cart: input.cart, byId, semanticInterpretation:input.semanticInterpretation })
