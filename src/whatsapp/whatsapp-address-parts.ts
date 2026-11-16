@@ -51,7 +51,7 @@ export function splitAddressReference(source: string): { address: string; refere
 }
 
 /** "calle 38 sur 72 j 15" → "Calle 38 Sur # 72J-15"; null when the text has no full numbered street. */
-export function canonicalStreetAddress(source: string): string | null {
+export function canonicalStreetAddress(source: string, options?: { preserveNumericPadding?: boolean }): string | null {
   const text = (source || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[–—−_]/g, '-').replace(/\bn[°º]\s*/g, '# ')
     .replace(/\b(\d{1,3})([a-z])?bis([a-z])?\b/g, '$1$2 bis $3')
@@ -71,12 +71,13 @@ export function canonicalStreetAddress(source: string): string | null {
   if (!m) return null;
   const road = roadNames.find(([pattern]) => pattern.test(m[1].replace(/\.$/, '').replace(/\s+/g, ' ')))?.[1];
   if (!road) return null;
+  const number = (value: string) => options?.preserveNumericPadding ? value : String(Number(value));
   const piece = (n: string, a?: string, bis?: string, b?: string) =>
-    `${Number(n)}${(a || '').toUpperCase()}${bis ? ' Bis' : ''}${b ? ` ${b.toUpperCase()}` : ''}`;
+    `${number(n)}${(a || '').toUpperCase()}${bis ? ' Bis' : ''}${b ? ` ${b.toUpperCase()}` : ''}`;
   const zone1 = m[6] ? ` ${m[6][0].toUpperCase()}${m[6].slice(1)}` : '';
   const late = m[11] || m[13];
   const zone2 = late && late !== m[6] ? ` ${late[0].toUpperCase()}${late.slice(1)}` : '';
-  return `${road} ${piece(m[2], m[3], m[4], m[5])}${zone1} # ${piece(m[7], m[8], m[9], m[10])}-${Number(m[12])}${zone2}`;
+  return `${road} ${piece(m[2], m[3], m[4], m[5])}${zone1} # ${piece(m[7], m[8], m[9], m[10])}-${number(m[12])}${zone2}`;
 }
 
 /** Keep labelled internal access identifiers for the driver, out of map queries.

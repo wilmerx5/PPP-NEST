@@ -233,7 +233,7 @@ export class WhatsappDeliveryRoutingService {
    */
   private geocodeQueryVariants(address: string): string[] {
     const q = splitDeliveryAddressParts(address).base.trim();
-    const street = canonicalStreetAddress(q);
+    const street = canonicalStreetAddress(q, { preserveNumericPadding: true });
     const out: string[] = [];
     for (const text of street && street.toLowerCase() !== q.toLowerCase() ? [street, q] : [q]) {
       if (!/\b(bogot[aá]|colombia|cundinamarca)\b/i.test(text)) {

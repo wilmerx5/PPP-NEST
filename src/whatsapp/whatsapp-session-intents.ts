@@ -498,6 +498,7 @@ export function isDeliveryEtaInquiry(text: string): boolean {
     .replace(/[\u0300-\u036f]/g, '');
 
   return (
+    /\bcuanto(?:\s+tiempo)?\s+(?:(?:le|les)\s+)?(?:queda|falta)\b/.test(t) ||
     /\b(se\s+demoran?|demorara[n]?\s+(?:mucho|el\s+pedido|el\s+domicilio)|cuanto\s+(se\s+)?(demora|tarda|tardaria)|cuanto\s+tiempo|en\s+cuanto\s+(llega|llegaria|llegara|sale|salen)|cuando\s+(llega|llegaria)|tiempo\s+de\s+(domicilio|entrega|espera)|demora\s+(el\s+)?(domicilio|pedido|envio)|eta)\b/.test(
       t,
     ) ||

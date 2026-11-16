@@ -1,5 +1,5 @@
 import { semanticTargetsComplete, semanticToolTargetsAuthorized, semanticToolRequiresSource, authorizeSemanticTool, parseSemanticIntent, SEMANTIC_INTENT_TOOL, SEMANTIC_CHECKOUT_TOOL, SEMANTIC_CHOICE_TOOL, SEMANTIC_INTENT_PROMPT, type SemanticIntent } from './whatsapp-semantic-intent';
-import { isUsableWhatsappCustomerName, parseCartItemReplacement } from './whatsapp-session-intents';
+import { isDeliveryEtaInquiry, isUsableWhatsappCustomerName, parseCartItemReplacement } from './whatsapp-session-intents';
 import { findPaymentMethodByText } from './whatsapp-payment-methods';
 import { randomUUID } from 'node:crypto';
 import { productCategoryNames } from './whatsapp-product-categories';
@@ -1134,6 +1134,18 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 if (payment) actions.setPaymentMethod = payment.id;
                 fulfilledSemanticSegments.add(sourceKey(String(args.sourceText)));
                 contractResult = JSON.stringify({ok:true});
+              }
+            }
+            if (name === 'delivery_time') {
+              const inquiries = semanticIntent?.segments.filter(segment => segment.role === 'inquiry') || [];
+              const deliveryTopic = inquiries.some(segment => isDeliveryEtaInquiry(segment.text));
+              const otherTopic = inquiries.some(segment => this.catalogService.isAvailabilityInquiry(segment.text) ||
+                this.catalogService.isPriceInquiryIntent(segment.text) || this.catalogService.isProductDescriptionInquiry(segment.text) ||
+                this.catalogService.isRestaurantLocationInquiry(segment.text));
+              if (!inquiries.length || !deliveryTopic && otherTopic) {
+                observeWhatsappGuardRejection('read_topic_not_requested');
+                contractResult = JSON.stringify({ok:false,error:'delivery_time_not_requested',
+                  instruction:'La consulta actual corresponde a otro tema. Responde usando el catálogo o la información del comercio.'});
               }
             }
             if (contractResult !== undefined) {

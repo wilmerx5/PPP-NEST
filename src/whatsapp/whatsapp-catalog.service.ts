@@ -7168,7 +7168,7 @@ export class WhatsappCatalogService {
   availabilitySubject(text: string): string | null {
     let q = normalizeText(text || '');
     if (!q || q.length < 6) return null;
-    if (/^(?:que|cual|cuales|como)\b/.test(q)) return null;
+    if (/^(?:que|cual|cuales|como|donde|cuando|cuanto)\b/.test(q)) return null;
     q = q
       .replace(
         /^(?:thank\s+you(?:\s+so\s+much)?|thanks(?:\s+a\s+lot)?|gracias(?:\s+muchas)?|muchas\s+gracias)[.!,]?\s*(?:but\s+|pero\s+)?/,
@@ -7234,6 +7234,8 @@ export class WhatsappCatalogService {
     const t = normalizeText(token);
     if (t === 'hay') return true;
     const verbs = [
+      'queda',
+      'quedan',
       'tienes',
       'tiene',
       'tienen',

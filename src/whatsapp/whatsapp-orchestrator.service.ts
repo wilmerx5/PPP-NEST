@@ -14862,6 +14862,7 @@ export class WhatsappOrchestratorService {
     text: string,
     products: MenuProduct[],
     cfg: EffectiveWhatsappConfig,
+    readOnly?: { greeting?: boolean },
   ): Promise<boolean> {
     if (!this.catalogService.isAvailabilityInquiry(text)) return false;
     if (this.catalogService.isProductDescriptionInquiry(text)) return false;
@@ -14873,8 +14874,11 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
+    const availabilityGreeting = readOnly?.greeting ? '¡Hola!\n\n' : '';
+    if (readOnly) products = products.filter(product => product.availableNow !== false);
     const stripped = this.catalogService.stripAvailabilityInquiryNoise(text);
-    const query = this.catalogService.extractProductSearchQuery(stripped || text);
+    const query = this.catalogService.extractProductSearchQuery(
+      readOnly ? this.catalogService.availabilitySubject(text) || stripped || text : stripped || text);
     if (!query || query.length < 3) {
       const miss = this.catalogService.unavailableAskReply(text, products, cfg.menuUrl);
       if (miss) {
@@ -14890,7 +14894,14 @@ export class WhatsappOrchestratorService {
       const embedded = this.catalogService.findProductEmbeddedInMessage(query, products);
       if (embedded) variants = [embedded];
     }
+    if (readOnly && !variants.length) {
+      variants = products.filter(product => this.catalogService.menuMentionsSubject(query,[product]));
+    }
     if (!variants.length) {
+      if (readOnly) {
+        await this.reply(conv,waId,availabilityGreeting+`Por ahora no veo *${query}* disponible en la carta.`);
+        return true;
+      }
       const miss = this.catalogService.unavailableAskReply(text, products, cfg.menuUrl);
       if (miss) {
         await this.reply(conv, waId, miss);
@@ -14899,7 +14910,12 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
-    const missing = this.catalogService.uncoveredWordsAgainstOffers(text, variants);
+    const missing = this.catalogService.uncoveredWordsAgainstOffers(readOnly ? query : text, variants);
+    if (readOnly) {
+      const body = variants.map(product => this.catalogService.formatProductPriceReply(product,{offerAdd:false})).join('\n\n');
+      await this.reply(conv,waId,availabilityGreeting+(missing.length ? this.catalogService.formatWeDontOfferPreface(query,variants.length) : 'Estas opciones están en la carta:\n\n')+body);
+      return true;
+    }
     const anchor = variants[0];
     session = {
       ...this.rememberProductFocus(session, anchor, products),
@@ -29431,6 +29447,19 @@ export class WhatsappOrchestratorService {
     if (methods.some(method =>
       [method.id, method.label, ...method.keywords].some(value => this.normalizeForMatch(value) === normalized))) return false;
     const products = await this.catalogService.getMenuProducts();
+    const stockLines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line && !this.isGreetingKeyword(line));
+    const stockText = stockLines.join('\n');
+    const stockQuestion = this.normalizeForMatch(stockText).replace(/[¿?¡!.,]/g,' ').replace(/\s+/g,' ').trim();
+    const stockLead = stockQuestion.match(/^(.*?)(?:(?:aun|todavia) )?(?:(?:le|les|te) )?quedan? /);
+    const greeting = stockLead?.[1].trim();
+    const stockSubject = this.catalogService.availabilitySubject(stockText);
+    const closedStockQuestion = !!stockLead && (!greeting || this.isGreetingKeyword(greeting)) &&
+      !!stockSubject && stockLines.length === 1 && !/;/.test(text) && (text.match(/\?/g) || []).length <= 1 &&
+      !/\b(?:y|pero|quiero|quisiera|dame|deseo|necesito|agrega\w*|anade\w*|envia\w*|quita\w*|elimina\w*|cambia\w*|cancela\w*|confirma\w*|pago|direccion|telefono|celular|calle|carrera|diagonal|transversal|avenida|apto|torre|nombre|tiempo|minutos?|ruta|llegar|cuanto|cuando|pedido|domicilio)\b/.test(stockSubject) &&
+      !/\bme (?:das?|regalas?|vendes?|mandas?)\b/.test(stockSubject) &&
+      !/\b\d(?:[ .-]*\d){9,}\b/.test(stockSubject);
+    if (closedStockQuestion && await this.tryHandleProductAvailabilityQuestion(conv,msg.waId,session,text,products,cfg,
+      {greeting:!!greeting || stockLines.length < text.split(/\r?\n/).filter(line => line.trim()).length})) return true;
     const referenceParts = splitDeliveryAddressParts(text);
     if (session.address && canonicalStreetAddress(session.address) && !canonicalStreetAddress(text) &&
         !this.looksLikeFoodNotAddress(text) && !looksLikeNonAddressCommand(text) && !this.looksLikeAddressReplacement(text) &&
