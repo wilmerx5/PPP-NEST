@@ -162,7 +162,7 @@ for (const {config,products} of menus) for (const text of ['1 frito','frito']) i
   expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
 });
 
-for (const text of ['no frito','sin frito','que trae frito','frito?','pollo','2 frito','frito y broaster','cambia frito']) it(`a pending name resolver declines ambiguous or different intent ${text}`,()=>{
+for (const text of ['no frito','sin frito','que trae frito','frito?','1 Pollo Frito?','pollo','2 frito','frito y broaster','cambia frito']) it(`a pending name resolver declines ambiguous or different intent ${text}`,()=>{
   const h=setup();
   const pending={intent:'order',semanticOffer:true,quantity:1,query:'pollo asado',candidates:menus[0].products};
   expect(h.service.resolvePendingPurchaseName(text,pending)).toBeNull();

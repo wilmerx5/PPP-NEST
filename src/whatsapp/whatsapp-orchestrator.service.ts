@@ -33510,12 +33510,13 @@ export class WhatsappOrchestratorService {
     text: string,
     pending: NonNullable<WhatsappSessionData['pendingMatch']>,
   ): string | null {
+    if (/[¿?]/.test(text)) return null;
     const said = this.normalizeForMatch(text);
     const exact = pending.candidates.filter(candidate => this.normalizeForMatch(candidate.name) === said);
     if (exact.length === 1) return exact[0].name;
     // A short answer may name the distinguishing preparation of an offered SKU.
     // Accept only catalog words, with the already requested quantity unchanged.
-    if (!pending.semanticOffer || /[¿?]/.test(text) || !/^[\p{L}\d\s]+$/u.test(text.trim())) return null;
+    if (!pending.semanticOffer || !/^[\p{L}\d\s]+$/u.test(text.trim())) return null;
     const counted = said.match(/^(\d{1,2})\s+(.+)$/);
     if (counted && Number(counted[1]) !== (pending.quantity || 1)) return null;
     const words = (counted ? counted[2] : said).split(' ');
