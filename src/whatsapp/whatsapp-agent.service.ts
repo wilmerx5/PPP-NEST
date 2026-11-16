@@ -1143,7 +1143,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 this.catalogService.isPriceInquiryIntent(segment.text) || this.catalogService.isProductDescriptionInquiry(segment.text) ||
                 this.catalogService.isRestaurantLocationInquiry(segment.text));
               if (!inquiries.length || !deliveryTopic && otherTopic) {
-                observeWhatsappGuardRejection('read_topic_not_requested');
+                observeWhatsappGuardRejection();
+                this.logger.warn(JSON.stringify({event:'whatsapp_read_topic_rejected',conversationId:input.conversationId || null,tool:name}));
                 contractResult = JSON.stringify({ok:false,error:'delivery_time_not_requested',
                   instruction:'La consulta actual corresponde a otro tema. Responde usando el catálogo o la información del comercio.'});
               }

@@ -26,7 +26,7 @@ afterEach(()=>jest.restoreAllMocks());
 for(const {data,products} of menus) for(const text of [`le queda ${data.subject}?`,`¿Le quedan ${data.plural}?`,`Todavía les queda ${data.subject} porfa`,`Buenas noches\nle queda ${data.subject}?`])
  for(const state of ['building_cart','awaiting_name','awaiting_address','awaiting_payment','awaiting_final_confirm']) it(`stock inquiry preserves checkout ${data.subject}/${state}/${text}`,async()=>{
   const h=setup(products);h.conv.state=state;
-  if(state!=='building_cart')h.conv.sessionData.cart=[{productId:products[2].id,name:products[2].name,quantity:1,unitPrice:53000,attributes:[{attributeName:'Bebida',attributeValue:'Ginger'}]}];
+  if(state!=='building_cart')h.conv.sessionData.cart=[{productId:products[2].id,code:products[2].code,name:products[2].name,quantity:1,unitPrice:53000,attributes:[{attributeName:'Bebida',attributeValue:'Ginger'}]}];
   if(state==='awaiting_address')h.conv.sessionData.pendingMatch={query:'otra compra',intent:'order',quantity:1,candidates:products.slice(0,2)};
   const prior=structuredClone(h.conv.sessionData);const reply=await h.sendQueued(text);
   expect(reply).toContain(data.dish);expect(reply).not.toMatch(/aclaras qué quieres|no entend|demora|35-45|te lo agrego|escribe el número/i);
