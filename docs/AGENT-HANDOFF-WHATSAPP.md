@@ -1,3 +1,7 @@
+## Tanda547 en validación — compras parciales y dirección con ceros
+
+Se revisa el chat de la orden169 del15/11. La producción546 sigue activa hasta validar la nueva candidata. El router y el agente conservan compras conocidas y abren una alternativa pendiente para una preparación ausente verificada por catálogo. La nota de un plato existente conserva las compras pendientes independientes. Las direcciones normalizan ceros numéricos y una referencia conserva la calle previa. Hay36 regresiones nuevas y191 controles focalizados aprobados. La inferencia real de desarrollo aprobó siete turnos con11 peticiones y dependencias aisladas. Conserva tres diagnósticos anteriores de5+5+4 peticiones. Presupuesto489 autorizadas operativamente,486 usadas y3 restantes. Clave temporal eliminada. Fuentes congeladas y global en curso,637 suites y53.370 pruebas previstas. Evidencia privada /home/levi/.codex/tmp/ppp-547-validation. No acreditar una global de otro manifiesto. Si cambian las fuentes, reiniciar la global con un manifiesto nuevo.
+
 ## Tanda546 — bloqueos y continuidad del pedido en producción
 
 Fuente 4e7cc8d1520d64a58edbb6fb6b2cacf4d1c4d1fe e imagen sha256:14368dcfc41df8ee06dbe448846481dca3f82851bc6bb340308e5b265f2b722e verificadas en staging y producción. Ambas APIs y bases de datos saludables, cero reinicios inesperados y 2.763 controles compilados aprobados por imagen. Agente gpt-6-luna y complejo gpt-6.1-sol activos. La configuración efectiva del comercio se conserva. Kamppo continúa pendiente de adaptación nativa.

@@ -1,24 +1,22 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 463,
-  "usedRequests": 461,
-  "remainingRequests": 2,
+  "authorizedRequests": 489,
+  "usedRequests": 486,
+  "remainingRequests": 3,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 19,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-11-15T23:00:55.396Z",
+  "lastAttemptAt": "2026-11-16T00:14:18.105Z",
   "latestEvaluation": {
     "date": "2026-11-15",
-    "requests": 33,
-    "successfulActualModelRequests": 33,
+    "requests": 25,
+    "successfulActualModelRequests": 25,
     "developmentOnly": true,
     "model": "gpt-6-luna",
-    "report": "docs/whatsapp-batch-546-validation.json",
-    "scope": "Five-call conversion accepted. Eight-call contextual inquiry diagnostic failed and retained. Ten-call contextual development sequence exposed an incorrectly assigned unscoped honey note, which a weak initial assertion had accepted; now protected with deterministic persisted host selection and stricter regressions. Final fresh four-call compound rice/address request after completed state accepted through four-turn isolated checkout, including the exact follow-up phone. No Meta sends or external orders. Final recorded responses replayed on the exact image active in staging and production. Additional three-request two-turn family choice reproduced a duplicate included drink in the legacy continuation. After ownership/source-scope correction, a fresh three-request two-turn case passed with one combo and its included Manzana. Initial failed oracle also hardcoded a row identity and was corrected to the actual offered second candidate; the duplicate-cart failure remains valid.",
-    "temporaryLimitChosenByAgent": true,
-    "finalSourceCommit": "4e7cc8d1520d64a58edbb6fb6b2cacf4d1c4d1fe",
-    "recordedReplayVerifiedInStagingAndProduction": true
+    "report": "docs/whatsapp-batch-547-validation.json",
+    "scope": "Three retained diagnostics consumed5+5+4 requests. Final fresh seven-turn isolated checkout accepted with11 requests. Final fixture uses a known customer name, numeric alternative selection, supplied transcription/text, fake maps and fake order creation. No Meta or customer order writes. Replay required on final compiled image.",
+    "temporaryLimitChosenByAgent": true
   },
   "authorizationExtensions": [
     {
@@ -925,6 +923,42 @@
       "authorization": "Standing user authorization for moderate API validation and prioritizing blocks.",
       "case": "546-deferred-combo-flavour",
       "executionLimit": "One fresh two-turn development case, maximum8 requests including existing4, stop first failure. No Meta or external orders."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 8,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "authorization": "Standing moderate API validation authorization. New customer-reported generic blocks after546 require exact reproduction.",
+      "case": "547-mixed-unavailable-style-and-note",
+      "executionLimit": "At most10 requests including previous2. One fresh diagnostic, stop on first failure, isolate orders and Meta."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 6,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "authorization": "Standing user authorization for moderate real-API validation.",
+      "case": "547-mixed-style-full-recovery",
+      "executionLimit": "One development full-router retest after offline prompt and ownership fix. Maximum11 including remaining5. Stop first failure. No Meta or external orders."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 6,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "authorization": "Standing user authorization for moderate API tests of production blocks.",
+      "case": "547-verified-partial-choice-and-notes",
+      "executionLimit": "One fresh development run, maximum12 including previous6. Stop first failure. Isolated orders and Meta."
+    },
+    {
+      "date": "2026-11-15",
+      "additionalRequests": 6,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "authorization": "Standing user authorization for moderate API tests.",
+      "case": "547-complete-mixed-purchase-after-full-catalogue-evidence",
+      "executionLimit": "One fresh seven-turn isolated checkout run. Maximum14 including remaining8. Stop first failure. No Meta or external orders."
     }
   ],
   "latestUnitOptionEvaluation": {

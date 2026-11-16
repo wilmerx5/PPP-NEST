@@ -16,6 +16,12 @@ const REFERENCE = new RegExp('(?:^|[\\s,;(-])((?:(?:queda|es|estoy)\\s+)?(?:' + 
   'referencia\\b', 'ref\\.?\\s*:',
 ].join('|') + '))', 'i');
 
+export function isStandaloneAddressReference(source:string):boolean {
+  const text=source.trim();
+  const reference=REFERENCE.exec(text);
+  return !!reference && reference.index===0 && !STREET.test(text);
+}
+
 /** A landmark or access hint after a destination ("…, frente al parque") is for the driver, not the map. */
 export function splitAddressReference(source: string): { address: string; reference: string } {
   const raw = (source || '').trim();
@@ -66,11 +72,11 @@ export function canonicalStreetAddress(source: string): string | null {
   const road = roadNames.find(([pattern]) => pattern.test(m[1].replace(/\.$/, '').replace(/\s+/g, ' ')))?.[1];
   if (!road) return null;
   const piece = (n: string, a?: string, bis?: string, b?: string) =>
-    `${n}${(a || '').toUpperCase()}${bis ? ' Bis' : ''}${b ? ` ${b.toUpperCase()}` : ''}`;
+    `${Number(n)}${(a || '').toUpperCase()}${bis ? ' Bis' : ''}${b ? ` ${b.toUpperCase()}` : ''}`;
   const zone1 = m[6] ? ` ${m[6][0].toUpperCase()}${m[6].slice(1)}` : '';
   const late = m[11] || m[13];
   const zone2 = late && late !== m[6] ? ` ${late[0].toUpperCase()}${late.slice(1)}` : '';
-  return `${road} ${piece(m[2], m[3], m[4], m[5])}${zone1} # ${piece(m[7], m[8], m[9], m[10])}-${m[12]}${zone2}`;
+  return `${road} ${piece(m[2], m[3], m[4], m[5])}${zone1} # ${piece(m[7], m[8], m[9], m[10])}-${Number(m[12])}${zone2}`;
 }
 
 /** Keep labelled internal access identifiers for the driver, out of map queries.

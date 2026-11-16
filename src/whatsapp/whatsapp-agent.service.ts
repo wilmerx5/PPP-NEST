@@ -83,6 +83,8 @@ export type AgentV1TurnResult = {
   offeredProducts?: {productIds:number[];quantity:number;replaceCartLineIndex?:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>};
   /** Validated literal segment that owns the deferred product choice. */
   offeredProductsSource?: string;
+  /** A missing preparation verified by the catalogue for the pending choice. */
+  offeredProductsMissingStyle?: string;
   checkoutDetails?: { customerName?: string; contactPhone?: string };
   reply: string;
   actions: AiOrderAction;
@@ -613,11 +615,17 @@ export class WhatsappAgentService {
     const fulfilledSemanticSegments = new Set<string>();
     const fulfilledSemanticTargets = new Map<string,Set<number>>();
     const semanticLookupTargets = new Map<string, Set<number>>();
+    const unresolvedPurchases = new Map<string,string[]>();
+    const resolvedMultiTargets = new Map<string,number[]>();
+    const unresolvedStyleChoices = new Map<string,{query:string;productIds:number[];quantity:number}>();
     const pendingPurchaseSources = new WeakMap<object, Set<string>>();
     let retriedSemanticPreservation = false;
     const sourceKey = (source: string) => source.toLowerCase().normalize('NFC').replace(/\s+/g,' ').trim();
+    const independentPurchases = (source:string) => /(?:\by|[,;])\s+(?:un[oa]?|dos|tres|cuatro|cinco|\d+)\b/i.test(source) &&
+      !/\b(?:si\s+(?:no\s+)?(?:hay|tienen|tienes|venden|manejan|ofrecen|queda)|en caso de|a menos que)\b/i.test(source);
     let offeredProducts: AgentV1TurnResult['offeredProducts'];
     let offeredProductsSource: string | undefined;
+    let offeredProductsMissingStyle: string | undefined;
     const checkoutDetails: NonNullable<AgentV1TurnResult['checkoutDetails']> = {};
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
@@ -874,10 +882,32 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           // Preserve the completed answer. Length alone must not trigger another
           // paid inference; incomplete purchases are recovered above.
           // Sin tools ni texto → el orquestador puede caer a reglas (multi-pedido)
+          // A multi-order lookup can resolve an available dish while proving
+          // that another preparation needs a choice. Keep that explicit outcome
+          // instead of letting an add receipt silently close the whole segment.
+          if (input.semanticInterpretation && !semanticRejected && !offeredProducts && actions.addItems?.length &&
+              unresolvedStyleChoices.size===1) {
+            const [source,choice]=[...unresolvedStyleChoices][0];
+            const segment=semanticIntent?.segments.find(part=>sourceKey(part.text)===source && part.role==='purchase');
+            if (segment && independentPurchases(segment.text) && choice.quantity>=1 && choice.quantity<=10 &&
+                (resolvedMultiTargets.get(source) || []).every(id=>fulfilledSemanticTargets.get(source)?.has(id))) {
+              offeredProducts={productIds:choice.productIds,quantity:choice.quantity};
+              offeredProductsSource=segment.text;
+              offeredProductsMissingStyle=choice.query;
+              fulfilledSemanticSegments.add(source);
+              const targets=fulfilledSemanticTargets.get(source) || new Set<number>();
+              choice.productIds.forEach(id=>targets.add(id));
+              fulfilledSemanticTargets.set(source,targets);
+            }
+          }
+          const missingMultiTargets=[...resolvedMultiTargets].flatMap(([source,ids])=>ids
+            .filter(id=>!fulfilledSemanticTargets.get(source)?.has(id) && needsAttributeProductId!==id)
+            .map(id=>({sourceText:semanticIntent?.segments.find(part=>sourceKey(part.text)===source)?.text,
+              product:this.productCard(byId.get(id)!)})));
           const incompleteSemanticPlan = input.semanticInterpretation && semanticIntent && (semanticIntent.segments.some(segment=>
             ['purchase','edit','remove','checkout','cancel'].includes(segment.role) &&
             !fulfilledSemanticSegments.has(sourceKey(segment.text))) || !semanticTargetsComplete(semanticIntent,fulfilledSemanticTargets)) &&
-            (Object.keys(actions).length > 0 || Object.keys(checkoutDetails).length > 0);
+            (Object.keys(actions).length > 0 || Object.keys(checkoutDetails).length > 0 || missingMultiTargets.length>0);
           if (incompleteSemanticPlan) {
             const pending = semanticIntent!.segments.filter(segment =>
               ['purchase','edit','remove','checkout','cancel'].includes(segment.role) &&
@@ -885,11 +915,13 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 (segment.productIds || []).some(id => !fulfilledSemanticTargets.get(sourceKey(segment.text))?.has(id))));
             const existingEdits = pending.length > 0 && pending.every(segment => segment.role === 'edit' &&
               segment.productIds?.length && segment.productIds.every(id => input.cart?.some(line => line.productId === id)));
-            if (!retriedSemanticPreservation && existingEdits && i + 2 < iterationLimit) {
+            if (!retriedSemanticPreservation && (existingEdits || missingMultiTargets.length>0) && i + 2 < iterationLimit) {
               retriedSemanticPreservation = true;
               inferenceReason = 'recover_semantic_preservation';
               messages.push({role:'system',content:
                 'La propuesta completa sigue sin aplicar. Estas cláusulas no tienen una operación acreditada: '+JSON.stringify(pending)+
+                '. Estas compras identificadas por el catálogo siguen sin resolver: '+JSON.stringify(missingMultiTargets)+
+                '. Una búsqueda no agrega productos. Usa add_item para las compras disponibles y offer_products para las alternativas de la preparación ausente. No preguntes si quiere comprar el plato que ya pidió. Conserva cada cantidad de su cláusula.'+
                 '. Si piden conservar productos existentes, verifica cada línea mediante update_item con SU cantidad actual, sin añadirla otra vez. '+
                 'Si piden cambiar cantidad, nota u opciones, ejecuta ese cambio completo. No marques una modificación pendiente como conservada. '+
                 'replace_item sustituye UNA sola línea. Si la cláusula reúne varios productos en un único plato compuesto, retira las otras líneas de origen mediante remove_item. No verifiques como conservado un producto que debe desaparecer. '+
@@ -909,7 +941,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             needsAttributeProductId,
             lookupPlacedOrder,
             lookupDeliveryTime,
-            ...(input.semanticInterpretation ? {semanticIntent,fulfilledSemanticSegments:[...fulfilledSemanticSegments],offeredProducts,...(offeredProductsSource ? {offeredProductsSource} : {}),...(Object.keys(checkoutDetails).length ? {checkoutDetails} : {})} : {}),
+            ...(input.semanticInterpretation ? {semanticIntent,fulfilledSemanticSegments:[...fulfilledSemanticSegments],offeredProducts,...(offeredProductsSource ? {offeredProductsSource} : {}),...(offeredProductsMissingStyle ? {offeredProductsMissingStyle} : {}),...(Object.keys(checkoutDetails).length ? {checkoutDetails} : {})} : {}),
             error: semanticRejected ? 'semantic_contract_rejected' : reply || input.semanticInterpretation && (Object.keys(actions).length || Object.keys(checkoutDetails).length || needsAttributeProductId) ? undefined : 'empty_reply',
           };
         }
@@ -986,6 +1018,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                   retriedSemanticInterpretation = true;
                   contractResult = JSON.stringify({ok:false,error:'invalid_interpretation',
                     currentMessage:input.userMessage,
+                    currentCart:(input.cart || []).map((line,cartLineIndex)=>({cartLineIndex,productId:line.productId,name:line.name,quantity:line.quantity || 1})),
+                    issues:{literalCoverage:!parsed,unownedEdit:hasUnownedEdit,exclusiveConversion:hasExclusiveConversionPurchase,
+                      readOnlyContext:!!input.readOnlyInquiryContext},
                     instruction:'Repite interpret_message una sola vez. Cubre exclusivamente currentMessage, cada fragmento una sola vez y en orden. No copies mensajes del historial. Conserva negaciones, preguntas y cantidades. Usa solo IDs del catálogo y [] para fragmentos sin producto. edit y remove requieren una línea del carrito de entrada. Si pide solo uno en combo o solo el normal y ya existe su pareja vinculada en el carrito, interpreta la conversión como edit con el origen existente y usa replace_item. Una compra adicional explícita mantiene purchase. Las especificaciones y sustituciones de acompañamiento de una compra nueva permanecen dentro del MISMO segmento purchase de esa compra. Si realmente falta resolver el alcance, conserva esa duda completa como unclear.'});
                 } else {
                   semanticRejected = true;
@@ -993,8 +1028,22 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 }
               } else {
                 semanticIntent = semanticIntent || parsed;
+                const purchaseAnalysis=[];
+                for (const segment of semanticIntent.segments) {
+                  const key=sourceKey(segment.text);
+                  if (segment.role!=='purchase' || !independentPurchases(segment.text) || resolvedMultiTargets.has(key)) continue;
+                  const multi=this.catalogService.resolveMultiProductOrder(segment.text,input.products);
+                  const unresolved=multi?.unresolved.filter(part=>this.catalogService.productsAnchoringDish(part,input.products).length>0) || [];
+                  if (!multi || !unresolved.length || !multi.confident.length) continue;
+                  const available=multi.confident.map(item=>({...this.productCard(item.product),
+                    quantity:this.catalogService.extractQuantityFromSegment(item.segment) || 1}));
+                  unresolvedPurchases.set(key,unresolved);
+                  resolvedMultiTargets.set(key,available.map(item=>item.id));
+                  purchaseAnalysis.push({sourceText:segment.text,available,unresolved});
+                }
                 contractResult = JSON.stringify({ok:true,segments:semanticIntent.segments,
                   references:[...new Set(semanticIntent.segments.flatMap(segment=>segment.productIds || []))].map(id=>this.productCard(byId.get(id)!)),
+                  ...(purchaseAnalysis.length ? {purchaseAnalysis} : {}),
                   hint:'La interpretación sigue fija. Continúa con sus herramientas; las búsquedas resuelven destinos sin reinterpretar el mensaje.'});
               }
             } else if (name === 'set_order_type' && semanticIntent &&
@@ -1044,10 +1093,13 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               const sourceQuantity = this.catalogService.extractQuantityFromMessage(String(args.sourceText));
               const explicitQuantity = this.catalogService.countQuantityMentions(String(args.sourceText))>0;
               const attributes = args.attributes;
+              const styleChoice=unresolvedStyleChoices.get(sourceKey(segment.text));
+              const matchesStyleChoice=styleChoice && ids.every(id=>styleChoice.productIds.includes(id));
               if (!replacementValid || originalLine && quantity !== originalLine.quantity || !ids.length || ids.length>8 || new Set(ids).size!==ids.length ||
                   !ids.every(id=>typeof id==='number' && input.products.some(product=>product.id===id && product.availableNow!==false)) ||
                   !Number.isInteger(quantity) || Number(quantity)<1 || Number(quantity)>10 ||
-                  segment.role==='purchase' && explicitQuantity && sourceQuantity!==quantity ||
+                  segment.role==='purchase' && explicitQuantity && sourceQuantity!==quantity &&
+                    !(matchesStyleChoice && styleChoice.quantity===quantity) ||
                   attributes !== undefined && (!Array.isArray(attributes) || attributes.some(choice=>!choice ||
                     typeof choice.attributeName!=='string' || typeof choice.attributeValue!=='string' ||
                     ids.some(id=>!input.products.find(product=>product.id===id)?.attributes?.some(attribute=>
@@ -1056,6 +1108,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 contractResult = JSON.stringify({ok:false,error:'invalid_product_choice'});
               } else {
                 offeredProductsSource = segment.text;
+                offeredProductsMissingStyle=matchesStyleChoice ? styleChoice.query : undefined;
                 offeredProducts = {productIds:ids as number[],quantity:Number(quantity),
                   ...(typeof replacementIndex==='number' ? {replaceCartLineIndex:replacementIndex} : {}),
                   ...(typeof args.note==='string' ? {note:args.note.slice(0,500)} : {}),
@@ -1148,7 +1201,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               pendingPurchaseSources.set(item,sources);
             }
           }
-          if (input.semanticInterpretation && name === 'search_menu') {
+          if (input.semanticInterpretation && ['search_menu','resolve_multi_order'].includes(name)) {
             const receipt = JSON.parse(toolResult);
             if (receipt.ok) {
               const cards = [...(Array.isArray(receipt.results) ? receipt.results : []),
@@ -1157,6 +1210,24 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               const resolved = semanticLookupTargets.get(key) || new Set<number>();
               for (const card of cards) if (card && Number.isSafeInteger(card.id) && byId.has(card.id)) resolved.add(card.id);
               semanticLookupTargets.set(key,resolved);
+              const segment=semanticIntent?.segments.find(part=>sourceKey(part.text)===key && part.role==='purchase');
+              if (segment && name==='resolve_multi_order' && Array.isArray(receipt.unresolved)) {
+                unresolvedPurchases.set(key,receipt.unresolved.filter((part:unknown):part is string=>
+                  typeof part==='string' && this.catalogService.productsAnchoringDish(part,input.products).length>0));
+                resolvedMultiTargets.set(key,[...(receipt.confident || []),...(receipt.needsAttributes || [])]
+                  .filter(card=>card && byId.has(card.id)).map(card=>card.id));
+              }
+              if (segment && name==='search_menu' && receipt.mode==='style_alternatives') {
+                const query=String(receipt.query || '');
+                const words=sourceKey(query).split(/\s+/).filter(word=>word.length>2);
+                const unresolved=(unresolvedPurchases.get(key) || []).filter(part=>words.every(word=>
+                  (' '+sourceKey(part)+' ').includes(' '+word+' ')));
+                const ids=cards.filter(card=>card && byId.has(card.id)).map(card=>card.id);
+                if (unresolved.length===1 && (unresolvedPurchases.get(key) || []).length===1 && ids.length>0 && ids.length<=8) {
+                  unresolvedStyleChoices.set(key,{query,productIds:[...new Set(ids)],
+                    quantity:this.catalogService.extractQuantityFromSegment(unresolved[0]) || 1});
+                }
+              }
             }
           }
           if (input.semanticInterpretation && semanticToolRequiresSource(name) && !['search_menu','resolve_multi_order'].includes(name) &&
@@ -1414,7 +1485,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
     }
     switch (name) {
       case 'search_menu': {
-        const query = String(args.query || '').trim();
+        const query = String(args.query || '').trim()
+          .replace(/\b([\p{L}]{3,})[aeiou]{1,6}\s+\1\b/giu,'$1');
         if (!query) return JSON.stringify({ ok: false, error: 'query vacío' });
 
         // Abbreviated tool queries retain the customer's category inquiry.
