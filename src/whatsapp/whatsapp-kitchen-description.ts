@@ -17,7 +17,7 @@ export function kitchenDescriptionNote(source:string):string|null {
   const matches=FORMS.filter(form=>Math.abs(form.length-word.length)<=1&&editDistance(form,word)<=1);
   return matches.length ? matches[0] : word;
  });
- const qualified=`(?:(?:bien|muy|no tan|no muy|un poco) )?${ADJECTIVE}`;
+ const qualified=`(?:(?:lo|la|los|las) (?:quiero|quisiera) )?(?:(?:bien|muy|no tan|no muy|un poco) )?${ADJECTIVE}`;
  const relative=`que (?:no )?(?:(?:me|nos) )?(?:esten?|vengan?|sean?|salgan?|queden?|lleguen?|(?:vayan? a )?(?:salir|venir|llegar)) (?:(?:tan|muy|bien|demasiado|un poco) )?${ADJECTIVE}`;
  const clause=`(?:${relative}|${qualified})`;
  return new RegExp(`^${clause}(?: (?:(?:y|pero) )?${clause})*$`).test(text)?raw:null;

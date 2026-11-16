@@ -71,6 +71,7 @@ export function interpretProductNote(source: string, products: NamedProduct[]):
   const normalized = normalize(prepared);
   for (const product of [...products].sort((a,b)=>b.name.length-a.name.length)) {
     const name = normalize(product.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g,'\\s+')
+      .replace(/^1\\s\+/, '(?:(?:1|un|uno|una)\\s+)?')
       .replace(/^1\/4/, '(?:1\\s*\\/\\s*4|cuarto(?:\\s+de)?)')
       .replace(/^1\/2/, '(?:1\\s*\\/\\s*2|medio(?:\\s+de)?)');
     const match = new RegExp(`\\b${name}\\b`,'i').exec(normalized);

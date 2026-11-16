@@ -1,6 +1,7 @@
 import { harness } from './whatsapp-accuracy.test-support';
 import { WhatsappAgentService } from './whatsapp-agent.service';
 import { WhatsappCatalogService } from './whatsapp-catalog.service';
+import { interpretProductNote } from './whatsapp-product-intent';
 import { kitchenDescriptionNote } from './whatsapp-kitchen-description';
 import { DEFAULT_PAYMENT_METHODS } from './whatsapp-payment-methods';
 const products=[
@@ -26,6 +27,7 @@ const descriptions=[
  'que este bien jugoso por favor 🙏','que esté jugosito porfa 😊','que salga tierno gracias 👍',
  'que esté fresco por favor','que esté bien doradito por favor 🙏','que llegue caliente porfa 🙏',
  'que no esté tan seco gracias','que quede bien jugoso por favor','que venga jugoso y caliente porfa',
+ 'bien jugoso por favor 🙏','jugosito porfa','lo quiero bien jugoso','lo quisiera tierno',
 ];
 for(const product of products) for(const description of descriptions) it(`a full purchase retains its preparation note ${product.name}/${description}`,async()=>{
  const h=setup();const named=product.id===54801?'Un pollo frito':`Un ${product.name}`;const text=`${named} ${description}`;
@@ -61,4 +63,19 @@ it('a receipt preserves a pending product decision and asks that one question',(
  const h=setup();h.conv.sessionData.pendingMatch={intent:'order',quantity:1,query:'plato',candidates:products.slice(0,2)};
  const reply=h.service.paymentProofAcknowledgement(h.conv);
  expect(reply).toContain(products[0].name);expect(reply).toContain(products[1].name);expect(reply).not.toMatch(/enviaremos|qué deseas pedir/i);
+});
+
+it('a preparation note never substitutes an unavailable cooking style',()=>{
+ expect(interpretProductNote('Un pollo asado bien jugoso',[products[0]])).toBeNull();
+});
+it('an exact longer catalogue name owns its adjective',()=>{
+ const named={...products[0],id:54804,name:'1 Pollo Frito Jugoso'};
+ expect(interpretProductNote('Un pollo frito jugoso',[products[0],named])).toBeNull();
+});
+it('a fractional catalogue name retains its size when separating its note',()=>{
+ const half={...products[0],id:54805,name:'1/2 Pollo Frito'};
+ expect(interpretProductNote('medio pollo frito bien jugoso',[products[0],half])).toMatchObject({productId:54805,productText:'medio pollo frito',note:'bien jugoso'});
+});
+it('a question about a descriptive product remains a question',()=>{
+ expect(interpretProductNote('Un pollo frito bien jugoso?',[products[0]])).toBeNull();
 });
