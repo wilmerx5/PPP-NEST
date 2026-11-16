@@ -205,6 +205,12 @@ export class CreateOrderDto {
   @IsString()
   redemptionCode?: string;
 
+  @ApiProperty({ type: [String], required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  redemptionCodes?: string[];
+
   @ApiProperty({
     description:
       'Clave única por intento de envío (UUID). Si se reenvía la misma clave, se devuelve la orden ya creada. También se acepta header Idempotency-Key.',

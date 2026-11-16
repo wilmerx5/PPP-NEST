@@ -28,6 +28,8 @@ interface CreatePreferenceDto {
     address: string;
     orderType?: 'delivery' | 'pickup' | 'table' | 'counter';
     deliveryFee?: number;
+    redemptionCode?: string;
+    redemptionCodes?: string[];
     items: Array<{
       productId: number;
       note?: string;

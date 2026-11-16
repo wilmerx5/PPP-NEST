@@ -42,7 +42,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
     await this.ensureUserAddressLocationColumns();
     await this.ensureWebDeliverySettingsColumns();
     await this.ensureFactusInvoiceSettingsColumns();
-    await this.ensureElectronicInvoiceColumns();
+    await this.ensureOrderColumns();
     await this.ensureInvoiceCustomersTable();
     await this.ensureUserTotpColumns();
 
@@ -115,8 +115,8 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
    * Idempotencia de órdenes: la entidad ya usa client_request_id.
    * Se aplica siempre al boot para no tumbar la API si no corrieron migrations.
    */
-  /** Columnas FE Factus en ppp_orders — críticas: sin ellas /orders/daily cae. */
-  private async ensureElectronicInvoiceColumns() {
+  /** Columnas consultadas por la entidad Order, incluso cuando RUN_MIGRATIONS está desactivado. */
+  private async ensureOrderColumns() {
     try {
       const table: { c: number }[] = await this.dataSource.query(
         `SELECT COUNT(*) AS c
@@ -131,6 +131,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
           name: 'electronic_invoice_status',
           ddl: "VARCHAR(20) NOT NULL DEFAULT 'none'",
         },
+        { name: 'redemption_codes', ddl: 'TEXT NULL' },
         { name: 'electronic_invoice_reference', ddl: 'VARCHAR(64) NULL' },
         { name: 'electronic_invoice_number', ddl: 'VARCHAR(64) NULL' },
         { name: 'electronic_invoice_cufe', ddl: 'VARCHAR(128) NULL' },
@@ -192,7 +193,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
     } catch (err: unknown) {
       if (this.isIdempotentError(err)) return;
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Failed to ensure electronic invoice columns: ${message}`);
+      this.logger.error(`Failed to ensure order columns: ${message}`);
     }
   }
 

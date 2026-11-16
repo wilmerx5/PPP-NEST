@@ -599,17 +599,6 @@ export class PaymentsService {
           await queryRunner.manager.save(locked);
           await queryRunner.commitTransaction();
 
-          if (orderDataWithEmail.redemptionCode) {
-            try {
-              await this.ordersService.applyRedemptionVoucher(
-                orderResponse.orderId,
-                orderDataWithEmail.redemptionCode,
-              );
-            } catch {
-              // Orden se crea igual
-            }
-          }
-
           if (isWhatsapp) {
             const conversationId = Number(metadataObj.conversation_id);
             const waId = String(metadataObj.wa_id || '');

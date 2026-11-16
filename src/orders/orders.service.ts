@@ -487,12 +487,53 @@ export class OrdersService {
     return run;
   }
 
+  private getRedemptionCodes(order: Order): string[] {
+    return order.redemptionCodes ?? (order.redemptionCode ? [order.redemptionCode] : []);
+  }
+
+  private getRewardItems(order: Order): OrderItem[] {
+    const rewardCount = this.getRedemptionCodes(order).length;
+    if (!rewardCount) return [];
+    return (order.items ?? [])
+      .filter(item => item.product?.code === 2 || item.product?.code === 5)
+      .sort((a, b) => a.product.code - b.product.code || a.id - b.id)
+      .slice(0, rewardCount);
+  }
+
+  private codesAfterRewards(codes: number[], rewardCount: number, requireEligible = false): number[] {
+    const remaining = [...codes];
+    for (let count = 0; count < rewardCount; count++) {
+      const preferred = remaining.indexOf(2);
+      const index = preferred >= 0 ? preferred : remaining.indexOf(5);
+      if (index < 0) {
+        if (requireEligible) {
+          throw new BadRequestException('Se necesita un medio pollo en el pedido por cada premio');
+        }
+        break;
+      }
+      remaining.splice(index, 1);
+    }
+    return remaining;
+  }
+
   private async createOrderInternal(createOrderDto: CreateOrderDto) {
-    const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode, extras } = createOrderDto;
+    const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode, redemptionCodes, extras } = createOrderDto;
     const orderType = createOrderDto.orderType ?? 'pickup';
     const deliveryFee = createOrderDto.deliveryFee;
     const source = orderSource ?? 'internal';
     const clientRequestId = (createOrderDto.clientRequestId || '').trim().slice(0, 64) || null;
+
+    if (redemptionCodes != null && !Array.isArray(redemptionCodes)) {
+      throw new BadRequestException('Los códigos de premio deben enviarse en una lista');
+    }
+    const rawRewardCodes = redemptionCodes ?? (redemptionCode?.trim() ? [redemptionCode] : []);
+    if (rawRewardCodes.some(code => typeof code !== 'string' || !code.trim())) {
+      throw new BadRequestException('Código de premio inválido');
+    }
+    const rewardCodes = rawRewardCodes.map(code => code.trim().toUpperCase());
+    if (new Set(rewardCodes).size !== rewardCodes.length) {
+      throw new BadRequestException('Cada código de premio solo se puede aplicar una vez');
+    }
 
     const hasItems = items && items.length > 0;
     const hasExtras = extras && extras.length > 0;
@@ -650,38 +691,7 @@ export class OrdersService {
           clientRequestId,
         });
 
-        const allCodes = allCodesFromProducts;
-        let adjustedCodes = [...allCodes];
-        if (redemptionCode && redemptionCode.trim()) {
-          if (!adjustedCodes.some(code => code === 2 || code === 5)) {
-            throw new BadRequestException('El premio requiere un medio pollo en el pedido');
-          }
-          const hasCode2 = adjustedCodes.includes(2);
-          const hasCode5 = adjustedCodes.includes(5);
-
-          if (hasCode2 && hasCode5) {
-            const indexToRemove = adjustedCodes.indexOf(2);
-            if (indexToRemove !== -1) {
-              adjustedCodes.splice(indexToRemove, 1);
-            } else {
-              const index5 = adjustedCodes.indexOf(5);
-              if (index5 !== -1) {
-                adjustedCodes.splice(index5, 1);
-              }
-            }
-          } else if (hasCode2) {
-            const indexToRemove = adjustedCodes.indexOf(2);
-            if (indexToRemove !== -1) {
-              adjustedCodes.splice(indexToRemove, 1);
-            }
-          } else if (hasCode5) {
-            const indexToRemove = adjustedCodes.indexOf(5);
-            if (indexToRemove !== -1) {
-              adjustedCodes.splice(indexToRemove, 1);
-            }
-          }
-        }
-
+        const adjustedCodes = this.codesAfterRewards(allCodesFromProducts, rewardCodes.length, true);
         calculatedPoints = this.pointsService.calculatePointsFromCodes(adjustedCodes);
         order.points = calculatedPoints;
         savedOrder = await queryRunner.manager.save(order);
@@ -748,11 +758,13 @@ export class OrdersService {
           await queryRunner.manager.save(extraEntities);
         }
 
-        if (redemptionCode?.trim()) {
-          const voucher = await this.pointsService.applyRedemptionToOrder(
-            redemptionCode.trim(), savedOrder.id, queryRunner.manager,
-          );
-          savedOrder.redemptionCode = voucher.code;
+        if (rewardCodes.length) {
+          // Lock voucher rows in the same order across concurrent submissions.
+          for (const code of [...rewardCodes].sort()) {
+            await this.pointsService.applyRedemptionToOrder(code, savedOrder.id, queryRunner.manager);
+          }
+          savedOrder.redemptionCode = rewardCodes[0];
+          savedOrder.redemptionCodes = rewardCodes;
           await queryRunner.manager.save(savedOrder);
         }
         await queryRunner.commitTransaction();
@@ -771,7 +783,6 @@ export class OrdersService {
         phone,
         address,
         orderType,
-        redemptionCode,
         deliveryFee: finalDeliveryFee,
       });
 
@@ -824,7 +835,6 @@ export class OrdersService {
     phone: string;
     address: string;
     orderType: string;
-    redemptionCode?: string | null;
     deliveryFee?: number;
   }): Promise<void> {
     const {
@@ -837,7 +847,6 @@ export class OrdersService {
       phone,
       address,
       orderType,
-      redemptionCode,
     } = params;
 
     try {
@@ -1041,6 +1050,10 @@ export class OrdersService {
         items: Object.values(groupedItems),
         extras: extrasList,
         redemptionCode: order.redemptionCode ?? null,
+        redemptionCodes: this.getRedemptionCodes(order),
+        redemptionDiscount: this.getRewardItems(order).reduce(
+          (total, item) => total + Number(item.unitPrice ?? item.product.price), 0,
+        ),
       };
     });
   }
@@ -1397,6 +1410,17 @@ export class OrdersService {
     await queryRunner.startTransaction();
 
     try {
+      const lockedOrder = await queryRunner.manager.findOne(Order, {
+        where: { id: orderId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (lockedOrder) {
+        const codes = itemsToCreate.flatMap(item => {
+          const code = codeByProductId.get(item.productId);
+          return code == null ? [] : [code];
+        });
+        this.codesAfterRewards(codes, this.getRedemptionCodes(lockedOrder).length, true);
+      }
       // Restore inventory for old items (product or variant)
       await this.restoreInventory(queryRunner.manager, oldCountByStockKey);
 
@@ -1511,7 +1535,7 @@ export class OrdersService {
         where: { order: { id: order.id } },
       });
       fullOrderInTx = {
-        ...order,
+        ...(lockedOrder ?? order),
         items: this.deduplicateOrderItemsById(loadedItems),
         extras: orderExtras,
       } as Order;
@@ -1543,7 +1567,9 @@ export class OrdersService {
           if (code != null) allCodes.push(code);
         }
       }
-      const recalculatedPoints = this.pointsService.calculatePointsFromCodes(allCodes);
+      const recalculatedPoints = this.pointsService.calculatePointsFromCodes(
+        this.codesAfterRewards(allCodes, this.getRedemptionCodes(fullOrder).length),
+      );
       fullOrder.points = recalculatedPoints;
 
       const formatted = await this.mapOrderToGroupedFormat(fullOrder);
@@ -1724,7 +1750,9 @@ export class OrdersService {
         if (code != null) allCodes.push(code);
       }
     }
-    const recalculatedPoints = this.pointsService.calculatePointsFromCodes(allCodes);
+    const recalculatedPoints = this.pointsService.calculatePointsFromCodes(
+      this.codesAfterRewards(allCodes, this.getRedemptionCodes(fullOrder).length),
+    );
     fullOrder.points = recalculatedPoints;
     const formatted = await this.mapOrderToGroupedFormat(fullOrder);
     void this.finalizeOrderAfterUpdate(fullOrder, recalculatedPoints, formatted).catch((err) => {
@@ -1807,6 +1835,17 @@ export class OrdersService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
+      const lockedOrder = await queryRunner.manager.findOne(Order, {
+        where: { id: orderId },
+        relations: ['items', 'items.product'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (lockedOrder) {
+        const codes = lockedOrder.items.flatMap(item =>
+          ids.includes(item.id) || item.product?.code == null ? [] : [item.product.code],
+        );
+        this.codesAfterRewards(codes, this.getRedemptionCodes(lockedOrder).length, true);
+      }
       await this.restoreInventory(queryRunner.manager, restoreKeys);
 
       if (ids.length > 0) {
@@ -1824,10 +1863,9 @@ export class OrdersService {
           .execute();
       }
 
-      const wasPastCooking = ['cooked', 'packing', 'inDelivery'].includes(order.orderStatus);
+      const wasPastCooking = ['cooked', 'packing', 'inDelivery'].includes((lockedOrder ?? order).orderStatus);
       if (wasPastCooking) {
-        order.orderStatus = 'cooking';
-        await queryRunner.manager.save(order);
+        await queryRunner.manager.update(Order, orderId, { orderStatus: 'cooking' });
       }
 
       await queryRunner.commitTransaction();
@@ -1854,7 +1892,9 @@ export class OrdersService {
     const allCodes = fullOrder.items
       .map((i) => i.product?.code)
       .filter((c): c is number => c != null);
-    const recalculatedPoints = this.pointsService.calculatePointsFromCodes(allCodes);
+    const recalculatedPoints = this.pointsService.calculatePointsFromCodes(
+      this.codesAfterRewards(allCodes, this.getRedemptionCodes(fullOrder).length),
+    );
     fullOrder.points = recalculatedPoints;
     const formatted = await this.mapOrderToGroupedFormat(fullOrder);
     void this.finalizeOrderAfterUpdate(fullOrder, recalculatedPoints, formatted).catch((err) => {
@@ -2641,6 +2681,10 @@ export class OrdersService {
       items: Object.values(groupedItems),
       extras: extrasList,
       redemptionCode: order.redemptionCode ?? null,
+      redemptionCodes: this.getRedemptionCodes(order),
+      redemptionDiscount: this.getRewardItems(order).reduce(
+        (total, item) => total + Number(item.unitPrice ?? item.product.price), 0,
+      ),
       tableGroupId: order.tableGroupId ?? null,
       electronicInvoiceStatus: order.electronicInvoiceStatus ?? 'none',
       electronicInvoiceNumber: order.electronicInvoiceNumber ?? null,
@@ -2696,65 +2740,16 @@ export class OrdersService {
       }
       this.assertOrderContentEditable(order);
 
-      // Check if order already has a redemption code
-      if (order.redemptionCode) {
-        throw new BadRequestException('This order already has a redemption prize applied');
+      const rewardCodes = this.getRedemptionCodes(order);
+      const code = redemptionCode.trim().toUpperCase();
+      if (rewardCodes.includes(code)) {
+        throw new BadRequestException('Este premio ya está aplicado al pedido');
       }
-
-      // Validate redemption code
-      const redemption = await this.pointsService.validateRedemptionCode(redemptionCode.toUpperCase().trim(), manager);
-
-      // Check if order contains at least one product with code 2 or 5 (half chicken)
-      const hasHalfChicken = order.items.some(item => {
-        const productCode = item.product?.code;
-        return productCode === 2 || productCode === 5;
-      });
-
-      if (!hasHalfChicken) {
-        throw new BadRequestException(
-          'To use a redemption prize, your order must include at least one half chicken (product code 2 or 5)'
-        );
-      }
-
-      // Apply prize to order
-      order.redemptionCode = redemption.code;
-
-      // Recalculate points considering the prize discount
-      // The prize discounts one half chicken, so we need to adjust point calculation
-      const allCodes: number[] = [];
-      for (const item of order.items) {
-        if (item.product?.code) {
-          allCodes.push(item.product.code);
-        }
-      }
-
-      // Adjust codes: remove one instance of code 2 or 5 (the discounted one)
-      let adjustedCodes = [...allCodes];
-      const hasCode2 = adjustedCodes.includes(2);
-      const hasCode5 = adjustedCodes.includes(5);
-    
-      if (hasCode2 && hasCode5) {
-        // Remove one instance of code 2 or 5 (prefer code 2)
-        const indexToRemove = adjustedCodes.indexOf(2);
-        if (indexToRemove !== -1) {
-          adjustedCodes.splice(indexToRemove, 1);
-        } else {
-          const index5 = adjustedCodes.indexOf(5);
-          if (index5 !== -1) {
-            adjustedCodes.splice(index5, 1);
-          }
-        }
-      } else if (hasCode2) {
-        const indexToRemove = adjustedCodes.indexOf(2);
-        if (indexToRemove !== -1) {
-          adjustedCodes.splice(indexToRemove, 1);
-        }
-      } else if (hasCode5) {
-        const indexToRemove = adjustedCodes.indexOf(5);
-        if (indexToRemove !== -1) {
-          adjustedCodes.splice(indexToRemove, 1);
-        }
-      }
+      const allCodes = order.items.flatMap(item => item.product?.code == null ? [] : [item.product.code]);
+      const adjustedCodes = this.codesAfterRewards(allCodes, rewardCodes.length + 1, true);
+      const redemption = await this.pointsService.applyRedemptionToOrder(code, orderId, manager);
+      order.redemptionCode = order.redemptionCode ?? redemption.code;
+      order.redemptionCodes = [...rewardCodes, redemption.code];
 
       const newPoints = this.pointsService.calculatePointsFromCodes(adjustedCodes);
       const oldPoints = order.points || 0;
@@ -2777,9 +2772,6 @@ export class OrdersService {
           }
         }
       }
-
-      // Mark redemption as used
-      await this.pointsService.applyRedemptionToOrder(redemption.code, orderId, manager);
 
       // Save updated order
       await orderRepo.save(order);
@@ -3328,20 +3320,11 @@ export class OrdersService {
         totalDeliveryFees += Number(order.deliveryFee);
       }
 
-      if (order.redemptionCode) {
-        const halfChickenItem = order.items.find(
-          item => item.product && (item.product.code === 2 || item.product.code === 5)
-        );
-        if (halfChickenItem && halfChickenItem.product) {
-          const product = allProducts.find(p => p.id === halfChickenItem.product.id);
-          if (product) {
-            const premioPrice = Number(halfChickenItem.unitPrice ?? product.price);
-            totalPremioDiscounts += premioPrice;
-            // Adjust product revenue (one less sale due to discount)
-            if (productsSold[product.code]) {
-              productsSold[product.code].totalRevenue -= premioPrice;
-            }
-          }
+      for (const item of this.getRewardItems(order)) {
+        const discount = Number(item.unitPrice ?? item.product.price);
+        totalPremioDiscounts += discount;
+        if (productsSold[item.product.code]) {
+          productsSold[item.product.code].totalRevenue -= discount;
         }
       }
 
@@ -3503,20 +3486,14 @@ export class OrdersService {
         totalDeliveryFees += orderDelivery;
       }
 
-      if (order.redemptionCode) {
-        ordersWithPremio += 1;
-        const halfChickenItem = order.items.find(
-          item => item.product && (item.product.code === 2 || item.product.code === 5)
-        );
-        if (halfChickenItem?.product) {
-          const product = allProducts.find(p => p.id === halfChickenItem.product.id);
-          if (product) {
-            orderPremio = Number(halfChickenItem.unitPrice ?? product.price);
-            totalPremioDiscounts += orderPremio;
-            if (productsSold[product.code]) {
-              productsSold[product.code].totalRevenue -= orderPremio;
-            }
-          }
+      const rewardItems = this.getRewardItems(order);
+      if (rewardItems.length) ordersWithPremio += 1;
+      for (const item of rewardItems) {
+        const discount = Number(item.unitPrice ?? item.product.price);
+        orderPremio += discount;
+        totalPremioDiscounts += discount;
+        if (productsSold[item.product.code]) {
+          productsSold[item.product.code].totalRevenue -= discount;
         }
       }
 
@@ -3627,14 +3604,8 @@ export class OrdersService {
           orderSubtotal += Number(ex.amount) * (ex.quantity ?? 1);
         }
         if (order.orderType === 'delivery' && order.deliveryFee) orderDelivery = Number(order.deliveryFee);
-        if (order.redemptionCode) {
-          const halfChickenItem = order.items.find(
-            item => item.product && (item.product.code === 2 || item.product.code === 5)
-          );
-          if (halfChickenItem?.product) {
-            const product = allProducts.find(p => p.id === halfChickenItem.product.id);
-            if (product) orderPremio = Number(halfChickenItem.unitPrice ?? product.price);
-          }
+        for (const item of this.getRewardItems(order)) {
+          orderPremio += Number(item.unitPrice ?? item.product.price);
         }
         prevTotalRevenue += orderSubtotal + orderDelivery - orderPremio;
       }
@@ -3749,14 +3720,8 @@ export class OrdersService {
       if (order.orderType === 'delivery' && order.deliveryFee) {
         orderDelivery = Number(order.deliveryFee);
       }
-      if (order.redemptionCode) {
-        const halfChickenItem = order.items.find(
-          (item) => item.product && (item.product.code === 2 || item.product.code === 5),
-        );
-        if (halfChickenItem?.product) {
-          const product = allProducts.find((p) => p.id === halfChickenItem.product.id);
-          if (product) orderPremio = Number(halfChickenItem.unitPrice ?? product.price);
-        }
+      for (const item of this.getRewardItems(order)) {
+        orderPremio += Number(item.unitPrice ?? item.product.price);
       }
       byMonth[ym].totalRevenue += orderSubtotal + orderDelivery - orderPremio;
     }

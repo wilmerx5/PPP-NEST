@@ -161,6 +161,9 @@ export class Order {
   @Column({ name: 'redemption_code', type: 'varchar', length: 12, nullable: true })
   redemptionCode: string | null;
 
+  @Column({ name: 'redemption_codes', type: 'simple-json', nullable: true })
+  redemptionCodes: string[] | null;
+
   @ApiProperty({
     description: 'ID de grupo cuando varias mesas comparten cuenta (mesas linkeadas).',
     example: 1735123456789,
