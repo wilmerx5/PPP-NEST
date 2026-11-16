@@ -7249,7 +7249,7 @@ export class WhatsappCatalogService {
     if (verbs.includes(t)) return true;
     if (t.length < 4) return false;
     return verbs.some(
-      (v) => t.slice(0, 2) === v.slice(0, 2) && tokenEditDistance(t, v) <= 1,
+      (v) => v !== 'queda' && v !== 'quedan' && t.slice(0, 2) === v.slice(0, 2) && tokenEditDistance(t, v) <= 1,
     );
   }
 

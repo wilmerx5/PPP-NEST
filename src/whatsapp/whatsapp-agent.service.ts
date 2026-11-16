@@ -2092,8 +2092,11 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           (ctx.userMessage || '').split(/[;.!?]|\s+y\s+/i).some(segment =>
             /\b(?:aparte|adicional|extra)\b/i.test(segment) &&
             this.catalogService.productNameFitsUtterance?.(product, segment));
-        const separateQuantity = /\by\s+(?:\d+|un[ao]|dos|tres)\b/.test(txt) &&
-          ownedText !== ctx.userMessage;
+        const independentlyNamedQuantity = (ctx.userMessage || '').split(/\s+y\s+/i).slice(1).some(segment =>
+          /^\s*(?:\d+|un[ao]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/i.test(segment) &&
+          this.catalogService.productFullyNamedIn(segment,[product]));
+        const separateQuantity = independentlyNamedQuantity ||
+          /\by\s+(?:\d+|un[ao]?|dos|tres)\b/.test(txt) && ownedText !== ctx.userMessage;
         const sourceSwap = this.catalogService.swapIntent(ctx.userMessage || '');
         const swapHost = sourceSwap && this.catalogService.mostSpecificNamedProduct(
           this.catalogService.dishTextBeforeSwap(ctx.userMessage || ''), ctx.products);

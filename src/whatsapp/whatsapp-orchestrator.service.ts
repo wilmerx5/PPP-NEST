@@ -29544,6 +29544,8 @@ export class WhatsappOrchestratorService {
     const intent = parseSemanticIntent(result.semanticIntent,text);
     if (result.error || !intent) {
       observeWhatsappAgentError();
+      this.logger.warn(JSON.stringify({event:'whatsapp_semantic_turn_rejected',conversationId:conv.id,
+        reason:result.error || 'invalid_returned_interpretation',tools:result.toolCalls}));
       if (readOnlyInquiryContext) {
         await this.reply(conv,msg.waId,'¿Quieres consultar el precio de esa opción o agregarla al pedido?');
         return true;
@@ -29662,29 +29664,32 @@ export class WhatsappOrchestratorService {
         }
       }
     }
+    const deliveryTimeWithChanges = !!result.lookupDeliveryTime &&
+      (changed || roles.has('finish') || roles.has('checkout'));
+    const deliveryTimePreface = deliveryTimeWithChanges ? this.formatDeliveryEtaSentence(cfg) : undefined;
     if (result.offeredProducts && next.pendingMatch) {
-      await this.reply(conv,msg.waId,(JSON.stringify(next.cart)!==JSON.stringify(session.cart) ?
+      await this.reply(conv,msg.waId,this.withPreface(deliveryTimePreface,(JSON.stringify(next.cart)!==JSON.stringify(session.cart) ?
         this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n' : '')+
         (result.offeredProductsMissingStyle ? `Por ahora no tenemos *${result.offeredProductsMissingStyle}*. Elige una alternativa para esa parte del pedido.\n\n` : '')+
-        this.catalogService.formatProductChoicePrompt('tu elección',next.pendingMatch.candidates));
+        this.catalogService.formatProductChoicePrompt('tu elección',next.pendingMatch.candidates)));
       return true;
     }
     if (result.lookupPlacedOrder) {
       await this.replyOrderProgressOrAskNumber(conv,msg.waId,text,cfg,{forceNumber:result.lookupPlacedOrder.orderNumber});
       return true;
     }
-    if (result.lookupDeliveryTime) {
+    if (result.lookupDeliveryTime && !deliveryTimeWithChanges) {
       await this.tryHandleDeliveryEtaInquiry(conv,msg.waId,next,text,text,cfg,{forceGeneric:true});
       return true;
     }
     if (next.pendingAttribute && changed) {
-      await this.reply(conv,msg.waId,this.catalogService.formatProductOptionsPrompt({id:next.pendingAttribute.productId,
+      await this.reply(conv,msg.waId,this.withPreface(deliveryTimePreface,this.catalogService.formatProductOptionsPrompt({id:next.pendingAttribute.productId,
         name:next.pendingAttribute.name,price:next.pendingAttribute.price,code:next.pendingAttribute.code,
-        hasAttributes:true,attributes:next.pendingAttribute.attributes},next.pendingAttribute.selected || []));
+        hasAttributes:true,attributes:next.pendingAttribute.attributes},next.pendingAttribute.selected || [])));
       return true;
     }
     if (roles.has('finish') || roles.has('checkout') || changed && expected.state !== 'building_cart') {
-      await this.tryConfirmOrder(conv,msg.waId,next,{requireFinalReview:true});
+      await this.tryConfirmOrder(conv,msg.waId,next,{requireFinalReview:true,preface:deliveryTimePreface});
       return true;
     }
     if (roles.has('cancel') && !next.cart.length) {
@@ -29692,9 +29697,9 @@ export class WhatsappOrchestratorService {
       return true;
     }
     if (JSON.stringify(next.cart) !== JSON.stringify(session.cart) || changes) {
-      await this.reply(conv,msg.waId,this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
+      await this.reply(conv,msg.waId,this.withPreface(deliveryTimePreface,this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
         (next.pendingMatch || next.pendingAttribute || next.pendingMultiOrder
-          ? this.formatPendingPurchaseReminder(next) : this.formatContinueShoppingPrompt(next)));
+          ? this.formatPendingPurchaseReminder(next) : this.formatContinueShoppingPrompt(next))));
       return true;
     }
     const reply = result.reply?.trim();
