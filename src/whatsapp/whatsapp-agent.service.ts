@@ -1157,9 +1157,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             }
           }
           const repeatedAcceptedPurchase = input.semanticInterpretation && retriedSemanticPreservation && name === 'add_item' &&
-            actions.addItems?.some(item => item.productId === args.productId && item.quantity === (args.quantity ?? 1) &&
-              (item.note || '') === (args.note || '') && pendingPurchaseSources.get(item)?.has(sourceKey(String(args.sourceText))) &&
-              JSON.stringify(item.attributes || []) === JSON.stringify(args.attributes || []));
+            actions.addItems?.some(item => item.productId === args.productId &&
+              pendingPurchaseSources.get(item)?.has(sourceKey(String(args.sourceText))));
           if (repeatedAcceptedPurchase) {
             messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify({ok:true,alreadyApplied:true,
               hint:'Esta compra ya estaba acreditada. Conserva su cantidad y completa solo los datos pendientes.'})});
