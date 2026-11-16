@@ -1,3 +1,13 @@
+## Estado verificado al 16 de noviembre de 2026, tanda 552
+
+PPP y Kamppo están publicados con las correcciones de intención, continuidad, notas, existencias y consultas completas. PPP aprueba 53.590 pruebas en 641 suites. Kamppo aprueba 53.524 en 615 suites del motor y 834 en 105 suites activas de API. También pasan TypeScript de PPP y motor, los builds de producción y 92 pruebas de los siete runners migrados. La API general de Kamppo reporta 96 diagnósticos previos en pruebas y quince evaluaciones live existentes omitidas. El informe 552 registra las fuentes, imágenes, modelos e inventarios exactos.
+
+La comprobación de imagen detectó una regresión de despliegue real en Kamppo. Otra publicación había incluido compilados antiguos del chatbot bajo una fuente Git actual. El workflow y la guía manual ahora verifican 185 contratos de la imagen y del contenedor activo. La imagen antigua falla esa comprobación y la publicada la aprueba. Coinciden 218 artefactos activos del motor y 630 de API con la imagen probada. El despliegue se completó por SSH porque Actions bloqueó el inicio del runner por facturación o gasto de la cuenta.
+
+La siguiente prioridad es reproducir exactamente los casos históricos pendientes de lista reenviada, exclusiones de combo, negación posterior y recuperación tras una oferta, y las direcciones Bis/Sur. Los grupos A10–A13, U01–U03 y la salvedad de A02 conservan su estado en el inventario de chats. Registrar carrito, pregunta vigente, respuesta, persistencia y avance hasta confirmar en cada reproducción.
+
+La revisión del piloto debe medir cierre del pedido, aclaraciones repetidas y latencia sobre una muestra representativa. Las pruebas actuales usan órdenes y transportes aislados y respuestas reales grabadas. La mezcla de idiomas mantiene su prioridad posterior. El detalle está en `whatsapp-batch-552-validation.json`.
+
 ## Tanda546 — bloqueos y continuidad del pedido en producción
 
 Fuente 4e7cc8d1520d64a58edbb6fb6b2cacf4d1c4d1fe e imagen sha256:14368dcfc41df8ee06dbe448846481dca3f82851bc6bb340308e5b265f2b722e verificadas en staging y producción. Ambas APIs y bases de datos saludables, cero reinicios inesperados y 2.763 controles compilados aprobados por imagen. Agente gpt-6-luna y complejo gpt-6.1-sol activos. La configuración efectiva del comercio se conserva. Kamppo continúa pendiente de adaptación nativa.

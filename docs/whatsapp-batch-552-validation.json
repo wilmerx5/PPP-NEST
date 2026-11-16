@@ -1,0 +1,576 @@
+{
+  "batch": 552,
+  "date": "2026-11-16",
+  "scope": "Tandas 547–552 y migración nativa a Kamppo",
+  "sourceCommit": "dd99efd3447729b29e01d6c53cffc54d12b43db5",
+  "status": "ppp_and_kamppo_production_verified",
+  "findings": [
+    {
+      "issue": "Guardas rechazaban mensajes completos con compras, datos de entrega y consultas",
+      "change": "Recuperación acotada de cláusulas explícitas pendientes con su origen literal y compras ya acreditadas idempotentes"
+    },
+    {
+      "issue": "Las consultas de existencias podían confundirse con tiempo, total, edición o confirmación",
+      "change": "Tema de la consulta delimitado antes de seleccionar herramientas y sin autorizar nuevas compras"
+    },
+    {
+      "issue": "Notas coloquiales y alternativas de una preparación ausente perdían intención",
+      "change": "Notas de preparación conservadas, productos disponibles mantenidos y alternativa pendiente explícita para la preparación ausente"
+    },
+    {
+      "issue": "El formato numérico de la dirección podía rechazarse pese a una correspondencia válida",
+      "change": "Consulta al proveedor conserva formato original y comparación de identidad normaliza ceros conservando letras, zonas y puerta"
+    },
+    {
+      "issue": "Las pruebas históricas generalmente recorrían el modo previo de procesamiento",
+      "change": "Casos focalizados con la ruta semántica activa, recorridos completos y respuestas reales grabadas sobre la imagen final"
+    }
+  ],
+  "validation": {
+    "global": {
+      "sourceCommit": "dd99efd3447729b29e01d6c53cffc54d12b43db5",
+      "sourceFiles": 879,
+      "tests": 53590,
+      "suites": 641,
+      "failures": 0,
+      "pending": 0,
+      "exactInventory": true,
+      "checkpointed": true,
+      "sourceManifestHash": "1015aa4d39cf10483eefa0c1652639f4aa8aeb2e4fa2d22dd7f778abe9feffae",
+      "part03TimeoutRecheck": {
+        "approvedTests": 663,
+        "sourceAndOraclesChanged": false
+      }
+    },
+    "standardJest": {
+      "tests": 256,
+      "suites": 5,
+      "passed": true
+    },
+    "focusedStockAndScope": {
+      "tests": 134,
+      "suites": 4,
+      "passed": true
+    },
+    "typeScript": {
+      "passed": true,
+      "command": "tsc --noEmit"
+    },
+    "compiledControlsPerEnvironment": 3043,
+    "activeImageModuleHashesMatch": true,
+    "compiledModuleCount": 10,
+    "isolatedReplay": {
+      "paddedStreet": {
+        "ok": true,
+        "compiledPaddedStreetQuotes": 9,
+        "paidInferenceRequests": 0,
+        "externalMapsRequests": 0,
+        "externalOrders": 0
+      },
+      "http": {
+        "ok": true,
+        "compiledHttpChecks": 5,
+        "recordedProviderResponses": 7,
+        "paidInferenceRequests": 0,
+        "isolatedPersistence": true,
+        "metaMessages": 0,
+        "externalOrders": 0
+      },
+      "condiment": {
+        "ok": true,
+        "compiledCondimentTurns": 2,
+        "recordedProviderResponses": 11,
+        "paidInferenceRequests": 0,
+        "isolatedPersistence": true,
+        "metaMessages": 0,
+        "externalOrders": 0
+      },
+      "purchaseModifier": {
+        "ok": true,
+        "compiledPurchaseModifierTurns": 2,
+        "recordedProviderResponses": 5,
+        "paidInferenceRequests": 0,
+        "isolatedPersistence": true,
+        "metaMessages": 0,
+        "externalOrders": 0
+      },
+      "pilotIncidents": {
+        "ok": true,
+        "pilotIncidentTurns": 40,
+        "recordedProviderResponses": 46,
+        "paidInferenceRequests": 0,
+        "isolatedPersistence": true,
+        "metaMessages": 0,
+        "externalOrders": 0
+      }
+    },
+    "realModel": {
+      "model": "gpt-6-luna",
+      "http200Requests547Through552": 59,
+      "requests552": 14,
+      "scope": "Consultas de contenido, tamaño y sabores, elección explícita de bebida y cierre de un único pedido, más recorridos de compra compuesta y preparación de tandas anteriores",
+      "developmentOnly": true,
+      "externalOrderPersistenceMocked": true,
+      "providerRecordingsKeptPrivate": true
+    },
+    "maps": {
+      "readOnlyRequestsThisBatch": 4,
+      "readOnlyRequests547Through552": 7,
+      "paddedStreetEquivalent": true,
+      "sameCoordinates": true,
+      "quoteDistanceKm": 0.79,
+      "quoteFee": 2000,
+      "validatorUnchangedSinceMapsProbe": true
+    },
+    "externalOrders": 0,
+    "metaMessages": 0
+  },
+  "deployment": {
+    "staging": {
+      "semanticSmoke": {
+        "ok": true,
+        "totalCompiledTests": 2298,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "semanticRoutingEnabled": true,
+      "cartEditSelectionSmoke": {
+        "ok": true,
+        "totalCompiledTests": 2298,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "cartEditOwnerSmoke": {
+        "ok": true,
+        "compiledCartEditOwnerTests": 38,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "cartEditRejectionSmoke": {
+        "ok": true,
+        "compiledCartEditRejectionTests": 32,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "mixedAttributeSmoke": {
+        "ok": true,
+        "compiledMixedAttributeTests": 50,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "replacementTransactionSmoke": {
+        "ok": true,
+        "compiledReplacementTransactionTests": 35,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "ownerPaginationSmoke": {
+        "ok": true,
+        "compiledOwnerPaginationTests": 55,
+        "failed": 0,
+        "failures": [],
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "attributeRecoverySmoke": {
+        "ok": true,
+        "compiledAttributeRecoveryTests": 31,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "toolFeedbackSmoke": {
+        "ok": true,
+        "compiledToolFeedbackTests": 25,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "compiledControls": 3043,
+      "currentCatalogReplay": {
+        "ok": true,
+        "currentCatalogControls": 10,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "pilot520Smoke": {
+        "ok": true,
+        "compiledPilot520Cases": 24,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "previousMultiSmoke": {
+        "ok": true,
+        "compiledMultiPurchaseTests": 136,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "environment": "staging",
+      "head": "dd99efd3447729b29e01d6c53cffc54d12b43db5",
+      "image": "sha256:03e25ac6bf82a3efd6ea4a6d6e51fa6593fc114bce6c7ec61149eb075dabb81b",
+      "running": true,
+      "restarts": 0,
+      "health": "healthy",
+      "localHealth": {
+        "status": "ok",
+        "db": "connected",
+        "circuitBreaker": "CLOSED",
+        "cacheSize": 0,
+        "memory": {
+          "heapUsed": 56.12,
+          "heapTotal": 65.44,
+          "rss": 127.04
+        },
+        "timestamp": "2026-11-16T04:15:39.263Z"
+      },
+      "publicHealth": {
+        "status": "ok",
+        "db": "connected",
+        "circuitBreaker": "CLOSED",
+        "cacheSize": 0,
+        "memory": {
+          "heapUsed": 56.26,
+          "heapTotal": 65.44,
+          "rss": 127.54
+        },
+        "timestamp": "2026-11-16T04:15:39.480Z"
+      },
+      "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+      "compiledSmoke": {
+        "ok": true,
+        "compiledInquiryOptionTests": 66,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "priorCompiledSmoke": {
+        "ok": true,
+        "compiledReplacementJourneys": 80,
+        "mockedClosures": 80,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "previousMixedSmoke": {
+        "ok": true,
+        "compiledMixedReplacementTests": 163,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "productionRuntimePreserved": true,
+      "checkedAt": "2026-11-16T04:19:09.646647+00:00",
+      "backup": "/root/ppp-manual-release/20261116T041146Z-staging-552"
+    },
+    "production": {
+      "environment": "production",
+      "head": "dd99efd3447729b29e01d6c53cffc54d12b43db5",
+      "image": "sha256:03e25ac6bf82a3efd6ea4a6d6e51fa6593fc114bce6c7ec61149eb075dabb81b",
+      "previousImage": "sha256:bcd290c29f081d02d1ed21d6823fcb07f8fa04b05100fd5fd5bb0eac261a84ba",
+      "rollbackImage": "ppp-rollback:production-before-552-20261116T045739Z",
+      "running": true,
+      "restarts": 0,
+      "localHealth": {
+        "status": "ok",
+        "db": "connected",
+        "circuitBreaker": "CLOSED",
+        "cacheSize": 0,
+        "memory": {
+          "heapUsed": 61.69,
+          "heapTotal": 89.81,
+          "rss": 149.84
+        },
+        "timestamp": "2026-11-16T04:57:58.729Z"
+      },
+      "publicHealth": {
+        "status": "ok",
+        "db": "connected",
+        "circuitBreaker": "CLOSED",
+        "cacheSize": 0,
+        "memory": {
+          "heapUsed": 61.82,
+          "heapTotal": 89.81,
+          "rss": 150.22
+        },
+        "timestamp": "2026-11-16T04:57:58.898Z"
+      },
+      "publicHealthUrl": "https://api.prontopolloportal.com/api/health",
+      "compiledControls": 3043,
+      "effectiveConfiguration": {
+        "ok": true,
+        "semanticRoutingEnabled": true,
+        "agentV1Enabled": true,
+        "effectiveKeyPresent": true,
+        "model": "gpt-6-luna",
+        "complexModel": "gpt-6.1-sol",
+        "databaseWrites": 0,
+        "inferenceRequests": 0
+      },
+      "currentCatalogReplay": {
+        "ok": true,
+        "currentCatalogControls": 10,
+        "externalOrders": 0,
+        "paidInference": 0
+      },
+      "compiledResults": {
+        "552": {
+          "ok": true,
+          "totalCompiledTests": 2298,
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "527": {
+          "ok": true,
+          "compiledCartEditOwnerTests": 38,
+          "failed": 0,
+          "failures": [],
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "526": {
+          "ok": true,
+          "compiledCartEditRejectionTests": 32,
+          "failed": 0,
+          "failures": [],
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "525": {
+          "ok": true,
+          "compiledMixedAttributeTests": 50,
+          "failed": 0,
+          "failures": [],
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "524": {
+          "ok": true,
+          "compiledReplacementTransactionTests": 35,
+          "failed": 0,
+          "failures": [],
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "523": {
+          "ok": true,
+          "compiledOwnerPaginationTests": 55,
+          "failed": 0,
+          "failures": [],
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "522": {
+          "ok": true,
+          "compiledAttributeRecoveryTests": 31,
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "521": {
+          "ok": true,
+          "compiledToolFeedbackTests": 25,
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "520": {
+          "ok": true,
+          "compiledPilot520Cases": 24,
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "518": {
+          "ok": true,
+          "compiledInquiryOptionTests": 66,
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "517": {
+          "ok": true,
+          "compiledMultiPurchaseTests": 136,
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "516": {
+          "ok": true,
+          "compiledMixedReplacementTests": 163,
+          "externalOrders": 0,
+          "paidInference": 0
+        },
+        "515": {
+          "ok": true,
+          "compiledReplacementJourneys": 80,
+          "mockedClosures": 80,
+          "externalOrders": 0,
+          "paidInference": 0
+        }
+      },
+      "privateConfigurationPreservedExceptAuthorizedSemanticFlag": true,
+      "effectiveBusinessEnvironmentPreservedExceptAuthorizedSemanticFlag": true,
+      "previousBusinessEnvironmentSha256": "6155e40a6e501ac8ac9258e87dfb5e5c1b71358730c5eab7ffd51511e9d91d04",
+      "effectiveBusinessEnvironmentSha256": "6155e40a6e501ac8ac9258e87dfb5e5c1b71358730c5eab7ffd51511e9d91d04",
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6-luna",
+        "WHATSAPP_AGENT_COMPLEX_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      },
+      "stagingRuntimePreserved": true,
+      "kamppoRuntimePreserved": true,
+      "backup": "/root/ppp-manual-release/20261116T045739Z-production-552",
+      "checkedAt": "2026-11-16T05:01:01.757527+00:00"
+    },
+    "urgentPromotionWhileGlobalInProgress": true,
+    "globalNowFullyApproved": true,
+    "concurrentRewardsChangesPreservedOnStaging": true,
+    "stagingIntegrationCommit": "941e79b951ad43b740d9a2e4309433a85ff46541"
+  },
+  "diagnosticsRetained": [
+    "La candidata 551 produjo seis regresiones de «queda» durante la global. Se corrigieron en 552 antes de publicar esa candidata.",
+    "La pasada normal 552 tuvo un timeout de 20 segundos bajo carga en la parte 03. La suite completa aprobó 663 pruebas en la repetición, sin cambios de fuentes u oráculos. El resultado final consolida checkpoints vinculados al mismo manifiesto.",
+    "Un runner de consultas alcanzó su límite operativo antes de la respuesta final. Se conservó y completó el diagnóstico con la continuación grabada y real.",
+    "El primer oráculo del DTO de checkout esperaba quantity. Se corrigió para comprobar una fila por unidad según el contrato real, sin modificar el producto.",
+    "Una primera candidata de staging se descartó tras detectar un caso faltante durante el replay.",
+    "The first full engine pass exposed a missing replay JSON. The exact original fixture was restored, its 22 tests passed, and 24 referenced JSON dependencies plus 1357 relative imports were audited.",
+    "Long global runs were checkpointed and resumed after resource contention and interrupted processes. The last 216-case matrix was partitioned into empty, payment and final states. Every case name matches the frozen complete PPP matrix and passed exactly once across the three runs. The composed global inventory has zero pending cases.",
+    "A concurrent fiscal publication shipped old compiled engine and native API files despite current Git source. Its runtime failed the new contracts and lacked the semantic-intent module. The combined release compiles the latest shared/API code and uses the byte-identical, freshly validated engine artifacts.",
+    "Deployment attempts retained their rollback evidence. One collided with a concurrent publication. Environment comparison initially treated the deployment image reference as a business setting. The final comparison checks every business value and records the image reference separately.",
+    "GitHub Actions did not execute its build steps because account payments or the spending limit prevented the runner from starting. Deployment used SSH and independently verified Docker images."
+  ],
+  "remaining": [
+    "Medición representativa de cierres y latencia en el piloto.",
+    "Revisiones exactas históricas pendientes A10–A13 y U01–U03, más la negación posterior señalada en A02, según docs/whatsapp-chat-review-2026-11-15.json. Las regresiones generales aprobadas no sustituyen la comprobación exacta de esos casos.",
+    "Los audios e imágenes originales no se reejecutaron en esta tanda. Se probaron sus transcripciones y textos disponibles.",
+    "Quince evaluaciones live existentes de la API Kamppo permanecen omitidas.",
+    "GitHub Actions requiere resolver el estado de facturación o el límite de gasto de la cuenta para ejecutar los jobs. El despliegue verificado se realizó por SSH."
+  ],
+  "privateEvidenceDirectory": "/home/levi/.codex/tmp/ppp-552-validation",
+  "checkedAt": "2026-11-16T06:14:09.532866+00:00",
+  "kamppo": {
+    "deployment": {
+      "sourceCommit": "26bff1796cb1aa6b2691543e413fbfb828a5fbca",
+      "sourcePppBatch": 552,
+      "image": "sha256:4c3ed06ab3d5bea253f575b27984523b19faab048061cbf065c276c0bd253f60",
+      "previousImage": "sha256:e1eed861593a157c4dcd12a56e7521b0e4af4a129422900489a8dc1fe244db6f",
+      "configuredImageAlias": "kamppo-api:fiscal-buyer-5fc16ca9b257",
+      "rollbackImage": "kamppo-api:rollback-before-ppp552-20261116T060710Z",
+      "backup": "/root/kamppo-manual-release/20261116T060710Z-ppp552",
+      "localHealth": {
+        "status": "ok",
+        "service": "kamppo-api",
+        "name": "sapita",
+        "db": "up",
+        "ts": "2026-11-16T06:07:42.975Z"
+      },
+      "publicHealth": {
+        "status": "ok",
+        "service": "kamppo-api",
+        "name": "sapita",
+        "db": "up",
+        "ts": "2026-11-16T06:07:43.060Z"
+      },
+      "privateConfigurationPreserved": true,
+      "businessEnvironmentPreserved": true,
+      "deploymentImageReferenceExcludedFromBusinessComparison": true,
+      "mountsPreserved": true,
+      "pppRuntimesPreserved": true,
+      "restarts": 0,
+      "candidateSmoke": [
+        {
+          "ok": true,
+          "compiledNativeContracts": 16,
+          "syntheticCatalogs": 2,
+          "paidInference": 0,
+          "metaMessages": 0,
+          "externalOrders": 0
+        },
+        {
+          "ok": true,
+          "compiledSharedControls": 151,
+          "paidInference": 0,
+          "metaMessages": 0,
+          "externalOrders": 0
+        },
+        {
+          "ok": true,
+          "compiledNativeContracts": 18,
+          "syntheticCatalogs": 2,
+          "externalOrders": 0,
+          "paidInference": 0
+        }
+      ],
+      "runningSmoke": [
+        {
+          "ok": true,
+          "compiledNativeContracts": 16,
+          "syntheticCatalogs": 2,
+          "paidInference": 0,
+          "metaMessages": 0,
+          "externalOrders": 0
+        },
+        {
+          "ok": true,
+          "compiledSharedControls": 151,
+          "paidInference": 0,
+          "metaMessages": 0,
+          "externalOrders": 0
+        },
+        {
+          "ok": true,
+          "compiledNativeContracts": 18,
+          "syntheticCatalogs": 2,
+          "externalOrders": 0,
+          "paidInference": 0
+        }
+      ],
+      "compiledModuleHashes": {
+        "dist/whatsapp/whatsapp-ppp-engine.js": "738e0378fb9e3dba069c66f0e3faa8eb76e7af77dc65b5a5e625c24f13ac3ab0",
+        "dist/whatsapp/whatsapp.service.js": "5bd934718d9f840dfaa80b4afcc96b7101726c7689ea3903c35e18725d4a3be4",
+        "dist/whatsapp/whatsapp-channels.service.js": "ab104192cfe198507a3380461471604fb516825b746d171a345bf685bb2ca613",
+        "dist/fiscal/fiscal.service.js": "8b3f88399453efd133bfb601f31ca37c098d64503d58762842416696139911e1",
+        "engine/whatsapp/whatsapp-catalog.service.js": "bea14d93fbe0afb61d538d0ed61b5fc41dbcbdd4b2837c8b2fddb6a24a81b3b5",
+        "engine/whatsapp/whatsapp-session-intents.js": "9b457ea3e8f3e4bc9c759fd83be8959309b7793439b146a675c9587898591502"
+      },
+      "smokeSourceHashes": {
+        "551": "55e4008e711d81965fb67e720a7bafddbfa8054fbe0cb80e41573cbca8ebb0f3",
+        "552": "fa10ddd04731a9b3581eba9588c014b35cf5bdc41c5556dcdff7020c758ffe62",
+        "537": "a22339b184b400f8432978b6e599e9043fa9dc238bd952a14eb1df65312e8008"
+      },
+      "migrationsRun": false,
+      "externalOrders": 0,
+      "paidInference": 0,
+      "metaMessages": 0,
+      "checkedAt": "2026-11-16T06:07:58.189512+00:00"
+    },
+    "engineGlobal": {
+      "success": true,
+      "numPassedTests": 53524,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numPassedTestSuites": 615,
+      "sourceManifestHash": "718eb4d28bf82bf459b5d69498bcf5f01e39814a2b28efb925ca1b0a2620131e",
+      "exactInventory": true,
+      "sourceFiles": 724,
+      "fixtureAssets": 49,
+      "fixtureManifestSha256": "d19f3f153f40173f698930ba3cc61a716eb7cbacf0e34b1f8c99df08c46b41a6",
+      "checkpointed": true
+    },
+    "apiTests": 834,
+    "apiActiveSuites": 105,
+    "apiLivePending": 15,
+    "apiTypeDiagnostics": 96,
+    "newApiTypeDiagnostics": 0,
+    "diagnosticsOnlyInTestFiles": true,
+    "engineTypeScriptPassed": true,
+    "activeEngineArtifactsByteIdentical": 218,
+    "activeApiArtifactsByteIdentical": 630,
+    "nodeRunnerTests": 92,
+    "nodeRunnerFiles": 7,
+    "persistentImageGuardControls": 185,
+    "persistentImageGuardRejectsStaleRuntime": true,
+    "nativeReport": "docs/whatsapp-migration/ppp-batch-552-validation.json",
+    "sourceIncludesLatestFiscalChanges": "26bff1796cb1aa6b2691543e413fbfb828a5fbca"
+  }
+}
