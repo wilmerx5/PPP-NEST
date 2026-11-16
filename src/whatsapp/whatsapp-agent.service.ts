@@ -1028,7 +1028,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
                 }
               } else {
                 semanticIntent = semanticIntent || parsed;
-                const purchaseAnalysis=[];
+                const purchaseAnalysis: Array<{sourceText:string;available:Array<{id:number;name:string;quantity:number}>;unresolved:string[]}>=[];
                 for (const segment of semanticIntent.segments) {
                   const key=sourceKey(segment.text);
                   if (segment.role!=='purchase' || !independentPurchases(segment.text) || resolvedMultiTargets.has(key)) continue;
