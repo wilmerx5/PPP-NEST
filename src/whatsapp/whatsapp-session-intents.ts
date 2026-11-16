@@ -497,8 +497,16 @@ export function isDeliveryEtaInquiry(text: string): boolean {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
+  const remaining = t.match(/\bcuanto(?:\s+(tiempo))?\s+(?:(le|les)\s+)?(?:queda|falta)\b([^.!?;\n]*)/);
+  const remainingContext = remaining?.[3] || '';
+  if (remaining && /\b(?:pagar|pago|cuenta|total|saldo|dinero|plata|cobrar|cobro|precio|valor)\b/.test(remainingContext)) return false;
+  const remainingDeliveryTime = !!remaining && (!!remaining[1] ||
+    /\b(?:tiempo|minutos?|mins?|horas?)\b/.test(remainingContext) ||
+    /\bpara\s+(?:que\s+)?(?:lleg\w*|recib\w*|entreg\w*)\b/.test(remainingContext) ||
+    !!remaining[2] && /\b(?:pedido|domicilio|entrega|envio)\b/.test(remainingContext));
+
   return (
-    /\bcuanto(?:\s+tiempo)?\s+(?:(?:le|les)\s+)?(?:queda|falta)\b/.test(t) ||
+    remainingDeliveryTime ||
     /\b(?:cuanto(?:\s+tiempo)?|que\s+tanto)\s+(?:(?:te|se|se\s+te)\s+)?(?:demoras?|demoran|demorarias?|demorarian|tardas?|tardan|tardarias?|tardarian)\b/.test(t) ||
     /\b(se\s+demoran?|demorara[n]?\s+(?:mucho|el\s+pedido|el\s+domicilio)|cuanto\s+(se\s+)?(demora|tarda|tardaria)|cuanto\s+tiempo|en\s+cuanto\s+(llega|llegaria|llegara|sale|salen)|cuando\s+(llega|llegaria)|tiempo\s+de\s+(domicilio|entrega|espera)|demora\s+(el\s+)?(domicilio|pedido|envio)|eta)\b/.test(
       t,

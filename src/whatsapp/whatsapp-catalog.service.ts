@@ -7188,6 +7188,24 @@ export class WhatsappCatalogService {
         return subject;
       }
     }
+    // Remaining stock needs a complete inventory question. The same verb also
+    // describes an order's state, a balance, elapsed time and requested edits.
+    const stockText = q
+      .replace(/^(?:(?:hola|veci|vecino|vecina|buenas? (?:tardes|noches|dias)|buenos dias|buen dia)\s+)*/, '')
+      .replace(/^(?:por favor|porfa)\s+/, '');
+    const stock = stockText.match(
+      /^(?:(?:(?:aun|todavia)\s+)?(?:le|les|te)\s+quedan?|(?:aun|todavia)\s+quedan?|quedan)\s+(.+)$/,
+    );
+    if (stock) {
+      const subject = stock[1]
+        .replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '')
+        .replace(/^(?:(?:algo|algun[oa]s?|unos?|unas?|de|del|el|la|los|las)\s+)+/, '')
+        .trim();
+      const anotherIntent = /\b(?:y|pero|quiero|quisiera|deseo|necesito|dame|agrega\w*|anade\w*|envia\w*|quita\w*|elimina\w*|cambia\w*|cancela\w*|confirma\w*|pedido|orden|carrito|cuenta|total|saldo|pagar|pago|vuelto|tiempo|minutos?|horas?|demora|tarda|domicilio|direccion|telefono|celular|calle|carrera|diagonal|transversal|apto|torre)\b/.test(subject);
+      const predicate = /^(?:confirmad[oa]s?|list[oa]s?|bien|igual|asi|pendientes?|por|para|lejos|cerca|mucho|poco|mejor|peor)\b/.test(subject);
+      if (!subject || anotherIntent || predicate || /\b\d(?:[ .-]*\d){9,}\b/.test(subject)) return null;
+      q = `tienes ${subject}`;
+    }
     const tokens = q.split(/\s+/).filter(Boolean);
     const idx = tokens.findIndex((t) => this.isAvailabilityVerbToken(t));
     if (idx < 0) return null;
@@ -7234,8 +7252,6 @@ export class WhatsappCatalogService {
     const t = normalizeText(token);
     if (t === 'hay') return true;
     const verbs = [
-      'queda',
-      'quedan',
       'tienes',
       'tiene',
       'tienen',
@@ -7249,7 +7265,7 @@ export class WhatsappCatalogService {
     if (verbs.includes(t)) return true;
     if (t.length < 4) return false;
     return verbs.some(
-      (v) => v !== 'queda' && v !== 'quedan' && t.slice(0, 2) === v.slice(0, 2) && tokenEditDistance(t, v) <= 1,
+      (v) => t.slice(0, 2) === v.slice(0, 2) && tokenEditDistance(t, v) <= 1,
     );
   }
 
