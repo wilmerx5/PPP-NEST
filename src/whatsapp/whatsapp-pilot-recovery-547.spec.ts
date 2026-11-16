@@ -148,3 +148,22 @@ for(const {config,products} of menus) it(`search-only results must resolve the a
   expect(h.conv.sessionData.pendingMatch).toMatchObject({quantity:1,semanticOffer:true});
   expect(reply).not.toMatch(/aclaras qué quieres|Algo más/i);
 });
+
+for (const {config,products} of menus) for (const text of ['1 frito','frito']) it(`pending preparation answer owns the offered purchase ${config.host}/${text}`,async()=>{
+  const h=setup(products);
+  h.conv.sessionData.cart=[{productId:54704,name:products[0].name,code:4,quantity:1,unitPrice:46000,note:'Con ají',attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]}];
+  h.conv.sessionData.pendingMatch={intent:'order',semanticOffer:true,quantity:1,query:`${config.host} ${config.missing}`,candidates:products};
+  h.service.agentService={runTurn:jest.fn().mockRejectedValue(new Error('An offered short choice must use its existing owner'))};
+  await h.sendQueued(text);
+  expect(h.conv.sessionData.cart).toHaveLength(2);
+  expect(h.conv.sessionData.cart.find(item=>item.productId===54701)).toMatchObject({quantity:1});
+  expect(h.conv.sessionData.cart.find(item=>item.productId===54704)).toMatchObject({quantity:1,note:'Con ají'});
+  expect(h.conv.sessionData.pendingMatch).toBeFalsy();
+  expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
+});
+
+for (const text of ['no frito','sin frito','que trae frito','frito?','pollo','2 frito','frito y broaster','cambia frito']) it(`a pending name resolver declines ambiguous or different intent ${text}`,()=>{
+  const h=setup();
+  const pending={intent:'order',semanticOffer:true,quantity:1,query:'pollo asado',candidates:menus[0].products};
+  expect(h.service.resolvePendingPurchaseName(text,pending)).toBeNull();
+});

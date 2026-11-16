@@ -29372,6 +29372,18 @@ export class WhatsappOrchestratorService {
         !['building_cart','awaiting_attribute','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
     const session = this.conversationService.getSession(conv);
     if (session.mpPreferenceId) return false;
+    const offered = session.pendingMatch;
+    const offeredName = offered?.semanticOffer ? this.resolvePendingPurchaseName(text, offered) : null;
+    if (!conv.humanTakeover && offeredName && offered?.intent === 'order' && !offered.selectionAdded && !offered.replacement &&
+        !offered.includesRequestedAccompaniment && !offered.alsoAdd?.length && !offered.priceAcceptanceProductId &&
+        !session.pendingAttribute && !session.pendingMultiOrder && !session.pendingAddOffer && !session.pendingPriceInquiry &&
+        !session.pendingAddressConflict && !session.pendingComposedDishRecovery && !CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) {
+      if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) {
+        await this.reply(conv,msg.waId,cfg.closedMessage || 'Ahora estamos cerrados. Tu pedido sigue igual; podrás continuar cuando abramos.');
+        return true;
+      }
+      if (await this.tryResolvePendingMatchPick(conv,msg.waId,session,offeredName,await this.catalogService.getMenuProducts(),cfg)) return true;
+    }
     const messageHash = createHash('sha256').update(text.normalize('NFC').toLocaleLowerCase('es').replace(/\s+/g,' ').trim()).digest('hex');
     const previousEdit = session.lastSemanticDetailEdit;
     if (previousEdit && previousEdit.messageHash === messageHash && previousEdit.cartSignature === JSON.stringify(session.cart) &&
@@ -33492,6 +33504,27 @@ export class WhatsappOrchestratorService {
       matches = open.options.filter(option=>this.normalizeForMatch(option) === said);
     }
     return matches.length === 1 ? matches[0] : null;
+  }
+
+  private resolvePendingPurchaseName(
+    text: string,
+    pending: NonNullable<WhatsappSessionData['pendingMatch']>,
+  ): string | null {
+    const said = this.normalizeForMatch(text);
+    const exact = pending.candidates.filter(candidate => this.normalizeForMatch(candidate.name) === said);
+    if (exact.length === 1) return exact[0].name;
+    // A short answer may name the distinguishing preparation of an offered SKU.
+    // Accept only catalog words, with the already requested quantity unchanged.
+    if (!pending.semanticOffer || /[¿?]/.test(text) || !/^[\p{L}\d\s]+$/u.test(text.trim())) return null;
+    const counted = said.match(/^(\d{1,2})\s+(.+)$/);
+    if (counted && Number(counted[1]) !== (pending.quantity || 1)) return null;
+    const words = (counted ? counted[2] : said).split(' ');
+    if (!words.length || words.length > 4 || !words.some(word => word.length >= 3)) return null;
+    const matches = pending.candidates.filter(candidate => {
+      const tokens = this.normalizeForMatch(candidate.name).split(' ');
+      return words.every(word => tokens.includes(word));
+    });
+    return matches.length === 1 ? matches[0].name : null;
   }
 
   /** Return only an offered row/code, bounded ordinal or unique exact catalog name. */
